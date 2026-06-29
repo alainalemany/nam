@@ -288,3 +288,57 @@
 \- Add export or print views for personal records
 \- Evaluate whether any official website automation is appropriate only after manual logging works reliably
 
+\## Infrastructure Roadmap
+
+\### Phase 1: VPS Foundation
+
+\- Inspect the current VPS before making system-level changes
+\- Verify Ubuntu LTS baseline
+\- Verify Docker Engine installation
+\- Verify Docker Compose plugin installation
+\- Verify Docker service startup on boot
+\- Verify Docker access for the deployment user
+\- Verify PostgreSQL client installation
+\- Review firewall, SSH, package, disk, memory, and service state
+\- Leave SSH hardening, Caddy, firewall changes, and deployment files for later approved phases
+
+\### Phase 2A: Docker PostgreSQL Foundation
+
+\- Use /home/alain/projects/nam as the development project location
+\- Do not create /opt/nam during Phase 2A
+\- Create Docker Compose infrastructure for PostgreSQL only
+\- Define environment variable conventions with .env and .env.example
+\- Run PostgreSQL on a private Docker network
+\- Store PostgreSQL data in a persistent named Docker volume
+\- Keep PostgreSQL unexposed to the host and Internet
+\- Add health checks for PostgreSQL
+\- Verify PostgreSQL startup, health, connectivity, and persistence
+\- Document manual PostgreSQL backup and restore commands
+\- Document rollback steps for failed database initialization or Compose configuration errors
+
+\### Phase 2B: Application Container Foundation
+
+\- Scaffold the Next.js application only after Phase 2A is complete and verified
+\- Add Dockerfile strategy for the Next.js application
+\- Add app service to Docker Compose
+\- Connect the application container to PostgreSQL through the private Docker network
+\- Expose the application only on localhost during this phase
+\- Verify application startup, localhost access, and database connectivity
+
+\### Phase 3: Reverse Proxy And HTTPS
+
+\- Install Caddy directly on the VPS host only after the Docker application stack is functional
+\- Configure Caddy as the only public reverse proxy
+\- Configure HTTPS for nam.alemany.me
+\- Reverse proxy public requests to the localhost-bound Next.js container
+\- Verify external access, certificate issuance, and certificate renewal behavior
+
+\### Phase 4: Production Operations
+
+\- Define the production deployment location, possibly /opt/nam
+\- Automate PostgreSQL backups
+\- Test restore procedures
+\- Add retention policy for backups
+\- Evaluate off-server backup storage
+\- Add monitoring and logging only when they solve a real operational need
+\- Evaluate Redis, background workers, and object storage only when application requirements justify them

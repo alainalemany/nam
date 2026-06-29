@@ -697,6 +697,41 @@ When implementing code later, follow the established stack and module boundaries
 
 Do not introduce major new frameworks or architectural styles without explaining the tradeoff.
 
+## System-Level Change Approval Rules
+
+Before making any system-level change, inspect the current server state first.
+
+System-level changes include, but are not limited to:
+
+- Installing packages
+- Removing packages
+- Editing system configuration files
+- Modifying Docker configuration
+- Creating system users
+- Changing firewall rules
+- Enabling or disabling services
+- Changing SSH configuration
+- Installing web servers
+- Creating certificates
+- Running potentially destructive commands
+
+Before making a system-level change:
+
+1. Explain what was found during inspection.
+2. Explain why the change is recommended.
+3. Describe exactly what files, packages, services, Docker resources, or system settings will be modified.
+4. Wait for explicit user approval.
+
+Do not assume approval for system-level changes.
+
+Current infrastructure environment distinction:
+
+- Development: current VPS project repository at `/home/alain/projects/nam`.
+- Staging: optional future environment, not currently implemented.
+- Production: future deployed environment, possibly under `/opt/nam`, not currently implemented.
+
+Phase 2A infrastructure work is limited to the development project repository and must not create `/opt/nam`, install Caddy, expose public services, or scaffold the Next.js application unless explicitly approved later.
+
 ## Important Caveats
 
 Some documentation currently contains encoding artifacts where tree characters were rendered incorrectly. Preserve the intended hierarchy rather than copying the broken characters.
