@@ -1,0 +1,10 @@
+# Local environment secrets
+.env
+.env.*
+!.env.example
+
+# Local database backup artifacts must stay outside the repository.
+backups/
+*.dump
+*.sql
+*.sql.gz

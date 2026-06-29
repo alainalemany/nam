@@ -307,14 +307,21 @@
 \- Use /home/alain/projects/nam as the development project location
 \- Do not create /opt/nam during Phase 2A
 \- Create Docker Compose infrastructure for PostgreSQL only
+\- Use Docker Compose project name nam
+\- Use postgres as the PostgreSQL service name
+\- Use nam-network as the private Docker network
+\- Use postgres-data as the persistent PostgreSQL named volume
+\- Pin the PostgreSQL image to the PostgreSQL 18 major version
 \- Define environment variable conventions with .env and .env.example
 \- Run PostgreSQL on a private Docker network
 \- Store PostgreSQL data in a persistent named Docker volume
 \- Keep PostgreSQL unexposed to the host and Internet
 \- Add health checks for PostgreSQL
 \- Verify PostgreSQL startup, health, connectivity, and persistence
-\- Document manual PostgreSQL backup and restore commands
+\- Document manual PostgreSQL backup and restore commands in docs/infrastructure.md
+\- Store development PostgreSQL backups outside the Git repository at /home/alain/backups/nam/postgres/
 \- Document rollback steps for failed database initialization or Compose configuration errors
+\- Do not create the app service until Phase 2B
 
 \### Phase 2B: Application Container Foundation
 
