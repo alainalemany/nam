@@ -1,0 +1,4 @@
+NAM_ENVIRONMENT=lab
+NAM_ENVIRONMENT_ROLE=lab-vps
+NAM_PROJECT_ROOT=/home/alain/lab/nam
+NAM_PROJECT_NAME="NAM Dashboard"

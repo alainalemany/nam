@@ -1,0 +1,4 @@
+NAM_ENVIRONMENT=production
+NAM_ENVIRONMENT_ROLE=production-vps
+NAM_PROJECT_ROOT=/opt/nam
+NAM_PROJECT_NAME="NAM Dashboard"

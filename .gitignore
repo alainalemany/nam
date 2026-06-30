@@ -10,6 +10,8 @@ out/
 
 # Local database backup artifacts must stay outside the repository.
 backups/
+!infrastructure/server-assets/backups/
+!infrastructure/server-assets/backups/.gitkeep
 *.dump
 *.sql
 *.sql.gz

@@ -1,0 +1,221 @@
+#!/usr/bin/env bash
+
+if [ -f /etc/nam/environment ]; then
+  source /etc/nam/environment
+fi
+
+ENVIRONMENT="${NAM_ENVIRONMENT:-${SERVER_ENVIRONMENT:-development}}"
+PROJECT_NAME="${NAM_PROJECT_NAME:-${PROJECT_NAME:-NAM Dashboard}}"
+PROJECT_ROOT="${NAM_PROJECT_ROOT:-/home/alain/projects/nam}"
+
+case "${ENVIRONMENT,,}" in
+  prod|production)
+    ENV_LABEL="PRODUCTION"; ENV_COLOR="\e[91m"; TIP="🔴 Live environment. Every command matters."
+    ;;
+  staging|stage)
+    ENV_LABEL="STAGING"; ENV_COLOR="\e[93m"; TIP="🟡 Validate here before promoting to Production."
+    ;;
+  dev|development)
+    ENV_LABEL="DEVELOPMENT"; ENV_COLOR="\e[92m"; TIP="🟢 Safe to experiment. Break things here, not in Production."
+    ;;
+  test|testing)
+    ENV_LABEL="TESTING"; ENV_COLOR="\e[96m"; TIP="🔵 Testing environment. Safe place for controlled checks."
+    ;;
+  lab)
+    ENV_LABEL="LAB"; ENV_COLOR="\e[95m"; TIP="🟣 Lab environment. Disposable and experimental."
+    ;;
+  *)
+    ENV_LABEL="UNKNOWN"; ENV_COLOR="\e[97m"; TIP="⚠️ Environment unknown. Be careful."
+    ;;
+esac
+
+RESET="\e[0m"
+BOLD="\e[1m"
+DIM="\e[2m"
+CYAN="\e[96m"
+PURPLE="\e[95m"
+GREEN="\e[92m"
+RED="\e[91m"
+YELLOW="\e[93m"
+
+WIDTH_LINE="──────────────────────────────────────────────────────────────"
+
+top() {
+  echo -e "${DIM}┌${WIDTH_LINE}${RESET}"
+}
+
+middle() {
+  echo -e "${DIM}├${WIDTH_LINE}${RESET}"
+}
+
+bottom() {
+  echo -e "${DIM}└${WIDTH_LINE}${RESET}"
+}
+
+section_title() {
+  local text="$1"
+  echo -e "│ ${BOLD}${text}${RESET}"
+}
+
+kv() {
+  local icon="$1"
+  local label="$2"
+  local value="$3"
+
+  case "$icon" in
+    "🖥"|"🏷"|"⏱"|"🛢")
+      printf "│ %s   %-13s : %b\n" "$icon" "$label" "$value"
+      ;;
+    *)
+      printf "│ %s  %-13s : %b\n" "$icon" "$label" "$value"
+      ;;
+  esac
+}
+
+status_line() {
+  local name="$1"
+
+  if systemctl is-active --quiet "$name" 2>/dev/null; then
+    echo -e "${GREEN}🟢 Online${RESET}"
+  else
+    echo -e "${RED}🔴 Offline${RESET}"
+  fi
+}
+
+HOST="$(hostname)"
+OS="$(. /etc/os-release && echo "$PRETTY_NAME")"
+KERNEL="$(uname -r)"
+TIME_NOW="$(date '+%Y-%m-%d %H:%M:%S %Z')"
+UPTIME_NOW="$(uptime -p | sed 's/up //')"
+USER_NOW="$(whoami)"
+SHELL_NOW="${SHELL:-unknown}"
+TZ_NOW="$(timedatectl 2>/dev/null | awk -F': ' '/Time zone/ {print $2}' | awk '{print $1}')"
+PUBLIC_IP="$(hostname -I | awk '{print $1}')"
+
+CPU_LOAD="$(awk '{print $1", "$2", "$3}' /proc/loadavg)"
+CPU_USAGE="$(
+  awk '
+    /cpu / {
+      idle1=$5; total1=0;
+      for (i=2; i<=NF; i++) total1+=$i;
+    }
+    END {
+      system("sleep 0.2");
+      while ((getline < "/proc/stat") > 0) {
+        if ($1 == "cpu") {
+          idle2=$5; total2=0;
+          for (i=2; i<=NF; i++) total2+=$i;
+          diff_idle=idle2-idle1;
+          diff_total=total2-total1;
+          if (diff_total > 0)
+            printf "%d", (100 * (diff_total - diff_idle) / diff_total);
+          else
+            printf "0";
+          exit;
+        }
+      }
+    }
+  ' /proc/stat
+)"
+
+RAM_USED="$(free -m | awk '/Mem:/ {print $3}')"
+RAM_TOTAL="$(free -m | awk '/Mem:/ {print $2}')"
+RAM_PERCENT="$(free | awk '/Mem:/ {print int($3*100/$2)}')"
+
+RAM_USED_DISPLAY="$(awk "BEGIN {printf \"%.0f MiB\", $RAM_USED}")"
+RAM_TOTAL_DISPLAY="$(awk "BEGIN {printf \"%.1f GiB\", $RAM_TOTAL/1024}")"
+
+SWAP_USED="$(free -m | awk '/Swap:/ {print $3}')"
+SWAP_TOTAL="$(free -m | awk '/Swap:/ {print $2}')"
+SWAP_PERCENT="$(free | awk '/Swap:/ {if ($2==0) print 0; else print int($3*100/$2)}')"
+
+if [ "$SWAP_TOTAL" -eq 0 ]; then
+  SWAP_DISPLAY="0 B / 0 B (0%)"
+else
+  SWAP_DISPLAY="${SWAP_USED} MiB / ${SWAP_TOTAL} MiB (${SWAP_PERCENT}%)"
+fi
+
+DISK_USED="$(df -h / | awk 'NR==2 {print $3}')"
+DISK_TOTAL="$(df -h / | awk 'NR==2 {print $2}')"
+DISK_PERCENT="$(df / | awk 'NR==2 {print $5}')"
+
+if command -v docker >/dev/null 2>&1; then
+  CONTAINERS_TOTAL="$(docker ps -a -q 2>/dev/null | wc -l)"
+  CONTAINERS_RUNNING="$(docker ps -q 2>/dev/null | wc -l)"
+  CONTAINERS_STOPPED=$(( CONTAINERS_TOTAL - CONTAINERS_RUNNING ))
+  IMAGES_TOTAL="$(docker images -q 2>/dev/null | sort -u | wc -l)"
+  VOLUMES_TOTAL="$(docker volume ls -q 2>/dev/null | wc -l)"
+  NETWORKS_TOTAL="$(docker network ls -q 2>/dev/null | wc -l)"
+else
+  CONTAINERS_TOTAL="N/A"
+  CONTAINERS_RUNNING="N/A"
+  CONTAINERS_STOPPED="N/A"
+  IMAGES_TOTAL="N/A"
+  VOLUMES_TOTAL="N/A"
+  NETWORKS_TOTAL="N/A"
+fi
+
+echo -e "${ENV_COLOR}${BOLD}"
+figlet -f big "$ENV_LABEL" 2>/dev/null || echo "$ENV_LABEL"
+echo -e "${RESET}"
+
+echo -e "              ${DIM}───${RESET} ${BOLD}${PROJECT_NAME}${RESET} ${DIM}───${RESET}"
+echo
+
+top
+section_title "${ENV_COLOR}🖥   SERVER${RESET}"
+middle
+kv "🖥" "Host" "$HOST"
+kv "🌐" "Public IP" "$PUBLIC_IP"
+kv "🏷" "Environment" "${ENV_COLOR}${ENV_LABEL}${RESET}"
+kv "📁" "Project" "$PROJECT_NAME"
+kv "🐧" "OS" "$OS"
+kv "🧬" "Kernel" "$KERNEL"
+kv "🕒" "Time" "$TIME_NOW"
+kv "⏱" "Uptime" "$UPTIME_NOW"
+kv "👤" "User" "$USER_NOW"
+kv "💻" "Shell" "$SHELL_NOW"
+kv "📍" "Timezone" "${TZ_NOW:-unknown}"
+bottom
+
+echo
+top
+section_title "${CYAN}📊 SYSTEM RESOURCES${RESET}"
+middle
+kv "⚡" "CPU Usage" "${CPU_USAGE} %"
+kv "🧠" "RAM Usage" "$RAM_USED_DISPLAY / $RAM_TOTAL_DISPLAY (${RAM_PERCENT}%)"
+kv "💾" "Storage" "$DISK_USED / $DISK_TOTAL ($DISK_PERCENT)"
+kv "🔁" "Swap Usage" "$SWAP_DISPLAY"
+kv "〰️" "CPU Load" "$CPU_LOAD"
+bottom
+
+echo
+top
+section_title "${PURPLE}🐳 DOCKER${RESET}"
+middle
+kv "📦" "Containers" "$CONTAINERS_TOTAL total"
+kv "🟢" "Running" "${GREEN}${CONTAINERS_RUNNING}${RESET}"
+kv "🔴" "Stopped" "${RED}${CONTAINERS_STOPPED}${RESET}"
+kv "🧱" "Images" "$IMAGES_TOTAL"
+kv "🛢" "Volumes" "$VOLUMES_TOTAL"
+kv "🌐" "Networks" "$NETWORKS_TOTAL"
+bottom
+
+echo
+top
+section_title "${GREEN}⚙️  SERVICES${RESET}"
+middle
+kv "🌐" "Caddy" "$(status_line caddy)"
+kv "🐳" "Docker" "$(status_line docker)"
+kv "🐘" "PostgreSQL" "$(status_line postgresql)"
+kv "🧰" "Redis" "$(status_line redis)"
+kv "🔄" "Watchtower" "$(status_line watchtower)"
+bottom
+
+echo
+top
+section_title "${YELLOW}💡 TIP${RESET}"
+middle
+echo -e "│ ${ENV_COLOR}${TIP}${RESET}"
+bottom
+echo

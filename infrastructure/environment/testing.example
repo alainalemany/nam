@@ -1,0 +1,4 @@
+NAM_ENVIRONMENT=testing
+NAM_ENVIRONMENT_ROLE=testing-vps
+NAM_PROJECT_ROOT=/opt/nam-testing
+NAM_PROJECT_NAME="NAM Dashboard"

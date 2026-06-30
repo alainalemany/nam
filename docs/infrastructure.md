@@ -8,6 +8,25 @@ Architecture decisions and long-term tradeoffs belong in `docs/architecture.md`.
 
 Phase 2B establishes the development application platform foundation in `/home/alain/projects/nam`.
 
+Server identity and reusable host configuration are now tracked as repository
+infrastructure assets under:
+
+```text
+infrastructure/
+```
+
+Detailed server identity documentation lives under:
+
+```text
+docs/infrastructure/
+```
+
+Key documents:
+
+- `docs/infrastructure/server-environment.md`
+- `docs/infrastructure/motd.md`
+- `docs/infrastructure/disaster-recovery.md`
+
 Phase 2B includes:
 
 - The PostgreSQL service from Phase 2A
@@ -290,3 +309,22 @@ Future infrastructure maintenance documentation should cover:
 - Container health review
 - Log review
 - Monitoring, only when it solves a real operational need
+
+## Server Identity
+
+The canonical host identity file is:
+
+```text
+/etc/nam/environment
+```
+
+The NAM MOTD reads this file and renders the environment-specific login banner.
+Shell variables are not the authority for server identity.
+
+Reusable assets:
+
+```text
+infrastructure/motd/
+infrastructure/environment/
+infrastructure/server-assets/
+```

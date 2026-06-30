@@ -1,0 +1,4 @@
+NAM_ENVIRONMENT=staging
+NAM_ENVIRONMENT_ROLE=staging-vps
+NAM_PROJECT_ROOT=/opt/nam
+NAM_PROJECT_NAME="NAM Dashboard"
