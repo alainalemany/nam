@@ -6,7 +6,7 @@
 | --- | --- |
 | Confirmed | NAM Dashboard server identity must be recoverable from GitHub. |
 | Confirmed | `/etc/nam/environment` and the NAM MOTD are required identity assets for a rebuilt server. |
-| Recommended | Keep reusable host configuration under `infrastructure/` and operational runbooks under `docs/infrastructure/`. |
+| Recommended | Keep reusable host configuration under `infrastructure/server-config/`, bootstrap entry points under `infrastructure/bootstrap/`, verification scripts under `infrastructure/checks/`, and operational runbooks under `docs/infrastructure/`. |
 | Open Question | Full production restore procedures are not confirmed because production does not exist yet. |
 
 ## Scenario
@@ -15,9 +15,14 @@ Assume the current VPS provider disappears and a brand new VPS must be created.
 The operator should be able to recreate the NAM Dashboard development server
 identity from GitHub without relying on chat history.
 
-This document covers server identity and host customization recovery. Application
-data recovery, PostgreSQL restore, object storage restore, and production
-deployment restore require separate runbooks as those systems mature.
+This document covers the recovery philosophy for server identity and host
+customization. A server is not considered recoverable simply because the
+application source code exists. Its identity, reusable configuration, bootstrap
+path, verification checks, and operational documentation must also be recoverable
+from GitHub.
+
+Application data recovery, PostgreSQL restore, object storage restore, and
+production deployment restore require separate runbooks as those systems mature.
 
 ## Minimum Recovery Inputs
 
@@ -54,7 +59,7 @@ cd /home/alain/projects/nam
 Install the NAM MOTD and development identity:
 
 ```bash
-sudo infrastructure/motd/install.sh infrastructure/environment/development.example
+sudo infrastructure/bootstrap/development.sh
 ```
 
 Verify the active MOTD script:
@@ -84,12 +89,20 @@ NAM_PROJECT_ROOT=/home/alain/projects/nam
 NAM_PROJECT_NAME="NAM Dashboard"
 ```
 
-## Recovering Other Server Assets
+Run repository-defined verification:
+
+```bash
+infrastructure/checks/verify-server.sh
+```
+
+## Recovering Other Server Configuration
 
 Review:
 
 ```text
-infrastructure/server-assets/
+infrastructure/server-config/
+infrastructure/bootstrap/
+infrastructure/checks/
 docs/infrastructure/
 docs/infrastructure.md
 ```

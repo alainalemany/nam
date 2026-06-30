@@ -16,6 +16,12 @@
 NAM Dashboard servers need a durable identity that survives shell sessions,
 login methods, user accounts, Docker containers, and deployment tooling.
 
+The environment system exists to make server intent explicit. A future operator
+or AI assistant should not need to infer whether a host is development, staging,
+production, testing, or lab from filenames, shell prompts, Docker container
+names, or memory. The host should declare its own role in a small file with a
+stable path.
+
 The canonical server identity file is:
 
 ```text
@@ -76,6 +82,23 @@ Supported names:
 
 Accepted aliases may be handled by scripts, such as `dev` for `development` and
 `prod` for `production`, but the file should use the full canonical name.
+
+## Evolution Rules
+
+New environments should be added only when they represent a real operational
+role. The system should not create many names for minor workflow differences.
+
+When a new environment is introduced:
+
+- add an example file under `infrastructure/environment/`
+- define the intended hostname convention
+- document any different project root or service expectations
+- verify that the MOTD can render the environment clearly
+- update check scripts only when the convention is ready to enforce
+
+Environment identity should remain independent from application runtime secrets.
+For example, `DATABASE_URL` belongs in application configuration; `development`
+or `production` belongs in `/etc/nam/environment`.
 
 ## Naming Conventions
 

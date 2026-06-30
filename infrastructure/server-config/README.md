@@ -1,7 +1,11 @@
-# Server Asset Preservation Strategy
+# Server Configuration Preservation Strategy
 
-This directory is the long-term home for reusable host-level configuration
-assets that should survive VPS loss, migration, or rebuild.
+This directory is the long-term home for reusable host-level configuration that
+should survive VPS loss, migration, or rebuild.
+
+The name `server-config` is intentional. These files are not frontend assets and
+not generated runtime state. They are configuration templates, fragments, and
+small host-level utilities that document how NAM servers should be shaped.
 
 ## What Belongs Here
 

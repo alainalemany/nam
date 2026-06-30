@@ -54,6 +54,8 @@ The project documentation is the current source of truth:
 - [Infrastructure Operations](docs/infrastructure.md)
 - [Server Environment Identity](docs/infrastructure/server-environment.md)
 - [MOTD Infrastructure](docs/infrastructure/motd.md)
+- [Bootstrap And Verification](docs/infrastructure/bootstrap-and-verification.md)
+- [Server Configuration](docs/infrastructure/server-config.md)
 - [Server Identity Disaster Recovery](docs/infrastructure/disaster-recovery.md)
 - [Roadmap](docs/roadmap.md)
 - [Ideas Backlog](docs/ideas.md)

@@ -10,6 +10,24 @@
 | Recommended | Keep the MOTD script generic and move environment differences into example files under `infrastructure/environment/`. |
 | Idea | Add Git, deployment, reverse proxy, TLS, backup, package update, failed service, temperature, and threshold-coloring sections later. |
 
+## Why The MOTD Exists
+
+The MOTD is the operator's first safety and orientation surface after login. It
+should answer the most important infrastructure question immediately:
+
+```text
+What environment am I in, and how careful should I be?
+```
+
+For NAM Dashboard, the MOTD is not cosmetic. It is part of the infrastructure
+because it reduces environment confusion, shows whether expected services are
+present, and reinforces the distinction between development, staging,
+production, testing, and lab hosts.
+
+The design deliberately favors a single reusable script plus one host identity
+file. That keeps the behavior portable while preventing each server from growing
+its own undocumented MOTD variant.
+
 ## Installed Asset
 
 Repository source:
@@ -33,6 +51,16 @@ The script is intentionally reusable across:
 - Lab
 
 Only `/etc/nam/environment` should differ between environments.
+
+## Design Boundaries
+
+The MOTD should remain fast, readable, and low-risk. It may inspect local system
+state, but it should not modify the host. It should avoid slow network calls and
+should tolerate missing optional services.
+
+Future sections should earn their place by helping the operator make safer
+maintenance decisions. If a section is noisy, expensive, or rarely actionable,
+it belongs in a verification script or dashboard instead of the login banner.
 
 ## Discovery Flow
 

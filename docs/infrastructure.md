@@ -25,6 +25,8 @@ Key documents:
 
 - `docs/infrastructure/server-environment.md`
 - `docs/infrastructure/motd.md`
+- `docs/infrastructure/bootstrap-and-verification.md`
+- `docs/infrastructure/server-config.md`
 - `docs/infrastructure/disaster-recovery.md`
 
 Phase 2B includes:
@@ -324,7 +326,14 @@ Shell variables are not the authority for server identity.
 Reusable assets:
 
 ```text
+infrastructure/bootstrap/
+infrastructure/checks/
 infrastructure/motd/
 infrastructure/environment/
-infrastructure/server-assets/
+infrastructure/server-config/
 ```
+
+The repository is the source of truth for reusable NAM infrastructure whenever
+the material is safe to store in Git. Host runtime state, secrets, database
+dumps, private keys, and live certificates remain outside Git and are represented
+by documented examples or restore procedures instead.
