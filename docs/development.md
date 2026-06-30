@@ -1,0 +1,155 @@
+# Development Guide
+
+This document describes the local development workflow for the NAM Dashboard application foundation.
+
+Product requirements, module definitions, data modeling decisions, and architecture decisions remain in the primary planning documents. This guide is limited to running and verifying the approved application platform.
+
+## Current Scope
+
+Phase 2B establishes the platform foundation only:
+
+- Next.js application foundation
+- TypeScript configuration
+- pnpm package management
+- Prisma configuration
+- Initial Prisma Client generation
+- Docker application service
+- Localhost-only application publishing
+
+Phase 2B does not implement authentication, user management, feature modules, business logic, Caddy, HTTPS, monitoring, or background workers.
+
+## Requirements
+
+Required local tools:
+
+- Node.js
+- Corepack
+- pnpm, managed through Corepack
+- Docker Engine
+- Docker Compose plugin
+
+The repository pins pnpm in `package.json` with the `packageManager` field.
+
+Enable pnpm through Corepack if needed:
+
+```bash
+corepack enable
+corepack prepare pnpm@10.18.3 --activate
+```
+
+## Environment
+
+Local secrets belong in `.env`.
+
+Documented placeholders belong in `.env.example`.
+
+Required variables:
+
+```text
+POSTGRES_DB=nam_dashboard
+POSTGRES_USER=nam_app
+POSTGRES_PASSWORD=replace-with-a-strong-local-password
+DATABASE_URL=postgresql://nam_app:replace-with-a-strong-local-password@localhost:5432/nam_dashboard?schema=public
+```
+
+For Docker Compose, the `app` service builds its internal database URL from the PostgreSQL variables and connects to `postgres:5432` over `nam-network`.
+
+For host-based development, `DATABASE_URL` points to `localhost:5432`. PostgreSQL is not published to the host in Phase 2B, so host-based Prisma database commands require either a temporary approved port-publishing change or running database commands inside Docker. Do not publish PostgreSQL casually; keeping it private is the approved baseline.
+
+## Package Commands
+
+Install dependencies:
+
+```bash
+pnpm install
+```
+
+Generate Prisma Client:
+
+```bash
+pnpm prisma:generate
+```
+
+Build the application:
+
+```bash
+pnpm build
+```
+
+Run the development server:
+
+```bash
+pnpm dev
+```
+
+The local development server binds to:
+
+```text
+127.0.0.1:3000
+```
+
+## Docker Compose Workflow
+
+Build and start the full development stack:
+
+```bash
+docker compose up -d --build
+```
+
+Start only PostgreSQL:
+
+```bash
+docker compose up -d postgres
+```
+
+Start only the application after PostgreSQL is healthy:
+
+```bash
+docker compose up -d app
+```
+
+Check stack status:
+
+```bash
+docker compose ps
+```
+
+Check application health:
+
+```bash
+curl http://127.0.0.1:3000/api/health
+```
+
+Expected successful response:
+
+```json
+{"status":"ok","database":"ok"}
+```
+
+## Network Expectations
+
+Approved Phase 2B network behavior:
+
+- Application host binding: `127.0.0.1:3000`
+- PostgreSQL host binding: none
+- Application-to-database path: `app` container to `postgres` container over `nam-network`
+- Public Internet exposure: none
+
+Verify published ports:
+
+```bash
+docker compose ps
+docker inspect nam-postgres --format '{{json .NetworkSettings.Ports}}'
+docker inspect nam-app --format '{{json .NetworkSettings.Ports}}'
+```
+
+PostgreSQL should show no host-published port. The app should show `3000/tcp` bound to `127.0.0.1`.
+
+## Prisma
+
+The initial Prisma schema is intentionally minimal and contains only:
+
+- Prisma Client generator
+- PostgreSQL datasource
+
+Product data models should be added only after the relevant module requirements and database decisions are confirmed.

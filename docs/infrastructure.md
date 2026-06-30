@@ -6,18 +6,24 @@ Architecture decisions and long-term tradeoffs belong in `docs/architecture.md`.
 
 ## Current Scope
 
-Phase 2A is limited to the development Docker PostgreSQL foundation in `/home/alain/projects/nam`.
+Phase 2B establishes the development application platform foundation in `/home/alain/projects/nam`.
 
-Phase 2A does not include:
+Phase 2B includes:
+
+- The PostgreSQL service from Phase 2A
+- A Next.js application service named `app`
+- Private Docker networking between `app` and `postgres`
+- Application publishing on `127.0.0.1:3000` only
+
+Phase 2B does not include:
 
 - Creating `/opt/nam`
-- Creating the Next.js application container
-- Scaffolding application code
 - Installing or configuring Caddy
 - Opening public ports
 - Creating staging or production environments
+- Authentication, authorization, user management, feature modules, monitoring, or background workers
 
-## Confirmed Phase 2A Standards
+## Confirmed Platform Standards
 
 PostgreSQL:
 
@@ -33,11 +39,11 @@ Docker Compose naming:
 - PostgreSQL named volume: `postgres-data`
 - Explicit container names, if used: `nam-app`, `nam-postgres`
 
-Phase 2A only creates the `postgres` service. The `app` service name is reserved for Phase 2B.
+Phase 2B creates both `postgres` and `app`.
 
 ## Docker Compose
 
-The Phase 2A Docker Compose configuration should define PostgreSQL only.
+The Phase 2B Docker Compose configuration defines PostgreSQL and the application service.
 
 The Compose file is:
 
@@ -54,12 +60,16 @@ Required behavior:
 - PostgreSQL is not published to the host.
 - PostgreSQL is not exposed to the Internet.
 - PostgreSQL includes a health check.
+- The application runs in Docker as the `app` service.
+- The application depends on PostgreSQL health.
+- The application connects to PostgreSQL over `nam-network`.
+- The application publishes only `127.0.0.1:3000:3000`.
 
 ## Docker Networking
 
 `nam-network` is the private Docker network for NAM Dashboard services.
 
-Phase 2A should attach only PostgreSQL to this network. Phase 2B will attach the application container to the same network so the application can reach PostgreSQL without exposing the database publicly.
+Phase 2B attaches PostgreSQL and the application container to this network so the application can reach PostgreSQL without exposing the database publicly.
 
 ## Volumes
 
@@ -86,6 +96,14 @@ POSTGRES_DB=nam_dashboard
 POSTGRES_USER=nam_app
 POSTGRES_PASSWORD=replace-with-a-strong-local-password
 ```
+
+Phase 2B also documents:
+
+```text
+DATABASE_URL=postgresql://nam_app:replace-with-a-strong-local-password@localhost:5432/nam_dashboard?schema=public
+```
+
+The Compose `app` service uses the Docker-internal database host `postgres`, not `localhost`.
 
 The local `.env` file should replace the placeholder password with a local-only secret.
 
@@ -148,6 +166,12 @@ Start PostgreSQL:
 docker compose up -d postgres
 ```
 
+Build and start the application stack:
+
+```bash
+docker compose up -d --build
+```
+
 Check container status and health:
 
 ```bash
@@ -166,6 +190,18 @@ Check database connectivity:
 docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select current_database(), current_user;"'
 ```
 
+Check application health and app-to-database connectivity:
+
+```bash
+curl http://127.0.0.1:3000/api/health
+```
+
+Expected successful response:
+
+```json
+{"status":"ok","database":"ok"}
+```
+
 Verify persistence across container recreation:
 
 ```bash
@@ -181,6 +217,14 @@ docker inspect nam-postgres --format '{{json .NetworkSettings.Ports}}'
 ```
 
 The `5432/tcp` value should be `null`, showing that PostgreSQL is exposed only inside Docker networking and not published to the host.
+
+Verify the application is bound only to localhost:
+
+```bash
+docker inspect nam-app --format '{{json .NetworkSettings.Ports}}'
+```
+
+The `3000/tcp` value should show `HostIp` as `127.0.0.1`.
 
 ## Rollback Notes
 
@@ -205,29 +249,32 @@ docker compose down -v
 
 ## Deployment Workflow
 
-Phase 2A deployment workflow should remain development-only.
+Phase 2B deployment workflow should remain development-only.
 
 The expected sequence is:
 
-1. Create the Phase 2A Docker Compose and environment files.
+1. Create or update the Phase 2B application, Docker Compose, and environment files.
 2. Start PostgreSQL.
 3. Verify PostgreSQL health.
 4. Verify database connectivity.
-5. Verify data persists across container restart.
-6. Verify backup command behavior.
-7. Verify restore command behavior or document restore validation limits.
+5. Generate Prisma Client.
+6. Build the Next.js application.
+7. Start the application container.
+8. Verify localhost-only application access.
+9. Verify app-to-database connectivity.
+10. Verify no unintended public ports are exposed.
 
 ## Caddy Configuration
 
 Caddy is future Phase 3 work.
 
-No Caddy package installation, Caddyfile creation, public reverse proxy configuration, or TLS setup should occur during Phase 2A.
+No Caddy package installation, Caddyfile creation, public reverse proxy configuration, or TLS setup should occur during Phase 2B.
 
 ## Firewall Considerations
 
-Phase 2A should not expose PostgreSQL to the host or Internet.
+Phase 2B should not expose PostgreSQL to the host or Internet. The application should be reachable only through `127.0.0.1:3000`.
 
-Firewall changes are not part of Phase 2A unless explicitly approved after inspecting current server state.
+Firewall changes are not part of Phase 2B unless explicitly approved after inspecting current server state.
 
 ## Maintenance Tasks
 

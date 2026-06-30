@@ -325,12 +325,17 @@
 
 \### Phase 2B: Application Container Foundation
 
+\- Status: In implementation after approval on 6/30/2026
 \- Scaffold the Next.js application only after Phase 2A is complete and verified
+\- Use pnpm for package management
+\- Configure TypeScript
+\- Configure Prisma and generate the initial Prisma Client
 \- Add Dockerfile strategy for the Next.js application
 \- Add app service to Docker Compose
 \- Connect the application container to PostgreSQL through the private Docker network
 \- Expose the application only on localhost during this phase
-\- Verify application startup, localhost access, and database connectivity
+\- Verify application startup, localhost access, database connectivity, and exposed ports
+\- Do not implement authentication, authorization, user management, feature modules, business logic, production deployment, Caddy, HTTPS, monitoring, or background workers during this phase
 
 \### Phase 3: Reverse Proxy And HTTPS
 

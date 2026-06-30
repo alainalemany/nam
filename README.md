@@ -50,6 +50,8 @@ The project documentation is the current source of truth:
 - [Modules](docs/modules.md)
 - [Database Design](docs/database.md)
 - [Architecture Decisions](docs/architecture.md)
+- [Development Guide](docs/development.md)
+- [Infrastructure Operations](docs/infrastructure.md)
 - [Roadmap](docs/roadmap.md)
 - [Ideas Backlog](docs/ideas.md)
 
@@ -60,9 +62,9 @@ Source forms and reference images are stored under:
 
 ## Current Status
 
-This project is in the planning and requirements phase.
+This project is in the planning, requirements, and platform foundation phase.
 
-No production application code has been started yet. The current focus is defining the system carefully before implementation: workflows, data model, module boundaries, architecture decisions, and a phased build plan.
+The Phase 2B application foundation has started. The repository now includes a minimal Next.js, TypeScript, Prisma, and Docker Compose platform baseline. Feature modules and business workflows are still intentionally deferred until their requirements and data models are confirmed.
 
 ## Version 1 Focus
 

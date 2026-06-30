@@ -1,7 +1,23 @@
 name: nam
 
 services:
-  # Phase 2B will add the app service here and attach it to nam-network.
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nam-app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      NEXT_TELEMETRY_DISABLED: "1"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - nam-network
+
   # PostgreSQL remains private to Docker; do not publish database ports.
   postgres:
     image: postgres:18

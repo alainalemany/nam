@@ -3,6 +3,11 @@
 .env.*
 !.env.example
 
+# Node and Next.js generated artifacts
+node_modules/
+.next/
+out/
+
 # Local database backup artifacts must stay outside the repository.
 backups/
 *.dump
