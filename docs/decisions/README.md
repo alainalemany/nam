@@ -23,6 +23,7 @@ maintainability.
 | [ADR-011](adr-011-phase-2b-application-platform-foundation.md) | 2026-06-30 | Infrastructure/application platform | Phase 2B establishes the Next.js, TypeScript, Prisma, pnpm, and Docker app foundation. |
 | [ADR-012](adr-012-server-identity-and-motd-reproducibility.md) | 2026-06-30 | Infrastructure/recovery | Server identity and MOTD customization must be reproducible from Git. |
 | [ADR-013](adr-013-bootstrap-checks-and-server-config.md) | 2026-06-30 | Infrastructure/recovery | Infrastructure uses repository-owned bootstrap scripts, read-only verification checks, and server-config templates. |
+| [ADR-014](adr-014-metronic-integration-strategy.md) | 2026-07-01 | UI architecture | Metronic is a vendor UI toolkit, not the application architecture. |
 
 ## Categories
 
@@ -47,6 +48,10 @@ Infrastructure and deployment:
 - ADR-011
 - ADR-012
 - ADR-013
+
+UI architecture:
+
+- ADR-014
 
 ## Process
 
