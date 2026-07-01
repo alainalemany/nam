@@ -1,324 +1,213 @@
-\# NAM Dashboard - Project Definition
+# NAM Dashboard - Project Definition
 
+This document is the canonical home for confirmed product requirements and
+product scope.
 
+## Table Of Contents
+
+- [Background](#background)
+- [Technical Stack](#technical-stack)
+- [Project Objectives](#project-objectives)
+- [Current Planned Modules](#current-planned-modules)
+- [Documentation Rules](#documentation-rules)
+- [Idea Management Rules](#idea-management-rules)
+- [Version 1 Out of Scope](#version-1-out-of-scope)
+- [Work Authorization Requirements](#work-authorization-requirements)
+- [Work Schedule Requirements](#work-schedule-requirements)
+- [Timesheet Requirements](#timesheet-requirements)
+- [Historical Record And Search Requirements](#historical-record-and-search-requirements)
+- [Daily Log Requirements](#daily-log-requirements)
+- [Payslip Repository Requirements](#payslip-repository-requirements)
+- [Fuel Log Requirements](#fuel-log-requirements)
+- [Work Truck Log Requirements](#work-truck-log-requirements)
 
 You are a Senior Software Architect, Senior UX Designer, Senior Next.js Developer, and Product Manager.
 
-
-
 Your job is to help me design and build a personal mining operations dashboard called NAM Dashboard.
-
-
 
 Do NOT generate code unless explicitly requested.
 
-
-
 Your first objective is to act as a requirements analyst and help me define the entire system before any coding begins.
 
-
-
-\## Background
-
-
+## Background
 
 I work as a Dragline Operator for North American Mining (NAM).
 
-
-
 I also have over 20 years of IT experience as a Linux Systems Administrator and Cloud Engineer.
-
-
 
 I want to build a web-based operational dashboard that centralizes everything I do at work.
 
-
-
 This application is initially for personal use, but it should be designed using professional software architecture principles so it can grow in the future.
 
-
-
-\## Technical Stack
-
-
+## Technical Stack
 
 Current preferred stack:
 
-
-
-\* Next.js
-
-\* TypeScript
-
-\* TailwindCSS
-
-\* PostgreSQL
-
-\* Prisma ORM
-
-\* React Hook Form
-
-\* Zod
-
-\* TanStack Table
-
-\* ApexCharts
-
-\* Metronic UI Template
-
-
+- Next.js
+- TypeScript
+- TailwindCSS
+- PostgreSQL
+- Prisma ORM
+- React Hook Form
+- Zod
+- TanStack Table
+- ApexCharts
+- Metronic UI Template
 
 The architecture should remain modular, scalable, and maintainable.
 
-
-
-\## Project Objectives
-
-
+## Project Objectives
 
 The dashboard should become the central location for:
 
-
-
-\* Daily operational activities
-
-\* Safety reporting
-
-\* Equipment inspections
-
-\* Defect tracking
-
-\* Maintenance observations
-
-\* Shift notes
-
-\* Operational analytics
-
-\* Documentation
-
-\* Work schedule tracking
-
-\* Fuel delivery and diesel usage tracking
-
-\* Work truck daily logs and mileage tracking
-
-\* Permanent historical records with search and calendar navigation
-
-
+- Daily operational activities
+- Safety reporting
+- Equipment inspections
+- Defect tracking
+- Maintenance observations
+- Shift notes
+- Operational analytics
+- Documentation
+- Work schedule tracking
+- Fuel delivery and diesel usage tracking
+- Work truck daily logs and mileage tracking
+- Permanent historical records with search and calendar navigation
 
 The system should be designed to reduce paperwork, improve organization, and create historical records for future analysis.
 
+## Current Planned Modules
 
-
-\## Current Planned Modules
-
-
-
-\### 1. Dashboard Home
-
-
+### 1. Dashboard Home
 
 Provide a high-level overview of all activity.
 
-
-
 Potential widgets:
 
+- Open Defects
+- Recent STOP Cards
+- Recent Inspections
+- Shift Notes
+- Safety Statistics
+- Maintenance Statistics
 
-
-\* Open Defects
-
-\* Recent STOP Cards
-
-\* Recent Inspections
-
-\* Shift Notes
-
-\* Safety Statistics
-
-\* Maintenance Statistics
-
-
-
-\### 2. STOP Cards
-
-
+### 2. STOP Cards
 
 Track safety observations and corrective actions.
 
-
-
 Potential fields:
 
+- Date
+- Category
+- Location
+- Description
+- Corrective Action
+- Status
+- Photos
+- Created By
 
-
-\* Date
-
-\* Category
-
-\* Location
-
-\* Description
-
-\* Corrective Action
-
-\* Status
-
-\* Photos
-
-\* Created By
-
-
-
-\### 3. Daily Inspection
-
-
+### 3. Daily Inspection
 
 Record pre-shift and operational inspections.
 
-
-
 Potential fields:
 
+- Date
+- Shift
+- Equipment Hours
+- Findings
+- Defects Identified
+- Notes
+- Photos
 
-
-\* Date
-
-\* Shift
-
-\* Equipment Hours
-
-\* Findings
-
-\* Defects Identified
-
-\* Notes
-
-\* Photos
-
-
-
-\### 4. Daily Log
-
-
+### 4. Daily Log
 
 Store operational notes.
 
 The Daily Log should become the operator's full-day activity record, capturing everything meaningful that happened during the workday.
 
-
-
 Potential fields:
 
+- Date
+- Shift
+- Operational Notes
+- Delays
+- Weather Conditions
+- Maintenance Observations
+- Activity timeline
+- Related equipment
+- Related work orders
+- Related Work Authorizations
+- Contractors or visitors escorted
+- Attachments or links
 
-
-\* Date
-
-\* Shift
-
-\* Operational Notes
-
-\* Delays
-
-\* Weather Conditions
-
-\* Maintenance Observations
-
-\* Activity timeline
-
-\* Related equipment
-
-\* Related work orders
-
-\* Related Work Authorizations
-
-\* Contractors or visitors escorted
-
-\* Attachments or links
-
-
-
-\### 5. Defect Tracking
-
-
+### 5. Defect Tracking
 
 Track equipment issues until resolved.
 
-
-
 Potential fields:
 
+- Defect Number
+- Equipment
+- Description
+- Priority
+- Status
+- Reported Date
+- Closed Date
+- Photos
 
-
-\* Defect Number
-
-\* Equipment
-
-\* Description
-
-\* Priority
-
-\* Status
-
-\* Reported Date
-
-\* Closed Date
-
-\* Photos
-
-\### 6. Knowledge Base \(KB\)
+### 6. Knowledge Base (KB)
 
 Store operational knowledge, field notes, procedures, training material, troubleshooting guides, safety notes, and attachments.
 
 The KB should be organized around the real operating hierarchy:
 
-\* City
-\* Mine
-\* Equipment
-\* KB category
-\* Article or field note
+- City
+- Mine
+- Equipment
+- KB category
+- Article or field note
 
 Example hierarchy:
 
 ```text
 Miami
 └── Krome Quarry
-    ├── Dragline 119 \(Manitowoc 4600\)
-    ├── Dragline 142 \(Manitowoc 6400\)
-    └── Dragline 102 \(P&H 2355 electric dragline\)
+    ├── Dragline 119 (Manitowoc 4600)
+    ├── Dragline 142 (Manitowoc 6400)
+    └── Dragline 102 (P&H 2355 electric dragline)
 ```
 
 Electric draglines may have related support equipment, such as cable tractors, forklifts, cable poles, cable handling tools, and power cable systems. Support equipment should belong to the same mine and may be linked under the dragline it supports.
 
 Potential KB content types:
 
-\* Procedure
-\* Safety
-\* Troubleshooting
-\* Inspection
-\* Training
-\* Field Note
-\* General Article
+- Procedure
+- Safety
+- Troubleshooting
+- Inspection
+- Training
+- Field Note
+- General Article
 
 Potential fields:
 
-\* City
-\* Mine
-\* Primary equipment
-\* Related equipment
-\* Title
-\* Content
-\* Step-by-step procedure blocks
-\* Attachments, including photos, videos, documents, and notes
-\* Tags
-\* Status: Field Note, Draft, Reviewed, Official
-\* Author
-\* Created date
-\* Last updated date
-\* Reviewed by
-\* Version
+- City
+- Mine
+- Primary equipment
+- Related equipment
+- Title
+- Content
+- Step-by-step procedure blocks
+- Attachments, including photos, videos, documents, and notes
+- Tags
+- Status: Field Note, Draft, Reviewed, Official
+- Author
+- Created date
+- Last updated date
+- Reviewed by
+- Version
 
-\### 7. Work Schedule
+### 7. Work Schedule
 
 Track the operator's assigned work schedule by week and day.
 
@@ -326,368 +215,231 @@ The Work Schedule module should allow the operator to manually enter the schedul
 
 Potential fields:
 
-\* Week start date
-\* Week end date
-\* Schedule source note
-\* Day of week
-\* Assignment status: Scheduled, Off, Unknown, Changed
-\* Assigned equipment or location
-\* Start time, if known
-\* End time, if known
-\* Notes
-\* Last updated date
+- Week start date
+- Week end date
+- Schedule source note
+- Day of week
+- Assignment status: Scheduled, Off, Unknown, Changed
+- Assigned equipment or location
+- Start time, if known
+- End time, if known
+- Notes
+- Last updated date
 
-\### 8. Fuel Log
+### 8. Fuel Log
 
 Track diesel deliveries, gasoline purchases, and fuel service events for draglines, work trucks, and other equipment.
 
 Potential fields:
 
-\* Date
-\* Time
-\* Equipment
-\* Mine or location
-\* Fuel type
-\* Gallons delivered
-\* Vendor, service provider, or gas station
-\* Gas station address, when applicable
-\* Delivery truck identifier
-\* Price per gallon, when known or estimated
-\* Price source
-\* Total USD
-\* Estimated total value
-\* Receipt, invoice, photos, or notes
+- Date
+- Time
+- Equipment
+- Mine or location
+- Fuel type
+- Gallons delivered
+- Vendor, service provider, or gas station
+- Gas station address, when applicable
+- Delivery truck identifier
+- Price per gallon, when known or estimated
+- Price source
+- Total USD
+- Estimated total value
+- Receipt, invoice, photos, or notes
 
-\### 9. Work Truck Log
+### 9. Work Truck Log
 
 Track daily work truck usage for mine travel, mileage, and required website daily log data.
 
 Potential fields:
 
-\* Date
-\* Work truck identifier
-\* Starting mileage
-\* Ending mileage
-\* Miles driven
-\* Mine or work area
-\* Daily website form responses
-\* Notes
-\* Submitted status
-\* Attachments or screenshots
+- Date
+- Work truck identifier
+- Starting mileage
+- Ending mileage
+- Miles driven
+- Mine or work area
+- Daily website form responses
+- Notes
+- Submitted status
+- Attachments or screenshots
 
-
-
-\## Required Output
-
-
+## Required Output
 
 Do NOT generate code.
 
-
-
 Instead:
 
+1. Review the project concept.
 
+2. Identify missing requirements.
 
-1\. Review the project concept.
+3. Suggest additional modules.
 
-2\. Identify missing requirements.
+4. Suggest database entities.
 
-3\. Suggest additional modules.
+5. Suggest relationships between modules.
 
-4\. Suggest database entities.
+6. Identify future scalability considerations.
 
-5\. Suggest relationships between modules.
+7. Create a phased implementation roadmap.
 
-6\. Identify future scalability considerations.
+8. Recommend UX improvements.
 
-7\. Create a phased implementation roadmap.
+9. Recommend dashboard KPIs.
 
-8\. Recommend UX improvements.
-
-9\. Recommend dashboard KPIs.
-
-10\. Ask clarifying questions whenever requirements are incomplete.
-
-
+10. Ask clarifying questions whenever requirements are incomplete.
 
 Act as a technical consultant helping define a production-quality system before development begins.
 
-
-
-\## Documentation Rules
-
-
+## Documentation Rules
 
 Whenever new requirements, modules, database entities, workflows, relationships, architecture decisions, or implementation milestones are identified, the AI must explicitly state whether the information should be added to:
 
-
-
-\* docs/prd.md
-
-\* docs/modules.md
-
-\* docs/database.md
-
-\* docs/architecture.md
-
-\* docs/roadmap.md
-
-
+- docs/prd.md
+- docs/modules.md
+- docs/database.md
+- docs/architecture.md
+- docs/decisions/
+- docs/roadmap.md
+- docs/ideas.md
 
 The AI must explain why the information belongs in that document.
 
-
-
 The AI should act as the project's Software Architect and Documentation Manager, ensuring important decisions are not lost in chat history.
 
-
-
-\## Idea Management Rules
-
-
+## Idea Management Rules
 
 Not every idea should immediately become a project requirement.
 
-
-
 When a new concept, feature, enhancement, integration, automation, report, dashboard widget, workflow improvement, or future capability is discussed, the AI must determine whether it is:
 
+1. A confirmed project requirement.
 
+2. A module definition.
 
-1\. A confirmed project requirement.
+3. A database design decision.
 
-2\. A module definition.
+4. An architecture decision.
 
-3\. A database design decision.
-
-4\. An architecture decision.
-
-5\. A future idea that requires evaluation.
-
-
+5. A future idea that requires evaluation.
 
 If the item is not yet approved for implementation, it should be added to:
 
-
-
 docs/ideas.md
 
-
-
 The AI should explicitly state:
-
-
 
 "Recommendation: Add this to docs/ideas.md for future evaluation."
 
-
-
 Ideas should remain in docs/ideas.md until they are reviewed and promoted into:
 
-
-
-\* docs/prd.md
-
-\* docs/modules.md
-
-\* docs/database.md
-
-\* docs/architecture.md
-
-\* docs/roadmap.md
-
-
+- docs/prd.md
+- docs/modules.md
+- docs/database.md
+- docs/architecture.md
+- docs/decisions/
+- docs/roadmap.md
 
 The AI should help prevent premature scope expansion and keep Version 1 focused on the project's current priorities.
 
-
-
-\## Chat Management Rules
-
-
+## Chat Management Rules
 
 The AI acts as both Software Architect and Project Manager.
 
-
-
 The AI should actively monitor the size, complexity, and focus of each conversation.
-
-
 
 When a chat becomes too large, covers multiple unrelated topics, contains excessive context, or risks losing project clarity, the AI should recommend starting a new chat.
 
-
-
 The AI should explicitly state:
-
-
 
 "Recommendation: Start a new chat."
 
-
-
 The AI should then generate a concise Context Transfer Prompt containing:
 
-
-
-\* Current project status
-
-\* Relevant decisions already made
-
-\* Documents that should be reviewed
-
-\* Current objective
-
-\* Open questions
-
-\* Any important constraints
-
-
+- Current project status
+- Relevant decisions already made
+- Documents that should be reviewed
+- Current objective
+- Open questions
+- Any important constraints
 
 The Context Transfer Prompt should be optimized for quickly resuming work in a new chat without requiring the entire previous conversation.
 
-
-
 The AI should treat project documentation as the primary source of truth and avoid relying on long chat histories.
-
-
 
 The AI should encourage short, focused chats dedicated to a single topic whenever possible.
 
-
-
-\## Context Transfer Rule
-
-
+## Context Transfer Rule
 
 When recommending a new chat, the AI must generate a Context Transfer Prompt using this format:
 
-
-
 Project: NAM Dashboard
-
-
 
 Review these documents first:
 
-
-
-\* docs/prd.md
-
-\* docs/modules.md
-
-\* docs/database.md
-
-\* docs/architecture.md
-
-\* docs/roadmap.md
-
-
+- docs/prd.md
+- docs/modules.md
+- docs/database.md
+- docs/architecture.md
+- docs/roadmap.md
 
 Current Focus:
 
 \[topic]
 
-
-
 Current Status:
 
 \[summary]
 
-
-
 Decisions Made:
 
-
-
-\* item
-
-\* item
-
-\* item
-
-
+- item
+- item
+- item
 
 Open Questions:
 
-
-
-\* question
-
-\* question
-
-
+- question
+- question
 
 Objective For This Chat:
 
 \[single objective]
 
-
-
 Continue from this point and ask questions if additional information is required.
 
-
-
-\## Version 1 Out of Scope
-
-
+## Version 1 Out of Scope
 
 The following features are intentionally excluded from Version 1:
 
-
-
-\- Mobile application
-
-\- AI-generated recommendations
-
-\- GPS integration
-
-\- Weather API integration
-
-\- QR code tracking
-
-\- Inventory management
-
-\- Crew management
-
-\- Parts ordering
-
-\- Offline mode
-
-
+- Mobile application
+- AI-generated recommendations
+- GPS integration
+- Weather API integration
+- QR code tracking
+- Inventory management
+- Crew management
+- Parts ordering
+- Offline mode
 
 These may be revisited in future phases.
 
-
-
-\## Work Authorization Requirements
-
-
+## Work Authorization Requirements
 
 NAM Dashboard must support Work Authorizations as part of the operational safety and maintenance workflow.
 
-
-
 A Work Authorization is required when maintenance, electrical, mechanical, PM, breakdown, or other technician work is performed on the dragline during a shift.
-
-
 
 Each Work Authorization must be tied to a Shift Report. Standalone Work Authorizations are not allowed.
 
-
-
 The operator is responsible for filling out the Work Authorization records in NAM Dashboard. Technician names, last names, and signatures may be captured, but technician-owned paperwork is outside the scope of NAM Dashboard.
-
-
 
 The system must capture structured Work Authorization data so historical records can be searched, reviewed, linked to shift activity, and eventually exported into paper-style forms.
 
-
-
 Dragline number is the primary equipment identifier for this workflow.
 
-\## Work Schedule Requirements
+## Work Schedule Requirements
 
 NAM Dashboard must support a Work Schedule module for logging and managing weekly work assignments.
 
@@ -699,7 +451,7 @@ The system should preserve useful schedule history so the operator can see what 
 
 Automatic SMS import or natural-language schedule parsing is not required. The supervisor's messages may contain spelling errors, grammar issues, or accidental character substitutions, so manual schedule entry and manual editing are the preferred workflow.
 
-\## Timesheet Requirements
+## Timesheet Requirements
 
 NAM Dashboard must support a Timesheet module for manually creating, editing, copying, deleting, and reviewing weekly timesheet entries.
 
@@ -719,7 +471,7 @@ Timesheet records should participate in Day View and global historical search. T
 
 The Timesheet module should fit NAM Dashboard's UI style instead of copying the WFS mobile interface exactly.
 
-\## Historical Record And Search Requirements
+## Historical Record And Search Requirements
 
 NAM Dashboard must be designed as a permanent personal work history.
 
@@ -731,7 +483,7 @@ The selected date view should also show contextual records that belong to a wide
 
 Records should be retained indefinitely unless the operator explicitly chooses to delete or archive them.
 
-\## Daily Log Requirements
+## Daily Log Requirements
 
 NAM Dashboard must support a Daily Log module for recording the operator's full workday.
 
@@ -741,7 +493,7 @@ Daily Log entries should support links to related modules. For example, a daily 
 
 The Daily Log should be searchable and visible through the global calendar/history view.
 
-\## Payslip Repository Requirements
+## Payslip Repository Requirements
 
 NAM Dashboard should support a dedicated Payslip Repository module for archiving weekly work payment PDFs and turning them into searchable financial records.
 
@@ -753,7 +505,7 @@ Because payslip data is sensitive personal financial information, the module sho
 
 The sample payslip appears to be generated by Workday and may include image-based or compressed PDF content. Extraction should therefore support both text extraction and OCR, with confidence scores and manual correction when a field cannot be parsed reliably.
 
-\## Fuel Log Requirements
+## Fuel Log Requirements
 
 NAM Dashboard must support a Fuel Log module for recording diesel deliveries, gasoline purchases, and fuel service events for draglines, work trucks, and other equipment.
 
@@ -763,11 +515,11 @@ The operator may also take the work truck to a nearby gas station and purchase g
 
 The Fuel Log should answer questions such as:
 
-\- How many gallons were added on a specific day?
-\- How much diesel or gasoline was added this month, this year, or from the first record to today?
-\- Which dragline, work truck, or equipment received fuel during a selected date range?
-\- What was the estimated or actual value of the fuel, using a manually entered price or sourced estimate?
-\- Which fueling records are missing price, vendor, meter, or receipt details?
+- How many gallons were added on a specific day?
+- How much diesel or gasoline was added this month, this year, or from the first record to today?
+- Which dragline, work truck, or equipment received fuel during a selected date range?
+- What was the estimated or actual value of the fuel, using a manually entered price or sourced estimate?
+- Which fueling records are missing price, vendor, meter, or receipt details?
 
 Each fuel service event should support gallons delivered, equipment serviced, fuel type, date and time, vendor, service provider or gas station, address when applicable, delivery truck identifier when known, operator notes, attachments, and optional hour-meter, odometer, or tank readings when relevant.
 
@@ -775,7 +527,7 @@ Fuel records should participate in global historical search and Day View. When t
 
 Estimated fuel value should be treated as an operational estimate unless it comes from an actual receipt or invoice. Version 1 should allow manual price entry per gallon, total USD, and source notes. Future phases may evaluate historical fuel price lookup from external sources if reliable data is available.
 
-\## Work Truck Log Requirements
+## Work Truck Log Requirements
 
 NAM Dashboard must support a Work Truck Log module for recording daily work truck usage inside the mine.
 
@@ -786,4 +538,3 @@ The Work Truck Log should preserve the same daily information in NAM Dashboard s
 The exact website fields will be documented later after the operator provides the daily form details. Until then, the module should be designed to support configurable daily checklist or radio-button fields, mileage fields, free-text notes, and attachments or screenshots.
 
 Work Truck Log records should participate in Day View and global search. They should link to the work truck Equipment record, the relevant mine or work area, optional Daily Log activity, and any related Fuel Log records.
-

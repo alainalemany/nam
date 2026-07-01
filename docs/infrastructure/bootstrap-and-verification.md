@@ -96,6 +96,12 @@ Current checks cover:
 Docker verification may require root or docker-group access because reading the
 Docker daemon uses `/var/run/docker.sock`.
 
+Operator note: Docker verification can fail inside sandboxed AI execution
+contexts even when the same check passes in a normal SSH shell. Treat the normal
+operator shell result as authoritative for host state, and document the sandbox
+context as the exception. Do not weaken the Docker check only to accommodate an
+AI sandbox limitation.
+
 ## Operating Pattern
 
 Fresh development server:

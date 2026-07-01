@@ -46,10 +46,15 @@ NAM Dashboard is being designed as a professional, modular web application for p
 
 The project documentation is the current source of truth:
 
+- [Documentation Index](docs/README.md)
+- [Project Philosophy](docs/philosophy.md)
+- [AI Context Guide](docs/ai-context.md)
 - [Product Requirements](docs/prd.md)
 - [Modules](docs/modules.md)
 - [Database Design](docs/database.md)
-- [Architecture Decisions](docs/architecture.md)
+- [Architecture Overview](docs/architecture.md)
+- [Architecture Decisions](docs/decisions/README.md)
+- [Documentation Style Guide](docs/documentation-style.md)
 - [Development Guide](docs/development.md)
 - [Infrastructure Operations](docs/infrastructure.md)
 - [Server Environment Identity](docs/infrastructure/server-environment.md)
@@ -106,6 +111,7 @@ The following ideas are intentionally deferred:
 ## Design Principles
 
 - Documentation first, code second.
+- Every important concept should have one canonical documentation home.
 - Keep modules connected, but avoid unnecessary coupling.
 - Treat date, equipment, mine, and module relationships as first-class data.
 - Preserve original source artifacts where useful.

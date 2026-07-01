@@ -2,7 +2,9 @@
 
 This document is the operational infrastructure reference for NAM Dashboard. It should contain runbooks, environment conventions, deployment workflow notes, backup and restore procedures, and maintenance tasks.
 
-Architecture decisions and long-term tradeoffs belong in `docs/architecture.md`. This document should describe how approved infrastructure decisions are operated.
+Architecture overview belongs in `docs/architecture.md`. Durable architecture
+decisions and long-term tradeoffs belong in `docs/decisions/`. This document
+should describe how approved infrastructure decisions are operated.
 
 ## Current Scope
 
