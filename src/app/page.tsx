@@ -2,13 +2,26 @@ export default function Home() {
   return (
     <main className="page-stack">
       <section className="page-header" aria-labelledby="page-title">
-        <p className="eyebrow">Phase 3.1</p>
+        <p className="eyebrow">Phase 3.2</p>
         <h1 id="page-title">NAM Dashboard</h1>
         <p className="summary">
-          Operations reference data is the first application milestone. City,
-          Mine, and Equipment records establish the shared context used by later
-          logs, schedules, inspections, fuel records, and historical views.
+          Daily Logs are now the central workday record, supported by operations
+          reference data for city, mine, and equipment context.
         </p>
+      </section>
+
+      <section className="panel" aria-labelledby="daily-logs-heading">
+        <div>
+          <p className="eyebrow">Operations</p>
+          <h2 id="daily-logs-heading">Daily Work Log</h2>
+          <p>
+            Record workday summaries and activity timelines linked to existing
+            mine and equipment records.
+          </p>
+        </div>
+        <a className="button primary" href="/daily-logs">
+          Open Daily Logs
+        </a>
       </section>
 
       <section className="panel" aria-labelledby="reference-data-heading">

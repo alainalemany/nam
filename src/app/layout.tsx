@@ -25,6 +25,7 @@ export default function RootLayout({
             <nav className="nav-list">
               <Link href="/">Dashboard</Link>
               <Link href="/equipment">Equipment</Link>
+              <Link href="/daily-logs">Daily Logs</Link>
             </nav>
           </aside>
           <div className="content-shell">{children}</div>
