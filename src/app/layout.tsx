@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import "./globals.css";
 
@@ -14,7 +15,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <div className="app-shell">
+          <aside className="sidebar" aria-label="Primary navigation">
+            <div className="brand">
+              <span className="brand-mark">NAM</span>
+              <span>Dashboard</span>
+            </div>
+            <nav className="nav-list">
+              <Link href="/">Dashboard</Link>
+              <Link href="/equipment">Equipment</Link>
+            </nav>
+          </aside>
+          <div className="content-shell">{children}</div>
+        </div>
+      </body>
     </html>
   );
 }

@@ -6,3 +6,95 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum RecordStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum EquipmentCategory {
+  DRAGLINE
+  TRACTOR
+  FORKLIFT
+  WORK_TRUCK
+  CABLE_SYSTEM
+  CABLE_POLE
+  CABLE_HANDLING_TOOL
+  SUPPORT_TOOL
+  OTHER
+}
+
+enum EquipmentPowerType {
+  ELECTRIC
+  DIESEL
+  GASOLINE
+  HYBRID
+  OTHER
+  UNKNOWN
+}
+
+enum EquipmentInstrumentationType {
+  DIGITAL_ALARM_SCREEN
+  SENSOR_DISPLAY
+  PHYSICAL_GAUGES
+  OPERATOR_OBSERVED
+  MIXED
+  UNKNOWN
+}
+
+model City {
+  id        String       @id @default(cuid())
+  name      String
+  state     String?
+  status    RecordStatus @default(ACTIVE)
+  notes     String?
+  mines     Mine[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([name, state])
+  @@index([status])
+}
+
+model Mine {
+  id        String       @id @default(cuid())
+  cityId    String
+  city      City         @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  name      String
+  type      String?
+  status    RecordStatus @default(ACTIVE)
+  notes     String?
+  equipment Equipment[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([cityId, name])
+  @@index([status])
+}
+
+model Equipment {
+  id                          String                         @id @default(cuid())
+  mineId                      String
+  mine                        Mine                           @relation(fields: [mineId], references: [id], onDelete: Restrict)
+  parentEquipmentId           String?
+  parentEquipment             Equipment?                     @relation("EquipmentHierarchy", fields: [parentEquipmentId], references: [id], onDelete: SetNull)
+  childEquipment              Equipment[]                    @relation("EquipmentHierarchy")
+  equipmentNumber             String?
+  displayName                 String
+  category                    EquipmentCategory
+  make                        String?
+  model                       String?
+  powerType                   EquipmentPowerType?
+  instrumentationType         EquipmentInstrumentationType?
+  hasDigitalAlarmScreen       Boolean                        @default(false)
+  status                      RecordStatus                   @default(ACTIVE)
+  notes                       String?
+  createdAt                   DateTime                       @default(now())
+  updatedAt                   DateTime                       @updatedAt
+
+  @@unique([mineId, displayName])
+  @@index([mineId])
+  @@index([category])
+  @@index([status])
+}
