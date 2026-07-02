@@ -88,6 +88,17 @@ The local development server binds to:
 127.0.0.1:3000
 ```
 
+External development access, when enabled on the VPS, is provided by host-level
+Caddy at:
+
+```text
+https://dev.alemany.me
+```
+
+Caddy reverse proxies to `127.0.0.1:3000`. Do not publish Docker port `3000`
+publicly. `nam.alemany.me` is reserved for future production use and should not
+be configured for the development app.
+
 ## Docker Compose Workflow
 
 Build and start the full development stack:
@@ -128,12 +139,12 @@ Expected successful response:
 
 ## Network Expectations
 
-Approved Phase 2B network behavior:
+Approved development network behavior:
 
 - Application host binding: `127.0.0.1:3000`
 - PostgreSQL host binding: none
 - Application-to-database path: `app` container to `postgres` container over `nam-network`
-- Public Internet exposure: none
+- Public Internet exposure: Caddy only, through `dev.alemany.me` on HTTP/HTTPS
 
 Verify published ports:
 
@@ -144,6 +155,19 @@ docker inspect nam-app --format '{{json .NetworkSettings.Ports}}'
 ```
 
 PostgreSQL should show no host-published port. The app should show `3000/tcp` bound to `127.0.0.1`.
+
+When external development access is enabled, verify the proxy:
+
+```bash
+curl http://127.0.0.1:3000/api/health
+curl -I https://dev.alemany.me
+```
+
+The local health endpoint should return:
+
+```json
+{"status":"ok","database":"ok"}
+```
 
 ## Prisma
 

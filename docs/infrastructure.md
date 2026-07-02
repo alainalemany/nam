@@ -38,13 +38,25 @@ Phase 2B includes:
 - Private Docker networking between `app` and `postgres`
 - Application publishing on `127.0.0.1:3000` only
 
+Phase 3.2 external development access adds host-level Caddy in front of the
+existing development app:
+
+- `dev.alemany.me` is the external development hostname.
+- Caddy terminates HTTPS and reverse proxies to `127.0.0.1:3000`.
+- The Docker application service remains bound only to localhost.
+- Port `3000` must not be exposed directly to the public Internet.
+- `nam.alemany.me` is reserved for a future production deployment and is not
+  configured in Caddy yet.
+
 Phase 2B does not include:
 
 - Creating `/opt/nam`
-- Installing or configuring Caddy
-- Opening public ports
 - Creating staging or production environments
 - Authentication, authorization, user management, feature modules, monitoring, or background workers
+
+Phase 3.2 development access does not create production hosting, production
+data separation, authentication, monitoring, staging, or public access to
+PostgreSQL.
 
 ## Confirmed Platform Standards
 
@@ -93,6 +105,15 @@ Required behavior:
 `nam-network` is the private Docker network for NAM Dashboard services.
 
 Phase 2B attaches PostgreSQL and the application container to this network so the application can reach PostgreSQL without exposing the database publicly.
+
+The Caddy reverse proxy runs at the host level and connects to the application
+through the host loopback binding:
+
+```text
+Internet -> Caddy :443 -> 127.0.0.1:3000 -> nam-app
+```
+
+Docker should continue to publish the app only on `127.0.0.1:3000`.
 
 ## Volumes
 
@@ -289,15 +310,54 @@ The expected sequence is:
 
 ## Caddy Configuration
 
-Caddy is future Phase 3 work.
+Phase 3.2 uses host-level Caddy for external development access.
 
-No Caddy package installation, Caddyfile creation, public reverse proxy configuration, or TLS setup should occur during Phase 2B.
+The repository-owned Caddy example is:
+
+```text
+infrastructure/server-config/caddy/Caddyfile.dev.example
+```
+
+The live host file is:
+
+```text
+/etc/caddy/Caddyfile
+```
+
+Approved development route:
+
+```caddyfile
+dev.alemany.me {
+  reverse_proxy 127.0.0.1:3000
+}
+```
+
+Do not add a `nam.alemany.me` site block until production deployment is
+explicitly designed and approved. `nam.alemany.me` remains reserved for future
+production use.
+
+Verify Caddy:
+
+```bash
+systemctl is-active caddy
+caddy validate --config /etc/caddy/Caddyfile
+curl -I https://dev.alemany.me
+```
+
+If HTTPS does not load externally, verify:
+
+- DNS `A dev.alemany.me` points to the server public IP.
+- Host firewall allows inbound TCP `80` and `443`.
+- Provider firewall/security group allows inbound TCP `80` and `443`.
+- The local app health endpoint succeeds at `http://127.0.0.1:3000/api/health`.
 
 ## Firewall Considerations
 
-Phase 2B should not expose PostgreSQL to the host or Internet. The application should be reachable only through `127.0.0.1:3000`.
+PostgreSQL must not be exposed to the host or Internet. The application should
+remain reachable directly only through `127.0.0.1:3000`.
 
-Firewall changes are not part of Phase 2B unless explicitly approved after inspecting current server state.
+For external development access, public traffic should terminate at Caddy on
+ports `80` and `443`. Do not open port `3000` publicly.
 
 ## Maintenance Tasks
 

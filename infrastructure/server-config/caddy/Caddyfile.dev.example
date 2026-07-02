@@ -1,0 +1,16 @@
+# NAM Dashboard development reverse proxy.
+#
+# Install location on the host:
+#   /etc/caddy/Caddyfile
+#
+# Purpose:
+#   Expose the current development application at https://dev.alemany.me while
+#   keeping the Next.js container bound only to 127.0.0.1:3000.
+#
+# Production reservation:
+#   nam.alemany.me is intentionally not configured here. It is reserved for a
+#   future production deployment.
+
+dev.alemany.me {
+  reverse_proxy 127.0.0.1:3000
+}
