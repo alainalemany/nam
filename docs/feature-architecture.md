@@ -23,6 +23,7 @@ Feature architecture sits in this path:
 docs/philosophy.md
 -> docs/engineering-principles.md
 -> docs/feature-architecture.md
+-> docs/application-state-and-data-flow.md
 -> docs/development.md
 -> implementation files
 ```
@@ -35,6 +36,8 @@ Related authorities:
   `docs/database.md`.
 - Architecture overview lives in `docs/architecture.md`.
 - Durable architecture decisions live in `docs/decisions/`.
+- Application state, mutation boundaries, validation boundaries, and
+  revalidation strategy live in `docs/application-state-and-data-flow.md`.
 - UI architecture and design-system standards live in `docs/ui-architecture.md`.
 - Testing strategy lives in `docs/testing-strategy.md`.
 - Development commands live in `docs/development.md`.
@@ -69,6 +72,7 @@ Use the right document for the right question:
 | What data should exist? | `docs/database.md` |
 | Why was a durable architecture choice made? | `docs/decisions/` |
 | How should feature code be organized? | `docs/feature-architecture.md` |
+| How should state and mutations flow? | `docs/application-state-and-data-flow.md` |
 | How should screens look and behave? | `docs/ui-architecture.md` |
 | How should tests be layered? | `docs/testing-strategy.md` |
 | Which commands should be run? | `docs/development.md` |
@@ -141,6 +145,9 @@ Feature folders should not become dumping grounds for unrelated shared logic.
 
 Server actions are the current mutation boundary for implemented feature
 workflows.
+
+State ownership, mutation flow, validation boundaries, and revalidation
+expectations are defined in `docs/application-state-and-data-flow.md`.
 
 Server actions should:
 
@@ -313,6 +320,8 @@ Before implementing a new feature slice, confirm:
 - Feature folder ownership is clear.
 - Validation rules are defined.
 - Server action behavior is defined.
+- State ownership and revalidation behavior follow
+  `docs/application-state-and-data-flow.md`.
 - Prisma schema and migration needs are understood.
 - UI workflow is narrow and usable.
 - UI patterns follow `docs/ui-architecture.md`.

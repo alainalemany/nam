@@ -22,8 +22,9 @@ UI architecture sits in this path:
 ```text
 docs/philosophy.md
 -> docs/engineering-principles.md
--> docs/ui-architecture.md
 -> docs/feature-architecture.md
+-> docs/application-state-and-data-flow.md
+-> docs/ui-architecture.md
 -> implementation files
 ```
 
@@ -32,6 +33,8 @@ Related authorities:
 - Product requirements and user experience goals live in `docs/prd.md`.
 - Module workflows live in `docs/modules.md`.
 - Feature module implementation standards live in `docs/feature-architecture.md`.
+- Application state, mutation flow, validation boundaries, and revalidation
+  strategy live in `docs/application-state-and-data-flow.md`.
 - Testing and E2E expectations live in `docs/testing-strategy.md`.
 - Architecture overview lives in `docs/architecture.md`.
 - Metronic integration boundaries are recorded in
@@ -65,6 +68,7 @@ Use the right document for the right question:
 | What should the product do? | `docs/prd.md` |
 | How should a module workflow behave? | `docs/modules.md` |
 | Where should feature UI code live? | `docs/feature-architecture.md` |
+| How should loading, empty, error, and form state flow? | `docs/application-state-and-data-flow.md` |
 | How should UI behavior be tested? | `docs/testing-strategy.md` |
 | Why is Metronic a toolkit, not architecture? | ADR-014 |
 | How should screens look and behave? | `docs/ui-architecture.md` |
@@ -173,6 +177,9 @@ Avoid presenting too many equal-weight actions in the same area.
 
 Every route that can wait, fail, or show no records should have an intentional
 state.
+
+The data-flow expectations behind loading, empty, error, and form state are
+defined in `docs/application-state-and-data-flow.md`.
 
 Expected states:
 

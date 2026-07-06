@@ -24,6 +24,7 @@ maintainability.
 | [ADR-012](adr-012-server-identity-and-motd-reproducibility.md) | 2026-06-30 | Infrastructure/recovery | Server identity and MOTD customization must be reproducible from Git. |
 | [ADR-013](adr-013-bootstrap-checks-and-server-config.md) | 2026-06-30 | Infrastructure/recovery | Infrastructure uses repository-owned bootstrap scripts, read-only verification checks, and server-config templates. |
 | [ADR-014](adr-014-metronic-integration-strategy.md) | 2026-07-01 | UI architecture | Metronic is a vendor UI toolkit, not the application architecture. |
+| [ADR-015](adr-015-application-state-and-data-flow.md) | 2026-07-06 | Application architecture | Server-owned persisted data, explicit mutation boundaries, local UI state by default, and no premature global state layer. |
 
 ## Categories
 
@@ -40,6 +41,10 @@ Data architecture and boundaries:
 - ADR-001
 - ADR-005
 
+Application architecture:
+
+- ADR-015
+
 Infrastructure and deployment:
 
 - ADR-008
@@ -54,6 +59,8 @@ UI architecture:
 - ADR-014
 
 UI architecture standards are documented in `docs/ui-architecture.md`.
+Application state and data-flow standards are documented in
+`docs/application-state-and-data-flow.md`.
 
 ## Process
 

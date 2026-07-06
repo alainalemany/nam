@@ -57,6 +57,8 @@ Architecture-specific principles:
   cross-module capabilities.
 - Keep sensitive financial data separated from general operational records.
 - Add infrastructure components only when a real requirement justifies them.
+- Prefer server-owned persisted data and local UI state by default; detailed
+  state and mutation rules live in `docs/application-state-and-data-flow.md`.
 - Public HTTP/S traffic should terminate at host-level Caddy; application
   services should not be exposed directly to the public Internet.
 
@@ -93,6 +95,7 @@ Confirmed deployment baseline:
 | Product requirements | `docs/prd.md` |
 | Engineering principles | `docs/engineering-principles.md` |
 | Feature architecture | `docs/feature-architecture.md` |
+| Application state and data flow | `docs/application-state-and-data-flow.md` |
 | UI architecture | `docs/ui-architecture.md` |
 | Testing strategy | `docs/testing-strategy.md` |
 | Module boundaries and workflows | `docs/modules.md` |
@@ -117,6 +120,7 @@ Current ADR categories:
 
 - Product and domain architecture
 - Data architecture
+- Application architecture
 - Infrastructure and deployment
 - Repository operations
 
@@ -160,5 +164,7 @@ single overview document.
 - Security architecture for authentication, authorization, financial data, and
   attachment access still needs deeper design.
 - Testing strategy and quality gates are defined in `docs/testing-strategy.md`.
+- Application state and data-flow standards are defined in
+  `docs/application-state-and-data-flow.md`.
 - UI architecture and design-system standards are defined in
   `docs/ui-architecture.md`.

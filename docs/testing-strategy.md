@@ -33,6 +33,8 @@ Purpose by layer:
 - `docs/engineering-principles.md` defines implementation defaults.
 - `docs/feature-architecture.md` defines feature module structure and
   implementation boundaries.
+- `docs/application-state-and-data-flow.md` defines state ownership, mutation
+  flow, validation boundaries, and revalidation strategy.
 - `docs/ui-architecture.md` defines UI architecture, design-system standards,
   and screen behavior expectations.
 - `docs/testing-strategy.md` defines what quality means and which test layers
@@ -96,6 +98,9 @@ Unit tests should be fast and deterministic.
 
 Server action tests should verify business workflow behavior at the server
 boundary.
+
+Mutation flow, validation boundaries, and revalidation expectations are defined
+in `docs/application-state-and-data-flow.md`.
 
 Coverage should include:
 
