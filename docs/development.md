@@ -4,19 +4,25 @@ This document describes the local development workflow for the NAM Dashboard app
 
 Product requirements, module definitions, data modeling decisions, and architecture decisions remain in the primary planning documents. This guide is limited to running and verifying the approved application platform.
 
+Enduring implementation defaults, such as vertical-slice development,
+feature-based module organization, Prisma migration discipline, and
+documentation-graph rules, live in `docs/engineering-principles.md`.
+
 ## Current Scope
 
-Phase 2B establishes the platform foundation only:
+The current development platform includes:
 
 - Next.js application foundation
 - TypeScript configuration
 - pnpm package management
 - Prisma configuration
-- Initial Prisma Client generation
+- Prisma Client generation
 - Docker application service
-- Localhost-only application publishing
+- Localhost-only application publishing behind optional host-level Caddy
+- Operations reference data and Daily Logs feature foundations
 
-Phase 2B does not implement authentication, user management, feature modules, business logic, Caddy, HTTPS, monitoring, or background workers.
+The current development platform does not implement authentication, user
+management, production deployment, monitoring, or background workers.
 
 ## Requirements
 
@@ -54,7 +60,11 @@ DATABASE_URL=postgresql://nam_app:replace-with-a-strong-local-password@localhost
 
 For Docker Compose, the `app` service builds its internal database URL from the PostgreSQL variables and connects to `postgres:5432` over `nam-network`.
 
-For host-based development, `DATABASE_URL` points to `localhost:5432`. PostgreSQL is not published to the host in Phase 2B, so host-based Prisma database commands require either a temporary approved port-publishing change or running database commands inside Docker. Do not publish PostgreSQL casually; keeping it private is the approved baseline.
+For host-based development, `DATABASE_URL` points to `localhost:5432`.
+PostgreSQL is not published to the host, so host-based Prisma database commands
+require either a temporary approved port-publishing change or running database
+commands inside Docker. Do not publish PostgreSQL casually; keeping it private
+is the approved baseline.
 
 ## Package Commands
 

@@ -28,10 +28,11 @@ order:
 2. [docs/README.md](docs/README.md)
 3. [docs/ai-context.md](docs/ai-context.md)
 4. [docs/philosophy.md](docs/philosophy.md)
-5. [docs/prd.md](docs/prd.md)
-6. [docs/architecture.md](docs/architecture.md)
-7. [docs/decisions/README.md](docs/decisions/README.md)
-8. The relevant domain, database, infrastructure, or implementation document.
+5. [docs/engineering-principles.md](docs/engineering-principles.md)
+6. [docs/prd.md](docs/prd.md)
+7. [docs/architecture.md](docs/architecture.md)
+8. [docs/decisions/README.md](docs/decisions/README.md)
+9. The relevant domain, database, infrastructure, or implementation document.
 
 Use [docs/README.md](docs/README.md) as the canonical documentation map.
 
@@ -42,6 +43,7 @@ Use [docs/README.md](docs/README.md) as the canonical documentation map.
 | Documentation map and canonical homes | [docs/README.md](docs/README.md) |
 | AI reading order and context flow | [docs/ai-context.md](docs/ai-context.md) |
 | Stable project principles | [docs/philosophy.md](docs/philosophy.md) |
+| Engineering principles | [docs/engineering-principles.md](docs/engineering-principles.md) |
 | Product requirements and V1 scope | [docs/prd.md](docs/prd.md) |
 | Module workflows and boundaries | [docs/modules.md](docs/modules.md) |
 | Entities, fields, relationships, and enums | [docs/database.md](docs/database.md) |
@@ -70,6 +72,8 @@ Only confirmed items should modify canonical project documentation.
 ## Working Rules
 
 - Documentation first, code second.
+- Before creating a new documentation file, define where it fits in the
+  documentation graph and how future readers will discover it.
 - Do not treat every idea as a requirement.
 - Challenge assumptions; do not simply agree with proposed ideas.
 - Identify tradeoffs, scalability concerns, maintainability concerns, and
@@ -154,6 +158,7 @@ Review these documents first:
 - docs/README.md
 - docs/ai-context.md
 - docs/philosophy.md
+- docs/engineering-principles.md
 - docs/prd.md
 - docs/architecture.md
 - docs/decisions/README.md

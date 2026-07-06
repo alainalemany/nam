@@ -2,7 +2,7 @@
 
 A personal mining operations dashboard for centralizing daily work records, safety activity, equipment notes, schedules, timesheets, fuel tracking, work truck logs, and long-term operational history.
 
-NAM Dashboard is being designed as a professional, modular web application for personal use by a dragline operator. The project is currently in the product definition and architecture phase, with documentation acting as the source of truth before implementation begins.
+NAM Dashboard is being built as a professional, modular web application for personal use by a dragline operator. The project is now in active foundation development, with documentation remaining the source of truth for requirements, architecture, infrastructure, and implementation direction.
 
 ## Project Goals
 
@@ -48,6 +48,7 @@ The project documentation is the current source of truth:
 
 - [Documentation Index](docs/README.md)
 - [Project Philosophy](docs/philosophy.md)
+- [Engineering Principles](docs/engineering-principles.md)
 - [AI Context Guide](docs/ai-context.md)
 - [Product Requirements](docs/prd.md)
 - [Modules](docs/modules.md)
@@ -72,9 +73,12 @@ Source forms and reference images are stored under:
 
 ## Current Status
 
-This project is in the planning, requirements, and platform foundation phase.
+This project is in active application-foundation development.
 
-The Phase 2B application foundation has started. The repository now includes a minimal Next.js, TypeScript, Prisma, and Docker Compose platform baseline. Feature modules and business workflows are still intentionally deferred until their requirements and data models are confirmed.
+The repository includes a Next.js, TypeScript, Prisma, PostgreSQL, Docker
+Compose, and host-level Caddy development baseline. Operations reference data
+and the Daily Work Log foundation have been implemented. Future modules should
+continue to follow the documentation-first, vertical-slice approach.
 
 ## Version 1 Focus
 
@@ -112,6 +116,8 @@ The following ideas are intentionally deferred:
 
 - Documentation first, code second.
 - Every important concept should have one canonical documentation home.
+- Preserve the documentation graph so future contributors and AI assistants know
+  what to read next.
 - Keep modules connected, but avoid unnecessary coupling.
 - Treat date, equipment, mine, and module relationships as first-class data.
 - Preserve original source artifacts where useful.
@@ -122,4 +128,6 @@ The following ideas are intentionally deferred:
 
 This repository contains planning documents, architecture notes, source form references, and early product design material for NAM Dashboard.
 
-As implementation begins, application source code will be organized under `src/` and public assets under `public/`.
+Application source code is organized under `src/`, Prisma schema and migrations
+under `prisma/`, infrastructure assets under `infrastructure/`, and public
+assets under `public/`.

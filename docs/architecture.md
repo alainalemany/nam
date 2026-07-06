@@ -40,6 +40,12 @@ The canonical source for cross-project principles is:
 docs/philosophy.md
 ```
 
+The canonical source for implementation and documentation-graph principles is:
+
+```text
+docs/engineering-principles.md
+```
+
 Architecture-specific principles:
 
 - Prefer simple, durable architecture over premature platform complexity.
@@ -51,6 +57,8 @@ Architecture-specific principles:
   cross-module capabilities.
 - Keep sensitive financial data separated from general operational records.
 - Add infrastructure components only when a real requirement justifies them.
+- Public HTTP/S traffic should terminate at host-level Caddy; application
+  services should not be exposed directly to the public Internet.
 
 ## Current Platform Baseline
 
@@ -73,14 +81,17 @@ Confirmed deployment baseline:
 - PostgreSQL runs in Docker with persistent named storage.
 - The application runs in Docker.
 - The current development app is published only on `127.0.0.1:3000`.
-- Caddy is the planned future public reverse proxy on the VPS host.
-- Public ingress, HTTPS, staging, and production deployment remain future work.
+- Host-level Caddy reverse proxies `dev.alemany.me` to `127.0.0.1:3000` for
+  external development access.
+- `nam.alemany.me` is reserved for future production use.
+- Staging and production deployment remain future work.
 
 ## Major Architectural Areas
 
 | Area | Canonical document |
 | --- | --- |
 | Product requirements | `docs/prd.md` |
+| Engineering principles | `docs/engineering-principles.md` |
 | Module boundaries and workflows | `docs/modules.md` |
 | Data model | `docs/database.md` |
 | Architecture overview | `docs/architecture.md` |

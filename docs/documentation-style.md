@@ -16,6 +16,8 @@ AI context.
 - Avoid raw unformatted command dumps.
 - Prefer links to canonical documents over duplicated text.
 - Keep one concept in one canonical home.
+- Do not create orphan documents. Before adding a new file, identify its
+  documentation-graph location and how future readers will discover it.
 - Explain why a decision exists, not only how to run a command.
 - Keep architecture decisions in ADRs and operational commands in runbooks.
 

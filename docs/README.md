@@ -12,10 +12,11 @@ Human contributors should start with:
 
 1. [Repository Overview](../README.md)
 2. [Project Philosophy](philosophy.md)
-3. [Product Requirements](prd.md)
-4. [Architecture Overview](architecture.md)
-5. [Architecture Decision Records](decisions/README.md)
-6. The relevant module, data, infrastructure, or implementation document.
+3. [Engineering Principles](engineering-principles.md)
+4. [Product Requirements](prd.md)
+5. [Architecture Overview](architecture.md)
+6. [Architecture Decision Records](decisions/README.md)
+7. The relevant module, data, infrastructure, or implementation document.
 
 AI assistants should start with:
 
@@ -24,10 +25,11 @@ AI assistants should start with:
 3. [Documentation Index](README.md)
 4. [AI Context Guide](ai-context.md)
 5. [Project Philosophy](philosophy.md)
-6. [Product Requirements](prd.md)
-7. [Architecture Overview](architecture.md)
-8. [ADR Index](decisions/README.md)
-9. The relevant domain and implementation documents.
+6. [Engineering Principles](engineering-principles.md)
+7. [Product Requirements](prd.md)
+8. [Architecture Overview](architecture.md)
+9. [ADR Index](decisions/README.md)
+10. The relevant domain and implementation documents.
 
 The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 
@@ -46,16 +48,17 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | 0. Repository entry | What this repository is and where to start. | `README.md` |
 | 1. Collaboration rules | How AI assistants and contributors should work here. | `AGENTS.md` |
 | 2. Documentation map | Where knowledge lives and which docs are authoritative. | `docs/README.md` |
-| 3. Project philosophy | Stable principles that rarely change. | `docs/philosophy.md` |
-| 4. AI context | Deterministic reading order and AI handoff rules. | `docs/ai-context.md` |
-| 5. Product definition | Confirmed product requirements and scope. | `docs/prd.md` |
-| 6. Architecture overview | Current architecture shape and boundaries. | `docs/architecture.md` |
-| 7. Architecture decisions | Durable decisions with context and consequences. | `docs/decisions/` |
-| 8. Domain modules | Module workflows, boundaries, and capabilities. | `docs/modules.md` |
-| 9. Data model | Entities, fields, relationships, and enums. | `docs/database.md` |
-| 10. Operations | Development, infrastructure, recovery, and runbooks. | `docs/development.md`, `docs/infrastructure.md`, `docs/infrastructure/` |
-| 11. Planning | Roadmap and future ideas. | `docs/roadmap.md`, `docs/ideas.md` |
-| 12. Implementation | Source code, configuration, assets, and scripts. | `src/`, `prisma/`, `infrastructure/`, `public/` |
+| 3. AI context | Deterministic reading order and AI handoff rules. | `docs/ai-context.md` |
+| 4. Project philosophy | Stable principles that rarely change. | `docs/philosophy.md` |
+| 5. Engineering principles | Enduring implementation and documentation-graph rules. | `docs/engineering-principles.md` |
+| 6. Product definition | Confirmed product requirements and scope. | `docs/prd.md` |
+| 7. Architecture overview | Current architecture shape and boundaries. | `docs/architecture.md` |
+| 8. Architecture decisions | Durable decisions with context and consequences. | `docs/decisions/` |
+| 9. Domain modules | Module workflows, boundaries, and capabilities. | `docs/modules.md` |
+| 10. Data model | Entities, fields, relationships, and enums. | `docs/database.md` |
+| 11. Operations | Development, infrastructure, recovery, and runbooks. | `docs/development.md`, `docs/infrastructure.md`, `docs/infrastructure/` |
+| 12. Planning | Roadmap and future ideas. | `docs/roadmap.md`, `docs/ideas.md` |
+| 13. Implementation | Source code, configuration, assets, and scripts. | `src/`, `prisma/`, `infrastructure/`, `public/` |
 
 ## Documentation Map
 
@@ -64,6 +67,7 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Understand the project quickly | [README](../README.md) |
 | Understand documentation ownership | [Documentation Index](README.md) |
 | Understand stable principles | [Project Philosophy](philosophy.md) |
+| Understand engineering principles | [Engineering Principles](engineering-principles.md) |
 | Understand AI context flow | [AI Context Guide](ai-context.md) |
 | Understand product scope | [Product Requirements](prd.md) |
 | Understand module behavior | [Modules](modules.md) |
@@ -89,6 +93,7 @@ to that home but should not restate the same policy in detail.
 | Project identity and goals | `README.md`, detailed scope in `docs/prd.md` |
 | Documentation philosophy | `docs/philosophy.md` |
 | AI collaboration philosophy | `AGENTS.md`, context flow in `docs/ai-context.md` |
+| Engineering principles | `docs/engineering-principles.md` |
 | Product requirements | `docs/prd.md` |
 | Version 1 scope | `docs/prd.md` |
 | Module definitions | `docs/modules.md` |
@@ -100,10 +105,11 @@ to that home but should not restate the same policy in detail.
 | Deployment philosophy | `docs/architecture.md`, deployment operations in `docs/infrastructure.md` |
 | Recovery philosophy | `docs/infrastructure/disaster-recovery.md` |
 | Development workflow | `docs/development.md` |
-| Coding philosophy | `docs/philosophy.md`; implementation details belong near code when created |
+| Coding and implementation philosophy | `docs/engineering-principles.md`; implementation details belong near code |
 | Testing philosophy | Open question; create a canonical testing document before broad feature work |
 | UI philosophy | `docs/prd.md` for product UX goals; future detailed UI guidance should get a canonical doc |
 | Documentation style | `docs/documentation-style.md` |
+| Documentation graph rules | `docs/engineering-principles.md`, navigation details in `docs/README.md` |
 | Future ideas | `docs/ideas.md` |
 | Roadmap and phases | `docs/roadmap.md` |
 
@@ -122,11 +128,14 @@ to that home but should not restate the same policy in detail.
 | Unapproved idea or future possibility | `docs/ideas.md` |
 | Source form or reference artifact | `source-forms/` or `docs/assets/` |
 | AI operating rule | `AGENTS.md`; reading-order support in `docs/ai-context.md` |
+| Engineering principle or implementation default | `docs/engineering-principles.md` |
 
 ## Navigation Rules
 
 - Prefer links to canonical documents over copying policy text.
 - Keep each document responsible for one kind of knowledge.
+- Before creating a new documentation file, identify its documentation-graph
+  location and normal discovery path.
 - If two documents disagree, update the non-authoritative copy to reference the
   authoritative source.
 - Put durable decisions in ADRs; put operating commands in runbooks.

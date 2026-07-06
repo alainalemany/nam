@@ -5,6 +5,10 @@ This document is the canonical home for stable NAM Dashboard principles.
 These principles should change slowly. Detailed requirements, implementation
 commands, and module-specific rules belong in their own canonical documents.
 
+Enduring implementation defaults, such as vertical-slice development,
+feature-based module organization, migration discipline, and documentation graph
+rules, live in [Engineering Principles](engineering-principles.md).
+
 ## Classification
 
 | Classification | Meaning |
