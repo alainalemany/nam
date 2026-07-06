@@ -3,6 +3,9 @@
 This document is the canonical home for NAM Dashboard module definitions,
 workflows, capabilities, and module boundaries.
 
+Implementation standards for turning these modules into feature slices live in
+[Feature Architecture](feature-architecture.md).
+
 ## Table Of Contents
 
 - [Source Documents](#source-documents)

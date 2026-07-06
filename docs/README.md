@@ -13,11 +13,12 @@ Human contributors should start with:
 1. [Repository Overview](../README.md)
 2. [Project Philosophy](philosophy.md)
 3. [Engineering Principles](engineering-principles.md)
-4. [Testing Strategy](testing-strategy.md)
-5. [Product Requirements](prd.md)
-6. [Architecture Overview](architecture.md)
-7. [Architecture Decision Records](decisions/README.md)
-8. The relevant module, data, infrastructure, or implementation document.
+4. [Feature Architecture](feature-architecture.md)
+5. [Testing Strategy](testing-strategy.md)
+6. [Product Requirements](prd.md)
+7. [Architecture Overview](architecture.md)
+8. [Architecture Decision Records](decisions/README.md)
+9. The relevant module, data, infrastructure, or implementation document.
 
 AI assistants should start with:
 
@@ -27,11 +28,12 @@ AI assistants should start with:
 4. [AI Context Guide](ai-context.md)
 5. [Project Philosophy](philosophy.md)
 6. [Engineering Principles](engineering-principles.md)
-7. [Testing Strategy](testing-strategy.md)
-8. [Product Requirements](prd.md)
-9. [Architecture Overview](architecture.md)
-10. [ADR Index](decisions/README.md)
-11. The relevant domain and implementation documents.
+7. [Feature Architecture](feature-architecture.md)
+8. [Testing Strategy](testing-strategy.md)
+9. [Product Requirements](prd.md)
+10. [Architecture Overview](architecture.md)
+11. [ADR Index](decisions/README.md)
+12. The relevant domain and implementation documents.
 
 The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 
@@ -53,15 +55,16 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | 3. AI context | Deterministic reading order and AI handoff rules. | `docs/ai-context.md` |
 | 4. Project philosophy | Stable principles that rarely change. | `docs/philosophy.md` |
 | 5. Engineering principles | Enduring implementation and documentation-graph rules. | `docs/engineering-principles.md` |
-| 6. Testing strategy | Test layers, quality gates, and verification expectations. | `docs/testing-strategy.md` |
-| 7. Product definition | Confirmed product requirements and scope. | `docs/prd.md` |
-| 8. Architecture overview | Current architecture shape and boundaries. | `docs/architecture.md` |
-| 9. Architecture decisions | Durable decisions with context and consequences. | `docs/decisions/` |
-| 10. Domain modules | Module workflows, boundaries, and capabilities. | `docs/modules.md` |
-| 11. Data model | Entities, fields, relationships, and enums. | `docs/database.md` |
-| 12. Operations | Development, infrastructure, recovery, and runbooks. | `docs/development.md`, `docs/infrastructure.md`, `docs/infrastructure/` |
-| 13. Planning | Roadmap and future ideas. | `docs/roadmap.md`, `docs/ideas.md` |
-| 14. Implementation | Source code, configuration, assets, and scripts. | `src/`, `prisma/`, `infrastructure/`, `public/` |
+| 6. Feature architecture | Feature module implementation standards and vertical-slice checklist. | `docs/feature-architecture.md` |
+| 7. Testing strategy | Test layers, quality gates, and verification expectations. | `docs/testing-strategy.md` |
+| 8. Product definition | Confirmed product requirements and scope. | `docs/prd.md` |
+| 9. Architecture overview | Current architecture shape and boundaries. | `docs/architecture.md` |
+| 10. Architecture decisions | Durable decisions with context and consequences. | `docs/decisions/` |
+| 11. Domain modules | Module workflows, boundaries, and capabilities. | `docs/modules.md` |
+| 12. Data model | Entities, fields, relationships, and enums. | `docs/database.md` |
+| 13. Operations | Development, infrastructure, recovery, and runbooks. | `docs/development.md`, `docs/infrastructure.md`, `docs/infrastructure/` |
+| 14. Planning | Roadmap and future ideas. | `docs/roadmap.md`, `docs/ideas.md` |
+| 15. Implementation | Source code, configuration, assets, and scripts. | `src/`, `prisma/`, `infrastructure/`, `public/` |
 
 ## Documentation Map
 
@@ -71,6 +74,7 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Understand documentation ownership | [Documentation Index](README.md) |
 | Understand stable principles | [Project Philosophy](philosophy.md) |
 | Understand engineering principles | [Engineering Principles](engineering-principles.md) |
+| Understand feature architecture | [Feature Architecture](feature-architecture.md) |
 | Understand testing strategy | [Testing Strategy](testing-strategy.md) |
 | Understand AI context flow | [AI Context Guide](ai-context.md) |
 | Understand product scope | [Product Requirements](prd.md) |
@@ -98,6 +102,7 @@ to that home but should not restate the same policy in detail.
 | Documentation philosophy | `docs/philosophy.md` |
 | AI collaboration philosophy | `AGENTS.md`, context flow in `docs/ai-context.md` |
 | Engineering principles | `docs/engineering-principles.md` |
+| Feature architecture and module implementation standards | `docs/feature-architecture.md` |
 | Testing strategy | `docs/testing-strategy.md` |
 | Product requirements | `docs/prd.md` |
 | Version 1 scope | `docs/prd.md` |
@@ -134,6 +139,7 @@ to that home but should not restate the same policy in detail.
 | Source form or reference artifact | `source-forms/` or `docs/assets/` |
 | AI operating rule | `AGENTS.md`; reading-order support in `docs/ai-context.md` |
 | Engineering principle or implementation default | `docs/engineering-principles.md` |
+| Feature architecture or module implementation standard | `docs/feature-architecture.md` |
 | Testing strategy, test layer, or quality gate | `docs/testing-strategy.md` |
 
 ## Navigation Rules

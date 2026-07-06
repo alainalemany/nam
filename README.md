@@ -49,6 +49,7 @@ The project documentation is the current source of truth:
 - [Documentation Index](docs/README.md)
 - [Project Philosophy](docs/philosophy.md)
 - [Engineering Principles](docs/engineering-principles.md)
+- [Feature Architecture](docs/feature-architecture.md)
 - [Testing Strategy](docs/testing-strategy.md)
 - [AI Context Guide](docs/ai-context.md)
 - [Product Requirements](docs/prd.md)

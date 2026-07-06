@@ -31,6 +31,8 @@ Purpose by layer:
 
 - `docs/philosophy.md` defines broad project principles.
 - `docs/engineering-principles.md` defines implementation defaults.
+- `docs/feature-architecture.md` defines feature module structure and
+  implementation boundaries.
 - `docs/testing-strategy.md` defines what quality means and which test layers
   should protect the system.
 - `docs/development.md` documents concrete commands and local workflows.
@@ -265,6 +267,9 @@ tests/smoke/
 Feature-specific tests should live close to the feature when practical.
 Cross-feature integration, E2E, and smoke tests should live under top-level
 `tests/` directories once those test layers are implemented.
+
+Feature module structure and ownership rules live in
+`docs/feature-architecture.md`.
 
 ## Open Questions
 

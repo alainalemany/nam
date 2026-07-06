@@ -8,6 +8,10 @@ Enduring implementation defaults, such as vertical-slice development,
 feature-based module organization, Prisma migration discipline, and
 documentation-graph rules, live in `docs/engineering-principles.md`.
 
+Feature module implementation standards live in `docs/feature-architecture.md`.
+This development guide should document executable commands and local workflow,
+not duplicate feature architecture policy.
+
 Testing strategy, test layers, and future quality gates live in
 `docs/testing-strategy.md`. This development guide should document concrete test
 commands only after the corresponding tools are added to the project.

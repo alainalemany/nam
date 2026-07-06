@@ -22,6 +22,8 @@ This document fits between:
 
 - `docs/philosophy.md`, which defines stable project-wide principles.
 - `docs/architecture.md`, which describes the current system shape.
+- `docs/feature-architecture.md`, which defines feature module implementation
+  standards.
 - `docs/testing-strategy.md`, which defines test layers and quality gates.
 - `docs/development.md`, which describes commands and local workflow.
 - `docs/decisions/`, which records durable decisions and their tradeoffs.
@@ -34,9 +36,10 @@ A future contributor or AI assistant should discover this document through:
 4. `docs/ai-context.md`
 5. `docs/philosophy.md`
 6. This document
-7. `docs/testing-strategy.md`
-8. `docs/architecture.md`
-9. Relevant ADRs, module docs, data docs, operations docs, and source files
+7. `docs/feature-architecture.md`
+8. `docs/testing-strategy.md`
+9. `docs/architecture.md`
+10. Relevant ADRs, module docs, data docs, operations docs, and source files
 
 Do not create a new documentation file unless its place in this graph and its
 discovery path are clear.
@@ -76,6 +79,9 @@ verification.
 Avoid broad scaffolding that creates empty modules or disconnected abstractions
 without a confirmed workflow.
 
+Feature slice implementation standards are defined in
+`docs/feature-architecture.md`.
+
 ### Use Feature-Based Module Organization
 
 Feature-specific implementation belongs near the feature. Current feature
@@ -84,6 +90,9 @@ validation, constants, types, forms, and supporting components.
 
 Shared code should move to shared locations only when there is demonstrated
 reuse across features.
+
+Concrete module structure and boundary rules live in
+`docs/feature-architecture.md`.
 
 ### Favor Production Quality Over Prototypes
 

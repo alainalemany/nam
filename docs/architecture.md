@@ -92,6 +92,7 @@ Confirmed deployment baseline:
 | --- | --- |
 | Product requirements | `docs/prd.md` |
 | Engineering principles | `docs/engineering-principles.md` |
+| Feature architecture | `docs/feature-architecture.md` |
 | Testing strategy | `docs/testing-strategy.md` |
 | Module boundaries and workflows | `docs/modules.md` |
 | Data model | `docs/database.md` |
