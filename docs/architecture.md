@@ -93,6 +93,7 @@ Confirmed deployment baseline:
 | Product requirements | `docs/prd.md` |
 | Engineering principles | `docs/engineering-principles.md` |
 | Feature architecture | `docs/feature-architecture.md` |
+| UI architecture | `docs/ui-architecture.md` |
 | Testing strategy | `docs/testing-strategy.md` |
 | Module boundaries and workflows | `docs/modules.md` |
 | Data model | `docs/database.md` |
@@ -159,5 +160,5 @@ single overview document.
 - Security architecture for authentication, authorization, financial data, and
   attachment access still needs deeper design.
 - Testing strategy and quality gates are defined in `docs/testing-strategy.md`.
-- UI architecture should be refined when Metronic integration and module screens
-  begin.
+- UI architecture and design-system standards are defined in
+  `docs/ui-architecture.md`.

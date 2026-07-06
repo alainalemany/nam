@@ -53,6 +53,8 @@ UI architecture:
 
 - ADR-014
 
+UI architecture standards are documented in `docs/ui-architecture.md`.
+
 ## Process
 
 - Create a new ADR from `template.md` when a durable decision is confirmed.

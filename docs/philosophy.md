@@ -12,6 +12,9 @@ rules, live in [Engineering Principles](engineering-principles.md).
 Testing philosophy and quality gates live in
 [Testing Strategy](testing-strategy.md).
 
+UI philosophy and design-system standards live in
+[UI Architecture](ui-architecture.md).
+
 ## Classification
 
 | Classification | Meaning |
@@ -83,7 +86,6 @@ Recommended:
 
 - Define a security philosophy before authentication, authorization, payslip
   storage, or public deployment.
-- Define a UI philosophy document once Metronic integration begins.
 
 ## Open Questions
 

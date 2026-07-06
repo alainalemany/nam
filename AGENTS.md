@@ -30,11 +30,12 @@ order:
 4. [docs/philosophy.md](docs/philosophy.md)
 5. [docs/engineering-principles.md](docs/engineering-principles.md)
 6. [docs/feature-architecture.md](docs/feature-architecture.md)
-7. [docs/testing-strategy.md](docs/testing-strategy.md)
-8. [docs/prd.md](docs/prd.md)
-9. [docs/architecture.md](docs/architecture.md)
-10. [docs/decisions/README.md](docs/decisions/README.md)
-11. The relevant domain, database, infrastructure, or implementation document.
+7. [docs/ui-architecture.md](docs/ui-architecture.md)
+8. [docs/testing-strategy.md](docs/testing-strategy.md)
+9. [docs/prd.md](docs/prd.md)
+10. [docs/architecture.md](docs/architecture.md)
+11. [docs/decisions/README.md](docs/decisions/README.md)
+12. The relevant domain, database, infrastructure, or implementation document.
 
 Use [docs/README.md](docs/README.md) as the canonical documentation map.
 
@@ -47,6 +48,7 @@ Use [docs/README.md](docs/README.md) as the canonical documentation map.
 | Stable project principles | [docs/philosophy.md](docs/philosophy.md) |
 | Engineering principles | [docs/engineering-principles.md](docs/engineering-principles.md) |
 | Feature architecture and module standards | [docs/feature-architecture.md](docs/feature-architecture.md) |
+| UI architecture and design-system standards | [docs/ui-architecture.md](docs/ui-architecture.md) |
 | Testing strategy | [docs/testing-strategy.md](docs/testing-strategy.md) |
 | Product requirements and V1 scope | [docs/prd.md](docs/prd.md) |
 | Module workflows and boundaries | [docs/modules.md](docs/modules.md) |
@@ -107,6 +109,7 @@ Only confirmed items should modify canonical project documentation.
 | Source form or reference artifact | `source-forms/` or `docs/assets/` |
 | Documentation style rule | `docs/documentation-style.md` |
 | Feature architecture or module implementation standard | `docs/feature-architecture.md` |
+| UI architecture or design-system standard | `docs/ui-architecture.md` |
 | Testing strategy or quality gate | `docs/testing-strategy.md` |
 
 ## Version 1 Scope Discipline
@@ -166,6 +169,7 @@ Review these documents first:
 - docs/philosophy.md
 - docs/engineering-principles.md
 - docs/feature-architecture.md
+- docs/ui-architecture.md
 - docs/testing-strategy.md
 - docs/prd.md
 - docs/architecture.md

@@ -12,6 +12,8 @@ Feature module implementation standards live in `docs/feature-architecture.md`.
 This development guide should document executable commands and local workflow,
 not duplicate feature architecture policy.
 
+UI architecture and design-system standards live in `docs/ui-architecture.md`.
+
 Testing strategy, test layers, and future quality gates live in
 `docs/testing-strategy.md`. This development guide should document concrete test
 commands only after the corresponding tools are added to the project.

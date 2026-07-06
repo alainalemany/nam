@@ -26,24 +26,25 @@ Use this order at the start of a new chat or when context is uncertain:
 5. `docs/philosophy.md`
 6. `docs/engineering-principles.md`
 7. `docs/feature-architecture.md`
-8. `docs/testing-strategy.md`
-9. `docs/prd.md`
-10. `docs/architecture.md`
-11. `docs/decisions/README.md`
-12. Relevant ADR files under `docs/decisions/`
-13. `docs/modules.md`
-14. `docs/database.md`
-15. `docs/roadmap.md`
-16. Relevant operations docs:
+8. `docs/ui-architecture.md`
+9. `docs/testing-strategy.md`
+10. `docs/prd.md`
+11. `docs/architecture.md`
+12. `docs/decisions/README.md`
+13. Relevant ADR files under `docs/decisions/`
+14. `docs/modules.md`
+15. `docs/database.md`
+16. `docs/roadmap.md`
+17. Relevant operations docs:
     - `docs/development.md`
     - `docs/infrastructure.md`
     - focused files under `docs/infrastructure/`
-17. Relevant implementation files:
+18. Relevant implementation files:
     - `src/`
     - `prisma/`
     - `compose.yaml`
     - `infrastructure/`
-18. `docs/ideas.md` only when evaluating future or unapproved concepts.
+19. `docs/ideas.md` only when evaluating future or unapproved concepts.
 
 ## Why This Order
 
@@ -57,6 +58,7 @@ The reading order moves from broad intent to specific implementation:
 - Philosophy before decisions.
 - Engineering principles before implementation details.
 - Feature architecture before implementing feature modules.
+- UI architecture before implementing screen or component patterns.
 - Testing strategy before adding or evaluating test implementation.
 - Requirements before architecture.
 - Architecture overview before ADR details.
@@ -71,6 +73,8 @@ The reading order moves from broad intent to specific implementation:
   defaults and documentation-graph discipline.
 - Treat `docs/feature-architecture.md` as the source for feature module
   implementation standards.
+- Treat `docs/ui-architecture.md` as the source for UI architecture,
+  design-system standards, and screen patterns.
 - Treat `docs/testing-strategy.md` as the source for test layers, quality
   gates, and verification expectations.
 - Treat `docs/decisions/` as the authority for durable architecture decisions.

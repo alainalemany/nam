@@ -14,11 +14,12 @@ Human contributors should start with:
 2. [Project Philosophy](philosophy.md)
 3. [Engineering Principles](engineering-principles.md)
 4. [Feature Architecture](feature-architecture.md)
-5. [Testing Strategy](testing-strategy.md)
-6. [Product Requirements](prd.md)
-7. [Architecture Overview](architecture.md)
-8. [Architecture Decision Records](decisions/README.md)
-9. The relevant module, data, infrastructure, or implementation document.
+5. [UI Architecture](ui-architecture.md)
+6. [Testing Strategy](testing-strategy.md)
+7. [Product Requirements](prd.md)
+8. [Architecture Overview](architecture.md)
+9. [Architecture Decision Records](decisions/README.md)
+10. The relevant module, data, infrastructure, or implementation document.
 
 AI assistants should start with:
 
@@ -29,11 +30,12 @@ AI assistants should start with:
 5. [Project Philosophy](philosophy.md)
 6. [Engineering Principles](engineering-principles.md)
 7. [Feature Architecture](feature-architecture.md)
-8. [Testing Strategy](testing-strategy.md)
-9. [Product Requirements](prd.md)
-10. [Architecture Overview](architecture.md)
-11. [ADR Index](decisions/README.md)
-12. The relevant domain and implementation documents.
+8. [UI Architecture](ui-architecture.md)
+9. [Testing Strategy](testing-strategy.md)
+10. [Product Requirements](prd.md)
+11. [Architecture Overview](architecture.md)
+12. [ADR Index](decisions/README.md)
+13. The relevant domain and implementation documents.
 
 The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 
@@ -56,15 +58,16 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | 4. Project philosophy | Stable principles that rarely change. | `docs/philosophy.md` |
 | 5. Engineering principles | Enduring implementation and documentation-graph rules. | `docs/engineering-principles.md` |
 | 6. Feature architecture | Feature module implementation standards and vertical-slice checklist. | `docs/feature-architecture.md` |
-| 7. Testing strategy | Test layers, quality gates, and verification expectations. | `docs/testing-strategy.md` |
-| 8. Product definition | Confirmed product requirements and scope. | `docs/prd.md` |
-| 9. Architecture overview | Current architecture shape and boundaries. | `docs/architecture.md` |
-| 10. Architecture decisions | Durable decisions with context and consequences. | `docs/decisions/` |
-| 11. Domain modules | Module workflows, boundaries, and capabilities. | `docs/modules.md` |
-| 12. Data model | Entities, fields, relationships, and enums. | `docs/database.md` |
-| 13. Operations | Development, infrastructure, recovery, and runbooks. | `docs/development.md`, `docs/infrastructure.md`, `docs/infrastructure/` |
-| 14. Planning | Roadmap and future ideas. | `docs/roadmap.md`, `docs/ideas.md` |
-| 15. Implementation | Source code, configuration, assets, and scripts. | `src/`, `prisma/`, `infrastructure/`, `public/` |
+| 7. UI architecture | Screen composition, design-system standards, and UI states. | `docs/ui-architecture.md` |
+| 8. Testing strategy | Test layers, quality gates, and verification expectations. | `docs/testing-strategy.md` |
+| 9. Product definition | Confirmed product requirements and scope. | `docs/prd.md` |
+| 10. Architecture overview | Current architecture shape and boundaries. | `docs/architecture.md` |
+| 11. Architecture decisions | Durable decisions with context and consequences. | `docs/decisions/` |
+| 12. Domain modules | Module workflows, boundaries, and capabilities. | `docs/modules.md` |
+| 13. Data model | Entities, fields, relationships, and enums. | `docs/database.md` |
+| 14. Operations | Development, infrastructure, recovery, and runbooks. | `docs/development.md`, `docs/infrastructure.md`, `docs/infrastructure/` |
+| 15. Planning | Roadmap and future ideas. | `docs/roadmap.md`, `docs/ideas.md` |
+| 16. Implementation | Source code, configuration, assets, and scripts. | `src/`, `prisma/`, `infrastructure/`, `public/` |
 
 ## Documentation Map
 
@@ -75,6 +78,7 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Understand stable principles | [Project Philosophy](philosophy.md) |
 | Understand engineering principles | [Engineering Principles](engineering-principles.md) |
 | Understand feature architecture | [Feature Architecture](feature-architecture.md) |
+| Understand UI architecture | [UI Architecture](ui-architecture.md) |
 | Understand testing strategy | [Testing Strategy](testing-strategy.md) |
 | Understand AI context flow | [AI Context Guide](ai-context.md) |
 | Understand product scope | [Product Requirements](prd.md) |
@@ -103,6 +107,7 @@ to that home but should not restate the same policy in detail.
 | AI collaboration philosophy | `AGENTS.md`, context flow in `docs/ai-context.md` |
 | Engineering principles | `docs/engineering-principles.md` |
 | Feature architecture and module implementation standards | `docs/feature-architecture.md` |
+| UI architecture and design-system standards | `docs/ui-architecture.md` |
 | Testing strategy | `docs/testing-strategy.md` |
 | Product requirements | `docs/prd.md` |
 | Version 1 scope | `docs/prd.md` |
@@ -117,7 +122,7 @@ to that home but should not restate the same policy in detail.
 | Development workflow | `docs/development.md` |
 | Coding and implementation philosophy | `docs/engineering-principles.md`; implementation details belong near code |
 | Testing philosophy and quality gates | `docs/testing-strategy.md` |
-| UI philosophy | `docs/prd.md` for product UX goals; future detailed UI guidance should get a canonical doc |
+| UI philosophy and design-system standards | `docs/ui-architecture.md`; product UX goals remain in `docs/prd.md` |
 | Documentation style | `docs/documentation-style.md` |
 | Documentation graph rules | `docs/engineering-principles.md`, navigation details in `docs/README.md` |
 | Future ideas | `docs/ideas.md` |
@@ -140,6 +145,7 @@ to that home but should not restate the same policy in detail.
 | AI operating rule | `AGENTS.md`; reading-order support in `docs/ai-context.md` |
 | Engineering principle or implementation default | `docs/engineering-principles.md` |
 | Feature architecture or module implementation standard | `docs/feature-architecture.md` |
+| UI architecture, design-system standard, or screen pattern | `docs/ui-architecture.md` |
 | Testing strategy, test layer, or quality gate | `docs/testing-strategy.md` |
 
 ## Navigation Rules
@@ -162,5 +168,5 @@ Recommended:
 - Normalize escaped Markdown artifacts in older planning docs.
 - Add a glossary once terminology stabilizes across mines, equipment, shifts,
   work authorizations, defects, and payroll.
-- Create a UI/UX guidelines document when Metronic usage and screen patterns are
-  confirmed.
+- Add a dedicated accessibility checklist when UI verification outgrows
+  `docs/ui-architecture.md`.

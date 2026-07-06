@@ -33,6 +33,8 @@ Purpose by layer:
 - `docs/engineering-principles.md` defines implementation defaults.
 - `docs/feature-architecture.md` defines feature module structure and
   implementation boundaries.
+- `docs/ui-architecture.md` defines UI architecture, design-system standards,
+  and screen behavior expectations.
 - `docs/testing-strategy.md` defines what quality means and which test layers
   should protect the system.
 - `docs/development.md` documents concrete commands and local workflows.
@@ -161,6 +163,8 @@ Future API routes should define:
 
 Playwright/E2E tests should cover user-critical browser workflows, not every UI
 detail.
+
+UI behavior expectations are defined in `docs/ui-architecture.md`.
 
 Initial high-value workflows:
 

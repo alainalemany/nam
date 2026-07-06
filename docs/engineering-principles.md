@@ -24,6 +24,8 @@ This document fits between:
 - `docs/architecture.md`, which describes the current system shape.
 - `docs/feature-architecture.md`, which defines feature module implementation
   standards.
+- `docs/ui-architecture.md`, which defines UI architecture and design-system
+  standards.
 - `docs/testing-strategy.md`, which defines test layers and quality gates.
 - `docs/development.md`, which describes commands and local workflow.
 - `docs/decisions/`, which records durable decisions and their tradeoffs.
@@ -37,9 +39,10 @@ A future contributor or AI assistant should discover this document through:
 5. `docs/philosophy.md`
 6. This document
 7. `docs/feature-architecture.md`
-8. `docs/testing-strategy.md`
-9. `docs/architecture.md`
-10. Relevant ADRs, module docs, data docs, operations docs, and source files
+8. `docs/ui-architecture.md`
+9. `docs/testing-strategy.md`
+10. `docs/architecture.md`
+11. Relevant ADRs, module docs, data docs, operations docs, and source files
 
 Do not create a new documentation file unless its place in this graph and its
 discovery path are clear.
@@ -139,6 +142,8 @@ state-management model.
 
 The durable decision is recorded in ADR-014.
 
+UI architecture and design-system standards live in `docs/ui-architecture.md`.
+
 ### Document Infrastructure Changes
 
 Infrastructure is project knowledge. Host-level configuration, Docker behavior,
@@ -168,6 +173,5 @@ approval before system-level changes.
 
 ## Open Questions
 
-- What UI guidelines should become canonical once Metronic integration begins?
 - What security engineering principles should be added before authentication,
   authorization, public production deployment, or sensitive financial storage?

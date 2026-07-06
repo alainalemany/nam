@@ -35,6 +35,7 @@ Related authorities:
   `docs/database.md`.
 - Architecture overview lives in `docs/architecture.md`.
 - Durable architecture decisions live in `docs/decisions/`.
+- UI architecture and design-system standards live in `docs/ui-architecture.md`.
 - Testing strategy lives in `docs/testing-strategy.md`.
 - Development commands live in `docs/development.md`.
 
@@ -68,6 +69,7 @@ Use the right document for the right question:
 | What data should exist? | `docs/database.md` |
 | Why was a durable architecture choice made? | `docs/decisions/` |
 | How should feature code be organized? | `docs/feature-architecture.md` |
+| How should screens look and behave? | `docs/ui-architecture.md` |
 | How should tests be layered? | `docs/testing-strategy.md` |
 | Which commands should be run? | `docs/development.md` |
 
@@ -220,6 +222,9 @@ Forms should:
 Vendor UI frameworks, including Metronic, are toolkits rather than application
 architecture. ADR-014 defines that boundary.
 
+Screen composition, form UX, responsive behavior, and design-system standards
+are defined in `docs/ui-architecture.md`.
+
 ## Constants, Types, And Formatting Helpers
 
 Feature-specific constants, labels, and simple formatting helpers may live in
@@ -310,6 +315,7 @@ Before implementing a new feature slice, confirm:
 - Server action behavior is defined.
 - Prisma schema and migration needs are understood.
 - UI workflow is narrow and usable.
+- UI patterns follow `docs/ui-architecture.md`.
 - Testing and manual verification expectations are identified.
 - Documentation updates have canonical homes.
 

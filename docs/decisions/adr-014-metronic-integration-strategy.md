@@ -62,5 +62,6 @@ also makes future comparison, upgrade, and re-import decisions clearer.
 ## Related Documents
 
 - `docs/architecture.md`
+- `docs/ui-architecture.md`
 - `docs/documentation-style.md`
 - `docs/README.md`
