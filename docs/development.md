@@ -8,6 +8,10 @@ Enduring implementation defaults, such as vertical-slice development,
 feature-based module organization, Prisma migration discipline, and
 documentation-graph rules, live in `docs/engineering-principles.md`.
 
+Testing strategy, test layers, and future quality gates live in
+`docs/testing-strategy.md`. This development guide should document concrete test
+commands only after the corresponding tools are added to the project.
+
 ## Current Scope
 
 The current development platform includes:
@@ -187,3 +191,15 @@ The initial Prisma schema is intentionally minimal and contains only:
 - PostgreSQL datasource
 
 Product data models should be added only after the relevant module requirements and database decisions are confirmed.
+
+## Testing
+
+The canonical testing strategy is:
+
+```text
+docs/testing-strategy.md
+```
+
+No test framework or test command is configured yet. When testing tools are
+added, document the executable commands here and keep the testing policy in the
+testing strategy.

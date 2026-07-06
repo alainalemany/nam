@@ -9,6 +9,9 @@ Enduring implementation defaults, such as vertical-slice development,
 feature-based module organization, migration discipline, and documentation graph
 rules, live in [Engineering Principles](engineering-principles.md).
 
+Testing philosophy and quality gates live in
+[Testing Strategy](testing-strategy.md).
+
 ## Classification
 
 | Classification | Meaning |
@@ -78,7 +81,6 @@ visibility requirements than operational mining records.
 
 Recommended:
 
-- Define a testing philosophy before broad feature implementation.
 - Define a security philosophy before authentication, authorization, payslip
   storage, or public deployment.
 - Define a UI philosophy document once Metronic integration begins.
@@ -87,5 +89,4 @@ Recommended:
 
 - What level of encryption, redaction, and export control is required for
   financial records?
-- What testing baseline is required before V1 module implementation?
 - What documentation review process should be used as the repository grows?

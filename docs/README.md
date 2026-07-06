@@ -13,10 +13,11 @@ Human contributors should start with:
 1. [Repository Overview](../README.md)
 2. [Project Philosophy](philosophy.md)
 3. [Engineering Principles](engineering-principles.md)
-4. [Product Requirements](prd.md)
-5. [Architecture Overview](architecture.md)
-6. [Architecture Decision Records](decisions/README.md)
-7. The relevant module, data, infrastructure, or implementation document.
+4. [Testing Strategy](testing-strategy.md)
+5. [Product Requirements](prd.md)
+6. [Architecture Overview](architecture.md)
+7. [Architecture Decision Records](decisions/README.md)
+8. The relevant module, data, infrastructure, or implementation document.
 
 AI assistants should start with:
 
@@ -26,10 +27,11 @@ AI assistants should start with:
 4. [AI Context Guide](ai-context.md)
 5. [Project Philosophy](philosophy.md)
 6. [Engineering Principles](engineering-principles.md)
-7. [Product Requirements](prd.md)
-8. [Architecture Overview](architecture.md)
-9. [ADR Index](decisions/README.md)
-10. The relevant domain and implementation documents.
+7. [Testing Strategy](testing-strategy.md)
+8. [Product Requirements](prd.md)
+9. [Architecture Overview](architecture.md)
+10. [ADR Index](decisions/README.md)
+11. The relevant domain and implementation documents.
 
 The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 
@@ -51,14 +53,15 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | 3. AI context | Deterministic reading order and AI handoff rules. | `docs/ai-context.md` |
 | 4. Project philosophy | Stable principles that rarely change. | `docs/philosophy.md` |
 | 5. Engineering principles | Enduring implementation and documentation-graph rules. | `docs/engineering-principles.md` |
-| 6. Product definition | Confirmed product requirements and scope. | `docs/prd.md` |
-| 7. Architecture overview | Current architecture shape and boundaries. | `docs/architecture.md` |
-| 8. Architecture decisions | Durable decisions with context and consequences. | `docs/decisions/` |
-| 9. Domain modules | Module workflows, boundaries, and capabilities. | `docs/modules.md` |
-| 10. Data model | Entities, fields, relationships, and enums. | `docs/database.md` |
-| 11. Operations | Development, infrastructure, recovery, and runbooks. | `docs/development.md`, `docs/infrastructure.md`, `docs/infrastructure/` |
-| 12. Planning | Roadmap and future ideas. | `docs/roadmap.md`, `docs/ideas.md` |
-| 13. Implementation | Source code, configuration, assets, and scripts. | `src/`, `prisma/`, `infrastructure/`, `public/` |
+| 6. Testing strategy | Test layers, quality gates, and verification expectations. | `docs/testing-strategy.md` |
+| 7. Product definition | Confirmed product requirements and scope. | `docs/prd.md` |
+| 8. Architecture overview | Current architecture shape and boundaries. | `docs/architecture.md` |
+| 9. Architecture decisions | Durable decisions with context and consequences. | `docs/decisions/` |
+| 10. Domain modules | Module workflows, boundaries, and capabilities. | `docs/modules.md` |
+| 11. Data model | Entities, fields, relationships, and enums. | `docs/database.md` |
+| 12. Operations | Development, infrastructure, recovery, and runbooks. | `docs/development.md`, `docs/infrastructure.md`, `docs/infrastructure/` |
+| 13. Planning | Roadmap and future ideas. | `docs/roadmap.md`, `docs/ideas.md` |
+| 14. Implementation | Source code, configuration, assets, and scripts. | `src/`, `prisma/`, `infrastructure/`, `public/` |
 
 ## Documentation Map
 
@@ -68,6 +71,7 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Understand documentation ownership | [Documentation Index](README.md) |
 | Understand stable principles | [Project Philosophy](philosophy.md) |
 | Understand engineering principles | [Engineering Principles](engineering-principles.md) |
+| Understand testing strategy | [Testing Strategy](testing-strategy.md) |
 | Understand AI context flow | [AI Context Guide](ai-context.md) |
 | Understand product scope | [Product Requirements](prd.md) |
 | Understand module behavior | [Modules](modules.md) |
@@ -94,6 +98,7 @@ to that home but should not restate the same policy in detail.
 | Documentation philosophy | `docs/philosophy.md` |
 | AI collaboration philosophy | `AGENTS.md`, context flow in `docs/ai-context.md` |
 | Engineering principles | `docs/engineering-principles.md` |
+| Testing strategy | `docs/testing-strategy.md` |
 | Product requirements | `docs/prd.md` |
 | Version 1 scope | `docs/prd.md` |
 | Module definitions | `docs/modules.md` |
@@ -106,7 +111,7 @@ to that home but should not restate the same policy in detail.
 | Recovery philosophy | `docs/infrastructure/disaster-recovery.md` |
 | Development workflow | `docs/development.md` |
 | Coding and implementation philosophy | `docs/engineering-principles.md`; implementation details belong near code |
-| Testing philosophy | Open question; create a canonical testing document before broad feature work |
+| Testing philosophy and quality gates | `docs/testing-strategy.md` |
 | UI philosophy | `docs/prd.md` for product UX goals; future detailed UI guidance should get a canonical doc |
 | Documentation style | `docs/documentation-style.md` |
 | Documentation graph rules | `docs/engineering-principles.md`, navigation details in `docs/README.md` |
@@ -129,6 +134,7 @@ to that home but should not restate the same policy in detail.
 | Source form or reference artifact | `source-forms/` or `docs/assets/` |
 | AI operating rule | `AGENTS.md`; reading-order support in `docs/ai-context.md` |
 | Engineering principle or implementation default | `docs/engineering-principles.md` |
+| Testing strategy, test layer, or quality gate | `docs/testing-strategy.md` |
 
 ## Navigation Rules
 
@@ -150,6 +156,5 @@ Recommended:
 - Normalize escaped Markdown artifacts in older planning docs.
 - Add a glossary once terminology stabilizes across mines, equipment, shifts,
   work authorizations, defects, and payroll.
-- Create a testing strategy document before module implementation accelerates.
 - Create a UI/UX guidelines document when Metronic usage and screen patterns are
   confirmed.

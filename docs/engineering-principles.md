@@ -22,6 +22,7 @@ This document fits between:
 
 - `docs/philosophy.md`, which defines stable project-wide principles.
 - `docs/architecture.md`, which describes the current system shape.
+- `docs/testing-strategy.md`, which defines test layers and quality gates.
 - `docs/development.md`, which describes commands and local workflow.
 - `docs/decisions/`, which records durable decisions and their tradeoffs.
 
@@ -33,8 +34,9 @@ A future contributor or AI assistant should discover this document through:
 4. `docs/ai-context.md`
 5. `docs/philosophy.md`
 6. This document
-7. `docs/architecture.md`
-8. Relevant ADRs, module docs, data docs, operations docs, and source files
+7. `docs/testing-strategy.md`
+8. `docs/architecture.md`
+9. Relevant ADRs, module docs, data docs, operations docs, and source files
 
 Do not create a new documentation file unless its place in this graph and its
 discovery path are clear.
@@ -112,6 +114,14 @@ committed Prisma migrations under `prisma/migrations/`.
 
 Do not rely on unmanaged manual database changes for application behavior.
 
+### Follow The Testing Strategy
+
+Testing expectations are defined in `docs/testing-strategy.md`.
+
+Feature work should include verification appropriate to its risk: focused unit
+tests for pure logic, integration coverage for database behavior, E2E coverage
+for critical workflows, and smoke checks for runtime infrastructure.
+
 ### Treat Vendor Frameworks As Toolkits
 
 Vendor UI frameworks, including Metronic, are implementation toolkits. They do
@@ -149,8 +159,6 @@ approval before system-level changes.
 
 ## Open Questions
 
-- What automated test baseline should be required before feature implementation
-  accelerates?
 - What UI guidelines should become canonical once Metronic integration begins?
 - What security engineering principles should be added before authentication,
   authorization, public production deployment, or sensitive financial storage?

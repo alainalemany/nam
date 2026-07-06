@@ -92,6 +92,7 @@ Confirmed deployment baseline:
 | --- | --- |
 | Product requirements | `docs/prd.md` |
 | Engineering principles | `docs/engineering-principles.md` |
+| Testing strategy | `docs/testing-strategy.md` |
 | Module boundaries and workflows | `docs/modules.md` |
 | Data model | `docs/database.md` |
 | Architecture overview | `docs/architecture.md` |
@@ -156,7 +157,6 @@ single overview document.
 
 - Security architecture for authentication, authorization, financial data, and
   attachment access still needs deeper design.
-- Testing philosophy and test pyramid should be defined before feature-module
-  implementation expands.
+- Testing strategy and quality gates are defined in `docs/testing-strategy.md`.
 - UI architecture should be refined when Metronic integration and module screens
   begin.

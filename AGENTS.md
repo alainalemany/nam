@@ -29,10 +29,11 @@ order:
 3. [docs/ai-context.md](docs/ai-context.md)
 4. [docs/philosophy.md](docs/philosophy.md)
 5. [docs/engineering-principles.md](docs/engineering-principles.md)
-6. [docs/prd.md](docs/prd.md)
-7. [docs/architecture.md](docs/architecture.md)
-8. [docs/decisions/README.md](docs/decisions/README.md)
-9. The relevant domain, database, infrastructure, or implementation document.
+6. [docs/testing-strategy.md](docs/testing-strategy.md)
+7. [docs/prd.md](docs/prd.md)
+8. [docs/architecture.md](docs/architecture.md)
+9. [docs/decisions/README.md](docs/decisions/README.md)
+10. The relevant domain, database, infrastructure, or implementation document.
 
 Use [docs/README.md](docs/README.md) as the canonical documentation map.
 
@@ -44,6 +45,7 @@ Use [docs/README.md](docs/README.md) as the canonical documentation map.
 | AI reading order and context flow | [docs/ai-context.md](docs/ai-context.md) |
 | Stable project principles | [docs/philosophy.md](docs/philosophy.md) |
 | Engineering principles | [docs/engineering-principles.md](docs/engineering-principles.md) |
+| Testing strategy | [docs/testing-strategy.md](docs/testing-strategy.md) |
 | Product requirements and V1 scope | [docs/prd.md](docs/prd.md) |
 | Module workflows and boundaries | [docs/modules.md](docs/modules.md) |
 | Entities, fields, relationships, and enums | [docs/database.md](docs/database.md) |
@@ -102,6 +104,7 @@ Only confirmed items should modify canonical project documentation.
 | Unapproved idea or future possibility | `docs/ideas.md` |
 | Source form or reference artifact | `source-forms/` or `docs/assets/` |
 | Documentation style rule | `docs/documentation-style.md` |
+| Testing strategy or quality gate | `docs/testing-strategy.md` |
 
 ## Version 1 Scope Discipline
 
@@ -159,6 +162,7 @@ Review these documents first:
 - docs/ai-context.md
 - docs/philosophy.md
 - docs/engineering-principles.md
+- docs/testing-strategy.md
 - docs/prd.md
 - docs/architecture.md
 - docs/decisions/README.md
