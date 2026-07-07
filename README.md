@@ -51,6 +51,7 @@ The project documentation is the current source of truth:
 - [Documentation Index](docs/README.md)
 - [Project Philosophy](docs/philosophy.md)
 - [Engineering Principles](docs/engineering-principles.md)
+- [Engineering Quality Standards](docs/engineering-quality-standards.md)
 - [Feature Architecture](docs/feature-architecture.md)
 - [Application State And Data Flow](docs/application-state-and-data-flow.md)
 - [UI Architecture](docs/ui-architecture.md)

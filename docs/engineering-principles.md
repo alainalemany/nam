@@ -22,6 +22,8 @@ This document fits between:
 
 - `docs/philosophy.md`, which defines stable project-wide principles.
 - `docs/architecture.md`, which describes the current system shape.
+- `docs/engineering-quality-standards.md`, which defines Definition of Done,
+  quality gates, ADR criteria, and implementation workflow.
 - `docs/feature-architecture.md`, which defines feature module implementation
   standards.
 - `docs/ui-architecture.md`, which defines UI architecture and design-system
@@ -38,11 +40,12 @@ A future contributor or AI assistant should discover this document through:
 4. `docs/ai-context.md`
 5. `docs/philosophy.md`
 6. This document
-7. `docs/feature-architecture.md`
-8. `docs/ui-architecture.md`
-9. `docs/testing-strategy.md`
-10. `docs/architecture.md`
-11. Relevant ADRs, module docs, data docs, operations docs, and source files
+7. `docs/engineering-quality-standards.md`
+8. `docs/feature-architecture.md`
+9. `docs/ui-architecture.md`
+10. `docs/testing-strategy.md`
+11. `docs/architecture.md`
+12. Relevant ADRs, module docs, data docs, operations docs, and source files
 
 Do not create a new documentation file unless its place in this graph and its
 discovery path are clear.
@@ -133,6 +136,9 @@ Testing expectations are defined in `docs/testing-strategy.md`.
 Feature work should include verification appropriate to its risk: focused unit
 tests for pure logic, integration coverage for database behavior, E2E coverage
 for critical workflows, and smoke checks for runtime infrastructure.
+
+Definition of Done, required verification flow, and quality-gate process live in
+`docs/engineering-quality-standards.md`.
 
 ### Treat Vendor Frameworks As Toolkits
 

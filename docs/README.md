@@ -13,14 +13,15 @@ Human contributors should start with:
 1. [Repository Overview](../README.md)
 2. [Project Philosophy](philosophy.md)
 3. [Engineering Principles](engineering-principles.md)
-4. [Feature Architecture](feature-architecture.md)
-5. [Application State And Data Flow](application-state-and-data-flow.md)
-6. [UI Architecture](ui-architecture.md)
-7. [Testing Strategy](testing-strategy.md)
-8. [Product Requirements](prd.md)
-9. [Architecture Overview](architecture.md)
-10. [Architecture Decision Records](decisions/README.md)
-11. The relevant module, data, infrastructure, or implementation document.
+4. [Engineering Quality Standards](engineering-quality-standards.md)
+5. [Feature Architecture](feature-architecture.md)
+6. [Application State And Data Flow](application-state-and-data-flow.md)
+7. [UI Architecture](ui-architecture.md)
+8. [Testing Strategy](testing-strategy.md)
+9. [Product Requirements](prd.md)
+10. [Architecture Overview](architecture.md)
+11. [Architecture Decision Records](decisions/README.md)
+12. The relevant module, data, infrastructure, or implementation document.
 
 AI assistants should start with:
 
@@ -30,14 +31,15 @@ AI assistants should start with:
 4. [AI Context Guide](ai-context.md)
 5. [Project Philosophy](philosophy.md)
 6. [Engineering Principles](engineering-principles.md)
-7. [Feature Architecture](feature-architecture.md)
-8. [Application State And Data Flow](application-state-and-data-flow.md)
-9. [UI Architecture](ui-architecture.md)
-10. [Testing Strategy](testing-strategy.md)
-11. [Product Requirements](prd.md)
-12. [Architecture Overview](architecture.md)
-13. [ADR Index](decisions/README.md)
-14. The relevant domain and implementation documents.
+7. [Engineering Quality Standards](engineering-quality-standards.md)
+8. [Feature Architecture](feature-architecture.md)
+9. [Application State And Data Flow](application-state-and-data-flow.md)
+10. [UI Architecture](ui-architecture.md)
+11. [Testing Strategy](testing-strategy.md)
+12. [Product Requirements](prd.md)
+13. [Architecture Overview](architecture.md)
+14. [ADR Index](decisions/README.md)
+15. The relevant domain and implementation documents.
 
 The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 
@@ -59,18 +61,19 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | 3. AI context | Deterministic reading order and AI handoff rules. | `docs/ai-context.md` |
 | 4. Project philosophy | Stable principles that rarely change. | `docs/philosophy.md` |
 | 5. Engineering principles | Enduring implementation and documentation-graph rules. | `docs/engineering-principles.md` |
-| 6. Feature architecture | Feature module implementation standards and vertical-slice checklist. | `docs/feature-architecture.md` |
-| 7. Application state and data flow | Server/client state, mutation boundaries, validation, and revalidation. | `docs/application-state-and-data-flow.md` |
-| 8. UI architecture | Screen composition, design-system standards, and UI states. | `docs/ui-architecture.md` |
-| 9. Testing strategy | Test layers, quality gates, and verification expectations. | `docs/testing-strategy.md` |
-| 10. Product definition | Confirmed product requirements and scope. | `docs/prd.md` |
-| 11. Architecture overview | Current architecture shape and boundaries. | `docs/architecture.md` |
-| 12. Architecture decisions | Durable decisions with context and consequences. | `docs/decisions/` |
-| 13. Domain modules | Module workflows, boundaries, and capabilities. | `docs/modules.md` |
-| 14. Data model | Entities, fields, relationships, and enums. | `docs/database.md` |
-| 15. Operations | Development, infrastructure, recovery, and runbooks. | `docs/development.md`, `docs/infrastructure.md`, `docs/infrastructure/` |
-| 16. Planning | Roadmap and future ideas. | `docs/roadmap.md`, `docs/ideas.md` |
-| 17. Implementation | Source code, configuration, assets, and scripts. | `src/`, `prisma/`, `infrastructure/`, `public/` |
+| 6. Engineering quality standards | Definition of Done, quality gates, ADR criteria, and implementation workflow. | `docs/engineering-quality-standards.md` |
+| 7. Feature architecture | Feature module implementation standards and vertical-slice checklist. | `docs/feature-architecture.md` |
+| 8. Application state and data flow | Server/client state, mutation boundaries, validation, and revalidation. | `docs/application-state-and-data-flow.md` |
+| 9. UI architecture | Screen composition, design-system standards, and UI states. | `docs/ui-architecture.md` |
+| 10. Testing strategy | Test layers, quality gates, and verification expectations. | `docs/testing-strategy.md` |
+| 11. Product definition | Confirmed product requirements and scope. | `docs/prd.md` |
+| 12. Architecture overview | Current architecture shape and boundaries. | `docs/architecture.md` |
+| 13. Architecture decisions | Durable decisions with context and consequences. | `docs/decisions/` |
+| 14. Domain modules | Module workflows, boundaries, and capabilities. | `docs/modules.md` |
+| 15. Data model | Entities, fields, relationships, and enums. | `docs/database.md` |
+| 16. Operations | Development, infrastructure, recovery, and runbooks. | `docs/development.md`, `docs/infrastructure.md`, `docs/infrastructure/` |
+| 17. Planning | Roadmap and future ideas. | `docs/roadmap.md`, `docs/ideas.md` |
+| 18. Implementation | Source code, configuration, assets, and scripts. | `src/`, `prisma/`, `infrastructure/`, `public/` |
 
 ## Documentation Map
 
@@ -80,6 +83,7 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Understand documentation ownership | [Documentation Index](README.md) |
 | Understand stable principles | [Project Philosophy](philosophy.md) |
 | Understand engineering principles | [Engineering Principles](engineering-principles.md) |
+| Understand engineering quality standards | [Engineering Quality Standards](engineering-quality-standards.md) |
 | Understand feature architecture | [Feature Architecture](feature-architecture.md) |
 | Understand application state and data flow | [Application State And Data Flow](application-state-and-data-flow.md) |
 | Understand UI architecture | [UI Architecture](ui-architecture.md) |
@@ -111,6 +115,7 @@ to that home but should not restate the same policy in detail.
 | Documentation philosophy | `docs/philosophy.md` |
 | AI collaboration philosophy | `AGENTS.md`, context flow in `docs/ai-context.md` |
 | Engineering principles | `docs/engineering-principles.md` |
+| Engineering quality standards and Definition of Done | `docs/engineering-quality-standards.md` |
 | Feature architecture and module implementation standards | `docs/feature-architecture.md` |
 | Application state and data flow | `docs/application-state-and-data-flow.md` |
 | UI architecture and design-system standards | `docs/ui-architecture.md` |
@@ -151,6 +156,7 @@ to that home but should not restate the same policy in detail.
 | Source form or reference artifact | `source-forms/` or `docs/assets/` |
 | AI operating rule | `AGENTS.md`; reading-order support in `docs/ai-context.md` |
 | Engineering principle or implementation default | `docs/engineering-principles.md` |
+| Engineering quality process, Definition of Done, or ADR criteria | `docs/engineering-quality-standards.md` |
 | Feature architecture or module implementation standard | `docs/feature-architecture.md` |
 | Application state, data-flow rule, or mutation boundary | `docs/application-state-and-data-flow.md` |
 | UI architecture, design-system standard, or screen pattern | `docs/ui-architecture.md` |

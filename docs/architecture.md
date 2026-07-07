@@ -46,6 +46,13 @@ The canonical source for implementation and documentation-graph principles is:
 docs/engineering-principles.md
 ```
 
+The canonical source for Definition of Done, quality gates, ADR criteria, and
+implementation workflow is:
+
+```text
+docs/engineering-quality-standards.md
+```
+
 Architecture-specific principles:
 
 - Prefer simple, durable architecture over premature platform complexity.
@@ -73,6 +80,8 @@ Confirmed stack:
 - Prisma ORM
 - React Hook Form
 - Zod
+- Vitest
+- React Testing Library
 - TanStack Table
 - ApexCharts
 - Metronic UI Template
@@ -94,6 +103,7 @@ Confirmed deployment baseline:
 | --- | --- |
 | Product requirements | `docs/prd.md` |
 | Engineering principles | `docs/engineering-principles.md` |
+| Engineering quality standards | `docs/engineering-quality-standards.md` |
 | Feature architecture | `docs/feature-architecture.md` |
 | Application state and data flow | `docs/application-state-and-data-flow.md` |
 | UI architecture | `docs/ui-architecture.md` |
@@ -164,6 +174,8 @@ single overview document.
 - Security architecture for authentication, authorization, financial data, and
   attachment access still needs deeper design.
 - Testing strategy and quality gates are defined in `docs/testing-strategy.md`.
+- Engineering quality process and Definition of Done are defined in
+  `docs/engineering-quality-standards.md`.
 - Application state and data-flow standards are defined in
   `docs/application-state-and-data-flow.md`.
 - UI architecture and design-system standards are defined in

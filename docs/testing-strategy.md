@@ -46,6 +46,9 @@ strategy.
 
 The current executable testing foundation is recorded in ADR-016.
 
+Engineering quality process, Definition of Done, and required verification flow
+are defined in `docs/engineering-quality-standards.md`.
+
 ## Testing Goals
 
 Testing should protect the parts of NAM Dashboard that carry operational

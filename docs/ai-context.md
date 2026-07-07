@@ -25,28 +25,29 @@ Use this order at the start of a new chat or when context is uncertain:
 4. `docs/ai-context.md`
 5. `docs/philosophy.md`
 6. `docs/engineering-principles.md`
-7. `docs/feature-architecture.md`
-8. `docs/application-state-and-data-flow.md`
-9. `docs/ui-architecture.md`
-10. `docs/testing-strategy.md`
-11. `docs/prd.md`
-12. `docs/architecture.md`
-13. `docs/decisions/README.md`
-14. Relevant ADR files under `docs/decisions/`
-15. `docs/modules.md`
-16. `docs/database.md`
-17. `docs/roadmap.md`
-18. Relevant operations docs:
+7. `docs/engineering-quality-standards.md`
+8. `docs/feature-architecture.md`
+9. `docs/application-state-and-data-flow.md`
+10. `docs/ui-architecture.md`
+11. `docs/testing-strategy.md`
+12. `docs/prd.md`
+13. `docs/architecture.md`
+14. `docs/decisions/README.md`
+15. Relevant ADR files under `docs/decisions/`
+16. `docs/modules.md`
+17. `docs/database.md`
+18. `docs/roadmap.md`
+19. Relevant operations docs:
     - `docs/development.md`
     - `docs/infrastructure.md`
     - focused files under `docs/infrastructure/`
-19. Relevant implementation files:
+20. Relevant implementation files:
     - `src/`
     - `tests/`
     - `prisma/`
     - `compose.yaml`
     - `infrastructure/`
-20. `docs/ideas.md` only when evaluating future or unapproved concepts.
+21. `docs/ideas.md` only when evaluating future or unapproved concepts.
 
 ## Why This Order
 
@@ -59,6 +60,7 @@ The reading order moves from broad intent to specific implementation:
   reading path and operating rules.
 - Philosophy before decisions.
 - Engineering principles before implementation details.
+- Engineering quality standards before implementation workflow or handoff.
 - Feature architecture before implementing feature modules.
 - Application state and data flow before choosing mutation, validation,
   revalidation, or client-state patterns.
@@ -75,6 +77,8 @@ The reading order moves from broad intent to specific implementation:
 - Treat `AGENTS.md` as the collaboration contract.
 - Treat `docs/engineering-principles.md` as the source for implementation
   defaults and documentation-graph discipline.
+- Treat `docs/engineering-quality-standards.md` as the source for Definition
+  of Done, quality gates, ADR criteria, and implementation workflow.
 - Treat `docs/feature-architecture.md` as the source for feature module
   implementation standards.
 - Treat `docs/application-state-and-data-flow.md` as the source for

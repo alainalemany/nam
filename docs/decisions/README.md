@@ -77,6 +77,8 @@ Testing strategy and executable foundation standards are documented in
 - Link related ADRs instead of repeating their full content.
 - If a decision changes, preserve the original ADR and add a superseding ADR.
 - Use `docs/architecture.md` for the current architecture overview.
+- Use `docs/engineering-quality-standards.md` for ADR decision criteria and
+  Definition of Done.
 
 ## Status Values
 

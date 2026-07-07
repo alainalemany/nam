@@ -29,14 +29,15 @@ order:
 3. [docs/ai-context.md](docs/ai-context.md)
 4. [docs/philosophy.md](docs/philosophy.md)
 5. [docs/engineering-principles.md](docs/engineering-principles.md)
-6. [docs/feature-architecture.md](docs/feature-architecture.md)
-7. [docs/application-state-and-data-flow.md](docs/application-state-and-data-flow.md)
-8. [docs/ui-architecture.md](docs/ui-architecture.md)
-9. [docs/testing-strategy.md](docs/testing-strategy.md)
-10. [docs/prd.md](docs/prd.md)
-11. [docs/architecture.md](docs/architecture.md)
-12. [docs/decisions/README.md](docs/decisions/README.md)
-13. The relevant domain, database, infrastructure, or implementation document.
+6. [docs/engineering-quality-standards.md](docs/engineering-quality-standards.md)
+7. [docs/feature-architecture.md](docs/feature-architecture.md)
+8. [docs/application-state-and-data-flow.md](docs/application-state-and-data-flow.md)
+9. [docs/ui-architecture.md](docs/ui-architecture.md)
+10. [docs/testing-strategy.md](docs/testing-strategy.md)
+11. [docs/prd.md](docs/prd.md)
+12. [docs/architecture.md](docs/architecture.md)
+13. [docs/decisions/README.md](docs/decisions/README.md)
+14. The relevant domain, database, infrastructure, or implementation document.
 
 Use [docs/README.md](docs/README.md) as the canonical documentation map.
 
@@ -48,6 +49,7 @@ Use [docs/README.md](docs/README.md) as the canonical documentation map.
 | AI reading order and context flow | [docs/ai-context.md](docs/ai-context.md) |
 | Stable project principles | [docs/philosophy.md](docs/philosophy.md) |
 | Engineering principles | [docs/engineering-principles.md](docs/engineering-principles.md) |
+| Engineering quality standards | [docs/engineering-quality-standards.md](docs/engineering-quality-standards.md) |
 | Feature architecture and module standards | [docs/feature-architecture.md](docs/feature-architecture.md) |
 | Application state and data flow | [docs/application-state-and-data-flow.md](docs/application-state-and-data-flow.md) |
 | UI architecture and design-system standards | [docs/ui-architecture.md](docs/ui-architecture.md) |
@@ -98,6 +100,9 @@ Only confirmed items should modify canonical project documentation.
 - Treat testing as part of the engineering quality gate. Use
   [docs/testing-strategy.md](docs/testing-strategy.md) for policy and
   [docs/development.md](docs/development.md) for executable commands.
+- Use [docs/engineering-quality-standards.md](docs/engineering-quality-standards.md)
+  for Definition of Done, quality gates, ADR criteria, and implementation
+  workflow.
 
 ## Documentation Destinations
 
@@ -114,6 +119,7 @@ Only confirmed items should modify canonical project documentation.
 | Unapproved idea or future possibility | `docs/ideas.md` |
 | Source form or reference artifact | `source-forms/` or `docs/assets/` |
 | Documentation style rule | `docs/documentation-style.md` |
+| Engineering quality process or Definition of Done | `docs/engineering-quality-standards.md` |
 | Feature architecture or module implementation standard | `docs/feature-architecture.md` |
 | Application state or data-flow standard | `docs/application-state-and-data-flow.md` |
 | UI architecture or design-system standard | `docs/ui-architecture.md` |
@@ -175,6 +181,7 @@ Review these documents first:
 - docs/ai-context.md
 - docs/philosophy.md
 - docs/engineering-principles.md
+- docs/engineering-quality-standards.md
 - docs/feature-architecture.md
 - docs/application-state-and-data-flow.md
 - docs/ui-architecture.md

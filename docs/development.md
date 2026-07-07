@@ -8,6 +8,9 @@ Enduring implementation defaults, such as vertical-slice development,
 feature-based module organization, Prisma migration discipline, and
 documentation-graph rules, live in `docs/engineering-principles.md`.
 
+Engineering quality standards, Definition of Done, ADR criteria, and quality
+gate expectations live in `docs/engineering-quality-standards.md`.
+
 Feature module implementation standards live in `docs/feature-architecture.md`.
 This development guide should document executable commands and local workflow,
 not duplicate feature architecture policy.
