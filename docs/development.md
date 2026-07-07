@@ -96,6 +96,35 @@ Build the application:
 pnpm build
 ```
 
+Run the current lint/type-check gate:
+
+```bash
+pnpm lint
+```
+
+The current `lint` script runs TypeScript with `--noEmit`. Add a dedicated
+ESLint configuration later only when the project is ready to standardize lint
+rules.
+
+Run tests once:
+
+```bash
+pnpm test:run
+```
+
+Run tests in watch mode:
+
+```bash
+pnpm test
+pnpm test:watch
+```
+
+Run coverage:
+
+```bash
+pnpm test:coverage
+```
+
 Run the development server:
 
 ```bash
@@ -206,6 +235,24 @@ The canonical testing strategy is:
 docs/testing-strategy.md
 ```
 
-No test framework or test command is configured yet. When testing tools are
-added, document the executable commands here and keep the testing policy in the
-testing strategy.
+The current executable testing foundation uses:
+
+- Vitest
+- jsdom
+- React Testing Library
+- `@testing-library/jest-dom`
+- V8 coverage through Vitest
+
+Test files live under:
+
+```text
+tests/unit/
+tests/components/
+tests/api/
+tests/fixtures/
+tests/setup/
+```
+
+Use `pnpm test:run` before handing off a code change. Use `pnpm build` for the
+current production-build quality gate. Use `pnpm lint` for the current
+TypeScript no-emit gate.

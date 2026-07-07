@@ -84,6 +84,7 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Understand application state and data flow | [Application State And Data Flow](application-state-and-data-flow.md) |
 | Understand UI architecture | [UI Architecture](ui-architecture.md) |
 | Understand testing strategy | [Testing Strategy](testing-strategy.md) |
+| Run tests and local quality gates | [Development Guide](development.md) |
 | Understand AI context flow | [AI Context Guide](ai-context.md) |
 | Understand product scope | [Product Requirements](prd.md) |
 | Understand module behavior | [Modules](modules.md) |
@@ -127,6 +128,7 @@ to that home but should not restate the same policy in detail.
 | Development workflow | `docs/development.md` |
 | Coding and implementation philosophy | `docs/engineering-principles.md`; implementation details belong near code |
 | Testing philosophy and quality gates | `docs/testing-strategy.md` |
+| Test commands and local workflow | `docs/development.md` |
 | UI philosophy and design-system standards | `docs/ui-architecture.md`; product UX goals remain in `docs/prd.md` |
 | Documentation style | `docs/documentation-style.md` |
 | Documentation graph rules | `docs/engineering-principles.md`, navigation details in `docs/README.md` |
@@ -153,6 +155,7 @@ to that home but should not restate the same policy in detail.
 | Application state, data-flow rule, or mutation boundary | `docs/application-state-and-data-flow.md` |
 | UI architecture, design-system standard, or screen pattern | `docs/ui-architecture.md` |
 | Testing strategy, test layer, or quality gate | `docs/testing-strategy.md` |
+| Test command or local quality-gate workflow | `docs/development.md` |
 
 ## Navigation Rules
 

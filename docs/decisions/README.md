@@ -25,6 +25,7 @@ maintainability.
 | [ADR-013](adr-013-bootstrap-checks-and-server-config.md) | 2026-06-30 | Infrastructure/recovery | Infrastructure uses repository-owned bootstrap scripts, read-only verification checks, and server-config templates. |
 | [ADR-014](adr-014-metronic-integration-strategy.md) | 2026-07-01 | UI architecture | Metronic is a vendor UI toolkit, not the application architecture. |
 | [ADR-015](adr-015-application-state-and-data-flow.md) | 2026-07-06 | Application architecture | Server-owned persisted data, explicit mutation boundaries, local UI state by default, and no premature global state layer. |
+| [ADR-016](adr-016-testing-foundation.md) | 2026-07-06 | Testing architecture | Vitest, jsdom, React Testing Library, and top-level test directories establish the executable testing foundation. |
 
 ## Categories
 
@@ -58,9 +59,15 @@ UI architecture:
 
 - ADR-014
 
+Testing architecture:
+
+- ADR-016
+
 UI architecture standards are documented in `docs/ui-architecture.md`.
 Application state and data-flow standards are documented in
 `docs/application-state-and-data-flow.md`.
+Testing strategy and executable foundation standards are documented in
+`docs/testing-strategy.md`.
 
 ## Process
 

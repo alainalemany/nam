@@ -21,6 +21,8 @@ NAM Dashboard is being built as a professional, modular web application for pers
 - Prisma ORM
 - React Hook Form
 - Zod
+- Vitest
+- React Testing Library
 - TanStack Table
 - ApexCharts
 - Metronic UI Template
@@ -80,9 +82,10 @@ Source forms and reference images are stored under:
 This project is in active application-foundation development.
 
 The repository includes a Next.js, TypeScript, Prisma, PostgreSQL, Docker
-Compose, and host-level Caddy development baseline. Operations reference data
-and the Daily Work Log foundation have been implemented. Future modules should
-continue to follow the documentation-first, vertical-slice approach.
+Compose, host-level Caddy development baseline, and executable Vitest testing
+foundation. Operations reference data and the Daily Work Log foundation have
+been implemented. Future modules should continue to follow the
+documentation-first, vertical-slice approach.
 
 ## Version 1 Focus
 
@@ -134,4 +137,4 @@ This repository contains planning documents, architecture notes, source form ref
 
 Application source code is organized under `src/`, Prisma schema and migrations
 under `prisma/`, infrastructure assets under `infrastructure/`, and public
-assets under `public/`.
+assets under `public/`. Executable tests live under `tests/`.

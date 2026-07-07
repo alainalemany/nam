@@ -52,6 +52,7 @@ Use [docs/README.md](docs/README.md) as the canonical documentation map.
 | Application state and data flow | [docs/application-state-and-data-flow.md](docs/application-state-and-data-flow.md) |
 | UI architecture and design-system standards | [docs/ui-architecture.md](docs/ui-architecture.md) |
 | Testing strategy | [docs/testing-strategy.md](docs/testing-strategy.md) |
+| Test commands and local quality gates | [docs/development.md](docs/development.md) |
 | Product requirements and V1 scope | [docs/prd.md](docs/prd.md) |
 | Module workflows and boundaries | [docs/modules.md](docs/modules.md) |
 | Entities, fields, relationships, and enums | [docs/database.md](docs/database.md) |
@@ -94,6 +95,9 @@ Only confirmed items should modify canonical project documentation.
 - Put durable architecture decisions in [docs/decisions/](docs/decisions/).
 - Put operational commands and runbooks in infrastructure or development docs,
   not in ADRs.
+- Treat testing as part of the engineering quality gate. Use
+  [docs/testing-strategy.md](docs/testing-strategy.md) for policy and
+  [docs/development.md](docs/development.md) for executable commands.
 
 ## Documentation Destinations
 
@@ -113,7 +117,7 @@ Only confirmed items should modify canonical project documentation.
 | Feature architecture or module implementation standard | `docs/feature-architecture.md` |
 | Application state or data-flow standard | `docs/application-state-and-data-flow.md` |
 | UI architecture or design-system standard | `docs/ui-architecture.md` |
-| Testing strategy or quality gate | `docs/testing-strategy.md` |
+| Testing strategy or quality gate | `docs/testing-strategy.md`; executable commands in `docs/development.md` |
 
 ## Version 1 Scope Discipline
 

@@ -42,6 +42,7 @@ Use this order at the start of a new chat or when context is uncertain:
     - focused files under `docs/infrastructure/`
 19. Relevant implementation files:
     - `src/`
+    - `tests/`
     - `prisma/`
     - `compose.yaml`
     - `infrastructure/`
@@ -83,6 +84,8 @@ The reading order moves from broad intent to specific implementation:
   design-system standards, and screen patterns.
 - Treat `docs/testing-strategy.md` as the source for test layers, quality
   gates, and verification expectations.
+- Treat `docs/development.md` as the source for executable test commands and
+  local quality-gate workflow.
 - Treat `docs/decisions/` as the authority for durable architecture decisions.
 - Treat `docs/ideas.md` as unapproved unless the user explicitly promotes an
   item.

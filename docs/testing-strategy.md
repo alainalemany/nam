@@ -2,10 +2,8 @@
 
 This document is the canonical testing strategy for NAM Dashboard.
 
-It defines testing goals, test layers, verification expectations, and future
-quality gates. It does not install test frameworks, define package scripts, or
-replace the development guide. Concrete commands belong in `docs/development.md`
-after the corresponding tools are added to the project.
+It defines testing goals, test layers, verification expectations, and quality
+gates. Concrete commands belong in `docs/development.md`.
 
 ## Classification
 
@@ -46,6 +44,8 @@ Do not place testing policy only in chat history, package scripts, or CI files.
 Those may enforce the strategy, but this document is the canonical testing
 strategy.
 
+The current executable testing foundation is recorded in ADR-016.
+
 ## Testing Goals
 
 Testing should protect the parts of NAM Dashboard that carry operational
@@ -63,6 +63,47 @@ history:
 Testing should scale with risk. Small pure helpers need narrow tests. Database
 schema changes, server actions, infrastructure changes, and user-facing
 workflows need broader verification.
+
+Testing is now part of the engineering quality gate. Feature work should include
+the smallest meaningful automated checks when the change touches validation,
+helpers, route behavior, or stable UI behavior.
+
+## Current Test Tooling
+
+NAM Dashboard currently uses:
+
+- Vitest for unit, component, and route-level tests.
+- jsdom for browser-like component tests.
+- React Testing Library for React component behavior.
+- `@testing-library/jest-dom` for DOM assertions.
+- Vitest V8 coverage for optional local coverage reports.
+
+Executable commands live in `docs/development.md`.
+
+## Test Locations
+
+Current top-level test directories:
+
+```text
+tests/unit/
+tests/components/
+tests/api/
+tests/fixtures/
+tests/setup/
+```
+
+Use these directories as follows:
+
+- `tests/unit/` for pure validation, formatting, and helper tests.
+- `tests/components/` for stable React component behavior.
+- `tests/api/` for API route behavior that can be tested without production
+  data.
+- `tests/fixtures/` for small shared deterministic test data.
+- `tests/setup/` for Vitest and Testing Library setup.
+
+Feature-specific `src/features/<feature>/__tests__/` directories may be added
+later if a feature becomes large enough that colocated tests improve
+maintainability.
 
 ## Test Pyramid
 
@@ -169,6 +210,11 @@ Future API routes should define:
 Playwright/E2E tests should cover user-critical browser workflows, not every UI
 detail.
 
+E2E testing is deferred from the testing foundation because the project does not
+yet have a standardized test database setup, seed/reset workflow, or Playwright
+configuration. Add E2E tests as a separate milestone after those runtime
+assumptions are documented.
+
 UI behavior expectations are defined in `docs/ui-architecture.md`.
 
 Initial high-value workflows:
@@ -221,6 +267,12 @@ Recommended gates:
 No CI workflow is added by this document. CI should be introduced as a separate
 implementation change after tools and commands are selected.
 
+Until CI exists, local quality gates are:
+
+- `pnpm lint`
+- `pnpm test:run`
+- `pnpm build`
+
 ## Manual Verification Expectations
 
 Manual verification remains required when a change affects:
@@ -261,24 +313,34 @@ Deferred areas:
 Tests for these areas should be added when their requirements and
 implementation exist.
 
-## Future Test Locations
+## Future Test Layers
 
-Recommended future locations:
+Recommended future locations when those layers are approved:
 
 ```text
-src/features/<feature>/__tests__/
-src/app/**/__tests__/
 tests/integration/
 tests/e2e/
 tests/smoke/
 ```
 
-Feature-specific tests should live close to the feature when practical.
 Cross-feature integration, E2E, and smoke tests should live under top-level
 `tests/` directories once those test layers are implemented.
 
 Feature module structure and ownership rules live in
 `docs/feature-architecture.md`.
+
+## AI Testing Guidance
+
+Future AI assistants should:
+
+- Read this document before adding or changing tests.
+- Use `docs/development.md` for current test commands.
+- Prefer small tests tied to the changed behavior.
+- Avoid broad snapshots, production database dependencies, and large mocking
+  frameworks.
+- Add test helpers only when repeated setup makes them necessary.
+- Keep E2E, integration database setup, and CI expansion as separate approved
+  milestones.
 
 ## Open Questions
 
