@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildDailyLogWhere,
+  dailyLogFilterHref,
   hasDailyLogFilters,
   parseDailyLogFilters,
+  selectedDailyLogDate,
+  shiftDailyLogDate,
+  todayDateValue,
 } from "@/features/daily-logs/filters";
 
 describe("parseDailyLogFilters", () => {
@@ -48,6 +52,63 @@ describe("parseDailyLogFilters", () => {
       activityType: undefined,
     });
     expect(hasDailyLogFilters(filters)).toBe(false);
+  });
+});
+
+describe("Daily Log date navigation helpers", () => {
+  it("uses an exact date range as the selected date", () => {
+    expect(
+      selectedDailyLogDate(
+        {
+          dateFrom: "2026-07-08",
+          dateTo: "2026-07-08",
+        },
+        "2026-07-10",
+      ),
+    ).toBe("2026-07-08");
+  });
+
+  it("falls back to today when the active range is not one selected date", () => {
+    expect(
+      selectedDailyLogDate(
+        {
+          dateFrom: "2026-07-01",
+          dateTo: "2026-07-08",
+        },
+        "2026-07-10",
+      ),
+    ).toBe("2026-07-10");
+  });
+
+  it("builds previous and next date values using UTC date-only math", () => {
+    expect(shiftDailyLogDate("2026-07-01", -1)).toBe("2026-06-30");
+    expect(shiftDailyLogDate("2026-12-31", 1)).toBe("2027-01-01");
+  });
+
+  it("builds a today value from the provided Date", () => {
+    expect(todayDateValue(new Date("2026-07-08T12:00:00.000Z"))).toBe(
+      "2026-07-08",
+    );
+  });
+
+  it("builds Daily Log filter links while preserving active filters", () => {
+    const href = dailyLogFilterHref(
+      {
+        q: "dragline",
+        dateFrom: "2026-07-08",
+        dateTo: "2026-07-08",
+        equipmentId: "equipment-1",
+        shift: "DAY",
+      },
+      {
+        dateFrom: "2026-07-09",
+        dateTo: "2026-07-09",
+      },
+    );
+
+    expect(href).toBe(
+      "/daily-logs?q=dragline&dateFrom=2026-07-09&dateTo=2026-07-09&equipmentId=equipment-1&shift=DAY",
+    );
   });
 });
 

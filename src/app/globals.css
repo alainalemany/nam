@@ -347,6 +347,17 @@ textarea {
   justify-content: flex-end;
 }
 
+.date-navigation-panel {
+  align-items: center;
+}
+
+.date-navigation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .error-panel {
   display: grid;
   justify-items: start;

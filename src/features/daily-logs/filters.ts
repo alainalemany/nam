@@ -20,6 +20,7 @@ export type DailyLogFilters = {
 };
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+const dailyLogsPath = "/daily-logs";
 
 function firstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -58,6 +59,10 @@ function dateOnly(value: string) {
   return new Date(`${value}T00:00:00.000Z`);
 }
 
+function dateValue(value: Date) {
+  return value.toISOString().slice(0, 10);
+}
+
 function contains(value: string) {
   return {
     contains: value,
@@ -90,6 +95,40 @@ export function parseDailyLogFilters(searchParams: DailyLogSearchParams): DailyL
 
 export function hasDailyLogFilters(filters: DailyLogFilters) {
   return Object.values(filters).some((value) => Boolean(value));
+}
+
+export function selectedDailyLogDate(filters: DailyLogFilters, today: string) {
+  return filters.dateFrom && filters.dateFrom === filters.dateTo ? filters.dateFrom : today;
+}
+
+export function todayDateValue(now = new Date()) {
+  return dateValue(now);
+}
+
+export function shiftDailyLogDate(value: string, days: number) {
+  const date = dateOnly(value);
+  date.setUTCDate(date.getUTCDate() + days);
+  return dateValue(date);
+}
+
+export function dailyLogFilterHref(
+  filters: DailyLogFilters,
+  updates: Partial<DailyLogFilters>,
+) {
+  const nextFilters: DailyLogFilters = {
+    ...filters,
+    ...updates,
+  };
+  const params = new URLSearchParams();
+
+  Object.entries(nextFilters).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    }
+  });
+
+  const query = params.toString();
+  return query ? `${dailyLogsPath}?${query}` : dailyLogsPath;
 }
 
 export function buildDailyLogWhere(filters: DailyLogFilters): Prisma.DailyLogWhereInput {

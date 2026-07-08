@@ -3,8 +3,12 @@ import Link from "next/link";
 import { dailyLogActivityTypeOptions, optionLabel, shiftOptions } from "@/features/daily-logs/constants";
 import { displayDateOnly, getDailyLogFormOptions, getDailyLogs } from "@/features/daily-logs/data";
 import {
+  dailyLogFilterHref,
   hasDailyLogFilters,
   parseDailyLogFilters,
+  selectedDailyLogDate,
+  shiftDailyLogDate,
+  todayDateValue,
   type DailyLogSearchParams,
 } from "@/features/daily-logs/filters";
 
@@ -17,6 +21,10 @@ type DailyLogsPageProps = {
 export default async function DailyLogsPage({ searchParams }: DailyLogsPageProps) {
   const filters = parseDailyLogFilters((await searchParams) ?? {});
   const filtersActive = hasDailyLogFilters(filters);
+  const today = todayDateValue();
+  const selectedDate = selectedDailyLogDate(filters, today);
+  const previousDate = shiftDailyLogDate(selectedDate, -1);
+  const nextDate = shiftDailyLogDate(selectedDate, 1);
   const [dailyLogs, options] = await Promise.all([
     getDailyLogs(filters),
     getDailyLogFormOptions(),
@@ -36,6 +44,45 @@ export default async function DailyLogsPage({ searchParams }: DailyLogsPageProps
         <Link className="button primary" href="/daily-logs/new">
           New Daily Log
         </Link>
+      </section>
+
+      <section className="panel date-navigation-panel" aria-labelledby="daily-log-date-heading">
+        <div>
+          <p className="eyebrow">Date navigation</p>
+          <h2 id="daily-log-date-heading">{selectedDate}</h2>
+          <p className="summary">
+            Jump by day while keeping the other Daily Log filters active.
+          </p>
+        </div>
+        <div className="date-navigation-actions">
+          <Link
+            className="button secondary"
+            href={dailyLogFilterHref(filters, {
+              dateFrom: previousDate,
+              dateTo: previousDate,
+            })}
+          >
+            Previous Day
+          </Link>
+          <Link
+            className="button secondary"
+            href={dailyLogFilterHref(filters, {
+              dateFrom: today,
+              dateTo: today,
+            })}
+          >
+            Today
+          </Link>
+          <Link
+            className="button secondary"
+            href={dailyLogFilterHref(filters, {
+              dateFrom: nextDate,
+              dateTo: nextDate,
+            })}
+          >
+            Next Day
+          </Link>
+        </div>
       </section>
 
       <section className="panel filter-panel" aria-labelledby="daily-log-filters-heading">
