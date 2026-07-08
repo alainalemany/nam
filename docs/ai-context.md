@@ -31,27 +31,28 @@ Use this order at the start of a new chat or when context is uncertain:
 10. `docs/engineering-principles.md`
 11. `docs/engineering-quality-standards.md`
 12. `docs/feature-architecture.md`
-13. `docs/application-state-and-data-flow.md`
-14. `docs/ui-architecture.md`
-15. `docs/testing-strategy.md`
-16. `docs/prd.md`
-17. `docs/architecture.md`
-18. `docs/decisions/README.md`
-19. Relevant ADR files under `docs/decisions/`
-20. `docs/modules.md`
-21. `docs/database.md`
-22. `docs/roadmap.md`
-23. Relevant operations docs:
+13. `docs/architecture/features/README.md`
+14. `docs/application-state-and-data-flow.md`
+15. `docs/ui-architecture.md`
+16. `docs/testing-strategy.md`
+17. `docs/prd.md`
+18. `docs/architecture.md`
+19. `docs/decisions/README.md`
+20. Relevant ADR files under `docs/decisions/`
+21. `docs/modules.md`
+22. `docs/database.md`
+23. `docs/roadmap.md`
+24. Relevant operations docs:
     - `docs/development.md`
     - `docs/infrastructure.md`
     - focused files under `docs/infrastructure/`
-24. Relevant implementation files:
+25. Relevant implementation files:
     - `src/`
     - `tests/`
     - `prisma/`
     - `compose.yaml`
     - `infrastructure/`
-25. `docs/ideas.md` only when evaluating future or unapproved concepts.
+26. `docs/ideas.md` only when evaluating future or unapproved concepts.
 
 ## Why This Order
 
@@ -74,6 +75,8 @@ The reading order moves from broad intent to specific implementation:
 - Engineering principles before implementation details.
 - Engineering quality standards before implementation workflow or handoff.
 - Feature architecture before implementing feature modules.
+- Feature implementation architecture document conventions before creating
+  Level 2 feature-specific architecture documents.
 - Application state and data flow before choosing mutation, validation,
   revalidation, or client-state patterns.
 - UI architecture before implementing screen or component patterns.
@@ -101,6 +104,8 @@ The reading order moves from broad intent to specific implementation:
   of Done, quality gates, ADR criteria, and implementation workflow.
 - Treat `docs/feature-architecture.md` as the source for feature module
   implementation standards.
+- Treat `docs/architecture/features/README.md` as the source for
+  feature-specific implementation architecture document conventions.
 - Treat `docs/application-state-and-data-flow.md` as the source for
   server/client state, mutation flow, validation boundaries, and revalidation
   strategy.

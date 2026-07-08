@@ -47,6 +47,8 @@ Related authorities:
 - Product scope lives in `docs/prd.md`.
 - Module behavior lives in `docs/modules.md`.
 - Data model rules live in `docs/database.md`.
+- Feature-specific implementation architecture document conventions live in
+  `docs/architecture/features/README.md`.
 
 ## Purpose
 
@@ -162,6 +164,7 @@ Use these destinations:
 | Module workflow or boundary | `docs/modules.md` |
 | Entity, field, relationship, enum, or data rule | `docs/database.md` |
 | Feature implementation standard | `docs/feature-architecture.md` |
+| Feature-specific implementation architecture document convention | `docs/architecture/features/README.md` |
 | State or mutation-flow standard | `docs/application-state-and-data-flow.md` |
 | UI standard | `docs/ui-architecture.md` |
 | Testing policy or quality gate | `docs/testing-strategy.md` |

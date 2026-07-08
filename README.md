@@ -57,6 +57,7 @@ The project documentation is the current source of truth:
 - [Engineering Principles](docs/engineering-principles.md)
 - [Engineering Quality Standards](docs/engineering-quality-standards.md)
 - [Feature Architecture](docs/feature-architecture.md)
+- [Feature Implementation Architecture Documents](docs/architecture/features/README.md)
 - [Application State And Data Flow](docs/application-state-and-data-flow.md)
 - [UI Architecture](docs/ui-architecture.md)
 - [Testing Strategy](docs/testing-strategy.md)

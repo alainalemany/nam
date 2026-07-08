@@ -43,6 +43,7 @@ It should answer:
 | `docs/database.md` | Defines entity, relationship, enum, and data-rule dependencies. |
 | `docs/roadmap.md` | Defines module-by-module implementation sequencing. |
 | `docs/feature-architecture.md` | Defines feature implementation structure once dependencies are understood. |
+| `docs/architecture/features/README.md` | Defines where feature-specific implementation architecture documents live and how they are structured. |
 | `docs/engineering-quality-standards.md` | Defines Definition of Done and quality gates. |
 | `docs/decisions/` | Records durable architecture decisions when dependency choices have long-term consequences. |
 
@@ -158,6 +159,7 @@ Examples:
 | Dependency | Meaning |
 | --- | --- |
 | New docs depend on graph placement | A new document should not exist unless future readers can discover it naturally. |
+| Feature architecture docs depend on the Level 2 convention | Feature-specific implementation architecture documents should follow `docs/architecture/features/README.md`. |
 | Feature work depends on confirmed scope | Implementation should follow approved requirements rather than chat-only ideas. |
 | Architecture changes depend on ADR review | Durable cross-cutting decisions may require an ADR before implementation. |
 | Verification changes depend on testing and development docs | Test policy and executable commands have separate canonical homes. |

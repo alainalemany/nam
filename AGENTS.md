@@ -35,13 +35,14 @@ order:
 9. [docs/engineering-principles.md](docs/engineering-principles.md)
 10. [docs/engineering-quality-standards.md](docs/engineering-quality-standards.md)
 11. [docs/feature-architecture.md](docs/feature-architecture.md)
-12. [docs/application-state-and-data-flow.md](docs/application-state-and-data-flow.md)
-13. [docs/ui-architecture.md](docs/ui-architecture.md)
-14. [docs/testing-strategy.md](docs/testing-strategy.md)
-15. [docs/prd.md](docs/prd.md)
-16. [docs/architecture.md](docs/architecture.md)
-17. [docs/decisions/README.md](docs/decisions/README.md)
-18. The relevant domain, database, infrastructure, or implementation document.
+12. [docs/architecture/features/README.md](docs/architecture/features/README.md)
+13. [docs/application-state-and-data-flow.md](docs/application-state-and-data-flow.md)
+14. [docs/ui-architecture.md](docs/ui-architecture.md)
+15. [docs/testing-strategy.md](docs/testing-strategy.md)
+16. [docs/prd.md](docs/prd.md)
+17. [docs/architecture.md](docs/architecture.md)
+18. [docs/decisions/README.md](docs/decisions/README.md)
+19. The relevant domain, database, infrastructure, or implementation document.
 
 Use [docs/README.md](docs/README.md) as the canonical documentation map.
 
@@ -59,6 +60,7 @@ Use [docs/README.md](docs/README.md) as the canonical documentation map.
 | Engineering principles | [docs/engineering-principles.md](docs/engineering-principles.md) |
 | Engineering quality standards | [docs/engineering-quality-standards.md](docs/engineering-quality-standards.md) |
 | Feature architecture and module standards | [docs/feature-architecture.md](docs/feature-architecture.md) |
+| Feature implementation architecture document convention | [docs/architecture/features/README.md](docs/architecture/features/README.md) |
 | Application state and data flow | [docs/application-state-and-data-flow.md](docs/application-state-and-data-flow.md) |
 | UI architecture and design-system standards | [docs/ui-architecture.md](docs/ui-architecture.md) |
 | Testing strategy | [docs/testing-strategy.md](docs/testing-strategy.md) |
@@ -133,6 +135,7 @@ Only confirmed items should modify canonical project documentation.
 | Documentation style rule | `docs/documentation-style.md` |
 | Engineering quality process or Definition of Done | `docs/engineering-quality-standards.md` |
 | Feature architecture or module implementation standard | `docs/feature-architecture.md` |
+| Feature-specific implementation architecture document convention | `docs/architecture/features/README.md` |
 | Application state or data-flow standard | `docs/application-state-and-data-flow.md` |
 | UI architecture or design-system standard | `docs/ui-architecture.md` |
 | Testing strategy or quality gate | `docs/testing-strategy.md`; executable commands in `docs/development.md` |
@@ -199,6 +202,7 @@ Review these documents first:
 - docs/engineering-principles.md
 - docs/engineering-quality-standards.md
 - docs/feature-architecture.md
+- docs/architecture/features/README.md
 - docs/application-state-and-data-flow.md
 - docs/ui-architecture.md
 - docs/testing-strategy.md

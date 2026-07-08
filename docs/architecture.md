@@ -121,6 +121,7 @@ Confirmed deployment baseline:
 | Engineering principles | `docs/engineering-principles.md` |
 | Engineering quality standards | `docs/engineering-quality-standards.md` |
 | Feature architecture | `docs/feature-architecture.md` |
+| Feature implementation architecture document convention | `docs/architecture/features/README.md` |
 | Application state and data flow | `docs/application-state-and-data-flow.md` |
 | UI architecture | `docs/ui-architecture.md` |
 | Testing strategy | `docs/testing-strategy.md` |

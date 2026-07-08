@@ -13,6 +13,9 @@ live in [Delivery Architecture](delivery-architecture.md).
 Dependency types, dependency principles, and dependency evolution live in
 [Dependency Architecture](dependency-architecture.md).
 
+Feature-specific implementation architecture document conventions live in
+[Feature Implementation Architecture Documents](architecture/features/README.md).
+
 ## Classification
 
 | Classification | Meaning |
@@ -31,6 +34,7 @@ docs/philosophy.md
 -> docs/dependency-architecture.md
 -> docs/engineering-principles.md
 -> docs/feature-architecture.md
+-> docs/architecture/features/README.md
 -> docs/application-state-and-data-flow.md
 -> docs/development.md
 -> implementation files
@@ -53,9 +57,12 @@ Related authorities:
 - UI architecture and design-system standards live in `docs/ui-architecture.md`.
 - Testing strategy lives in `docs/testing-strategy.md`.
 - Development commands live in `docs/development.md`.
+- Feature-specific implementation architecture document conventions live in
+  `docs/architecture/features/README.md`.
 
 Do not create a new feature architecture document unless its graph location and
-discovery path are clear.
+discovery path are clear. Feature-specific implementation architecture documents
+should follow `docs/architecture/features/README.md`.
 
 ## Purpose
 
@@ -86,6 +93,7 @@ Use the right document for the right question:
 | What data should exist? | `docs/database.md` |
 | Why was a durable architecture choice made? | `docs/decisions/` |
 | How should feature code be organized? | `docs/feature-architecture.md` |
+| Where should feature-specific architecture documents live? | `docs/architecture/features/README.md` |
 | How should state and mutations flow? | `docs/application-state-and-data-flow.md` |
 | How should screens look and behave? | `docs/ui-architecture.md` |
 | How should tests be layered? | `docs/testing-strategy.md` |

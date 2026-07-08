@@ -45,6 +45,7 @@ It should answer:
 | `docs/database.md` | Defines entities, relationships, enums, and data rules. |
 | `docs/roadmap.md` | Defines module-by-module implementation sequencing. |
 | `docs/feature-architecture.md` | Defines how approved feature slices are organized in code. |
+| `docs/architecture/features/README.md` | Defines the convention for Level 2 feature implementation architecture documents. |
 | `docs/application-state-and-data-flow.md` | Defines state ownership, mutation flow, validation boundaries, and revalidation. |
 | `docs/ui-architecture.md` | Defines screen composition, UI states, and design-system standards. |
 | `docs/testing-strategy.md` | Defines testing layers and verification expectations. |
@@ -131,6 +132,10 @@ The delivery shape should identify:
 - Required validation and mutation boundaries.
 - Expected verification level.
 - Documentation that may need updates.
+
+If the feature is complex enough to need durable implementation architecture
+guidance, use `docs/architecture/features/README.md` before creating a
+feature-specific architecture document.
 
 ### 3. Requirement And Dependency Check
 
