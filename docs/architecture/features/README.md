@@ -60,6 +60,12 @@ only when a feature actually needs durable implementation architecture guidance.
 Do not move existing architecture documents into this directory unless a future
 documentation architecture milestone explicitly approves that reorganization.
 
+## Current Feature Documents
+
+| Feature | Document | Status |
+| --- | --- | --- |
+| Daily Work Logs | [Daily Work Logs Architecture](daily-work-logs.md) | Draft |
+
 ## Standard Metadata Block
 
 Each feature implementation architecture document should begin with a metadata

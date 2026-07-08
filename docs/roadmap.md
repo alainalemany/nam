@@ -126,6 +126,10 @@ future phases.
 
 ## Daily Log And Historical Search Roadmap
 
+Feature implementation architecture:
+
+`docs/architecture/features/daily-work-logs.md`
+
 ### Phase 1: Requirements Definition
 
 - Define Daily Log activity categories

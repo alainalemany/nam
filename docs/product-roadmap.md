@@ -295,7 +295,7 @@ The MVP should not require:
 | Capability group | Product priority | Main dependency | Status |
 | --- | --- | --- | --- |
 | Operations reference data | Establishes shared mine and equipment context. | None beyond the application foundation. | Implemented |
-| Daily Work Log foundation | Establishes the first usable workday history. | Operations reference data. | Implemented |
+| Daily Work Log foundation | Establishes the first usable workday history. | Operations reference data. Feature architecture: `docs/architecture/features/daily-work-logs.md`. | Implemented |
 | Search, calendar, and Day View | Makes historical lookup practical across modules. | Daily records and date-aware modules. | Planned |
 | Shift Reports | Creates the parent structure for shift paperwork. | Daily/date context and equipment references. | Planned |
 | Work Authorizations | Captures safety and maintenance work records. | Shift Reports. | Planned |
