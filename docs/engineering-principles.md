@@ -21,6 +21,8 @@ question.
 This document fits between:
 
 - `docs/philosophy.md`, which defines stable project-wide principles.
+- `docs/product-vision.md`, which defines product identity, users, business
+  objectives, MVP, and long-term direction.
 - `docs/architecture.md`, which describes the current system shape.
 - `docs/engineering-quality-standards.md`, which defines Definition of Done,
   quality gates, ADR criteria, and implementation workflow.
@@ -39,13 +41,14 @@ A future contributor or AI assistant should discover this document through:
 3. `docs/README.md`
 4. `docs/ai-context.md`
 5. `docs/philosophy.md`
-6. This document
-7. `docs/engineering-quality-standards.md`
-8. `docs/feature-architecture.md`
-9. `docs/ui-architecture.md`
-10. `docs/testing-strategy.md`
-11. `docs/architecture.md`
-12. Relevant ADRs, module docs, data docs, operations docs, and source files
+6. `docs/product-vision.md`
+7. This document
+8. `docs/engineering-quality-standards.md`
+9. `docs/feature-architecture.md`
+10. `docs/ui-architecture.md`
+11. `docs/testing-strategy.md`
+12. `docs/architecture.md`
+13. Relevant ADRs, module docs, data docs, operations docs, and source files
 
 Do not create a new documentation file unless its place in this graph and its
 discovery path are clear.
@@ -58,10 +61,11 @@ Implementation should follow confirmed documentation. When code and
 documentation disagree, identify the conflict, name the authoritative document,
 and update the correct source of truth before building on uncertain assumptions.
 
-Requirements belong in `docs/prd.md`, module workflows in `docs/modules.md`,
-data model details in `docs/database.md`, architecture decisions in
-`docs/decisions/`, infrastructure procedures in `docs/infrastructure.md` or
-`docs/infrastructure/`, and development commands in `docs/development.md`.
+Product identity belongs in `docs/product-vision.md`, requirements belong in
+`docs/prd.md`, module workflows in `docs/modules.md`, data model details in
+`docs/database.md`, architecture decisions in `docs/decisions/`, infrastructure
+procedures in `docs/infrastructure.md` or `docs/infrastructure/`, and
+development commands in `docs/development.md`.
 
 ### Preserve The Documentation Graph
 

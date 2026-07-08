@@ -38,6 +38,7 @@ Related authorities:
 - Testing policy lives in `docs/testing-strategy.md`.
 - Executable commands live in `docs/development.md`.
 - Durable decisions live in `docs/decisions/`.
+- Product vision lives in `docs/product-vision.md`.
 - Product scope lives in `docs/prd.md`.
 - Module behavior lives in `docs/modules.md`.
 - Data model rules live in `docs/database.md`.
@@ -148,6 +149,7 @@ Use these destinations:
 
 | Information type | Destination |
 | --- | --- |
+| Product identity, business objective, product principle, or MVP scope | `docs/product-vision.md` |
 | Product requirement | `docs/prd.md` |
 | Module workflow or boundary | `docs/modules.md` |
 | Entity, field, relationship, enum, or data rule | `docs/database.md` |

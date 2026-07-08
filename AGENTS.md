@@ -28,16 +28,17 @@ order:
 2. [docs/README.md](docs/README.md)
 3. [docs/ai-context.md](docs/ai-context.md)
 4. [docs/philosophy.md](docs/philosophy.md)
-5. [docs/engineering-principles.md](docs/engineering-principles.md)
-6. [docs/engineering-quality-standards.md](docs/engineering-quality-standards.md)
-7. [docs/feature-architecture.md](docs/feature-architecture.md)
-8. [docs/application-state-and-data-flow.md](docs/application-state-and-data-flow.md)
-9. [docs/ui-architecture.md](docs/ui-architecture.md)
-10. [docs/testing-strategy.md](docs/testing-strategy.md)
-11. [docs/prd.md](docs/prd.md)
-12. [docs/architecture.md](docs/architecture.md)
-13. [docs/decisions/README.md](docs/decisions/README.md)
-14. The relevant domain, database, infrastructure, or implementation document.
+5. [docs/product-vision.md](docs/product-vision.md)
+6. [docs/engineering-principles.md](docs/engineering-principles.md)
+7. [docs/engineering-quality-standards.md](docs/engineering-quality-standards.md)
+8. [docs/feature-architecture.md](docs/feature-architecture.md)
+9. [docs/application-state-and-data-flow.md](docs/application-state-and-data-flow.md)
+10. [docs/ui-architecture.md](docs/ui-architecture.md)
+11. [docs/testing-strategy.md](docs/testing-strategy.md)
+12. [docs/prd.md](docs/prd.md)
+13. [docs/architecture.md](docs/architecture.md)
+14. [docs/decisions/README.md](docs/decisions/README.md)
+15. The relevant domain, database, infrastructure, or implementation document.
 
 Use [docs/README.md](docs/README.md) as the canonical documentation map.
 
@@ -48,6 +49,7 @@ Use [docs/README.md](docs/README.md) as the canonical documentation map.
 | Documentation map and canonical homes | [docs/README.md](docs/README.md) |
 | AI reading order and context flow | [docs/ai-context.md](docs/ai-context.md) |
 | Stable project principles | [docs/philosophy.md](docs/philosophy.md) |
+| Product vision, users, business objectives, and MVP | [docs/product-vision.md](docs/product-vision.md) |
 | Engineering principles | [docs/engineering-principles.md](docs/engineering-principles.md) |
 | Engineering quality standards | [docs/engineering-quality-standards.md](docs/engineering-quality-standards.md) |
 | Feature architecture and module standards | [docs/feature-architecture.md](docs/feature-architecture.md) |
@@ -108,6 +110,7 @@ Only confirmed items should modify canonical project documentation.
 
 | Information type | Destination |
 | --- | --- |
+| Product identity, business objective, product principle, or MVP scope | `docs/product-vision.md` |
 | Confirmed product requirement | `docs/prd.md` |
 | Module workflow, capability, or boundary | `docs/modules.md` |
 | Entity, field, relationship, enum, or data rule | `docs/database.md` |
@@ -180,6 +183,7 @@ Review these documents first:
 - docs/README.md
 - docs/ai-context.md
 - docs/philosophy.md
+- docs/product-vision.md
 - docs/engineering-principles.md
 - docs/engineering-quality-standards.md
 - docs/feature-architecture.md

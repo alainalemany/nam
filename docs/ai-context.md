@@ -24,30 +24,31 @@ Use this order at the start of a new chat or when context is uncertain:
 3. `docs/README.md`
 4. `docs/ai-context.md`
 5. `docs/philosophy.md`
-6. `docs/engineering-principles.md`
-7. `docs/engineering-quality-standards.md`
-8. `docs/feature-architecture.md`
-9. `docs/application-state-and-data-flow.md`
-10. `docs/ui-architecture.md`
-11. `docs/testing-strategy.md`
-12. `docs/prd.md`
-13. `docs/architecture.md`
-14. `docs/decisions/README.md`
-15. Relevant ADR files under `docs/decisions/`
-16. `docs/modules.md`
-17. `docs/database.md`
-18. `docs/roadmap.md`
-19. Relevant operations docs:
+6. `docs/product-vision.md`
+7. `docs/engineering-principles.md`
+8. `docs/engineering-quality-standards.md`
+9. `docs/feature-architecture.md`
+10. `docs/application-state-and-data-flow.md`
+11. `docs/ui-architecture.md`
+12. `docs/testing-strategy.md`
+13. `docs/prd.md`
+14. `docs/architecture.md`
+15. `docs/decisions/README.md`
+16. Relevant ADR files under `docs/decisions/`
+17. `docs/modules.md`
+18. `docs/database.md`
+19. `docs/roadmap.md`
+20. Relevant operations docs:
     - `docs/development.md`
     - `docs/infrastructure.md`
     - focused files under `docs/infrastructure/`
-20. Relevant implementation files:
+21. Relevant implementation files:
     - `src/`
     - `tests/`
     - `prisma/`
     - `compose.yaml`
     - `infrastructure/`
-21. `docs/ideas.md` only when evaluating future or unapproved concepts.
+22. `docs/ideas.md` only when evaluating future or unapproved concepts.
 
 ## Why This Order
 
@@ -59,6 +60,8 @@ The reading order moves from broad intent to specific implementation:
 - AI context before deep domain reading so the assistant understands the
   reading path and operating rules.
 - Philosophy before decisions.
+- Product vision before requirements, architecture, and implementation so the
+  assistant understands the product identity, users, MVP, and scope categories.
 - Engineering principles before implementation details.
 - Engineering quality standards before implementation workflow or handoff.
 - Feature architecture before implementing feature modules.
@@ -77,6 +80,8 @@ The reading order moves from broad intent to specific implementation:
 - Treat `AGENTS.md` as the collaboration contract.
 - Treat `docs/engineering-principles.md` as the source for implementation
   defaults and documentation-graph discipline.
+- Treat `docs/product-vision.md` as the source for product identity, users,
+  business objectives, MVP, and long-term product direction.
 - Treat `docs/engineering-quality-standards.md` as the source for Definition
   of Done, quality gates, ADR criteria, and implementation workflow.
 - Treat `docs/feature-architecture.md` as the source for feature module

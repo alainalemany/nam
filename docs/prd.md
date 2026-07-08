@@ -3,6 +3,10 @@
 This document is the canonical home for confirmed product requirements and
 product scope.
 
+The canonical source for product identity, target users, business objectives,
+MVP definition, and long-term product direction is
+[Product Vision](product-vision.md).
+
 ## Table Of Contents
 
 - [Background](#background)

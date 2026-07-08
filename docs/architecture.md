@@ -32,6 +32,9 @@ The application is initially personal-use software, but it should be built with
 professional architecture so it can grow into a more complete operational system
 later.
 
+The canonical source for product identity, users, business objectives, MVP, and
+long-term product direction is `docs/product-vision.md`.
+
 ## Architecture Principles
 
 The canonical source for cross-project principles is:
@@ -101,6 +104,7 @@ Confirmed deployment baseline:
 
 | Area | Canonical document |
 | --- | --- |
+| Product vision | `docs/product-vision.md` |
 | Product requirements | `docs/prd.md` |
 | Engineering principles | `docs/engineering-principles.md` |
 | Engineering quality standards | `docs/engineering-quality-standards.md` |

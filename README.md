@@ -50,6 +50,7 @@ The project documentation is the current source of truth:
 
 - [Documentation Index](docs/README.md)
 - [Project Philosophy](docs/philosophy.md)
+- [Product Vision](docs/product-vision.md)
 - [Engineering Principles](docs/engineering-principles.md)
 - [Engineering Quality Standards](docs/engineering-quality-standards.md)
 - [Feature Architecture](docs/feature-architecture.md)
@@ -139,3 +140,6 @@ This repository contains planning documents, architecture notes, source form ref
 Application source code is organized under `src/`, Prisma schema and migrations
 under `prisma/`, infrastructure assets under `infrastructure/`, and public
 assets under `public/`. Executable tests live under `tests/`.
+
+The canonical product vision, including users, business objectives, MVP scope,
+and long-term product direction, lives in [Product Vision](docs/product-vision.md).
