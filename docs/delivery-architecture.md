@@ -6,8 +6,9 @@ It defines how planned product capabilities move from product roadmap intent to
 implemented, verified, documented, and completed software.
 
 It does not define product scope, detailed requirements, module behavior,
-database schema, code organization, test policy, executable commands, or release
-operations. Those belong in their own canonical documents.
+database schema, dependency architecture, code organization, test policy,
+executable commands, or release operations. Those belong in their own canonical
+documents.
 
 ## Classification
 
@@ -38,6 +39,7 @@ It should answer:
 | `docs/product-vision.md` | Defines product identity, users, MVP, and long-term direction. |
 | `docs/product-roadmap.md` | Defines product delivery order, priority, deferred scope, and roadmap governance. |
 | `docs/delivery-architecture.md` | Defines how planned work becomes completed software. |
+| `docs/dependency-architecture.md` | Defines dependency types, dependency principles, and dependency evolution. |
 | `docs/prd.md` | Defines confirmed product requirements and Version 1 scope details. |
 | `docs/modules.md` | Defines module workflows, capabilities, and boundaries. |
 | `docs/database.md` | Defines entities, relationships, enums, and data rules. |
@@ -236,6 +238,9 @@ begins.
 ## Dependency Considerations
 
 Dependencies should be identified before implementation begins.
+
+Dependency concepts and dependency-management principles live in
+`docs/dependency-architecture.md`.
 
 Common dependency types:
 

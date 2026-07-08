@@ -41,6 +41,9 @@ scope, and roadmap governance is `docs/product-roadmap.md`.
 The canonical source for delivery lifecycle, milestone design, dependency
 handling, and completion flow is `docs/delivery-architecture.md`.
 
+The canonical source for dependency types, dependency principles, and dependency
+evolution is `docs/dependency-architecture.md`.
+
 ## Architecture Principles
 
 The canonical source for cross-project principles is:
@@ -113,6 +116,7 @@ Confirmed deployment baseline:
 | Product vision | `docs/product-vision.md` |
 | Product roadmap | `docs/product-roadmap.md` |
 | Delivery architecture | `docs/delivery-architecture.md` |
+| Dependency architecture | `docs/dependency-architecture.md` |
 | Product requirements | `docs/prd.md` |
 | Engineering principles | `docs/engineering-principles.md` |
 | Engineering quality standards | `docs/engineering-quality-standards.md` |

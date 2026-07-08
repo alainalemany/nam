@@ -53,6 +53,7 @@ The project documentation is the current source of truth:
 - [Product Vision](docs/product-vision.md)
 - [Product Roadmap](docs/product-roadmap.md)
 - [Delivery Architecture](docs/delivery-architecture.md)
+- [Dependency Architecture](docs/dependency-architecture.md)
 - [Engineering Principles](docs/engineering-principles.md)
 - [Engineering Quality Standards](docs/engineering-quality-standards.md)
 - [Feature Architecture](docs/feature-architecture.md)
@@ -150,3 +151,6 @@ deferred scope, and roadmap governance, lives in
 [Product Roadmap](docs/product-roadmap.md).
 The canonical delivery architecture, including lifecycle and milestone design,
 lives in [Delivery Architecture](docs/delivery-architecture.md).
+The canonical dependency architecture, including dependency types and dependency
+management principles, lives in
+[Dependency Architecture](docs/dependency-architecture.md).

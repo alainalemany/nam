@@ -27,30 +27,31 @@ Use this order at the start of a new chat or when context is uncertain:
 6. `docs/product-vision.md`
 7. `docs/product-roadmap.md`
 8. `docs/delivery-architecture.md`
-9. `docs/engineering-principles.md`
-10. `docs/engineering-quality-standards.md`
-11. `docs/feature-architecture.md`
-12. `docs/application-state-and-data-flow.md`
-13. `docs/ui-architecture.md`
-14. `docs/testing-strategy.md`
-15. `docs/prd.md`
-16. `docs/architecture.md`
-17. `docs/decisions/README.md`
-18. Relevant ADR files under `docs/decisions/`
-19. `docs/modules.md`
-20. `docs/database.md`
-21. `docs/roadmap.md`
-22. Relevant operations docs:
+9. `docs/dependency-architecture.md`
+10. `docs/engineering-principles.md`
+11. `docs/engineering-quality-standards.md`
+12. `docs/feature-architecture.md`
+13. `docs/application-state-and-data-flow.md`
+14. `docs/ui-architecture.md`
+15. `docs/testing-strategy.md`
+16. `docs/prd.md`
+17. `docs/architecture.md`
+18. `docs/decisions/README.md`
+19. Relevant ADR files under `docs/decisions/`
+20. `docs/modules.md`
+21. `docs/database.md`
+22. `docs/roadmap.md`
+23. Relevant operations docs:
     - `docs/development.md`
     - `docs/infrastructure.md`
     - focused files under `docs/infrastructure/`
-23. Relevant implementation files:
+24. Relevant implementation files:
     - `src/`
     - `tests/`
     - `prisma/`
     - `compose.yaml`
     - `infrastructure/`
-24. `docs/ideas.md` only when evaluating future or unapproved concepts.
+25. `docs/ideas.md` only when evaluating future or unapproved concepts.
 
 ## Why This Order
 
@@ -68,6 +69,8 @@ The reading order moves from broad intent to specific implementation:
   assistant understands delivery priority, deferred scope, and governance.
 - Delivery architecture before engineering standards so the assistant
   understands how planned work becomes completed software.
+- Dependency architecture before implementation standards so the assistant
+  understands dependency types and how dependencies differ from priority.
 - Engineering principles before implementation details.
 - Engineering quality standards before implementation workflow or handoff.
 - Feature architecture before implementing feature modules.
@@ -92,6 +95,8 @@ The reading order moves from broad intent to specific implementation:
   priority, deferred scope, and roadmap governance.
 - Treat `docs/delivery-architecture.md` as the source for delivery lifecycle,
   milestone design, dependency handling, and completion flow.
+- Treat `docs/dependency-architecture.md` as the source for dependency types,
+  dependency principles, and dependency evolution.
 - Treat `docs/engineering-quality-standards.md` as the source for Definition
   of Done, quality gates, ADR criteria, and implementation workflow.
 - Treat `docs/feature-architecture.md` as the source for feature module

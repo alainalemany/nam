@@ -10,6 +10,9 @@ policy, or local commands. Those belong in their own canonical documents.
 Delivery lifecycle, milestone design, dependency handling, and completion flow
 live in [Delivery Architecture](delivery-architecture.md).
 
+Dependency types, dependency principles, and dependency evolution live in
+[Dependency Architecture](dependency-architecture.md).
+
 ## Classification
 
 | Classification | Meaning |
@@ -25,6 +28,7 @@ Feature architecture sits in this path:
 ```text
 docs/philosophy.md
 -> docs/delivery-architecture.md
+-> docs/dependency-architecture.md
 -> docs/engineering-principles.md
 -> docs/feature-architecture.md
 -> docs/application-state-and-data-flow.md
@@ -36,6 +40,8 @@ Related authorities:
 
 - Delivery lifecycle and milestone design live in
   `docs/delivery-architecture.md`.
+- Dependency types and dependency-management principles live in
+  `docs/dependency-architecture.md`.
 - Product requirements live in `docs/prd.md`.
 - Module workflows and capabilities live in `docs/modules.md`.
 - Data entities, relationships, enums, and data rules live in
@@ -75,6 +81,7 @@ Use the right document for the right question:
 | --- | --- |
 | What should the product do? | `docs/prd.md` |
 | How should planned work become a completed milestone? | `docs/delivery-architecture.md` |
+| What dependencies affect delivery or implementation order? | `docs/dependency-architecture.md` |
 | How should a module work? | `docs/modules.md` |
 | What data should exist? | `docs/database.md` |
 | Why was a durable architecture choice made? | `docs/decisions/` |
