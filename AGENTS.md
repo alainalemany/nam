@@ -29,16 +29,17 @@ order:
 3. [docs/ai-context.md](docs/ai-context.md)
 4. [docs/philosophy.md](docs/philosophy.md)
 5. [docs/product-vision.md](docs/product-vision.md)
-6. [docs/engineering-principles.md](docs/engineering-principles.md)
-7. [docs/engineering-quality-standards.md](docs/engineering-quality-standards.md)
-8. [docs/feature-architecture.md](docs/feature-architecture.md)
-9. [docs/application-state-and-data-flow.md](docs/application-state-and-data-flow.md)
-10. [docs/ui-architecture.md](docs/ui-architecture.md)
-11. [docs/testing-strategy.md](docs/testing-strategy.md)
-12. [docs/prd.md](docs/prd.md)
-13. [docs/architecture.md](docs/architecture.md)
-14. [docs/decisions/README.md](docs/decisions/README.md)
-15. The relevant domain, database, infrastructure, or implementation document.
+6. [docs/product-roadmap.md](docs/product-roadmap.md)
+7. [docs/engineering-principles.md](docs/engineering-principles.md)
+8. [docs/engineering-quality-standards.md](docs/engineering-quality-standards.md)
+9. [docs/feature-architecture.md](docs/feature-architecture.md)
+10. [docs/application-state-and-data-flow.md](docs/application-state-and-data-flow.md)
+11. [docs/ui-architecture.md](docs/ui-architecture.md)
+12. [docs/testing-strategy.md](docs/testing-strategy.md)
+13. [docs/prd.md](docs/prd.md)
+14. [docs/architecture.md](docs/architecture.md)
+15. [docs/decisions/README.md](docs/decisions/README.md)
+16. The relevant domain, database, infrastructure, or implementation document.
 
 Use [docs/README.md](docs/README.md) as the canonical documentation map.
 
@@ -50,6 +51,7 @@ Use [docs/README.md](docs/README.md) as the canonical documentation map.
 | AI reading order and context flow | [docs/ai-context.md](docs/ai-context.md) |
 | Stable project principles | [docs/philosophy.md](docs/philosophy.md) |
 | Product vision, users, business objectives, and MVP | [docs/product-vision.md](docs/product-vision.md) |
+| Product roadmap, priority, and deferred scope | [docs/product-roadmap.md](docs/product-roadmap.md) |
 | Engineering principles | [docs/engineering-principles.md](docs/engineering-principles.md) |
 | Engineering quality standards | [docs/engineering-quality-standards.md](docs/engineering-quality-standards.md) |
 | Feature architecture and module standards | [docs/feature-architecture.md](docs/feature-architecture.md) |
@@ -65,7 +67,7 @@ Use [docs/README.md](docs/README.md) as the canonical documentation map.
 | Development workflow | [docs/development.md](docs/development.md) |
 | Infrastructure operations | [docs/infrastructure.md](docs/infrastructure.md) |
 | Infrastructure identity and recovery | [docs/infrastructure/](docs/infrastructure/) |
-| Roadmap | [docs/roadmap.md](docs/roadmap.md) |
+| Implementation roadmap and module phases | [docs/roadmap.md](docs/roadmap.md) |
 | Future ideas | [docs/ideas.md](docs/ideas.md) |
 | Documentation style | [docs/documentation-style.md](docs/documentation-style.md) |
 
@@ -111,6 +113,7 @@ Only confirmed items should modify canonical project documentation.
 | Information type | Destination |
 | --- | --- |
 | Product identity, business objective, product principle, or MVP scope | `docs/product-vision.md` |
+| Product delivery priority, product roadmap phase, or deferred capability | `docs/product-roadmap.md` |
 | Confirmed product requirement | `docs/prd.md` |
 | Module workflow, capability, or boundary | `docs/modules.md` |
 | Entity, field, relationship, enum, or data rule | `docs/database.md` |
@@ -118,7 +121,7 @@ Only confirmed items should modify canonical project documentation.
 | Architecture overview update | `docs/architecture.md` |
 | Infrastructure runbook or operating procedure | `docs/infrastructure.md` or `docs/infrastructure/` |
 | Development command or local workflow | `docs/development.md` |
-| Roadmap phase or milestone | `docs/roadmap.md` |
+| Implementation roadmap phase or milestone | `docs/roadmap.md` |
 | Unapproved idea or future possibility | `docs/ideas.md` |
 | Source form or reference artifact | `source-forms/` or `docs/assets/` |
 | Documentation style rule | `docs/documentation-style.md` |
@@ -184,6 +187,7 @@ Review these documents first:
 - docs/ai-context.md
 - docs/philosophy.md
 - docs/product-vision.md
+- docs/product-roadmap.md
 - docs/engineering-principles.md
 - docs/engineering-quality-standards.md
 - docs/feature-architecture.md

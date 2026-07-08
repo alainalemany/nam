@@ -6,6 +6,9 @@ workflows, capabilities, and module boundaries.
 Product identity, users, business objectives, MVP, and long-term direction live
 in [Product Vision](product-vision.md).
 
+Product delivery order, priority, deferred scope, and roadmap governance live in
+[Product Roadmap](product-roadmap.md).
+
 Implementation standards for turning these modules into feature slices live in
 [Feature Architecture](feature-architecture.md).
 

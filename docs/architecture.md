@@ -35,6 +35,9 @@ later.
 The canonical source for product identity, users, business objectives, MVP, and
 long-term product direction is `docs/product-vision.md`.
 
+The canonical source for product delivery order, capability priority, deferred
+scope, and roadmap governance is `docs/product-roadmap.md`.
+
 ## Architecture Principles
 
 The canonical source for cross-project principles is:
@@ -105,6 +108,7 @@ Confirmed deployment baseline:
 | Area | Canonical document |
 | --- | --- |
 | Product vision | `docs/product-vision.md` |
+| Product roadmap | `docs/product-roadmap.md` |
 | Product requirements | `docs/prd.md` |
 | Engineering principles | `docs/engineering-principles.md` |
 | Engineering quality standards | `docs/engineering-quality-standards.md` |
@@ -119,7 +123,7 @@ Confirmed deployment baseline:
 | Development workflow | `docs/development.md` |
 | Infrastructure operations | `docs/infrastructure.md` |
 | Infrastructure identity and recovery | `docs/infrastructure/` |
-| Project roadmap | `docs/roadmap.md` |
+| Implementation roadmap | `docs/roadmap.md` |
 | Future ideas | `docs/ideas.md` |
 
 ## Architecture Decision Records

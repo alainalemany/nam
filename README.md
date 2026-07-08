@@ -51,6 +51,7 @@ The project documentation is the current source of truth:
 - [Documentation Index](docs/README.md)
 - [Project Philosophy](docs/philosophy.md)
 - [Product Vision](docs/product-vision.md)
+- [Product Roadmap](docs/product-roadmap.md)
 - [Engineering Principles](docs/engineering-principles.md)
 - [Engineering Quality Standards](docs/engineering-quality-standards.md)
 - [Feature Architecture](docs/feature-architecture.md)
@@ -71,7 +72,7 @@ The project documentation is the current source of truth:
 - [Bootstrap And Verification](docs/infrastructure/bootstrap-and-verification.md)
 - [Server Configuration](docs/infrastructure/server-config.md)
 - [Server Identity Disaster Recovery](docs/infrastructure/disaster-recovery.md)
-- [Roadmap](docs/roadmap.md)
+- [Implementation Roadmap](docs/roadmap.md)
 - [Ideas Backlog](docs/ideas.md)
 
 Source forms and reference images are stored under:
@@ -143,3 +144,6 @@ assets under `public/`. Executable tests live under `tests/`.
 
 The canonical product vision, including users, business objectives, MVP scope,
 and long-term product direction, lives in [Product Vision](docs/product-vision.md).
+The canonical product roadmap, including product delivery order, priority,
+deferred scope, and roadmap governance, lives in
+[Product Roadmap](docs/product-roadmap.md).

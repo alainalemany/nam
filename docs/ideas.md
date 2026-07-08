@@ -7,8 +7,8 @@ Items in this document are not confirmed requirements unless they are promoted
 into the relevant canonical document.
 
 Candidate future product directions remain here until they are promoted into
-[Product Vision](product-vision.md), [Product Requirements](prd.md), or another
-appropriate canonical document.
+[Product Vision](product-vision.md), [Product Roadmap](product-roadmap.md),
+[Product Requirements](prd.md), or another appropriate canonical document.
 
 ## Future Ideas
 

@@ -24,6 +24,7 @@ Product vision sits in this path:
 ```text
 docs/philosophy.md
 -> docs/product-vision.md
+-> docs/product-roadmap.md
 -> docs/prd.md
 -> docs/modules.md
 -> implementation planning
@@ -32,6 +33,8 @@ docs/philosophy.md
 Related authorities:
 
 - Stable project principles live in `docs/philosophy.md`.
+- Product delivery order, priority, deferred scope, and roadmap governance live
+  in `docs/product-roadmap.md`.
 - Confirmed product requirements and Version 1 scope live in `docs/prd.md`.
 - Module workflows, boundaries, and capabilities live in `docs/modules.md`.
 - Entity and relationship details live in `docs/database.md`.
@@ -258,6 +261,7 @@ Long-term growth should preserve the product's core discipline:
 | Document | Relationship |
 | --- | --- |
 | `docs/philosophy.md` | Stable principles behind the product and repository. |
+| `docs/product-roadmap.md` | Product delivery order, priority, deferred scope, and roadmap governance. |
 | `docs/prd.md` | Confirmed product requirements and Version 1 scope. |
 | `docs/modules.md` | Module workflows, capabilities, and boundaries. |
 | `docs/database.md` | Entity, field, relationship, enum, and data-rule details. |

@@ -3,8 +3,11 @@
 This document is the canonical phased implementation plan for NAM Dashboard.
 
 Product vision, MVP definition, and long-term product direction live in
-[Product Vision](product-vision.md). This roadmap sequences implementation work
-for confirmed and future phases.
+[Product Vision](product-vision.md). Product delivery order, priority, deferred
+scope, and roadmap governance live in [Product Roadmap](product-roadmap.md).
+
+This roadmap sequences module-by-module implementation work for confirmed and
+future phases.
 
 ## Table Of Contents
 

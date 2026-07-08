@@ -7,6 +7,9 @@ The canonical source for product identity, target users, business objectives,
 MVP definition, and long-term product direction is
 [Product Vision](product-vision.md).
 
+The canonical source for product delivery order, priority, deferred scope, and
+roadmap governance is [Product Roadmap](product-roadmap.md).
+
 ## Table Of Contents
 
 - [Background](#background)
