@@ -33,7 +33,9 @@ function getAll(formData: FormData, key: string) {
   return formData.getAll(key).map((value) => String(value));
 }
 
-function parseActivities(formData: FormData) {
+function parseActivities(formData: FormData):
+  | { ok: true; activities: DailyLogFormInput["activities"] }
+  | { ok: false; errors: string[] } {
   const activityTypes = getAll(formData, "activityType");
   const titles = getAll(formData, "activityTitle");
   const startTimes = getAll(formData, "activityStartTime");
@@ -45,7 +47,7 @@ function parseActivities(formData: FormData) {
   const personNames = getAll(formData, "activityPersonName");
   const notes = getAll(formData, "activityNotes");
 
-  return activityTypes
+  const rows = activityTypes
     .map((activityType, index) => ({
       activityType,
       title: titles[index] ?? "",
@@ -70,49 +72,78 @@ function parseActivities(formData: FormData) {
         activity.personName,
         activity.notes,
       ].some((value) => value.trim().length > 0),
-    )
-    .map((activity) => dailyLogActivitySchema.parse(activity));
+    );
+
+  const activities: DailyLogFormInput["activities"] = [];
+  const errors: string[] = [];
+
+  rows.forEach((activity, index) => {
+    const parsed = dailyLogActivitySchema.safeParse(activity);
+
+    if (parsed.success) {
+      activities.push(parsed.data);
+      return;
+    }
+
+    parsed.error.issues.forEach((issue) => {
+      errors.push(`Activity ${index + 1}: ${issue.message}`);
+    });
+  });
+
+  if (errors.length > 0) {
+    return {
+      ok: false,
+      errors: Array.from(new Set(errors)),
+    };
+  }
+
+  return {
+    ok: true,
+    activities,
+  };
 }
 
 function parseFormData(formData: FormData):
   | { ok: true; data: DailyLogFormInput }
   | { ok: false; state: DailyLogFormState } {
-  try {
-    const parsed = dailyLogFormSchema.safeParse({
-      logDate: formData.get("logDate"),
-      shift: formData.get("shift"),
-      mineId: formData.get("mineId"),
-      primaryEquipmentId: formData.get("primaryEquipmentId"),
-      summary: formData.get("summary"),
-      weatherConditions: formData.get("weatherConditions"),
-      generalNotes: formData.get("generalNotes"),
-      activities: parseActivities(formData),
-    });
+  const activityInput = parseActivities(formData);
 
-    if (!parsed.success) {
-      return {
-        ok: false,
-        state: {
-          status: "error",
-          message: "Check the highlighted fields and try again.",
-          fieldErrors: parsed.error.flatten().fieldErrors,
-        },
-      };
-    }
-
-    return { ok: true, data: parsed.data };
-  } catch {
+  if (!activityInput.ok) {
     return {
       ok: false,
       state: {
         status: "error",
         message: "Check the activity rows and try again.",
         fieldErrors: {
-          activities: ["Each saved activity needs a title."],
+          activities: activityInput.errors,
         },
       },
     };
   }
+
+  const parsed = dailyLogFormSchema.safeParse({
+    logDate: formData.get("logDate"),
+    shift: formData.get("shift"),
+    mineId: formData.get("mineId"),
+    primaryEquipmentId: formData.get("primaryEquipmentId"),
+    summary: formData.get("summary"),
+    weatherConditions: formData.get("weatherConditions"),
+    generalNotes: formData.get("generalNotes"),
+    activities: activityInput.activities,
+  });
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      state: {
+        status: "error",
+        message: "Check the highlighted fields and try again.",
+        fieldErrors: parsed.error.flatten().fieldErrors,
+      },
+    };
+  }
+
+  return { ok: true, data: parsed.data };
 }
 
 function activityCreateData(input: DailyLogFormInput) {

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { dailyLogActivityTypeValues, shiftValues } from "./constants";
+
 const optionalText = (max = 200) =>
   z.preprocess(
     (value) => {
@@ -20,27 +22,7 @@ const requiredText = (label: string, max = 200) =>
   );
 
 export const dailyLogActivitySchema = z.object({
-  activityType: z.enum([
-    "DRAGLINE_MOVE",
-    "CUT",
-    "GREASING",
-    "SCHEDULED_PM",
-    "EQUIPMENT_ALARM",
-    "SENSOR_OBSERVATION",
-    "EQUIPMENT_OBSERVATION",
-    "WORK_ORDER",
-    "WORK_AUTHORIZATION",
-    "LOCKOUT_TAGOUT",
-    "HOT_WORK",
-    "WORKING_AT_HEIGHTS",
-    "CONTRACTOR_ESCORT",
-    "MAINTENANCE_OBSERVATION",
-    "FUEL_SERVICE",
-    "DELAY",
-    "PRODUCTION_NOTE",
-    "SAFETY_OBSERVATION",
-    "GENERAL_NOTE",
-  ]),
+  activityType: z.enum(dailyLogActivityTypeValues),
   title: requiredText("Activity title"),
   startTime: optionalText(20),
   endTime: optionalText(20),
@@ -56,7 +38,7 @@ export const dailyLogFormSchema = z.object({
   logDate: z.coerce.date({
     error: "Log date is required.",
   }),
-  shift: z.enum(["DAY", "NIGHT", "SWING", "OTHER", "UNKNOWN"]),
+  shift: z.enum(shiftValues),
   mineId: optionalText(120),
   primaryEquipmentId: optionalText(120),
   summary: requiredText("Summary", 500),

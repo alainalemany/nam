@@ -1,9 +1,36 @@
+export const shiftValues = ["DAY", "NIGHT", "SWING", "OTHER", "UNKNOWN"] as const;
+
 export const shiftOptions = [
   { value: "DAY", label: "Day" },
   { value: "NIGHT", label: "Night" },
   { value: "SWING", label: "Swing" },
   { value: "OTHER", label: "Other" },
   { value: "UNKNOWN", label: "Unknown" },
+] as const satisfies ReadonlyArray<{
+  value: (typeof shiftValues)[number];
+  label: string;
+}>;
+
+export const dailyLogActivityTypeValues = [
+  "DRAGLINE_MOVE",
+  "CUT",
+  "GREASING",
+  "SCHEDULED_PM",
+  "EQUIPMENT_ALARM",
+  "SENSOR_OBSERVATION",
+  "EQUIPMENT_OBSERVATION",
+  "WORK_ORDER",
+  "WORK_AUTHORIZATION",
+  "LOCKOUT_TAGOUT",
+  "HOT_WORK",
+  "WORKING_AT_HEIGHTS",
+  "CONTRACTOR_ESCORT",
+  "MAINTENANCE_OBSERVATION",
+  "FUEL_SERVICE",
+  "DELAY",
+  "PRODUCTION_NOTE",
+  "SAFETY_OBSERVATION",
+  "GENERAL_NOTE",
 ] as const;
 
 export const dailyLogActivityTypeOptions = [
@@ -26,7 +53,10 @@ export const dailyLogActivityTypeOptions = [
   { value: "PRODUCTION_NOTE", label: "Production note" },
   { value: "SAFETY_OBSERVATION", label: "Safety observation" },
   { value: "GENERAL_NOTE", label: "General note" },
-] as const;
+] as const satisfies ReadonlyArray<{
+  value: (typeof dailyLogActivityTypeValues)[number];
+  label: string;
+}>;
 
 export function optionLabel(
   options: readonly { value: string; label: string }[],
