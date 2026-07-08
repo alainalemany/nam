@@ -7,8 +7,8 @@ delivered, why it is prioritized, which capabilities belong to the MVP, which
 capabilities are deferred, and how ideas move toward implementation.
 
 It does not define detailed product requirements, module workflows, database
-schema, application architecture, implementation standards, test strategy, or
-infrastructure operations.
+schema, delivery lifecycle, application architecture, implementation standards,
+test strategy, or infrastructure operations.
 
 ## Classification
 
@@ -33,6 +33,7 @@ It should answer:
   feature dependency?
 - How does a future idea become approved implementation work?
 
+Delivery lifecycle and milestone design live in `docs/delivery-architecture.md`.
 Detailed implementation phases remain in `docs/roadmap.md`.
 
 ## Relationship To Other Documentation
@@ -41,6 +42,7 @@ Detailed implementation phases remain in `docs/roadmap.md`.
 | --- | --- |
 | `docs/product-vision.md` | Defines product identity, users, business objectives, MVP, and long-term direction. |
 | `docs/product-roadmap.md` | Defines product capability sequencing, priority, deferred scope, and roadmap governance. |
+| `docs/delivery-architecture.md` | Defines delivery lifecycle, milestone design, dependency handling, and completion flow. |
 | `docs/prd.md` | Defines confirmed product requirements and Version 1 scope details. |
 | `docs/modules.md` | Defines module workflows, capabilities, and boundaries. |
 | `docs/database.md` | Defines entities, relationships, enums, and data rules. |
@@ -329,6 +331,7 @@ Product capabilities should move through this path:
 Idea or source artifact
 -> docs/ideas.md
 -> docs/product-roadmap.md
+-> docs/delivery-architecture.md
 -> docs/prd.md
 -> docs/modules.md and docs/database.md
 -> docs/roadmap.md
@@ -340,6 +343,8 @@ Promotion rules:
 - An idea starts in `docs/ideas.md` unless it is already confirmed scope.
 - A candidate becomes roadmap material only when it has a clear product problem,
   user value, and rough delivery placement.
+- Delivery shaping, milestone design, and dependency planning belong in
+  `docs/delivery-architecture.md`.
 - Confirmed requirements belong in `docs/prd.md`.
 - Module workflows belong in `docs/modules.md`.
 - Data rules belong in `docs/database.md`.

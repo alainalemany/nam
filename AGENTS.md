@@ -30,16 +30,17 @@ order:
 4. [docs/philosophy.md](docs/philosophy.md)
 5. [docs/product-vision.md](docs/product-vision.md)
 6. [docs/product-roadmap.md](docs/product-roadmap.md)
-7. [docs/engineering-principles.md](docs/engineering-principles.md)
-8. [docs/engineering-quality-standards.md](docs/engineering-quality-standards.md)
-9. [docs/feature-architecture.md](docs/feature-architecture.md)
-10. [docs/application-state-and-data-flow.md](docs/application-state-and-data-flow.md)
-11. [docs/ui-architecture.md](docs/ui-architecture.md)
-12. [docs/testing-strategy.md](docs/testing-strategy.md)
-13. [docs/prd.md](docs/prd.md)
-14. [docs/architecture.md](docs/architecture.md)
-15. [docs/decisions/README.md](docs/decisions/README.md)
-16. The relevant domain, database, infrastructure, or implementation document.
+7. [docs/delivery-architecture.md](docs/delivery-architecture.md)
+8. [docs/engineering-principles.md](docs/engineering-principles.md)
+9. [docs/engineering-quality-standards.md](docs/engineering-quality-standards.md)
+10. [docs/feature-architecture.md](docs/feature-architecture.md)
+11. [docs/application-state-and-data-flow.md](docs/application-state-and-data-flow.md)
+12. [docs/ui-architecture.md](docs/ui-architecture.md)
+13. [docs/testing-strategy.md](docs/testing-strategy.md)
+14. [docs/prd.md](docs/prd.md)
+15. [docs/architecture.md](docs/architecture.md)
+16. [docs/decisions/README.md](docs/decisions/README.md)
+17. The relevant domain, database, infrastructure, or implementation document.
 
 Use [docs/README.md](docs/README.md) as the canonical documentation map.
 
@@ -52,6 +53,7 @@ Use [docs/README.md](docs/README.md) as the canonical documentation map.
 | Stable project principles | [docs/philosophy.md](docs/philosophy.md) |
 | Product vision, users, business objectives, and MVP | [docs/product-vision.md](docs/product-vision.md) |
 | Product roadmap, priority, and deferred scope | [docs/product-roadmap.md](docs/product-roadmap.md) |
+| Delivery lifecycle and milestone design | [docs/delivery-architecture.md](docs/delivery-architecture.md) |
 | Engineering principles | [docs/engineering-principles.md](docs/engineering-principles.md) |
 | Engineering quality standards | [docs/engineering-quality-standards.md](docs/engineering-quality-standards.md) |
 | Feature architecture and module standards | [docs/feature-architecture.md](docs/feature-architecture.md) |
@@ -114,6 +116,7 @@ Only confirmed items should modify canonical project documentation.
 | --- | --- |
 | Product identity, business objective, product principle, or MVP scope | `docs/product-vision.md` |
 | Product delivery priority, product roadmap phase, or deferred capability | `docs/product-roadmap.md` |
+| Delivery lifecycle, milestone design, or dependency planning | `docs/delivery-architecture.md` |
 | Confirmed product requirement | `docs/prd.md` |
 | Module workflow, capability, or boundary | `docs/modules.md` |
 | Entity, field, relationship, enum, or data rule | `docs/database.md` |
@@ -188,6 +191,7 @@ Review these documents first:
 - docs/philosophy.md
 - docs/product-vision.md
 - docs/product-roadmap.md
+- docs/delivery-architecture.md
 - docs/engineering-principles.md
 - docs/engineering-quality-standards.md
 - docs/feature-architecture.md

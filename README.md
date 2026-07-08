@@ -52,6 +52,7 @@ The project documentation is the current source of truth:
 - [Project Philosophy](docs/philosophy.md)
 - [Product Vision](docs/product-vision.md)
 - [Product Roadmap](docs/product-roadmap.md)
+- [Delivery Architecture](docs/delivery-architecture.md)
 - [Engineering Principles](docs/engineering-principles.md)
 - [Engineering Quality Standards](docs/engineering-quality-standards.md)
 - [Feature Architecture](docs/feature-architecture.md)
@@ -147,3 +148,5 @@ and long-term product direction, lives in [Product Vision](docs/product-vision.m
 The canonical product roadmap, including product delivery order, priority,
 deferred scope, and roadmap governance, lives in
 [Product Roadmap](docs/product-roadmap.md).
+The canonical delivery architecture, including lifecycle and milestone design,
+lives in [Delivery Architecture](docs/delivery-architecture.md).

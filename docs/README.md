@@ -14,16 +14,17 @@ Human contributors should start with:
 2. [Project Philosophy](philosophy.md)
 3. [Product Vision](product-vision.md)
 4. [Product Roadmap](product-roadmap.md)
-5. [Engineering Principles](engineering-principles.md)
-6. [Engineering Quality Standards](engineering-quality-standards.md)
-7. [Feature Architecture](feature-architecture.md)
-8. [Application State And Data Flow](application-state-and-data-flow.md)
-9. [UI Architecture](ui-architecture.md)
-10. [Testing Strategy](testing-strategy.md)
-11. [Product Requirements](prd.md)
-12. [Architecture Overview](architecture.md)
-13. [Architecture Decision Records](decisions/README.md)
-14. The relevant module, data, infrastructure, or implementation document.
+5. [Delivery Architecture](delivery-architecture.md)
+6. [Engineering Principles](engineering-principles.md)
+7. [Engineering Quality Standards](engineering-quality-standards.md)
+8. [Feature Architecture](feature-architecture.md)
+9. [Application State And Data Flow](application-state-and-data-flow.md)
+10. [UI Architecture](ui-architecture.md)
+11. [Testing Strategy](testing-strategy.md)
+12. [Product Requirements](prd.md)
+13. [Architecture Overview](architecture.md)
+14. [Architecture Decision Records](decisions/README.md)
+15. The relevant module, data, infrastructure, or implementation document.
 
 AI assistants should start with:
 
@@ -34,16 +35,17 @@ AI assistants should start with:
 5. [Project Philosophy](philosophy.md)
 6. [Product Vision](product-vision.md)
 7. [Product Roadmap](product-roadmap.md)
-8. [Engineering Principles](engineering-principles.md)
-9. [Engineering Quality Standards](engineering-quality-standards.md)
-10. [Feature Architecture](feature-architecture.md)
-11. [Application State And Data Flow](application-state-and-data-flow.md)
-12. [UI Architecture](ui-architecture.md)
-13. [Testing Strategy](testing-strategy.md)
-14. [Product Requirements](prd.md)
-15. [Architecture Overview](architecture.md)
-16. [ADR Index](decisions/README.md)
-17. The relevant domain and implementation documents.
+8. [Delivery Architecture](delivery-architecture.md)
+9. [Engineering Principles](engineering-principles.md)
+10. [Engineering Quality Standards](engineering-quality-standards.md)
+11. [Feature Architecture](feature-architecture.md)
+12. [Application State And Data Flow](application-state-and-data-flow.md)
+13. [UI Architecture](ui-architecture.md)
+14. [Testing Strategy](testing-strategy.md)
+15. [Product Requirements](prd.md)
+16. [Architecture Overview](architecture.md)
+17. [ADR Index](decisions/README.md)
+18. The relevant domain and implementation documents.
 
 The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 
@@ -66,20 +68,21 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | 4. Project philosophy | Stable principles that rarely change. | `docs/philosophy.md` |
 | 5. Product vision | Product identity, users, business objectives, MVP, and long-term direction. | `docs/product-vision.md` |
 | 6. Product roadmap | Product delivery order, priority, deferred scope, and roadmap governance. | `docs/product-roadmap.md` |
-| 7. Engineering principles | Enduring implementation and documentation-graph rules. | `docs/engineering-principles.md` |
-| 8. Engineering quality standards | Definition of Done, quality gates, ADR criteria, and implementation workflow. | `docs/engineering-quality-standards.md` |
-| 9. Feature architecture | Feature module implementation standards and vertical-slice checklist. | `docs/feature-architecture.md` |
-| 10. Application state and data flow | Server/client state, mutation boundaries, validation, and revalidation. | `docs/application-state-and-data-flow.md` |
-| 11. UI architecture | Screen composition, design-system standards, and UI states. | `docs/ui-architecture.md` |
-| 12. Testing strategy | Test layers, quality gates, and verification expectations. | `docs/testing-strategy.md` |
-| 13. Product definition | Confirmed product requirements and scope. | `docs/prd.md` |
-| 14. Architecture overview | Current architecture shape and boundaries. | `docs/architecture.md` |
-| 15. Architecture decisions | Durable decisions with context and consequences. | `docs/decisions/` |
-| 16. Domain modules | Module workflows, boundaries, and capabilities. | `docs/modules.md` |
-| 17. Data model | Entities, fields, relationships, and enums. | `docs/database.md` |
-| 18. Operations | Development, infrastructure, recovery, and runbooks. | `docs/development.md`, `docs/infrastructure.md`, `docs/infrastructure/` |
-| 19. Planning | Implementation roadmap and future ideas. | `docs/roadmap.md`, `docs/ideas.md` |
-| 20. Implementation | Source code, configuration, assets, and scripts. | `src/`, `prisma/`, `infrastructure/`, `public/` |
+| 7. Delivery architecture | Delivery lifecycle, milestone design, dependency handling, and completion flow. | `docs/delivery-architecture.md` |
+| 8. Engineering principles | Enduring implementation and documentation-graph rules. | `docs/engineering-principles.md` |
+| 9. Engineering quality standards | Definition of Done, quality gates, ADR criteria, and implementation workflow. | `docs/engineering-quality-standards.md` |
+| 10. Feature architecture | Feature module implementation standards and vertical-slice checklist. | `docs/feature-architecture.md` |
+| 11. Application state and data flow | Server/client state, mutation boundaries, validation, and revalidation. | `docs/application-state-and-data-flow.md` |
+| 12. UI architecture | Screen composition, design-system standards, and UI states. | `docs/ui-architecture.md` |
+| 13. Testing strategy | Test layers, quality gates, and verification expectations. | `docs/testing-strategy.md` |
+| 14. Product definition | Confirmed product requirements and scope. | `docs/prd.md` |
+| 15. Architecture overview | Current architecture shape and boundaries. | `docs/architecture.md` |
+| 16. Architecture decisions | Durable decisions with context and consequences. | `docs/decisions/` |
+| 17. Domain modules | Module workflows, boundaries, and capabilities. | `docs/modules.md` |
+| 18. Data model | Entities, fields, relationships, and enums. | `docs/database.md` |
+| 19. Operations | Development, infrastructure, recovery, and runbooks. | `docs/development.md`, `docs/infrastructure.md`, `docs/infrastructure/` |
+| 20. Planning | Implementation roadmap and future ideas. | `docs/roadmap.md`, `docs/ideas.md` |
+| 21. Implementation | Source code, configuration, assets, and scripts. | `src/`, `prisma/`, `infrastructure/`, `public/` |
 
 ## Documentation Map
 
@@ -90,6 +93,7 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Understand stable principles | [Project Philosophy](philosophy.md) |
 | Understand product vision | [Product Vision](product-vision.md) |
 | Understand product roadmap | [Product Roadmap](product-roadmap.md) |
+| Understand delivery architecture | [Delivery Architecture](delivery-architecture.md) |
 | Understand engineering principles | [Engineering Principles](engineering-principles.md) |
 | Understand engineering quality standards | [Engineering Quality Standards](engineering-quality-standards.md) |
 | Understand feature architecture | [Feature Architecture](feature-architecture.md) |
@@ -121,6 +125,7 @@ to that home but should not restate the same policy in detail.
 | --- | --- |
 | Product identity, users, business objectives, MVP, and long-term vision | `docs/product-vision.md` |
 | Product delivery order, priority, deferred scope, and roadmap governance | `docs/product-roadmap.md` |
+| Delivery lifecycle, milestone design, dependency handling, and completion flow | `docs/delivery-architecture.md` |
 | Repository identity and quick overview | `README.md` |
 | Documentation philosophy | `docs/philosophy.md` |
 | AI collaboration philosophy | `AGENTS.md`, context flow in `docs/ai-context.md` |
@@ -157,6 +162,7 @@ to that home but should not restate the same policy in detail.
 | --- | --- |
 | Product identity, business objective, product principle, or MVP scope | `docs/product-vision.md` |
 | Product delivery priority, product roadmap phase, or deferred capability | `docs/product-roadmap.md` |
+| Delivery lifecycle, milestone design, or dependency planning | `docs/delivery-architecture.md` |
 | Confirmed product requirement | `docs/prd.md` |
 | Module workflow, capability, or boundary | `docs/modules.md` |
 | Entity, field, relationship, enum, or data rule | `docs/database.md` |

@@ -25,6 +25,8 @@ This document fits between:
   objectives, MVP, and long-term direction.
 - `docs/product-roadmap.md`, which defines product delivery order, priority,
   deferred scope, and roadmap governance.
+- `docs/delivery-architecture.md`, which defines delivery lifecycle, milestone
+  design, dependency handling, and completion flow.
 - `docs/architecture.md`, which describes the current system shape.
 - `docs/engineering-quality-standards.md`, which defines Definition of Done,
   quality gates, ADR criteria, and implementation workflow.
@@ -45,13 +47,14 @@ A future contributor or AI assistant should discover this document through:
 5. `docs/philosophy.md`
 6. `docs/product-vision.md`
 7. `docs/product-roadmap.md`
-8. This document
-9. `docs/engineering-quality-standards.md`
-10. `docs/feature-architecture.md`
-11. `docs/ui-architecture.md`
-12. `docs/testing-strategy.md`
-13. `docs/architecture.md`
-14. Relevant ADRs, module docs, data docs, operations docs, and source files
+8. `docs/delivery-architecture.md`
+9. This document
+10. `docs/engineering-quality-standards.md`
+11. `docs/feature-architecture.md`
+12. `docs/ui-architecture.md`
+13. `docs/testing-strategy.md`
+14. `docs/architecture.md`
+15. Relevant ADRs, module docs, data docs, operations docs, and source files
 
 Do not create a new documentation file unless its place in this graph and its
 discovery path are clear.
@@ -65,8 +68,9 @@ documentation disagree, identify the conflict, name the authoritative document,
 and update the correct source of truth before building on uncertain assumptions.
 
 Product identity belongs in `docs/product-vision.md`, product roadmap planning
-belongs in `docs/product-roadmap.md`, requirements belong in `docs/prd.md`,
-module workflows in `docs/modules.md`, data model details in `docs/database.md`,
+belongs in `docs/product-roadmap.md`, delivery lifecycle belongs in
+`docs/delivery-architecture.md`, requirements belong in `docs/prd.md`, module
+workflows in `docs/modules.md`, data model details in `docs/database.md`,
 architecture decisions in `docs/decisions/`, infrastructure procedures in
 `docs/infrastructure.md` or `docs/infrastructure/`, and development commands in
 `docs/development.md`.

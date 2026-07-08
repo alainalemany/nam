@@ -7,6 +7,9 @@ It explains how confirmed product modules become implemented vertical slices in
 the Next.js application. It does not define product scope, data entities, test
 policy, or local commands. Those belong in their own canonical documents.
 
+Delivery lifecycle, milestone design, dependency handling, and completion flow
+live in [Delivery Architecture](delivery-architecture.md).
+
 ## Classification
 
 | Classification | Meaning |
@@ -21,6 +24,7 @@ Feature architecture sits in this path:
 
 ```text
 docs/philosophy.md
+-> docs/delivery-architecture.md
 -> docs/engineering-principles.md
 -> docs/feature-architecture.md
 -> docs/application-state-and-data-flow.md
@@ -30,6 +34,8 @@ docs/philosophy.md
 
 Related authorities:
 
+- Delivery lifecycle and milestone design live in
+  `docs/delivery-architecture.md`.
 - Product requirements live in `docs/prd.md`.
 - Module workflows and capabilities live in `docs/modules.md`.
 - Data entities, relationships, enums, and data rules live in
@@ -68,6 +74,7 @@ Use the right document for the right question:
 | Question | Source |
 | --- | --- |
 | What should the product do? | `docs/prd.md` |
+| How should planned work become a completed milestone? | `docs/delivery-architecture.md` |
 | How should a module work? | `docs/modules.md` |
 | What data should exist? | `docs/database.md` |
 | Why was a durable architecture choice made? | `docs/decisions/` |
