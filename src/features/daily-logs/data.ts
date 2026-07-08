@@ -1,5 +1,28 @@
 import { prisma } from "@/lib/prisma";
 
+import { buildDailyLogWhere, type DailyLogFilters } from "./filters";
+
+export async function getDailyLogs(filters: DailyLogFilters) {
+  return prisma.dailyLog.findMany({
+    where: buildDailyLogWhere(filters),
+    include: {
+      mine: {
+        include: {
+          city: true,
+        },
+      },
+      primaryEquipment: true,
+      activities: {
+        orderBy: {
+          sequence: "asc",
+        },
+        take: 1,
+      },
+    },
+    orderBy: [{ logDate: "desc" }, { createdAt: "desc" }],
+  });
+}
+
 export async function getDailyLogFormOptions() {
   const [mines, equipment] = await Promise.all([
     prisma.mine.findMany({

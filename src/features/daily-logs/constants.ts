@@ -1,5 +1,7 @@
 export const shiftValues = ["DAY", "NIGHT", "SWING", "OTHER", "UNKNOWN"] as const;
 
+export type ShiftValue = (typeof shiftValues)[number];
+
 export const shiftOptions = [
   { value: "DAY", label: "Day" },
   { value: "NIGHT", label: "Night" },
@@ -32,6 +34,8 @@ export const dailyLogActivityTypeValues = [
   "SAFETY_OBSERVATION",
   "GENERAL_NOTE",
 ] as const;
+
+export type DailyLogActivityTypeValue = (typeof dailyLogActivityTypeValues)[number];
 
 export const dailyLogActivityTypeOptions = [
   { value: "DRAGLINE_MOVE", label: "Dragline move" },

@@ -1,29 +1,26 @@
 import Link from "next/link";
 
 import { dailyLogActivityTypeOptions, optionLabel, shiftOptions } from "@/features/daily-logs/constants";
-import { displayDateOnly } from "@/features/daily-logs/data";
-import { prisma } from "@/lib/prisma";
+import { displayDateOnly, getDailyLogFormOptions, getDailyLogs } from "@/features/daily-logs/data";
+import {
+  hasDailyLogFilters,
+  parseDailyLogFilters,
+  type DailyLogSearchParams,
+} from "@/features/daily-logs/filters";
 
 export const dynamic = "force-dynamic";
 
-export default async function DailyLogsPage() {
-  const dailyLogs = await prisma.dailyLog.findMany({
-    include: {
-      mine: {
-        include: {
-          city: true,
-        },
-      },
-      primaryEquipment: true,
-      activities: {
-        orderBy: {
-          sequence: "asc",
-        },
-        take: 1,
-      },
-    },
-    orderBy: [{ logDate: "desc" }, { createdAt: "desc" }],
-  });
+type DailyLogsPageProps = {
+  searchParams?: Promise<DailyLogSearchParams>;
+};
+
+export default async function DailyLogsPage({ searchParams }: DailyLogsPageProps) {
+  const filters = parseDailyLogFilters((await searchParams) ?? {});
+  const filtersActive = hasDailyLogFilters(filters);
+  const [dailyLogs, options] = await Promise.all([
+    getDailyLogs(filters),
+    getDailyLogFormOptions(),
+  ]);
 
   return (
     <main className="page-stack">
@@ -41,6 +38,98 @@ export default async function DailyLogsPage() {
         </Link>
       </section>
 
+      <section className="panel filter-panel" aria-labelledby="daily-log-filters-heading">
+        <form action="/daily-logs" className="form-stack">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Search</p>
+              <h2 id="daily-log-filters-heading">Find Daily Logs</h2>
+            </div>
+            {filtersActive ? (
+              <Link className="button secondary" href="/daily-logs">
+                Clear Filters
+              </Link>
+            ) : null}
+          </div>
+
+          <div className="form-grid">
+            <label>
+              <span>Text</span>
+              <input
+                name="q"
+                defaultValue={filters.q ?? ""}
+                placeholder="Summary, notes, company, person, equipment"
+                autoComplete="off"
+              />
+            </label>
+
+            <label>
+              <span>Shift</span>
+              <select name="shift" defaultValue={filters.shift ?? ""}>
+                <option value="">Any shift</option>
+                {shiftOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span>From date</span>
+              <input name="dateFrom" type="date" defaultValue={filters.dateFrom ?? ""} />
+            </label>
+
+            <label>
+              <span>To date</span>
+              <input name="dateTo" type="date" defaultValue={filters.dateTo ?? ""} />
+            </label>
+
+            <label>
+              <span>Mine</span>
+              <select name="mineId" defaultValue={filters.mineId ?? ""}>
+                <option value="">Any mine</option>
+                {options.mineOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span>Equipment</span>
+              <select name="equipmentId" defaultValue={filters.equipmentId ?? ""}>
+                <option value="">Any equipment</option>
+                {options.equipmentOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span>Activity type</span>
+              <select name="activityType" defaultValue={filters.activityType ?? ""}>
+                <option value="">Any activity type</option>
+                {dailyLogActivityTypeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="filter-actions">
+            <button className="button primary" type="submit">
+              Apply Filters
+            </button>
+          </div>
+        </form>
+      </section>
+
       <section className="panel table-panel" aria-labelledby="daily-log-list-heading">
         <div className="section-heading">
           <h2 id="daily-log-list-heading">Daily Log records</h2>
@@ -49,14 +138,26 @@ export default async function DailyLogsPage() {
 
         {dailyLogs.length === 0 ? (
           <div className="empty-state">
-            <h3>No Daily Logs yet</h3>
-            <p>
-              Create the first Daily Log to begin building the date-centered
-              operational history.
-            </p>
-            <Link className="button primary" href="/daily-logs/new">
-              Add Daily Log
-            </Link>
+            {filtersActive ? (
+              <>
+                <h3>No Daily Logs match these filters</h3>
+                <p>Adjust the search filters or clear them to review all Daily Logs.</p>
+                <Link className="button secondary" href="/daily-logs">
+                  Clear Filters
+                </Link>
+              </>
+            ) : (
+              <>
+                <h3>No Daily Logs yet</h3>
+                <p>
+                  Create the first Daily Log to begin building the date-centered
+                  operational history.
+                </p>
+                <Link className="button primary" href="/daily-logs/new">
+                  Add Daily Log
+                </Link>
+              </>
+            )}
           </div>
         ) : (
           <div className="table-wrap">
