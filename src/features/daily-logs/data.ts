@@ -23,6 +23,13 @@ export async function getDailyLogs(filters: DailyLogFilters) {
   });
 }
 
+export async function getDailyLogsForDate(date: string) {
+  return getDailyLogs({
+    dateFrom: date,
+    dateTo: date,
+  });
+}
+
 export async function getDailyLogFormOptions() {
   const [mines, equipment] = await Promise.all([
     prisma.mine.findMany({

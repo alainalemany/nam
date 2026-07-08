@@ -269,6 +269,12 @@ th {
   gap: 12px;
 }
 
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .form-section {
   display: grid;
   gap: 16px;
@@ -356,6 +362,36 @@ textarea {
   flex-wrap: wrap;
   gap: 10px;
   justify-content: flex-end;
+}
+
+.record-list {
+  display: grid;
+  gap: 12px;
+}
+
+.record-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid #e4e9ee;
+  padding-top: 16px;
+}
+
+.record-card:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.module-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.placeholder-panel {
+  display: grid;
+  min-height: 160px;
 }
 
 .error-panel {
@@ -485,7 +521,12 @@ textarea {
 
 @media (max-width: 900px) {
   .detail-grid,
+  .module-grid,
   .timeline-item {
     grid-template-columns: 1fr;
+  }
+
+  .record-card {
+    display: grid;
   }
 }
