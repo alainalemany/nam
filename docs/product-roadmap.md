@@ -131,7 +131,8 @@ Capabilities:
 - Daily Log completion beyond the current foundation.
 - Searchable historical records.
 - Calendar navigation.
-- Day View navigation and workday context.
+- Day View navigation and workday context, guided by
+  `docs/architecture/features/day-view.md`.
 - Cross-record links where related modules exist.
 
 Success criteria:

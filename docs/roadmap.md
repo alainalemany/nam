@@ -130,6 +130,10 @@ Feature implementation architecture:
 
 `docs/architecture/features/daily-work-logs.md`
 
+Day View feature architecture:
+
+`docs/architecture/features/day-view.md`
+
 ### Phase 1: Requirements Definition
 
 - Define Daily Log activity categories

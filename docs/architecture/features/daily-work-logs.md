@@ -33,6 +33,7 @@ Related Documents:
 - `docs/ui-architecture.md`
 - `docs/testing-strategy.md`
 - `docs/engineering-quality-standards.md`
+- `docs/architecture/features/day-view.md`
 
 Last Reviewed: 2026-07-08
 
@@ -118,7 +119,8 @@ The V1 Daily Work Logs workflow should remain simple and manual:
 9. The operator can edit the Daily Log if the workday record needs correction.
 
 Future search, calendar, and Day View workflows should use Daily Logs as
-date-aware records, not as a replacement for structured modules.
+date-aware records, not as a replacement for structured modules. Day View
+composition boundaries are defined in `docs/architecture/features/day-view.md`.
 
 ## 5. Module Boundaries
 
