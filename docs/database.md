@@ -6,6 +6,7 @@ relationships, enums, and data modeling notes.
 ## Table Of Contents
 
 - [STOP Card Entities](#stop-card-entities)
+- [Daily Inspection Entities](#daily-inspection-entities)
 - [Work Authorization Entities](#work-authorization-entities)
 - [Knowledge Base Entities](#knowledge-base-entities)
 - [Daily Log Entities](#daily-log-entities)
@@ -60,6 +61,46 @@ Implemented statuses:
 - Open
 - In Progress
 - Closed
+- Archived
+
+Relationships:
+
+- May belong to one Mine record
+- May belong to one Equipment record
+
+## Daily Inspection Entities
+
+### DailyInspection
+
+Represents a manual equipment inspection record for a selected workday.
+
+Implemented fields:
+
+- id
+- inspectionDate
+- shift
+- mineId
+- equipmentId
+- equipmentHours
+- condition
+- status
+- findings
+- defectsIdentified
+- notes
+- createdAt
+- updatedAt
+
+Implemented conditions:
+
+- Satisfactory
+- Needs Attention
+- Unsafe
+- Not Applicable
+
+Implemented statuses:
+
+- Completed
+- Follow-up Needed
 - Archived
 
 Relationships:

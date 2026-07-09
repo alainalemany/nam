@@ -97,6 +97,19 @@ enum StopCardStatus {
   ARCHIVED
 }
 
+enum DailyInspectionCondition {
+  SATISFACTORY
+  NEEDS_ATTENTION
+  UNSAFE
+  NOT_APPLICABLE
+}
+
+enum DailyInspectionStatus {
+  COMPLETED
+  FOLLOW_UP_NEEDED
+  ARCHIVED
+}
+
 model City {
   id        String       @id @default(cuid())
   name      String
@@ -122,6 +135,7 @@ model Mine {
   equipment Equipment[]
   dailyLogs DailyLog[]
   stopCards StopCard[]
+  dailyInspections DailyInspection[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -139,6 +153,7 @@ model Equipment {
   primaryDailyLogs            DailyLog[]                     @relation("DailyLogPrimaryEquipment")
   dailyLogActivities          DailyLogActivity[]             @relation("DailyLogActivityEquipment")
   stopCards                   StopCard[]                     @relation("StopCardEquipment")
+  dailyInspections            DailyInspection[]              @relation("DailyInspectionEquipment")
   equipmentNumber             String?
   displayName                 String
   category                    EquipmentCategory
@@ -156,6 +171,32 @@ model Equipment {
   @@index([mineId])
   @@index([category])
   @@index([status])
+}
+
+model DailyInspection {
+  id                String                   @id @default(cuid())
+  inspectionDate    DateTime                 @db.Date
+  shift             ShiftType                @default(UNKNOWN)
+  mineId            String?
+  mine              Mine?                    @relation(fields: [mineId], references: [id], onDelete: SetNull)
+  equipmentId       String?
+  equipment         Equipment?               @relation("DailyInspectionEquipment", fields: [equipmentId], references: [id], onDelete: SetNull)
+  equipmentHours    Float?
+  condition         DailyInspectionCondition
+  status            DailyInspectionStatus    @default(COMPLETED)
+  findings          String
+  defectsIdentified Boolean                  @default(false)
+  notes             String?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  @@index([inspectionDate])
+  @@index([shift])
+  @@index([mineId])
+  @@index([equipmentId])
+  @@index([condition])
+  @@index([status])
+  @@index([defectsIdentified])
 }
 
 model StopCard {
