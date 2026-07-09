@@ -5,6 +5,7 @@ relationships, enums, and data modeling notes.
 
 ## Table Of Contents
 
+- [STOP Card Entities](#stop-card-entities)
 - [Work Authorization Entities](#work-authorization-entities)
 - [Knowledge Base Entities](#knowledge-base-entities)
 - [Daily Log Entities](#daily-log-entities)
@@ -14,6 +15,57 @@ relationships, enums, and data modeling notes.
 - [Payslip Repository Entities](#payslip-repository-entities)
 - [Work Truck Log Entities](#work-truck-log-entities)
 - [Fuel Log Entities](#fuel-log-entities)
+
+## STOP Card Entities
+
+### StopCard
+
+Represents a manual safety observation and corrective-action record.
+
+Implemented fields:
+
+- id
+- observationDate
+- category
+- severity
+- status
+- mineId
+- equipmentId
+- location
+- description
+- correctiveAction
+- createdBy
+- createdAt
+- updatedAt
+
+Implemented categories:
+
+- Hazard Observation
+- Unsafe Condition
+- Unsafe Act
+- Near Miss
+- Positive Observation
+- Corrective Action
+- General Safety
+
+Implemented severities:
+
+- Low
+- Medium
+- High
+- Critical
+
+Implemented statuses:
+
+- Open
+- In Progress
+- Closed
+- Archived
+
+Relationships:
+
+- May belong to one Mine record
+- May belong to one Equipment record
 
 ## Work Authorization Entities
 

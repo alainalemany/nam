@@ -27,6 +27,7 @@ export default function RootLayout({
               <Link href="/equipment">Equipment</Link>
               <Link href="/daily-logs">Daily Logs</Link>
               <Link href="/day-view">Day View</Link>
+              <Link href="/stop-cards">STOP Cards</Link>
             </nav>
           </aside>
           <div className="content-shell">{children}</div>

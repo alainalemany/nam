@@ -73,6 +73,30 @@ enum DailyLogActivityType {
   GENERAL_NOTE
 }
 
+enum StopCardCategory {
+  HAZARD_OBSERVATION
+  UNSAFE_CONDITION
+  UNSAFE_ACT
+  NEAR_MISS
+  POSITIVE_OBSERVATION
+  CORRECTIVE_ACTION
+  GENERAL_SAFETY
+}
+
+enum StopCardSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum StopCardStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+  ARCHIVED
+}
+
 model City {
   id        String       @id @default(cuid())
   name      String
@@ -97,6 +121,7 @@ model Mine {
   notes     String?
   equipment Equipment[]
   dailyLogs DailyLog[]
+  stopCards StopCard[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -113,6 +138,7 @@ model Equipment {
   childEquipment              Equipment[]                    @relation("EquipmentHierarchy")
   primaryDailyLogs            DailyLog[]                     @relation("DailyLogPrimaryEquipment")
   dailyLogActivities          DailyLogActivity[]             @relation("DailyLogActivityEquipment")
+  stopCards                   StopCard[]                     @relation("StopCardEquipment")
   equipmentNumber             String?
   displayName                 String
   category                    EquipmentCategory
@@ -130,6 +156,31 @@ model Equipment {
   @@index([mineId])
   @@index([category])
   @@index([status])
+}
+
+model StopCard {
+  id               String           @id @default(cuid())
+  observationDate  DateTime         @db.Date
+  category         StopCardCategory
+  severity         StopCardSeverity @default(MEDIUM)
+  status           StopCardStatus   @default(OPEN)
+  mineId           String?
+  mine             Mine?            @relation(fields: [mineId], references: [id], onDelete: SetNull)
+  equipmentId      String?
+  equipment        Equipment?       @relation("StopCardEquipment", fields: [equipmentId], references: [id], onDelete: SetNull)
+  location         String?
+  description      String
+  correctiveAction String?
+  createdBy        String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([observationDate])
+  @@index([category])
+  @@index([severity])
+  @@index([status])
+  @@index([mineId])
+  @@index([equipmentId])
 }
 
 model DailyLog {
