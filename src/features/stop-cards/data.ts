@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
 
-export async function getStopCards() {
+import { buildStopCardWhere, type StopCardFilters } from "./filters";
+
+export async function getStopCards(filters: StopCardFilters = {}) {
   return prisma.stopCard.findMany({
+    where: buildStopCardWhere(filters),
     include: {
       mine: {
         include: {
@@ -11,6 +14,13 @@ export async function getStopCards() {
       equipment: true,
     },
     orderBy: [{ observationDate: "desc" }, { createdAt: "desc" }],
+  });
+}
+
+export async function getStopCardsForDate(date: string) {
+  return getStopCards({
+    dateFrom: date,
+    dateTo: date,
   });
 }
 

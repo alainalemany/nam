@@ -8,6 +8,14 @@ import {
   parseDayViewDate,
   type DayViewSearchParams,
 } from "@/features/day-view/date";
+import {
+  optionLabel as stopCardOptionLabel,
+  stopCardCategoryOptions,
+  stopCardSeverityOptions,
+  stopCardStatusOptions,
+} from "@/features/stop-cards/constants";
+import { getStopCardsForDate } from "@/features/stop-cards/data";
+import { stopCardFilterHref } from "@/features/stop-cards/filters";
 
 export const dynamic = "force-dynamic";
 
@@ -16,10 +24,6 @@ type DayViewPageProps = {
 };
 
 const placeholderModules = [
-  {
-    title: "STOP Cards",
-    description: "STOP Card records are not implemented yet.",
-  },
   {
     title: "Daily Inspections",
     description: "Daily Inspection records are not implemented yet.",
@@ -36,7 +40,10 @@ function displaySelectedDate(value: string) {
 
 export default async function DayViewPage({ searchParams }: DayViewPageProps) {
   const dateState = parseDayViewDate((await searchParams) ?? {});
-  const dailyLogs = await getDailyLogsForDate(dateState.selectedDate);
+  const [dailyLogs, stopCards] = await Promise.all([
+    getDailyLogsForDate(dateState.selectedDate),
+    getStopCardsForDate(dateState.selectedDate),
+  ]);
 
   return (
     <main className="page-stack">
@@ -132,6 +139,71 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
                 </div>
                 <Link className="table-action" href={`/daily-logs/${dailyLog.id}`}>
                   View Daily Log
+                </Link>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="panel table-panel" aria-labelledby="stop-cards-heading">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Safety</p>
+            <h2 id="stop-cards-heading">STOP Cards</h2>
+          </div>
+          <span className="count-pill">{stopCards.length}</span>
+        </div>
+
+        {stopCards.length === 0 ? (
+          <div className="empty-state">
+            <h3>No STOP Cards for this day</h3>
+            <p>
+              STOP Cards are implemented, but no safety observations match the
+              selected workday.
+            </p>
+            <div className="button-row">
+              <Link className="button primary" href="/stop-cards/new">
+                Add STOP Card
+              </Link>
+              <Link
+                className="button secondary"
+                href={stopCardFilterHref(
+                  {},
+                  {
+                    dateFrom: dateState.selectedDate,
+                    dateTo: dateState.selectedDate,
+                  },
+                )}
+              >
+                Open STOP Cards
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="record-list">
+            {stopCards.map((stopCard) => (
+              <article className="record-card" key={stopCard.id}>
+                <div>
+                  <p className="eyebrow">
+                    {stopCardOptionLabel(stopCardStatusOptions, stopCard.status)}
+                    {" · "}
+                    {stopCardOptionLabel(stopCardSeverityOptions, stopCard.severity)}
+                  </p>
+                  <h3>{stopCardOptionLabel(stopCardCategoryOptions, stopCard.category)}</h3>
+                  <p>{stopCard.description}</p>
+                  <p className="subtle">
+                    {stopCard.mine
+                      ? `${stopCard.mine.name}, ${stopCard.mine.city.name}`
+                      : "Mine not set"}
+                    {" · "}
+                    {stopCard.location ??
+                      stopCard.equipment?.displayName ??
+                      "Location not set"}
+                  </p>
+                </div>
+                <Link className="table-action" href={`/stop-cards/${stopCard.id}`}>
+                  View STOP Card
                 </Link>
               </article>
             ))}
