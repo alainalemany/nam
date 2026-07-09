@@ -300,6 +300,7 @@ The MVP should not require:
 | Daily Work Log foundation | Establishes the first usable workday history. | Operations reference data. Feature architecture: `docs/architecture/features/daily-work-logs.md`. | Implemented |
 | Search, calendar, and Day View | Makes historical lookup practical across modules. | Daily records and date-aware modules. | Planned |
 | STOP Cards | Captures safety observations and corrective actions. | Day View context; feature architecture: `docs/architecture/features/stop-cards.md`. | Planned |
+| Daily Inspections | Captures equipment inspection findings and condition context. | Equipment reference data and Day View context; feature architecture: `docs/architecture/features/daily-inspections.md`. | Planned |
 | Shift Reports | Creates the parent structure for shift paperwork. | Daily/date context and equipment references. | Planned |
 | Work Authorizations | Captures safety and maintenance work records. | Shift Reports. | Planned |
 | Daily Inspections and Defects | Captures equipment findings and issue history. | Equipment reference data; stronger value with Day View. | Planned |

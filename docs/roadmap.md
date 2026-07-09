@@ -14,6 +14,7 @@ future phases.
 ## Table Of Contents
 
 - [STOP Cards Roadmap](#stop-cards-roadmap)
+- [Daily Inspections Roadmap](#daily-inspections-roadmap)
 - [Work Authorization Roadmap](#work-authorization-roadmap)
 - [Work Schedule Roadmap](#work-schedule-roadmap)
 - [Timesheet Roadmap](#timesheet-roadmap)
@@ -57,6 +58,48 @@ Feature implementation architecture:
 
 - Add photo or attachment support after attachment architecture exists.
 - Add safety statistics after enough reliable records exist.
+- Add approval or review workflow only if multi-user behavior is approved.
+- Add exports or reports after V1 manual records prove useful.
+
+## Daily Inspections Roadmap
+
+Feature implementation architecture:
+
+`docs/architecture/features/daily-inspections.md`
+
+### Phase 1: Requirements Definition
+
+- Confirm V1 Daily Inspection fields from the product requirements.
+- Define condition, status, and defect-indicator options.
+- Define Day View result behavior for Daily Inspection records.
+- Confirm how equipment hours should be captured for V1.
+- Defer photos until attachment architecture is approved.
+
+### Phase 2: Data Model Design
+
+- Define Daily Inspection entity.
+- Define date, shift, equipment, equipment hours, findings, condition, defect
+  indicator, and notes fields.
+- Define optional links to Daily Logs, STOP Cards, Defects, and future Shift
+  Reports.
+- Define indexes needed for date, equipment, condition, and defect lookup.
+
+### Phase 3: V1 Implementation
+
+- Create and edit Daily Inspection records manually.
+- List and review Daily Inspection records.
+- Search or filter Daily Inspections by date, equipment, condition, and defect
+  indicator where useful.
+- Show Daily Inspections in Day View for the selected date.
+- Keep Daily Inspections independent from Daily Work Logs and STOP Cards while
+  allowing future links.
+
+### Phase 4: Future Enhancements
+
+- Add photo or attachment support after attachment architecture exists.
+- Add inspection templates or checklists after source forms are reviewed.
+- Add Defect Tracking links after the Defect module exists.
+- Add inspection statistics after enough reliable records exist.
 - Add approval or review workflow only if multi-user behavior is approved.
 - Add exports or reports after V1 manual records prove useful.
 
