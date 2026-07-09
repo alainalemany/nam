@@ -110,6 +110,12 @@ enum DailyInspectionStatus {
   ARCHIVED
 }
 
+enum ShiftReportStatus {
+  DRAFT
+  COMPLETED
+  ARCHIVED
+}
+
 model City {
   id        String       @id @default(cuid())
   name      String
@@ -136,6 +142,7 @@ model Mine {
   dailyLogs DailyLog[]
   stopCards StopCard[]
   dailyInspections DailyInspection[]
+  shiftReports ShiftReport[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -154,6 +161,7 @@ model Equipment {
   dailyLogActivities          DailyLogActivity[]             @relation("DailyLogActivityEquipment")
   stopCards                   StopCard[]                     @relation("StopCardEquipment")
   dailyInspections            DailyInspection[]              @relation("DailyInspectionEquipment")
+  shiftReports                ShiftReport[]                  @relation("ShiftReportEquipment")
   equipmentNumber             String?
   displayName                 String
   category                    EquipmentCategory
@@ -219,6 +227,28 @@ model StopCard {
   @@index([observationDate])
   @@index([category])
   @@index([severity])
+  @@index([status])
+  @@index([mineId])
+  @@index([equipmentId])
+}
+
+model ShiftReport {
+  id               String            @id @default(cuid())
+  reportDate       DateTime          @db.Date
+  shift            ShiftType         @default(UNKNOWN)
+  status           ShiftReportStatus @default(DRAFT)
+  mineId           String?
+  mine             Mine?             @relation(fields: [mineId], references: [id], onDelete: SetNull)
+  equipmentId      String?
+  equipment        Equipment?        @relation("ShiftReportEquipment", fields: [equipmentId], references: [id], onDelete: SetNull)
+  location         String?
+  summary          String
+  operationalNotes String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([reportDate])
+  @@index([shift])
   @@index([status])
   @@index([mineId])
   @@index([equipmentId])

@@ -7,6 +7,7 @@ relationships, enums, and data modeling notes.
 
 - [STOP Card Entities](#stop-card-entities)
 - [Daily Inspection Entities](#daily-inspection-entities)
+- [Shift Report Entities](#shift-report-entities)
 - [Work Authorization Entities](#work-authorization-entities)
 - [Knowledge Base Entities](#knowledge-base-entities)
 - [Daily Log Entities](#daily-log-entities)
@@ -107,6 +108,41 @@ Relationships:
 
 - May belong to one Mine record
 - May belong to one Equipment record
+
+## Shift Report Entities
+
+### ShiftReport
+
+Represents a manual shift-level operational summary and coordination record.
+
+Implemented fields:
+
+- id
+- reportDate
+- shift
+- status
+- mineId
+- equipmentId
+- location
+- summary
+- operationalNotes
+- createdAt
+- updatedAt
+
+Implemented statuses:
+
+- Draft
+- Completed
+- Archived
+
+Relationships:
+
+- May belong to one Mine record
+- May belong to one Equipment record
+- May later provide parent context for WorkAuthorization records
+- May later link to DailyLog, StopCard, DailyInspection, Defect, WorkSchedule,
+  Timesheet, or other module-owned records when those relationships are
+  explicitly implemented
 
 ## Work Authorization Entities
 

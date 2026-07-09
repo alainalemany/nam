@@ -82,17 +82,23 @@ Shift Reports are responsible for:
 
 Implemented foundation:
 
-- No dedicated Shift Reports route, form, data model, or persistence exists yet.
-- Work Authorizations are architected to depend on Shift Reports, but neither
-  feature is implemented.
+- `/shift-reports` list route.
+- `/shift-reports/new` create route.
+- `/shift-reports/[id]` detail route.
+- `/shift-reports/[id]/edit` edit route.
+- Shift Report create/edit form.
+- Feature-owned Server Actions for create and update.
+- Zod validation for persisted user input.
+- Prisma persistence for `ShiftReport`.
+- Mine and equipment references from existing operations reference data.
+- Route loading and error states for the Shift Reports area.
+- Work Authorizations are architected to depend on Shift Reports, but Work
+  Authorizations are not implemented yet.
 - Day View does not yet compose Shift Report records.
 
-Planned V1 expansion:
+Future V1 expansion:
 
-- Shift Report create/edit/list/detail workflow.
-- Shift-level summary and operational context.
 - Parent relationship surface for Work Authorizations.
-- Date-aware records that can later appear in Day View.
 - Links to related records only where those modules already exist or the V1 data
   model explicitly includes the relationship.
 

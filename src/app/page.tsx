@@ -24,6 +24,20 @@ export default function Home() {
         </a>
       </section>
 
+      <section className="panel" aria-labelledby="shift-reports-heading">
+        <div>
+          <p className="eyebrow">Operations</p>
+          <h2 id="shift-reports-heading">Shift Reports</h2>
+          <p>
+            Preserve shift-level summaries, equipment context, and operational
+            notes without owning neighboring module records.
+          </p>
+        </div>
+        <a className="button primary" href="/shift-reports">
+          Open Shift Reports
+        </a>
+      </section>
+
       <section className="panel" aria-labelledby="reference-data-heading">
         <div>
           <p className="eyebrow">Reference data</p>
