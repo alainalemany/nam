@@ -43,6 +43,7 @@ Small feature work can rely on:
 
 - `docs/delivery-architecture.md` for delivery lifecycle.
 - `docs/dependency-architecture.md` for dependency reasoning.
+- `docs/engineering-workflow.md` for the proven feature delivery workflow.
 - `docs/feature-architecture.md` for feature module implementation standards.
 - `docs/engineering-quality-standards.md` for Definition of Done.
 
@@ -208,6 +209,7 @@ Feature implementation architecture documents do not:
 | `docs/product-roadmap.md` | Defines product priority, roadmap phase, and deferred scope. |
 | `docs/delivery-architecture.md` | Defines delivery lifecycle and milestone design. |
 | `docs/dependency-architecture.md` | Defines dependency types and dependency-management principles. |
+| `docs/engineering-workflow.md` | Defines the proven feature delivery workflow and capability assessment process. |
 | `docs/prd.md` | Defines confirmed product requirements. |
 | `docs/modules.md` | Defines module workflows and boundaries. |
 | `docs/database.md` | Defines entities, relationships, enums, and data rules. |

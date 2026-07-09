@@ -46,6 +46,7 @@ It should answer:
 | `docs/roadmap.md` | Defines module-by-module implementation sequencing. |
 | `docs/feature-architecture.md` | Defines how approved feature slices are organized in code. |
 | `docs/architecture/features/README.md` | Defines the convention for Level 2 feature implementation architecture documents. |
+| `docs/engineering-workflow.md` | Captures the proven feature delivery workflow from roadmap selection through capability assessment and closure. |
 | `docs/application-state-and-data-flow.md` | Defines state ownership, mutation flow, validation boundaries, and revalidation. |
 | `docs/ui-architecture.md` | Defines screen composition, UI states, and design-system standards. |
 | `docs/testing-strategy.md` | Defines testing layers and verification expectations. |
@@ -76,7 +77,8 @@ appropriate level and the relevant documentation remains consistent.
 
 Definition of Done lives in `docs/engineering-quality-standards.md`. Test
 policy lives in `docs/testing-strategy.md`. Executable commands live in
-`docs/development.md`.
+`docs/development.md`. The proven feature delivery workflow lives in
+`docs/engineering-workflow.md`.
 
 ### Dependencies Shape Delivery, Not Product Value
 
@@ -106,6 +108,9 @@ Product roadmap intent
 -> documentation alignment
 -> completion handoff
 ```
+
+The operational workflow proven by Daily Work Logs, STOP Cards, and Daily
+Inspections is captured in `docs/engineering-workflow.md`.
 
 ### 1. Product Roadmap Intent
 

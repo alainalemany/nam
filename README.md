@@ -56,6 +56,7 @@ The project documentation is the current source of truth:
 - [Dependency Architecture](docs/dependency-architecture.md)
 - [Engineering Principles](docs/engineering-principles.md)
 - [Engineering Quality Standards](docs/engineering-quality-standards.md)
+- [Engineering Workflow](docs/engineering-workflow.md)
 - [Feature Architecture](docs/feature-architecture.md)
 - [Feature Implementation Architecture Documents](docs/architecture/features/README.md)
 - [Application State And Data Flow](docs/application-state-and-data-flow.md)
@@ -152,6 +153,9 @@ deferred scope, and roadmap governance, lives in
 [Product Roadmap](docs/product-roadmap.md).
 The canonical delivery architecture, including lifecycle and milestone design,
 lives in [Delivery Architecture](docs/delivery-architecture.md).
+The proven feature delivery workflow, including architecture review,
+implementation audit, capability assessment, and closure, lives in
+[Engineering Workflow](docs/engineering-workflow.md).
 The canonical dependency architecture, including dependency types and dependency
 management principles, lives in
 [Dependency Architecture](docs/dependency-architecture.md).

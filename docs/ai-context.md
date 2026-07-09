@@ -30,29 +30,30 @@ Use this order at the start of a new chat or when context is uncertain:
 9. `docs/dependency-architecture.md`
 10. `docs/engineering-principles.md`
 11. `docs/engineering-quality-standards.md`
-12. `docs/feature-architecture.md`
-13. `docs/architecture/features/README.md`
-14. `docs/application-state-and-data-flow.md`
-15. `docs/ui-architecture.md`
-16. `docs/testing-strategy.md`
-17. `docs/prd.md`
-18. `docs/architecture.md`
-19. `docs/decisions/README.md`
-20. Relevant ADR files under `docs/decisions/`
-21. `docs/modules.md`
-22. `docs/database.md`
-23. `docs/roadmap.md`
-24. Relevant operations docs:
+12. `docs/engineering-workflow.md`
+13. `docs/feature-architecture.md`
+14. `docs/architecture/features/README.md`
+15. `docs/application-state-and-data-flow.md`
+16. `docs/ui-architecture.md`
+17. `docs/testing-strategy.md`
+18. `docs/prd.md`
+19. `docs/architecture.md`
+20. `docs/decisions/README.md`
+21. Relevant ADR files under `docs/decisions/`
+22. `docs/modules.md`
+23. `docs/database.md`
+24. `docs/roadmap.md`
+25. Relevant operations docs:
     - `docs/development.md`
     - `docs/infrastructure.md`
     - focused files under `docs/infrastructure/`
-25. Relevant implementation files:
+26. Relevant implementation files:
     - `src/`
     - `tests/`
     - `prisma/`
     - `compose.yaml`
     - `infrastructure/`
-26. `docs/ideas.md` only when evaluating future or unapproved concepts.
+27. `docs/ideas.md` only when evaluating future or unapproved concepts.
 
 ## Why This Order
 
@@ -74,6 +75,8 @@ The reading order moves from broad intent to specific implementation:
   understands dependency types and how dependencies differ from priority.
 - Engineering principles before implementation details.
 - Engineering quality standards before implementation workflow or handoff.
+- Engineering workflow before feature implementation standards so the assistant
+  understands the proven architecture, audit, assessment, and closure loop.
 - Feature architecture before implementing feature modules.
 - Feature implementation architecture document conventions before creating
   Level 2 feature-specific architecture documents.
@@ -102,6 +105,8 @@ The reading order moves from broad intent to specific implementation:
   dependency principles, and dependency evolution.
 - Treat `docs/engineering-quality-standards.md` as the source for Definition
   of Done, quality gates, ADR criteria, and implementation workflow.
+- Treat `docs/engineering-workflow.md` as the source for the proven feature
+  delivery workflow from roadmap selection through capability assessment.
 - Treat `docs/feature-architecture.md` as the source for feature module
   implementation standards.
 - Treat `docs/architecture/features/README.md` as the source for

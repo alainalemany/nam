@@ -34,15 +34,16 @@ order:
 8. [docs/dependency-architecture.md](docs/dependency-architecture.md)
 9. [docs/engineering-principles.md](docs/engineering-principles.md)
 10. [docs/engineering-quality-standards.md](docs/engineering-quality-standards.md)
-11. [docs/feature-architecture.md](docs/feature-architecture.md)
-12. [docs/architecture/features/README.md](docs/architecture/features/README.md)
-13. [docs/application-state-and-data-flow.md](docs/application-state-and-data-flow.md)
-14. [docs/ui-architecture.md](docs/ui-architecture.md)
-15. [docs/testing-strategy.md](docs/testing-strategy.md)
-16. [docs/prd.md](docs/prd.md)
-17. [docs/architecture.md](docs/architecture.md)
-18. [docs/decisions/README.md](docs/decisions/README.md)
-19. The relevant domain, database, infrastructure, or implementation document.
+11. [docs/engineering-workflow.md](docs/engineering-workflow.md)
+12. [docs/feature-architecture.md](docs/feature-architecture.md)
+13. [docs/architecture/features/README.md](docs/architecture/features/README.md)
+14. [docs/application-state-and-data-flow.md](docs/application-state-and-data-flow.md)
+15. [docs/ui-architecture.md](docs/ui-architecture.md)
+16. [docs/testing-strategy.md](docs/testing-strategy.md)
+17. [docs/prd.md](docs/prd.md)
+18. [docs/architecture.md](docs/architecture.md)
+19. [docs/decisions/README.md](docs/decisions/README.md)
+20. The relevant domain, database, infrastructure, or implementation document.
 
 Use [docs/README.md](docs/README.md) as the canonical documentation map.
 
@@ -59,6 +60,7 @@ Use [docs/README.md](docs/README.md) as the canonical documentation map.
 | Dependency types and dependency management | [docs/dependency-architecture.md](docs/dependency-architecture.md) |
 | Engineering principles | [docs/engineering-principles.md](docs/engineering-principles.md) |
 | Engineering quality standards | [docs/engineering-quality-standards.md](docs/engineering-quality-standards.md) |
+| Proven feature delivery workflow | [docs/engineering-workflow.md](docs/engineering-workflow.md) |
 | Feature architecture and module standards | [docs/feature-architecture.md](docs/feature-architecture.md) |
 | Feature implementation architecture document convention | [docs/architecture/features/README.md](docs/architecture/features/README.md) |
 | Application state and data flow | [docs/application-state-and-data-flow.md](docs/application-state-and-data-flow.md) |
@@ -113,6 +115,8 @@ Only confirmed items should modify canonical project documentation.
 - Use [docs/engineering-quality-standards.md](docs/engineering-quality-standards.md)
   for Definition of Done, quality gates, ADR criteria, and implementation
   workflow.
+- Use [docs/engineering-workflow.md](docs/engineering-workflow.md) for the
+  proven roadmap-to-architecture-to-implementation-to-assessment workflow.
 
 ## Documentation Destinations
 
@@ -134,6 +138,7 @@ Only confirmed items should modify canonical project documentation.
 | Source form or reference artifact | `source-forms/` or `docs/assets/` |
 | Documentation style rule | `docs/documentation-style.md` |
 | Engineering quality process or Definition of Done | `docs/engineering-quality-standards.md` |
+| Proven feature delivery workflow or capability assessment process | `docs/engineering-workflow.md` |
 | Feature architecture or module implementation standard | `docs/feature-architecture.md` |
 | Feature-specific implementation architecture document convention | `docs/architecture/features/README.md` |
 | Application state or data-flow standard | `docs/application-state-and-data-flow.md` |
@@ -201,6 +206,7 @@ Review these documents first:
 - docs/dependency-architecture.md
 - docs/engineering-principles.md
 - docs/engineering-quality-standards.md
+- docs/engineering-workflow.md
 - docs/feature-architecture.md
 - docs/architecture/features/README.md
 - docs/application-state-and-data-flow.md

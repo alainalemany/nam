@@ -23,6 +23,7 @@ Engineering quality standards sit in this path:
 docs/philosophy.md
 -> docs/engineering-principles.md
 -> docs/engineering-quality-standards.md
+-> docs/engineering-workflow.md
 -> docs/development.md
 -> implementation files and tests
 ```
@@ -32,6 +33,7 @@ Related authorities:
 - Stable project principles live in `docs/philosophy.md`.
 - Enduring engineering defaults live in `docs/engineering-principles.md`.
 - Feature implementation standards live in `docs/feature-architecture.md`.
+- Proven feature delivery workflow lives in `docs/engineering-workflow.md`.
 - Application state and mutation flow live in
   `docs/application-state-and-data-flow.md`.
 - UI standards live in `docs/ui-architecture.md`.
@@ -65,7 +67,8 @@ This document defines process. It should answer:
 
 It should not duplicate command details from `docs/development.md`, test layer
 policy from `docs/testing-strategy.md`, or feature structure from
-`docs/feature-architecture.md`.
+`docs/feature-architecture.md`. The proven roadmap-to-architecture-to-review
+workflow lives in `docs/engineering-workflow.md`.
 
 ## Engineering Principles
 
@@ -109,6 +112,8 @@ For application changes:
   route behavior, stable UI behavior, or persistence.
 - Required verification commands pass, or failures are reported plainly.
 - Documentation is updated only in the relevant canonical homes.
+- Feature work follows the workflow in `docs/engineering-workflow.md` when the
+  change is a major feature or module milestone.
 
 For infrastructure changes:
 
@@ -204,7 +209,8 @@ ADR number, and update `docs/decisions/README.md`.
 
 ## Feature Implementation Workflow
 
-Feature work should proceed through a narrow vertical slice.
+Feature work should proceed through the workflow in
+`docs/engineering-workflow.md` and through a narrow vertical slice.
 
 Before implementation:
 
