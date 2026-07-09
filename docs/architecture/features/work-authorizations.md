@@ -39,6 +39,7 @@ Related Documents:
 - `docs/architecture/features/daily-work-logs.md`
 - `docs/architecture/features/stop-cards.md`
 - `docs/architecture/features/daily-inspections.md`
+- `docs/architecture/features/shift-reports.md`
 
 Last Reviewed: 2026-07-09
 
@@ -49,7 +50,8 @@ work performed during a shift.
 
 This feature architecture defines how Work Authorizations should be implemented
 as an independent feature module while preserving the approved parent
-relationship to Shift Reports.
+relationship to Shift Reports. Shift Report ownership is defined in
+`docs/architecture/features/shift-reports.md`.
 
 Work Authorizations should help the operator answer:
 
@@ -163,8 +165,9 @@ Work Authorizations own their form behavior, validation, server actions,
 constants, feature-specific types, data helpers, permit rules, completion
 checklist behavior, and status or lifecycle rules.
 
-Shift Reports own the parent shift record. Work Authorizations depend on Shift
-Reports for parent context, but Work Authorizations should own their own
+Shift Reports own the parent shift record and relationship anchor, as defined
+in `docs/architecture/features/shift-reports.md`. Work Authorizations depend on
+Shift Reports for parent context, but Work Authorizations should own their own
 authorization fields, permit selections, technicians, completion checklist, and
 status transitions.
 

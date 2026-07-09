@@ -105,6 +105,14 @@ Feature implementation architecture:
 
 ## Work Authorization Roadmap
 
+Shift Reports feature architecture:
+
+`docs/architecture/features/shift-reports.md`
+
+Work Authorizations feature architecture:
+
+`docs/architecture/features/work-authorizations.md`
+
 ### Phase 1: Requirements Definition
 
 - Document Work Authorization source forms
