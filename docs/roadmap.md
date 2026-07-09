@@ -13,6 +13,7 @@ future phases.
 
 ## Table Of Contents
 
+- [STOP Cards Roadmap](#stop-cards-roadmap)
 - [Work Authorization Roadmap](#work-authorization-roadmap)
 - [Work Schedule Roadmap](#work-schedule-roadmap)
 - [Timesheet Roadmap](#timesheet-roadmap)
@@ -21,6 +22,43 @@ future phases.
 - [Fuel Log Roadmap](#fuel-log-roadmap)
 - [Work Truck Log Roadmap](#work-truck-log-roadmap)
 - [Infrastructure Roadmap](#infrastructure-roadmap)
+
+## STOP Cards Roadmap
+
+Feature implementation architecture:
+
+`docs/architecture/features/stop-cards.md`
+
+### Phase 1: Requirements Definition
+
+- Confirm V1 STOP Card fields from the product requirements.
+- Define category and status options.
+- Define Day View result behavior for STOP Card records.
+- Confirm whether created-by context is manual text for V1.
+- Defer photos until attachment architecture is approved.
+
+### Phase 2: Data Model Design
+
+- Define STOP Card entity.
+- Define date, category, location, description, corrective action, and status
+  fields.
+- Define optional links to Daily Logs and future safety modules.
+- Define indexes needed for date and status lookup.
+
+### Phase 3: V1 Implementation
+
+- Create and edit STOP Card records manually.
+- List and review STOP Card records.
+- Search or filter STOP Cards by date and status where useful.
+- Show STOP Cards in Day View for the selected date.
+- Keep STOP Cards independent from Daily Work Logs while allowing future links.
+
+### Phase 4: Future Enhancements
+
+- Add photo or attachment support after attachment architecture exists.
+- Add safety statistics after enough reliable records exist.
+- Add approval or review workflow only if multi-user behavior is approved.
+- Add exports or reports after V1 manual records prove useful.
 
 ## Work Authorization Roadmap
 

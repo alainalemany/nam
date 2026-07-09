@@ -34,6 +34,7 @@ Related Documents:
 - `docs/testing-strategy.md`
 - `docs/engineering-quality-standards.md`
 - `docs/architecture/features/daily-work-logs.md`
+- `docs/architecture/features/stop-cards.md`
 
 Last Reviewed: 2026-07-08
 
@@ -80,6 +81,7 @@ Planned MVP expansion:
 
 - Day View route or screen for a selected workday.
 - Daily Work Logs participation as the workday narrative layer.
+- STOP Cards participation as date-aware safety observations.
 - Work Schedule participation when schedule records exist.
 - Additional module participation as modules are implemented.
 
@@ -128,6 +130,7 @@ Expected ownership model:
 | --- | --- |
 | Workday composition, selected date, section ordering, and links | Day View |
 | Daily Log records, activity timeline, validation, and persistence | Daily Work Logs |
+| STOP Card records, safety observation fields, corrective actions, and status | STOP Cards |
 | Work Schedule records and schedule-change semantics | Work Schedule |
 | Shift paperwork and related safety records | Shift Reports and related modules |
 | Fuel, truck, timesheet, and payslip records | Their owning modules |
@@ -230,6 +233,7 @@ Future Day View growth should stay aligned with `docs/product-roadmap.md` and
 Planned evolution:
 
 - Daily Work Logs participation as the workday narrative layer.
+- STOP Cards participation as date-aware safety records.
 - Work Schedule context for the selected date or containing week.
 - Additional module sections as Shift Reports, Work Authorizations,
   Inspections, Defects, Timesheets, Fuel Logs, Work Truck Logs, and other
