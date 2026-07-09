@@ -111,6 +111,8 @@ Feature implementation architecture:
 - Identify required and optional permits
 - Define relationship between Shift Reports and Work Authorizations
 - Define completion checklist requirements
+- Define Work Authorizations implementation architecture in
+  `docs/architecture/features/work-authorizations.md`
 - Confirm V1 scope
 
 ### Phase 2: Data Model Design

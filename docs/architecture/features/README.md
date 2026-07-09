@@ -69,6 +69,7 @@ documentation architecture milestone explicitly approves that reorganization.
 | Day View | [Day View Architecture](day-view.md) | Draft |
 | STOP Cards | [STOP Cards Architecture](stop-cards.md) | Draft |
 | Daily Inspections | [Daily Inspections Architecture](daily-inspections.md) | Draft |
+| Work Authorizations | [Work Authorizations Architecture](work-authorizations.md) | Draft |
 
 ## Standard Metadata Block
 

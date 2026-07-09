@@ -302,7 +302,7 @@ The MVP should not require:
 | STOP Cards | Captures safety observations and corrective actions. | Day View context; feature architecture: `docs/architecture/features/stop-cards.md`. | Planned |
 | Daily Inspections | Captures equipment inspection findings and condition context. | Equipment reference data and Day View context; feature architecture: `docs/architecture/features/daily-inspections.md`. | Planned |
 | Shift Reports | Creates the parent structure for shift paperwork. | Daily/date context and equipment references. | Planned |
-| Work Authorizations | Captures safety and maintenance work records. | Shift Reports. | Planned |
+| Work Authorizations | Captures safety and maintenance work records. | Shift Reports. Feature architecture: `docs/architecture/features/work-authorizations.md`. | Planned |
 | Daily Inspections and Defects | Captures equipment findings and issue history. | Equipment reference data; stronger value with Day View. | Planned |
 | Work Schedule and Timesheet | Supports personal schedule and time reconciliation. | Reference data; stronger value with Day View. | Planned |
 | Fuel Log and Work Truck Log | Captures supporting operational and vehicle records. | Reference data; stronger value with Day View. | Planned |
