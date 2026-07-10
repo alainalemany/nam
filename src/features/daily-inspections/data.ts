@@ -14,6 +14,23 @@ export async function getDailyInspections() {
   });
 }
 
+export async function getDailyInspectionsForDate(date: string) {
+  return prisma.dailyInspection.findMany({
+    where: {
+      inspectionDate: new Date(`${date}T00:00:00.000Z`),
+    },
+    include: {
+      mine: {
+        include: {
+          city: true,
+        },
+      },
+      equipment: true,
+    },
+    orderBy: [{ createdAt: "desc" }],
+  });
+}
+
 export async function getDailyInspectionFormOptions() {
   const [mines, equipment] = await Promise.all([
     prisma.mine.findMany({

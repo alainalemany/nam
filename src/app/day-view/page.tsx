@@ -1,5 +1,12 @@
 import Link from "next/link";
 
+import {
+  dailyInspectionConditionOptions,
+  dailyInspectionStatusOptions,
+  optionLabel as dailyInspectionOptionLabel,
+  shiftOptions as dailyInspectionShiftOptions,
+} from "@/features/daily-inspections/constants";
+import { getDailyInspectionsForDate } from "@/features/daily-inspections/data";
 import { dailyLogActivityTypeOptions, optionLabel, shiftOptions } from "@/features/daily-logs/constants";
 import { displayDateOnly, getDailyLogsForDate } from "@/features/daily-logs/data";
 import { dailyLogFilterHref } from "@/features/daily-logs/filters";
@@ -25,10 +32,6 @@ type DayViewPageProps = {
 
 const placeholderModules = [
   {
-    title: "Daily Inspections",
-    description: "Daily Inspection records are not implemented yet.",
-  },
-  {
     title: "Work Authorizations",
     description: "Work Authorization records are not implemented yet.",
   },
@@ -40,9 +43,10 @@ function displaySelectedDate(value: string) {
 
 export default async function DayViewPage({ searchParams }: DayViewPageProps) {
   const dateState = parseDayViewDate((await searchParams) ?? {});
-  const [dailyLogs, stopCards] = await Promise.all([
+  const [dailyLogs, stopCards, dailyInspections] = await Promise.all([
     getDailyLogsForDate(dateState.selectedDate),
     getStopCardsForDate(dateState.selectedDate),
+    getDailyInspectionsForDate(dateState.selectedDate),
   ]);
 
   return (
@@ -204,6 +208,76 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
                 </div>
                 <Link className="table-action" href={`/stop-cards/${stopCard.id}`}>
                   View STOP Card
+                </Link>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="panel table-panel" aria-labelledby="daily-inspections-heading">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Inspection</p>
+            <h2 id="daily-inspections-heading">Daily Inspections</h2>
+          </div>
+          <span className="count-pill">{dailyInspections.length}</span>
+        </div>
+
+        {dailyInspections.length === 0 ? (
+          <div className="empty-state">
+            <h3>No Daily Inspections for this day</h3>
+            <p>
+              Daily Inspections are implemented, but no inspection records match
+              the selected workday.
+            </p>
+            <div className="button-row">
+              <Link className="button primary" href="/daily-inspections/new">
+                Add Daily Inspection
+              </Link>
+              <Link className="button secondary" href="/daily-inspections">
+                Open Daily Inspections
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="record-list">
+            {dailyInspections.map((inspection) => (
+              <article className="record-card" key={inspection.id}>
+                <div>
+                  <p className="eyebrow">
+                    {dailyInspectionOptionLabel(
+                      dailyInspectionShiftOptions,
+                      inspection.shift,
+                    )}
+                    {" · "}
+                    {dailyInspectionOptionLabel(
+                      dailyInspectionStatusOptions,
+                      inspection.status,
+                    )}
+                  </p>
+                  <h3>
+                    {inspection.equipment?.displayName ?? "Equipment not set"}
+                  </h3>
+                  <p>{inspection.findings}</p>
+                  <p className="subtle">
+                    {dailyInspectionOptionLabel(
+                      dailyInspectionConditionOptions,
+                      inspection.condition,
+                    )}
+                    {" · "}
+                    {inspection.mine
+                      ? `${inspection.mine.name}, ${inspection.mine.city.name}`
+                      : "Mine not set"}
+                    {" · "}
+                    Defects: {inspection.defectsIdentified ? "Yes" : "No"}
+                  </p>
+                </div>
+                <Link
+                  className="table-action"
+                  href={`/daily-inspections/${inspection.id}`}
+                >
+                  View Daily Inspection
                 </Link>
               </article>
             ))}
