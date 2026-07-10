@@ -116,6 +116,25 @@ enum ShiftReportStatus {
   ARCHIVED
 }
 
+enum WorkAuthorizationStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+enum WorkAuthorizationWorkType {
+  MAINTENANCE
+  ELECTRICAL
+  MECHANICAL
+  PREVENTIVE_MAINTENANCE
+  BREAKDOWN
+  HOT_WORK
+  WORKING_AT_HEIGHTS
+  LOCKOUT_TAGOUT
+  OTHER
+}
+
 model City {
   id        String       @id @default(cuid())
   name      String
@@ -143,6 +162,7 @@ model Mine {
   stopCards StopCard[]
   dailyInspections DailyInspection[]
   shiftReports ShiftReport[]
+  workAuthorizations WorkAuthorization[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -162,6 +182,7 @@ model Equipment {
   stopCards                   StopCard[]                     @relation("StopCardEquipment")
   dailyInspections            DailyInspection[]              @relation("DailyInspectionEquipment")
   shiftReports                ShiftReport[]                  @relation("ShiftReportEquipment")
+  workAuthorizations          WorkAuthorization[]            @relation("WorkAuthorizationEquipment")
   equipmentNumber             String?
   displayName                 String
   category                    EquipmentCategory
@@ -244,12 +265,57 @@ model ShiftReport {
   location         String?
   summary          String
   operationalNotes String?
+  workAuthorizations WorkAuthorization[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
   @@index([reportDate])
   @@index([shift])
   @@index([status])
+  @@index([mineId])
+  @@index([equipmentId])
+}
+
+model WorkAuthorization {
+  id                         String                    @id @default(cuid())
+  shiftReportId              String
+  shiftReport                ShiftReport               @relation(fields: [shiftReportId], references: [id], onDelete: Restrict)
+  status                     WorkAuthorizationStatus   @default(DRAFT)
+  workType                   WorkAuthorizationWorkType
+  mineId                     String?
+  mine                       Mine?                     @relation(fields: [mineId], references: [id], onDelete: SetNull)
+  equipmentId                String?
+  equipment                  Equipment?                @relation("WorkAuthorizationEquipment", fields: [equipmentId], references: [id], onDelete: SetNull)
+  jobLocation                String?
+  workDescription            String
+  startTime                  String?
+  endTime                    String?
+  crewWorkerCount            Int?
+  contactName                String?
+  equipmentRequired          String?
+  personInChargeName         String?
+  lockoutRequired            Boolean                   @default(true)
+  lockoutNotRequiredReason   String?
+  workplaceExamRequired      Boolean                   @default(false)
+  confinedSpaceRequired      Boolean                   @default(false)
+  lockoutTagoutRequired      Boolean                   @default(true)
+  hotWorkRequired            Boolean                   @default(false)
+  workingAtHeightsRequired   Boolean                   @default(false)
+  stopCardJhaRequired        Boolean                   @default(false)
+  jobCompleted               Boolean                   @default(false)
+  permitsClosed              Boolean                   @default(false)
+  guardsReplaced             Boolean                   @default(false)
+  lockoutTagoutRemoved       Boolean                   @default(false)
+  toolsRemoved               Boolean                   @default(false)
+  housekeepingCompleted      Boolean                   @default(false)
+  supervisorNotified         Boolean                   @default(false)
+  completionNotes            String?
+  createdAt                  DateTime                  @default(now())
+  updatedAt                  DateTime                  @updatedAt
+
+  @@index([shiftReportId])
+  @@index([status])
+  @@index([workType])
   @@index([mineId])
   @@index([equipmentId])
 }

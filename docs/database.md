@@ -150,42 +150,73 @@ Relationships:
 
 Represents a work authorization event performed during a shift.
 
-Potential fields:
+Implemented fields:
 
 - id
 - shiftReportId
-- draglineNumber
+- status
+- workType
+- mineId
+- equipmentId
 - jobLocation
 - workDescription
-- startDate
 - startTime
-- endDate
 - endTime
 - crewWorkerCount
 - contactName
 - equipmentRequired
 - personInChargeName
-- personInChargeSignature
-- personInChargeSignedAt
 - lockoutRequired
 - lockoutNotRequiredReason
-- status
+- workplaceExamRequired
+- confinedSpaceRequired
+- lockoutTagoutRequired
+- hotWorkRequired
+- workingAtHeightsRequired
+- stopCardJhaRequired
+- jobCompleted
+- permitsClosed
+- guardsReplaced
+- lockoutTagoutRemoved
+- toolsRemoved
+- housekeepingCompleted
+- supervisorNotified
+- completionNotes
 - createdAt
 - updatedAt
+
+Implemented statuses:
+
+- Draft
+- Open
+- Closed
+- Archived
+
+Implemented work types:
+
+- Maintenance
+- Electrical
+- Mechanical
+- Preventive Maintenance
+- Breakdown
+- Hot Work
+- Working At Heights
+- Lockout / Tagout
+- Other
 
 Relationships:
 
 - Belongs to one ShiftReport
-- Has many WorkAuthorizationPermit records
-- Has many WorkAuthorizationTechnician records
-- Has one WorkAuthorizationCompletionChecklist
-- Has many Attachments
+- May belong to one Mine record
+- May belong to one Equipment record
+- May later link to DailyLog, StopCard, DailyInspection, Defect, or other
+  module-owned records when those relationships are explicitly implemented
 
 ### WorkAuthorizationPermit
 
 Represents a permit or paperwork item associated with a Work Authorization.
 
-Potential fields:
+Potential future fields:
 
 - id
 - workAuthorizationId
@@ -212,7 +243,7 @@ Relationships:
 
 Represents technician information captured by the operator.
 
-Potential fields:
+Potential future fields:
 
 - id
 - workAuthorizationId
@@ -231,7 +262,7 @@ Relationships:
 
 Represents the completion checklist for returning equipment or work area to production.
 
-Potential fields:
+Potential future fields:
 
 - id
 - workAuthorizationId

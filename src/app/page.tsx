@@ -38,6 +38,20 @@ export default function Home() {
         </a>
       </section>
 
+      <section className="panel" aria-labelledby="work-authorizations-heading">
+        <div>
+          <p className="eyebrow">Operations</p>
+          <h2 id="work-authorizations-heading">Work Authorizations</h2>
+          <p>
+            Capture shift-scoped maintenance work, permits, lockout context, and
+            completion checklist status.
+          </p>
+        </div>
+        <a className="button primary" href="/work-authorizations">
+          Open Work Authorizations
+        </a>
+      </section>
+
       <section className="panel" aria-labelledby="reference-data-heading">
         <div>
           <p className="eyebrow">Reference data</p>

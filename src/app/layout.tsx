@@ -30,6 +30,7 @@ export default function RootLayout({
               <Link href="/stop-cards">STOP Cards</Link>
               <Link href="/daily-inspections">Daily Inspections</Link>
               <Link href="/shift-reports">Shift Reports</Link>
+              <Link href="/work-authorizations">Work Authorizations</Link>
             </nav>
           </aside>
           <div className="content-shell">{children}</div>

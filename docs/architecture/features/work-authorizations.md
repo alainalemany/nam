@@ -85,21 +85,27 @@ Work Authorizations are responsible for:
 
 Implemented foundation:
 
-- No dedicated Work Authorizations route, form, data model, or persistence
-  exists yet.
-- Shift Reports are not implemented yet, so the required parent context does
-  not currently exist.
+- `/work-authorizations` list route.
+- `/work-authorizations/new` create route.
+- `/work-authorizations/[id]` detail route.
+- `/work-authorizations/[id]/edit` edit route.
+- Work Authorization create/edit form.
+- Feature-owned Server Actions for create and update.
+- Zod validation for persisted user input.
+- Prisma persistence for `WorkAuthorization`.
+- Required parent relationship to `ShiftReport`.
+- Mine and equipment references from existing operations reference data.
+- Permit booleans and completion checklist fields in the V1 record.
+- Lockout Permit Required defaults to Yes, with a reason required when set to
+  No.
+- Route loading and error states for the Work Authorizations area.
 - Day View does not yet compose Work Authorization records.
 
-Planned V1 expansion:
+Future V1 expansion:
 
-- Work Authorization create/edit/list/detail workflow.
-- Required relationship to a Shift Report.
-- Core work authorization fields grounded in `docs/prd.md` and
-  `docs/modules.md`.
-- Permit or paperwork selection.
-- Lockout Permit default and reason rule.
-- Completion checklist before closing.
+- Richer related-record links where neighboring modules need explicit
+  relationships.
+- Deeper permit/checklist structure if the flat V1 fields stop being sufficient.
 
 ## 3. Non-Responsibilities
 
@@ -198,9 +204,8 @@ Expected V1 data flow:
 4. Server Actions parse and validate `FormData` with Zod.
 5. Validated data is normalized for optional values and date-only or time
    fields where applicable.
-6. Prisma writes the Work Authorization record and related child rows, such as
-   permits, technicians, or checklist items, when those relationships are part
-   of the approved V1 data model.
+6. Prisma writes the Work Authorization record, including V1 permit and
+   completion checklist fields.
 7. Mutations revalidate affected Work Authorization and Shift Report routes.
 8. Successful writes redirect to the relevant Work Authorization or parent
    Shift Report surface.
