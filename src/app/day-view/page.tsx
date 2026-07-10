@@ -29,6 +29,12 @@ import {
 } from "@/features/stop-cards/constants";
 import { getStopCardsForDate } from "@/features/stop-cards/data";
 import { stopCardFilterHref } from "@/features/stop-cards/filters";
+import {
+  optionLabel as workAuthorizationOptionLabel,
+  workAuthorizationStatusOptions,
+  workAuthorizationWorkTypeOptions,
+} from "@/features/work-authorizations/constants";
+import { getWorkAuthorizationsForDate } from "@/features/work-authorizations/data";
 
 export const dynamic = "force-dynamic";
 
@@ -36,24 +42,24 @@ type DayViewPageProps = {
   searchParams?: Promise<DayViewSearchParams>;
 };
 
-const placeholderModules = [
-  {
-    title: "Work Authorizations",
-    description: "Work Authorization Day View participation is not implemented yet.",
-  },
-];
-
 function displaySelectedDate(value: string) {
   return displayDateOnly(new Date(`${value}T00:00:00.000Z`));
 }
 
 export default async function DayViewPage({ searchParams }: DayViewPageProps) {
   const dateState = parseDayViewDate((await searchParams) ?? {});
-  const [dailyLogs, stopCards, dailyInspections, shiftReports] = await Promise.all([
+  const [
+    dailyLogs,
+    stopCards,
+    dailyInspections,
+    shiftReports,
+    workAuthorizations,
+  ] = await Promise.all([
     getDailyLogsForDate(dateState.selectedDate),
     getStopCardsForDate(dateState.selectedDate),
     getDailyInspectionsForDate(dateState.selectedDate),
     getShiftReportsForDate(dateState.selectedDate),
+    getWorkAuthorizationsForDate(dateState.selectedDate),
   ]);
 
   return (
@@ -136,6 +142,86 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
                 </div>
                 <Link className="table-action" href={`/shift-reports/${report.id}`}>
                   View Shift Report
+                </Link>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="panel table-panel" aria-labelledby="work-authorizations-heading">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Authorized work</p>
+            <h2 id="work-authorizations-heading">Work Authorizations</h2>
+          </div>
+          <span className="count-pill">{workAuthorizations.length}</span>
+        </div>
+
+        {workAuthorizations.length === 0 ? (
+          <div className="empty-state">
+            <h3>No Work Authorizations for this day</h3>
+            <p>
+              Work Authorizations are implemented, but no authorization records
+              are linked to Shift Reports for the selected workday.
+            </p>
+            <div className="button-row">
+              <Link className="button primary" href="/work-authorizations/new">
+                Add Work Authorization
+              </Link>
+              <Link className="button secondary" href="/work-authorizations">
+                Open Work Authorizations
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="record-list">
+            {workAuthorizations.map((authorization) => (
+              <article className="record-card" key={authorization.id}>
+                <div>
+                  <p className="eyebrow">
+                    {workAuthorizationOptionLabel(
+                      workAuthorizationStatusOptions,
+                      authorization.status,
+                    )}
+                    {" · "}
+                    {workAuthorizationOptionLabel(
+                      workAuthorizationWorkTypeOptions,
+                      authorization.workType,
+                    )}
+                  </p>
+                  <h3>{authorization.workDescription}</h3>
+                  <p className="subtle">
+                    Shift Report:{" "}
+                    <Link
+                      className="table-action"
+                      href={`/shift-reports/${authorization.shiftReportId}`}
+                    >
+                      {shiftReportOptionLabel(
+                        shiftReportShiftOptions,
+                        authorization.shiftReport.shift,
+                      )}
+                    </Link>
+                    {" · "}
+                    {authorization.mine
+                      ? `${authorization.mine.name}, ${authorization.mine.city.name}`
+                      : "Mine not set"}
+                    {" · "}
+                    {authorization.equipment?.displayName ??
+                      authorization.jobLocation ??
+                      "Location not set"}
+                  </p>
+                  <p className="subtle">
+                    Crew: {authorization.crewWorkerCount ?? "Not recorded"}
+                    {" · "}
+                    Lockout required: {authorization.lockoutRequired ? "Yes" : "No"}
+                  </p>
+                </div>
+                <Link
+                  className="table-action"
+                  href={`/work-authorizations/${authorization.id}`}
+                >
+                  View Work Authorization
                 </Link>
               </article>
             ))}
@@ -345,17 +431,6 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
         )}
       </section>
 
-      <section className="module-grid" aria-label="Planned modules">
-        {placeholderModules.map((module) => (
-          <article className="panel placeholder-panel" key={module.title}>
-            <div>
-              <p className="eyebrow">Module not implemented</p>
-              <h2>{module.title}</h2>
-              <p>{module.description}</p>
-            </div>
-          </article>
-        ))}
-      </section>
     </main>
   );
 }

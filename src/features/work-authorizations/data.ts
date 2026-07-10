@@ -15,6 +15,26 @@ export async function getWorkAuthorizations() {
   });
 }
 
+export async function getWorkAuthorizationsForDate(date: string) {
+  return prisma.workAuthorization.findMany({
+    where: {
+      shiftReport: {
+        reportDate: new Date(`${date}T00:00:00.000Z`),
+      },
+    },
+    include: {
+      shiftReport: true,
+      mine: {
+        include: {
+          city: true,
+        },
+      },
+      equipment: true,
+    },
+    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+  });
+}
+
 export async function getWorkAuthorizationFormOptions() {
   const [shiftReports, mines, equipment] = await Promise.all([
     prisma.shiftReport.findMany({
