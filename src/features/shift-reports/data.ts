@@ -14,6 +14,23 @@ export async function getShiftReports() {
   });
 }
 
+export async function getShiftReportsForDate(date: string) {
+  return prisma.shiftReport.findMany({
+    where: {
+      reportDate: new Date(`${date}T00:00:00.000Z`),
+    },
+    include: {
+      mine: {
+        include: {
+          city: true,
+        },
+      },
+      equipment: true,
+    },
+    orderBy: [{ shift: "asc" }, { createdAt: "desc" }],
+  });
+}
+
 export async function getShiftReportFormOptions() {
   const [mines, equipment] = await Promise.all([
     prisma.mine.findMany({

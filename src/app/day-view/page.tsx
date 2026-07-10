@@ -16,6 +16,12 @@ import {
   type DayViewSearchParams,
 } from "@/features/day-view/date";
 import {
+  optionLabel as shiftReportOptionLabel,
+  shiftOptions as shiftReportShiftOptions,
+  shiftReportStatusOptions,
+} from "@/features/shift-reports/constants";
+import { getShiftReportsForDate } from "@/features/shift-reports/data";
+import {
   optionLabel as stopCardOptionLabel,
   stopCardCategoryOptions,
   stopCardSeverityOptions,
@@ -33,7 +39,7 @@ type DayViewPageProps = {
 const placeholderModules = [
   {
     title: "Work Authorizations",
-    description: "Work Authorization records are not implemented yet.",
+    description: "Work Authorization Day View participation is not implemented yet.",
   },
 ];
 
@@ -43,10 +49,11 @@ function displaySelectedDate(value: string) {
 
 export default async function DayViewPage({ searchParams }: DayViewPageProps) {
   const dateState = parseDayViewDate((await searchParams) ?? {});
-  const [dailyLogs, stopCards, dailyInspections] = await Promise.all([
+  const [dailyLogs, stopCards, dailyInspections, shiftReports] = await Promise.all([
     getDailyLogsForDate(dateState.selectedDate),
     getStopCardsForDate(dateState.selectedDate),
     getDailyInspectionsForDate(dateState.selectedDate),
+    getShiftReportsForDate(dateState.selectedDate),
   ]);
 
   return (
@@ -81,6 +88,59 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
             Next Day
           </Link>
         </div>
+      </section>
+
+      <section className="panel table-panel" aria-labelledby="shift-reports-heading">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Operations summary</p>
+            <h2 id="shift-reports-heading">Shift Reports</h2>
+          </div>
+          <span className="count-pill">{shiftReports.length}</span>
+        </div>
+
+        {shiftReports.length === 0 ? (
+          <div className="empty-state">
+            <h3>No Shift Reports for this day</h3>
+            <p>
+              Shift Reports are implemented, but no coordination records match
+              the selected workday.
+            </p>
+            <div className="button-row">
+              <Link className="button primary" href="/shift-reports/new">
+                Add Shift Report
+              </Link>
+              <Link className="button secondary" href="/shift-reports">
+                Open Shift Reports
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="record-list">
+            {shiftReports.map((report) => (
+              <article className="record-card" key={report.id}>
+                <div>
+                  <p className="eyebrow">
+                    {shiftReportOptionLabel(shiftReportShiftOptions, report.shift)}
+                    {" · "}
+                    {shiftReportOptionLabel(shiftReportStatusOptions, report.status)}
+                  </p>
+                  <h3>{report.summary}</h3>
+                  <p className="subtle">
+                    {report.mine
+                      ? `${report.mine.name}, ${report.mine.city.name}`
+                      : "Mine not set"}
+                    {" · "}
+                    {report.equipment?.displayName ?? report.location ?? "Location not set"}
+                  </p>
+                </div>
+                <Link className="table-action" href={`/shift-reports/${report.id}`}>
+                  View Shift Report
+                </Link>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="panel table-panel" aria-labelledby="daily-logs-heading">
