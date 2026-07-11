@@ -297,8 +297,8 @@ Planned evolution:
 
 - Link Daily Inspections to related Daily Logs when a real related-record need
   exists.
-- Link Daily Inspections to Defects when Defect Tracking exists and the
-  relationship is approved.
+- Allow a Defect record to identify a Daily Inspection as its optional source
+  while Daily Inspections retain ownership of findings and condition.
 - Link Daily Inspections to STOP Cards or Shift Reports when those modules need
   explicit related-record context.
 - Participate in broader historical lookup once global search architecture is

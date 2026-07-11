@@ -110,6 +110,27 @@ enum DailyInspectionStatus {
   ARCHIVED
 }
 
+enum DefectStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum DefectSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum DefectPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
 enum ShiftReportStatus {
   DRAFT
   COMPLETED
@@ -181,6 +202,7 @@ model Equipment {
   dailyLogActivities          DailyLogActivity[]             @relation("DailyLogActivityEquipment")
   stopCards                   StopCard[]                     @relation("StopCardEquipment")
   dailyInspections            DailyInspection[]              @relation("DailyInspectionEquipment")
+  defects                     Defect[]                        @relation("DefectEquipment")
   shiftReports                ShiftReport[]                  @relation("ShiftReportEquipment")
   workAuthorizations          WorkAuthorization[]            @relation("WorkAuthorizationEquipment")
   equipmentNumber             String?
@@ -216,6 +238,7 @@ model DailyInspection {
   findings          String
   defectsIdentified Boolean                  @default(false)
   notes             String?
+  sourcedDefects    Defect[]                 @relation("DefectSourceDailyInspection")
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
 
@@ -226,6 +249,33 @@ model DailyInspection {
   @@index([condition])
   @@index([status])
   @@index([defectsIdentified])
+}
+
+model Defect {
+  id                      String           @id @default(cuid())
+  reportedDate            DateTime         @db.Date
+  equipmentId             String
+  equipment               Equipment        @relation("DefectEquipment", fields: [equipmentId], references: [id], onDelete: Restrict)
+  sourceDailyInspectionId String?
+  sourceDailyInspection   DailyInspection? @relation("DefectSourceDailyInspection", fields: [sourceDailyInspectionId], references: [id], onDelete: SetNull)
+  severity                DefectSeverity
+  priority                DefectPriority
+  status                  DefectStatus     @default(OPEN)
+  title                   String
+  description             String
+  correctiveAction        String?
+  resolutionSummary       String?
+  resolvedAt              DateTime?
+  closedAt                DateTime?
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+
+  @@index([reportedDate])
+  @@index([equipmentId])
+  @@index([sourceDailyInspectionId])
+  @@index([status])
+  @@index([severity])
+  @@index([priority])
 }
 
 model StopCard {

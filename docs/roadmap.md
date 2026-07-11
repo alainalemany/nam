@@ -15,6 +15,7 @@ future phases.
 
 - [STOP Cards Roadmap](#stop-cards-roadmap)
 - [Daily Inspections Roadmap](#daily-inspections-roadmap)
+- [Defect Tracking Roadmap](#defect-tracking-roadmap)
 - [Work Authorization Roadmap](#work-authorization-roadmap)
 - [Work Schedule Roadmap](#work-schedule-roadmap)
 - [Timesheet Roadmap](#timesheet-roadmap)
@@ -108,6 +109,58 @@ are implemented. Feature-owned list filtering remains planned.
 - Add inspection statistics after enough reliable records exist.
 - Add approval or review workflow only if multi-user behavior is approved.
 - Add exports or reports after V1 manual records prove useful.
+
+## Defect Tracking Roadmap
+
+Feature implementation architecture:
+
+`docs/architecture/features/defect-tracking.md`
+
+Current status: Feature architecture, data model, V1 list/create/detail/edit
+foundation, lifecycle validation, and Day View participation are implemented.
+Feature-owned list filtering remains planned.
+
+### Phase 1: Architecture And Domain Confirmation (Complete)
+
+- Review and approve the Defect Tracking feature architecture.
+- Use the approved required severity and priority classifications and controlled
+  lifecycle transitions.
+- Use the approved resolution, closure, and Resolved-to-In-Progress rules.
+- Require Equipment, derive Mine context through Equipment, and allow an
+  optional Daily Inspection source relationship.
+- Keep attachments, approvals, audit history, analytics, reporting,
+  notifications, global search, and automation deferred.
+
+### Phase 2: Data Model Design (Complete)
+
+- Define the Defect entity, indexes, enums, and migration.
+- Define the required Equipment relationship, derived Mine context, and
+  reported-date semantics without adding `mineId` to Defect.
+- Define the optional Daily Inspection source relationship with one inspection
+  to zero-or-many defects and zero-or-one source inspection per defect.
+- Define mutable corrective-action and resolution fields plus resolution and
+  closure timestamps directly on Defect.
+- Define delete behavior and lifecycle constraints.
+- Do not assume a unique Daily Log exists for a date and shift.
+
+### Phase 3: V1 Implementation (In Progress)
+
+- Add feature-owned list, create, detail, and edit workflows.
+- Add Server Actions, Zod validation, Prisma persistence, and route states.
+- Add practical feature-owned filtering.
+- Add selected-date Day View participation through a Defect Tracking-owned
+  helper.
+- Add proportional validation, filter, date-helper, and persistence coverage.
+
+### Phase 4: Future Enhancements
+
+- Add attachments or photos only after attachment architecture exists.
+- Add approvals or audit history only after identity and workflow requirements
+  are approved.
+- Add analytics, reporting, notifications, global search, or automation only as
+  separate milestones.
+- Add deeper neighboring-module links only when concrete workflows require
+  them.
 
 ## Work Authorization Roadmap
 

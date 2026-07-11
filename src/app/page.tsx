@@ -38,6 +38,15 @@ export default function Home() {
         </a>
       </section>
 
+      <section className="panel" aria-labelledby="defect-tracking-heading">
+        <div>
+          <p className="eyebrow">Operations</p>
+          <h2 id="defect-tracking-heading">Defect Tracking</h2>
+          <p>Track equipment issues, corrective actions, resolution, and closure.</p>
+        </div>
+        <a className="button primary" href="/defect-tracking">Open Defect Tracking</a>
+      </section>
+
       <section className="panel" aria-labelledby="work-authorizations-heading">
         <div>
           <p className="eyebrow">Operations</p>

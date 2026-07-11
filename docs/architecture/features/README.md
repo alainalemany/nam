@@ -71,6 +71,7 @@ documentation architecture milestone explicitly approves that reorganization.
 | Daily Inspections | [Daily Inspections Architecture](daily-inspections.md) | Approved; V1 foundation and Day View participation implemented |
 | Shift Reports | [Shift Reports Architecture](shift-reports.md) | Approved; V1 foundation and Day View participation implemented |
 | Work Authorizations | [Work Authorizations Architecture](work-authorizations.md) | Approved; V1 foundation and Day View participation implemented |
+| Defect Tracking | [Defect Tracking Architecture](defect-tracking.md) | Approved; V1 foundation and Day View participation implemented; filtering planned |
 
 ## Standard Metadata Block
 

@@ -170,12 +170,13 @@ Implemented foundations and Day View participation:
 - Shift Reports.
 - Work Authorizations with required Shift Report parent context.
 - Daily Inspections.
+- Defect Tracking, with approved architecture, V1 foundation, and Day View
+  participation implemented.
 
 Remaining:
 
-- Defect Tracking.
-- Feature-owned list filtering for Daily Inspections, Shift Reports, and Work
-  Authorizations where useful.
+- Feature-owned list filtering for Defect Tracking, Daily Inspections, Shift
+  Reports, and Work Authorizations where useful.
 - Additional cross-record relationships only where approved workflows require
   them.
 
@@ -320,7 +321,7 @@ The MVP should not require:
 | Daily Inspections | Captures equipment inspection findings and condition context. | Equipment reference data and Day View context; feature architecture: `docs/architecture/features/daily-inspections.md`. | V1 foundation and Day View participation implemented; list filtering planned |
 | Shift Reports | Creates the parent structure for shift paperwork. | Daily/date context and equipment references. Feature architecture: `docs/architecture/features/shift-reports.md`. | V1 foundation and Day View participation implemented; list filtering planned |
 | Work Authorizations | Captures safety and maintenance work records. | Shift Reports. Feature architecture: `docs/architecture/features/work-authorizations.md`. | V1 foundation and Day View participation implemented; list filtering planned |
-| Defect Tracking | Captures equipment issue history from report through closure. | Equipment reference data; stronger value with Day View. | Planned |
+| Defect Tracking | Captures equipment issue history from report through closure. | Equipment reference data and feature architecture: `docs/architecture/features/defect-tracking.md`; stronger value with Day View. | V1 foundation and Day View participation implemented; list filtering planned |
 | Work Schedule and Timesheet | Supports personal schedule and time reconciliation. | Reference data; stronger value with Day View. | Planned |
 | Fuel Log and Work Truck Log | Captures supporting operational and vehicle records. | Reference data; stronger value with Day View. | Planned |
 | Knowledge Base | Preserves reusable operational knowledge. | Location, mine, and equipment organization. | Planned |

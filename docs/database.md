@@ -7,6 +7,7 @@ relationships, enums, and data modeling notes.
 
 - [STOP Card Entities](#stop-card-entities)
 - [Daily Inspection Entities](#daily-inspection-entities)
+- [Defect Tracking Entities](#defect-tracking-entities)
 - [Shift Report Entities](#shift-report-entities)
 - [Work Authorization Entities](#work-authorization-entities)
 - [Knowledge Base Entities](#knowledge-base-entities)
@@ -108,6 +109,61 @@ Relationships:
 
 - May belong to one Mine record
 - May belong to one Equipment record
+- May originate zero or many Defect records
+
+## Defect Tracking Entities
+
+### Defect
+
+Represents an equipment issue from initial reporting through resolution and
+closure.
+
+Implemented fields:
+
+- id
+- reportedDate
+- equipmentId
+- sourceDailyInspectionId
+- severity
+- priority
+- status
+- title
+- description
+- correctiveAction
+- resolutionSummary
+- resolvedAt
+- closedAt
+- createdAt
+- updatedAt
+
+Implemented severities:
+
+- Low
+- Medium
+- High
+- Critical
+
+Implemented priorities:
+
+- Low
+- Medium
+- High
+- Urgent
+
+Implemented statuses:
+
+- Open
+- In Progress
+- Resolved
+- Closed
+
+Relationships:
+
+- Belongs to one required Equipment record
+- May reference one source DailyInspection record
+- Derives current Mine context through Equipment; V1 does not persist `mineId`
+- Deleting a source DailyInspection clears the optional source reference and
+  preserves the Defect
 
 ## Shift Report Entities
 

@@ -7,6 +7,13 @@ import {
   shiftOptions as dailyInspectionShiftOptions,
 } from "@/features/daily-inspections/constants";
 import { getDailyInspectionsForDate } from "@/features/daily-inspections/data";
+import {
+  defectPriorityOptions,
+  defectSeverityOptions,
+  defectStatusOptions,
+  optionLabel as defectOptionLabel,
+} from "@/features/defect-tracking/constants";
+import { getDefectsForDate } from "@/features/defect-tracking/data";
 import { dailyLogActivityTypeOptions, optionLabel, shiftOptions } from "@/features/daily-logs/constants";
 import { displayDateOnly, getDailyLogsForDate } from "@/features/daily-logs/data";
 import { dailyLogFilterHref } from "@/features/daily-logs/filters";
@@ -54,12 +61,14 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
     dailyInspections,
     shiftReports,
     workAuthorizations,
+    defects,
   ] = await Promise.all([
     getDailyLogsForDate(dateState.selectedDate),
     getStopCardsForDate(dateState.selectedDate),
     getDailyInspectionsForDate(dateState.selectedDate),
     getShiftReportsForDate(dateState.selectedDate),
     getWorkAuthorizationsForDate(dateState.selectedDate),
+    getDefectsForDate(dateState.selectedDate),
   ]);
 
   return (
@@ -425,6 +434,47 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
                 >
                   View Daily Inspection
                 </Link>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="panel table-panel" aria-labelledby="defects-heading">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Equipment issues</p>
+            <h2 id="defects-heading">Defects</h2>
+          </div>
+          <span className="count-pill">{defects.length}</span>
+        </div>
+
+        {defects.length === 0 ? (
+          <div className="empty-state">
+            <h3>No Defects for this day</h3>
+            <p>Defect Tracking is implemented, but no defects were reported for the selected workday.</p>
+            <div className="button-row">
+              <Link className="button primary" href="/defect-tracking/new">Add Defect</Link>
+              <Link className="button secondary" href="/defect-tracking">Open Defect Tracking</Link>
+            </div>
+          </div>
+        ) : (
+          <div className="record-list">
+            {defects.map((defect) => (
+              <article className="record-card" key={defect.id}>
+                <div>
+                  <p className="eyebrow">
+                    {defectOptionLabel(defectStatusOptions, defect.status)}
+                    {" · "}
+                    {defectOptionLabel(defectSeverityOptions, defect.severity)}
+                    {" · "}
+                    {defectOptionLabel(defectPriorityOptions, defect.priority)} priority
+                  </p>
+                  <h3>{defect.title}</h3>
+                  <p>{defect.description}</p>
+                  <p className="subtle">{defect.equipment.displayName} · {defect.equipment.mine.name}</p>
+                </div>
+                <Link className="table-action" href={`/defect-tracking/${defect.id}`}>View Defect</Link>
               </article>
             ))}
           </div>

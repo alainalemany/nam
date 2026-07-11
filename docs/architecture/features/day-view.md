@@ -39,6 +39,7 @@ Related Documents:
 - `docs/architecture/features/daily-inspections.md`
 - `docs/architecture/features/shift-reports.md`
 - `docs/architecture/features/work-authorizations.md`
+- `docs/architecture/features/defect-tracking.md`
 
 Last Reviewed: 2026-07-10
 
@@ -138,6 +139,7 @@ Expected ownership model:
 | Daily Inspection records, findings, condition logic, and persistence | Daily Inspections |
 | Shift Report records, shift summary, relationship anchors, and lifecycle | Shift Reports |
 | Work Authorization records, permit selections, completion checklist, and lifecycle | Work Authorizations |
+| Defect records, priority, severity, corrective information, resolution, and closure | Defect Tracking |
 | Work Schedule records and schedule-change semantics | Work Schedule |
 | Shift paperwork and related safety records | Shift Reports and related modules |
 | Fuel, truck, timesheet, and payslip records | Their owning modules |
@@ -244,12 +246,13 @@ Implemented participation:
 - Daily Inspections participation as date-aware inspection records.
 - Shift Reports participation as date-aware shift summaries.
 - Work Authorizations participation with Shift Reports as parent context only.
+- Defect Tracking participation as date-aware equipment issue records.
 
 Planned evolution:
 
 - Work Schedule context for the selected date or containing week.
-- Additional module sections as Defects, Timesheets, Fuel Logs, Work Truck
-  Logs, and other records are implemented.
+- Additional module sections as Timesheets, Fuel Logs, Work Truck Logs, and
+  other records are implemented.
 
 Candidate future evolution:
 
