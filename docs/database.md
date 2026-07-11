@@ -139,7 +139,7 @@ Relationships:
 
 - May belong to one Mine record
 - May belong to one Equipment record
-- May later provide parent context for WorkAuthorization records
+- Provides required parent context for WorkAuthorization records
 - May later link to DailyLog, StopCard, DailyInspection, Defect, WorkSchedule,
   Timesheet, or other module-owned records when those relationships are
   explicitly implemented
@@ -216,6 +216,10 @@ Relationships:
 
 Represents a permit or paperwork item associated with a Work Authorization.
 
+Planned deeper model; not part of the current Prisma schema. The implemented V1
+model stores its current permit and work-requirement selections as flat boolean
+fields on `WorkAuthorization`.
+
 Potential future fields:
 
 - id
@@ -243,6 +247,9 @@ Relationships:
 
 Represents technician information captured by the operator.
 
+Planned deeper model; not part of the current Prisma schema. Current V1 crew and
+contact context remains on `WorkAuthorization`.
+
 Potential future fields:
 
 - id
@@ -261,6 +268,9 @@ Relationships:
 ### WorkAuthorizationCompletionChecklist
 
 Represents the completion checklist for returning equipment or work area to production.
+
+Planned deeper model; not part of the current Prisma schema. The implemented V1
+completion checks are flat boolean fields on `WorkAuthorization`.
 
 Potential future fields:
 

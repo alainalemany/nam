@@ -15,6 +15,7 @@ implementation standards, test strategy, or infrastructure operations.
 | Classification | Meaning |
 | --- | --- |
 | Implemented | Product capability exists in the current application foundation. |
+| In Progress | A roadmap phase contains both implemented and remaining capabilities. |
 | Planned | Confirmed product capability intended for Version 1 or a documented future phase. |
 | Deferred | Product capability intentionally excluded from Version 1. |
 | Candidate Future | Unapproved future possibility that requires later evaluation. |
@@ -118,7 +119,7 @@ Success criteria:
 
 ### Phase 1: MVP Workday History
 
-Status: Planned
+Status: In progress
 
 Business value:
 
@@ -128,12 +129,19 @@ Business value:
 
 Capabilities:
 
-- Daily Log completion beyond the current foundation.
-- Searchable historical records.
-- Calendar navigation.
-- Day View navigation and workday context, guided by
+Implemented:
+
+- Daily Log feature-owned filtering and date navigation.
+- Day View navigation and selected-workday composition, guided by
   `docs/architecture/features/day-view.md`.
-- Cross-record links where related modules exist.
+- Date-aware participation for Shift Reports, Daily Work Logs, STOP Cards,
+  Daily Inspections, and Work Authorizations.
+
+Remaining:
+
+- Broader historical lookup across modules.
+- Cross-record links where related modules require them.
+- Global cross-module search remains deferred until separately approved.
 
 Success criteria:
 
@@ -145,7 +153,7 @@ Success criteria:
 
 ### Phase 2: Shift And Safety Records
 
-Status: Planned
+Status: In progress
 
 Business value:
 
@@ -156,11 +164,20 @@ Business value:
 
 Capabilities:
 
-- STOP Cards.
+Implemented foundations and Day View participation:
+
+- STOP Cards, including feature-owned list filtering.
 - Shift Reports.
-- Work Authorizations.
+- Work Authorizations with required Shift Report parent context.
 - Daily Inspections.
+
+Remaining:
+
 - Defect Tracking.
+- Feature-owned list filtering for Daily Inspections, Shift Reports, and Work
+  Authorizations where useful.
+- Additional cross-record relationships only where approved workflows require
+  them.
 
 Success criteria:
 
@@ -298,12 +315,12 @@ The MVP should not require:
 | --- | --- | --- | --- |
 | Operations reference data | Establishes shared mine and equipment context. | None beyond the application foundation. | Implemented |
 | Daily Work Log foundation | Establishes the first usable workday history. | Operations reference data. Feature architecture: `docs/architecture/features/daily-work-logs.md`. | Implemented |
-| Search, calendar, and Day View | Makes historical lookup practical across modules. | Daily records and date-aware modules. | Planned |
-| STOP Cards | Captures safety observations and corrective actions. | Day View context; feature architecture: `docs/architecture/features/stop-cards.md`. | Planned |
-| Daily Inspections | Captures equipment inspection findings and condition context. | Equipment reference data and Day View context; feature architecture: `docs/architecture/features/daily-inspections.md`. | Planned |
-| Shift Reports | Creates the parent structure for shift paperwork. | Daily/date context and equipment references. Feature architecture: `docs/architecture/features/shift-reports.md`. | Planned |
-| Work Authorizations | Captures safety and maintenance work records. | Shift Reports. Feature architecture: `docs/architecture/features/work-authorizations.md`. | Planned |
-| Daily Inspections and Defects | Captures equipment findings and issue history. | Equipment reference data; stronger value with Day View. | Planned |
+| Feature filtering, date navigation, and Day View | Makes historical lookup practical across implemented modules. | Daily records and date-aware modules. | Daily Log and STOP Card filtering implemented; Day View composition implemented; global cross-module search deferred |
+| STOP Cards | Captures safety observations and corrective actions. | Day View context; feature architecture: `docs/architecture/features/stop-cards.md`. | V1 foundation, filtering, and Day View participation implemented |
+| Daily Inspections | Captures equipment inspection findings and condition context. | Equipment reference data and Day View context; feature architecture: `docs/architecture/features/daily-inspections.md`. | V1 foundation and Day View participation implemented; list filtering planned |
+| Shift Reports | Creates the parent structure for shift paperwork. | Daily/date context and equipment references. Feature architecture: `docs/architecture/features/shift-reports.md`. | V1 foundation and Day View participation implemented; list filtering planned |
+| Work Authorizations | Captures safety and maintenance work records. | Shift Reports. Feature architecture: `docs/architecture/features/work-authorizations.md`. | V1 foundation and Day View participation implemented; list filtering planned |
+| Defect Tracking | Captures equipment issue history from report through closure. | Equipment reference data; stronger value with Day View. | Planned |
 | Work Schedule and Timesheet | Supports personal schedule and time reconciliation. | Reference data; stronger value with Day View. | Planned |
 | Fuel Log and Work Truck Log | Captures supporting operational and vehicle records. | Reference data; stronger value with Day View. | Planned |
 | Knowledge Base | Preserves reusable operational knowledge. | Location, mine, and equipment organization. | Planned |

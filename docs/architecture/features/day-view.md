@@ -1,8 +1,9 @@
 # Day View Architecture
 
-Status: Draft
+Status: Approved
 
-Product Phase: Product Roadmap Phase 1 MVP Workday History planned expansion
+Product Phase: Product Roadmap Phase 1 MVP Workday History implemented
+composition; future module participation planned
 
 Primary Feature: Day View
 
@@ -39,7 +40,7 @@ Related Documents:
 - `docs/architecture/features/shift-reports.md`
 - `docs/architecture/features/work-authorizations.md`
 
-Last Reviewed: 2026-07-08
+Last Reviewed: 2026-07-10
 
 ## 1. Purpose
 
@@ -76,19 +77,15 @@ Day View is responsible for:
 
 Implemented foundation:
 
-- No dedicated Day View route or composition surface exists yet.
-- Daily Work Logs already expose date-aware records and date navigation on the
-  Daily Logs list page.
+- `/day-view` selected-workday composition route.
+- Previous-day, next-day, and today navigation using feature-owned date helpers.
+- Parallel composition of Shift Reports, Daily Work Logs, STOP Cards, Daily
+  Inspections, and Work Authorizations through module-owned read helpers.
+- Module sections that link to owning detail routes and distinguish an
+  implemented-empty state from an unimplemented module.
 
-Planned MVP expansion:
+Remaining expansion:
 
-- Day View route or screen for a selected workday.
-- Daily Work Logs participation as the workday narrative layer.
-- STOP Cards participation as date-aware safety observations.
-- Daily Inspections participation as date-aware inspection records.
-- Shift Reports participation as date-aware operational summaries.
-- Work Authorizations participation after Shift Reports and authorization
-  records exist.
 - Work Schedule participation when schedule records exist.
 - Additional module participation as modules are implemented.
 
@@ -240,18 +237,19 @@ Logs, and links back to owning module records until automated coverage matures.
 Future Day View growth should stay aligned with `docs/product-roadmap.md` and
 `docs/roadmap.md`.
 
-Planned evolution:
+Implemented participation:
 
 - Daily Work Logs participation as the workday narrative layer.
 - STOP Cards participation as date-aware safety records.
 - Daily Inspections participation as date-aware inspection records.
 - Shift Reports participation as date-aware shift summaries.
-- Work Authorizations participation after Shift Reports and Work
-  Authorizations exist.
+- Work Authorizations participation with Shift Reports as parent context only.
+
+Planned evolution:
+
 - Work Schedule context for the selected date or containing week.
-- Additional module sections as Shift Reports, Work Authorizations,
-  Inspections, Defects, Timesheets, Fuel Logs, Work Truck Logs, and other
-  records are implemented.
+- Additional module sections as Defects, Timesheets, Fuel Logs, Work Truck
+  Logs, and other records are implemented.
 
 Candidate future evolution:
 

@@ -1,9 +1,9 @@
 # STOP Cards Architecture
 
-Status: Draft
+Status: Approved
 
-Product Phase: Product Roadmap Phase 2 Shift And Safety Records planned
-expansion
+Product Phase: Product Roadmap Phase 2 Shift And Safety Records foundation and
+Day View participation implemented; future expansion planned
 
 Primary Feature: STOP Cards
 
@@ -37,7 +37,7 @@ Related Documents:
 - `docs/architecture/features/day-view.md`
 - `docs/architecture/features/daily-work-logs.md`
 
-Last Reviewed: 2026-07-08
+Last Reviewed: 2026-07-10
 
 ## 1. Purpose
 
@@ -75,16 +75,21 @@ STOP Cards are responsible for:
 
 Implemented foundation:
 
-- No dedicated STOP Cards route, form, data model, or persistence exists yet.
-- Day View currently shows STOP Cards as a "module not implemented"
-  placeholder.
-
-Planned V1 expansion:
-
 - STOP Card create/edit/list/detail workflow.
 - Manual safety observation and corrective-action fields.
+- Prisma persistence with feature-owned Server Actions and Zod validation.
+- Operations reference data links for mine and equipment context.
+- Feature-owned filtering by text, date range, status, category, severity,
+  mine, and equipment.
 - Date-aware STOP Card participation in Day View.
 - Basic status tracking appropriate for personal recordkeeping.
+
+Remaining evolution:
+
+- Future global cross-module search remains separate from STOP Cards list
+  filtering.
+- Related-record links remain deferred until a concrete cross-module workflow
+  requires them.
 
 ## 3. Non-Responsibilities
 
@@ -229,7 +234,7 @@ Appropriate test targets:
 - Pure date and formatting helpers.
 - Server Action parsing behavior where it can be tested without brittle
   framework coupling.
-- Day View contribution behavior once STOP Cards participate in Day View.
+- Day View contribution behavior for the implemented selected-date integration.
 - Component behavior for stable form or record summary interactions when the UI
   stabilizes.
 - Persistence integration tests when database-backed integration testing is
@@ -248,7 +253,7 @@ matures.
 
 ## 10. Day View Participation
 
-STOP Cards should participate in Day View as date-aware safety records.
+STOP Cards participate in Day View as date-aware safety records.
 
 Day View responsibilities:
 

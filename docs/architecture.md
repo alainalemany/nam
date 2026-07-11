@@ -83,20 +83,23 @@ Architecture-specific principles:
 
 ## Current Platform Baseline
 
-Confirmed stack:
+Implemented stack:
 
 - Next.js
 - TypeScript
-- Tailwind CSS
+- React
 - PostgreSQL
 - Prisma ORM
-- React Hook Form
 - Zod
 - Vitest
 - React Testing Library
-- TanStack Table
-- ApexCharts
-- Metronic UI Template
+- jsdom
+
+Approved or candidate tooling not currently integrated into the application:
+
+- Tailwind CSS and selective Metronic adaptation remain approved UI direction.
+- React Hook Form, TanStack Table, and ApexCharts remain optional planned tools
+  that should be added only when an implemented workflow justifies them.
 
 Confirmed deployment baseline:
 
@@ -156,11 +159,13 @@ New durable architecture decisions should be added as new ADR files under
 
 ## Recommended Future Architecture Map
 
-Recommended: Keep `docs/architecture.md` as the architecture overview for now.
-Do not create `docs/architecture/` yet because the current repository does not
-need another nested documentation layer.
+Keep `docs/architecture.md` as the repository-wide architecture overview. The
+approved `docs/architecture/features/` hierarchy contains Level 2
+feature-specific implementation architecture documents and does not replace
+this overview.
 
-If architecture material grows substantially, migrate to:
+If repository-wide architecture material grows substantially, a future
+milestone may migrate the overview into a broader hierarchy such as:
 
 ```text
 docs/architecture/
@@ -183,8 +188,9 @@ Disadvantages:
 - Higher risk of duplicate architecture statements.
 - Requires migrating existing links from `docs/architecture.md`.
 
-Current decision: defer this migration until architecture content outgrows a
-single overview document.
+Current decision: preserve the existing overview and feature-document hierarchy.
+Defer any broader architecture reorganization until the repository-wide
+overview outgrows this document.
 
 ## Open Questions
 

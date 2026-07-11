@@ -1,9 +1,9 @@
 # Daily Work Logs Architecture
 
-Status: Draft
+Status: Approved
 
-Product Phase: Product Roadmap Phase 0 implemented foundation; Phase 1 MVP
-Workday History planned expansion
+Product Phase: Product Roadmap Phase 0 foundation and Phase 1 workday-history
+capabilities implemented; future cross-module history expansion planned
 
 Primary Feature: Daily Work Logs
 
@@ -35,7 +35,7 @@ Related Documents:
 - `docs/engineering-quality-standards.md`
 - `docs/architecture/features/day-view.md`
 
-Last Reviewed: 2026-07-08
+Last Reviewed: 2026-07-10
 
 ## 1. Purpose
 
@@ -75,13 +75,16 @@ Implemented foundation:
 - Zod validation for persisted user input.
 - Prisma persistence for `DailyLog` and `DailyLogActivity`.
 - Mine and equipment references from existing operations reference data.
+- Feature-owned list filtering by text, date range, mine, equipment, shift, and
+  activity type.
+- Previous-day, next-day, and today date navigation on the list page.
+- Date-aware participation in Day View through a Daily Logs-owned read helper.
 
-Planned MVP expansion:
+Remaining evolution:
 
-- Searchable Daily Log history.
-- Calendar navigation.
-- Day View participation.
 - Richer related-record links as neighboring modules are implemented.
+- Future global cross-module search remains separate from Daily Logs list
+  filtering.
 
 ## 3. Non-Responsibilities
 
@@ -118,8 +121,8 @@ The V1 Daily Work Logs workflow should remain simple and manual:
    activity timeline.
 9. The operator can edit the Daily Log if the workday record needs correction.
 
-Future search, calendar, and Day View workflows should use Daily Logs as
-date-aware records, not as a replacement for structured modules. Day View
+Historical lookup and Day View workflows use Daily Logs as date-aware records,
+not as a replacement for structured modules. Day View
 composition boundaries are defined in `docs/architecture/features/day-view.md`.
 
 ## 5. Module Boundaries
@@ -199,7 +202,7 @@ The detail page should make the Daily Log readable as a workday record:
 - Summary and notes.
 - Activity timeline in sequence order.
 
-Future search, calendar, and Day View UI should reference the Daily Log as a
+Filtering, date navigation, and Day View UI should reference the Daily Log as a
 date-aware record and preserve the activity timeline as the narrative view.
 
 ## 8. Validation And Error Handling
@@ -259,14 +262,18 @@ automated coverage matures.
 Future Daily Work Logs growth should stay aligned with `docs/product-roadmap.md`
 and `docs/roadmap.md`.
 
-Planned evolution:
+Implemented evolution:
 
 - Search Daily Logs by date, text, equipment, activity type, contractor, or
   company.
 - Add calendar navigation for historical Daily Log records.
 - Participate in Day View as the workday narrative layer.
+
+Remaining evolution:
+
 - Link activities to available related records as structured modules are
   implemented.
+- Add global cross-module search only as a separately approved capability.
 
 Candidate future evolution:
 
@@ -295,8 +302,8 @@ Daily Work Logs architecture is successful when:
 - Multiple activities can be captured and reviewed in stable sequence.
 - Mine and equipment relationships use existing reference records.
 - Validation protects persisted Daily Log data at the server boundary.
-- Daily Logs can later participate in search, calendar, and Day View without
-  restructuring the foundation.
+- Daily Logs participate in feature-owned filtering, date navigation, and Day
+  View without transferring ownership of Daily Log behavior.
 - Related module links can be added later without turning Daily Logs into a
   duplicate owner of structured module data.
 - The feature continues to follow repository-wide delivery, dependency, feature,

@@ -1,9 +1,9 @@
 # Shift Reports Architecture
 
-Status: Draft
+Status: Approved
 
-Product Phase: Product Roadmap Phase 2 Shift And Safety Records planned
-expansion
+Product Phase: Product Roadmap Phase 2 Shift And Safety Records foundation,
+Work Authorization parent context, and Day View participation implemented
 
 Primary Feature: Shift Reports
 
@@ -41,7 +41,7 @@ Related Documents:
 - `docs/architecture/features/daily-inspections.md`
 - `docs/architecture/features/work-authorizations.md`
 
-Last Reviewed: 2026-07-09
+Last Reviewed: 2026-07-10
 
 ## 1. Purpose
 
@@ -92,15 +92,15 @@ Implemented foundation:
 - Prisma persistence for `ShiftReport`.
 - Mine and equipment references from existing operations reference data.
 - Route loading and error states for the Shift Reports area.
-- Work Authorizations are architected to depend on Shift Reports, but Work
-  Authorizations are not implemented yet.
-- Day View does not yet compose Shift Report records.
+- Required parent context for implemented Work Authorization records.
+- Date-aware Shift Report participation in Day View.
 
-Future V1 expansion:
+Remaining evolution:
 
-- Parent relationship surface for Work Authorizations.
 - Links to related records only where those modules already exist or the V1 data
   model explicitly includes the relationship.
+- Feature-owned Shift Report list filtering remains planned.
+- Future global cross-module search remains a separate deferred capability.
 
 ## 3. Non-Responsibilities
 
@@ -140,7 +140,7 @@ The V1 Shift Reports workflow should stay focused on manual shift coordination:
 8. When Work Authorizations exist, the operator creates Work Authorizations from
    the correct Shift Report context.
 
-Future Day View participation should show Shift Reports associated with the
+Day View participation shows Shift Reports associated with the
 selected workday without allowing Day View to create, edit, validate, or close
 Shift Reports.
 
@@ -171,7 +171,7 @@ Daily Work Logs, STOP Cards, and Daily Inspections remain independent from
 Shift Reports. These features may appear on the same workday and may eventually
 link to a Shift Report, but none of these features own each other.
 
-Day View will eventually own only the selected-workday composition surface. Day
+Day View owns only the selected-workday composition surface. Day
 View may render Shift Report records returned by the Shift Reports feature, but
 it should not own Shift Report validation, persistence, summary rules, or
 lifecycle transitions.
@@ -196,11 +196,11 @@ Expected V1 data flow:
 7. Successful writes redirect to the relevant Shift Report list or detail
    surface.
 
-Future Work Authorization creation should receive parent Shift Report context
+Work Authorization creation receives parent Shift Report context
 from the route or explicit relationship input. Work Authorization writes should
 remain inside the Work Authorizations feature.
 
-Future Day View participation should use a read-only query or feature-owned
+Day View participation uses a read-only feature-owned
 helper from the Shift Reports feature. Day View should not write or normalize
 Shift Report data.
 
@@ -264,9 +264,8 @@ Appropriate V1 test targets:
 - Optional field normalization.
 - Feature-owned constants and enum option behavior.
 - Server Action behavior for invalid input once actions exist.
-- Feature-owned data helpers for list/detail and future Day View participation.
-- Relationship behavior for future Work Authorization parent context once both
-  features are implemented.
+- Feature-owned data helpers for list/detail and Day View participation.
+- Relationship behavior for the implemented Work Authorization parent context.
 
 Avoid:
 
@@ -276,12 +275,12 @@ Avoid:
 - Generic related-record frameworks before repeated module need exists.
 
 Manual verification should cover create, edit, detail, validation feedback,
-related-record visibility, Work Authorization parent context when implemented,
+related-record visibility, Work Authorization parent context,
 and empty states until automated coverage matures.
 
-## 10. Future Day View Participation
+## 10. Day View Participation
 
-Shift Reports should eventually participate in Day View as shift-level
+Shift Reports participate in Day View as shift-level
 operational records.
 
 Day View responsibilities:
@@ -303,23 +302,23 @@ Shift Reports responsibilities:
 Day View should not create, edit, validate, close, approve, export, or otherwise
 mutate Shift Reports.
 
-Day View participation should wait until Shift Reports have a stable date model
-and basic read surfaces.
-
 ## 11. Future Evolution
 
 Future Shift Reports growth should stay aligned with `docs/product-roadmap.md`
 and `docs/roadmap.md`.
 
-Planned evolution:
+Implemented evolution:
 
 - Provide parent context for Work Authorizations.
+- Participate in Day View with feature-owned date query behavior.
+
+Planned evolution:
+
 - Link Shift Reports to related Daily Logs when a real related-record need
   exists.
 - Link Shift Reports to STOP Cards, Daily Inspections, defects, Work Schedule,
   Timesheets, or other modules when those modules need explicit relationship
   records.
-- Add Day View participation after records exist and date ownership is clear.
 
 Candidate future evolution:
 
@@ -353,8 +352,7 @@ Shift Reports architecture is successful when:
   independent feature modules.
 - Users can create, review, and edit Shift Reports without crossing feature
   ownership boundaries.
-- Future Day View participation can compose Shift Report records without Day
-  View owning Shift Report logic.
+- Day View composes Shift Report records without owning Shift Report logic.
 - Future links to neighboring modules can be added without duplicating their
   structured records.
 - The feature remains V1-focused and does not become exports, approvals,

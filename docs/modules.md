@@ -15,7 +15,10 @@ Implementation standards for turning these modules into feature slices live in
 ## Table Of Contents
 
 - [Source Documents](#source-documents)
+- [Shift Reports](#shift-reports)
 - [Work Authorizations](#work-authorizations)
+- [STOP Cards](#stop-cards)
+- [Daily Inspections](#daily-inspections)
 - [Daily Log](#daily-log)
 - [Knowledge Base](#knowledge-base-kb)
 - [Work Schedule](#work-schedule)
@@ -40,9 +43,35 @@ Implementation standards for turning these modules into feature slices live in
 - Shift Handover Form
 - Production Form
 
+Pending source-form collection does not mean the corresponding software module
+is unimplemented. STOP Cards and Daily Inspections currently use the approved V1
+fields documented in `docs/database.md` and their feature architecture documents.
+
+## Shift Reports
+
+Shift Reports are manual operational coordination and shift-summary records.
+They own their date, shift, status, summary, mine, equipment, location, and
+operational-note workflow. They also provide the required parent context for
+Work Authorizations without owning Work Authorization validation or lifecycle
+logic.
+
+The implemented V1 module provides list, create, edit, and detail workflows,
+Prisma persistence, and selected-date Day View participation. Feature-owned
+list filtering and broader related-record links remain future work.
+
+Implementation architecture:
+
+`docs/architecture/features/shift-reports.md`
+
 ## Work Authorizations
 
 The Work Authorizations module tracks safety and compliance paperwork required when work is performed on the dragline.
+
+The implemented V1 module provides list, create, edit, and detail workflows,
+structured permit/work-requirement fields, lifecycle validation, Prisma
+persistence, required Shift Report parent context, and selected-date Day View
+participation. Feature-owned list filtering and deeper child-record structures
+remain future work.
 
 ### Purpose
 
@@ -146,9 +175,43 @@ Source image folder:
 
 `source-forms/Work authorizations`
 
+## STOP Cards
+
+STOP Cards are manual safety observation and corrective-action records. The
+module owns observation details, category, severity, status, validation,
+persistence, and its feature-owned list filters.
+
+The implemented V1 module provides list, create, edit, detail, filtering, mine
+and equipment context, and selected-date Day View participation. Attachments,
+approvals, analytics, and global cross-module search remain deferred.
+
+Implementation architecture:
+
+`docs/architecture/features/stop-cards.md`
+
+## Daily Inspections
+
+Daily Inspections are manual equipment and work-area inspection records. The
+module owns inspection findings, condition and status logic, validation, and
+persistence while remaining independent from Daily Logs and STOP Cards.
+
+The implemented V1 module provides list, create, edit, detail, mine and
+equipment context, and selected-date Day View participation. Feature-owned list
+filtering, attachments, templates, approvals, analytics, and global
+cross-module search remain future or deferred work.
+
+Implementation architecture:
+
+`docs/architecture/features/daily-inspections.md`
+
 ## Daily Log
 
 The Daily Log module records the operator's full workday as a searchable timeline of activities, events, observations, and linked records.
+
+The implemented module provides list, create, edit, and detail workflows,
+multiple activity entries, feature-owned filtering, date navigation, and
+selected-date Day View participation. Global cross-module search remains a
+separate future capability.
 
 ### Purpose
 

@@ -18,8 +18,8 @@ not duplicate feature architecture policy.
 UI architecture and design-system standards live in `docs/ui-architecture.md`.
 
 Testing strategy, test layers, and future quality gates live in
-`docs/testing-strategy.md`. This development guide should document concrete test
-commands only after the corresponding tools are added to the project.
+`docs/testing-strategy.md`. This development guide documents concrete commands
+for the testing tools currently implemented in the project.
 
 ## Current Scope
 
@@ -32,7 +32,11 @@ The current development platform includes:
 - Prisma Client generation
 - Docker application service
 - Localhost-only application publishing behind optional host-level Caddy
-- Operations reference data and Daily Logs feature foundations
+- Operations reference data
+- Daily Work Logs, STOP Cards, Daily Inspections, Shift Reports, and Work
+  Authorizations feature foundations
+- Selected-date Day View composition across the implemented operational modules
+- Feature-owned list filtering for Daily Logs and STOP Cards
 
 The current development platform does not implement authentication, user
 management, production deployment, monitoring, or background workers.
@@ -223,12 +227,12 @@ The local health endpoint should return:
 
 ## Prisma
 
-The initial Prisma schema is intentionally minimal and contains only:
-
-- Prisma Client generator
-- PostgreSQL datasource
-
-Product data models should be added only after the relevant module requirements and database decisions are confirmed.
+The Prisma schema contains the PostgreSQL datasource, generated client
+configuration, shared operations reference data, and implemented operational
+models for Daily Work Logs, STOP Cards, Daily Inspections, Shift Reports, and
+Work Authorizations. Schema changes must continue through reviewed Prisma
+migrations after the relevant module requirements and data decisions are
+confirmed.
 
 ## Testing
 

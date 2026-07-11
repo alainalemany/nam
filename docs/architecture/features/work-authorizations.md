@@ -1,9 +1,9 @@
 # Work Authorizations Architecture
 
-Status: Draft
+Status: Approved
 
-Product Phase: Product Roadmap Phase 2 Shift And Safety Records planned
-expansion
+Product Phase: Product Roadmap Phase 2 Shift And Safety Records foundation and
+Day View participation implemented; future expansion planned
 
 Primary Feature: Work Authorizations
 
@@ -11,7 +11,7 @@ Depends On:
 
 - Shift Reports as the required parent workflow
 - Operations reference data where equipment, mine, or location context is used
-- Future Day View selected-workday composition
+- Day View selected-workday composition
 - `docs/product-roadmap.md`
 - `docs/delivery-architecture.md`
 - `docs/dependency-architecture.md`
@@ -41,7 +41,7 @@ Related Documents:
 - `docs/architecture/features/daily-inspections.md`
 - `docs/architecture/features/shift-reports.md`
 
-Last Reviewed: 2026-07-09
+Last Reviewed: 2026-07-10
 
 ## 1. Purpose
 
@@ -99,13 +99,17 @@ Implemented foundation:
 - Lockout Permit Required defaults to Yes, with a reason required when set to
   No.
 - Route loading and error states for the Work Authorizations area.
-- Day View does not yet compose Work Authorization records.
+- Date-aware Work Authorization participation in Day View through a
+  feature-owned read helper, using the parent Shift Report date as workday
+  context.
 
-Future V1 expansion:
+Remaining evolution:
 
 - Richer related-record links where neighboring modules need explicit
   relationships.
 - Deeper permit/checklist structure if the flat V1 fields stop being sufficient.
+- Feature-owned Work Authorization list filtering remains planned.
+- Future global cross-module search remains a separate deferred capability.
 
 ## 3. Non-Responsibilities
 
@@ -148,7 +152,7 @@ inside the shift where the work occurred:
 9. Before closing the Work Authorization, the operator completes the required
    completion checklist.
 
-Future Day View participation should show Work Authorizations associated with
+Day View participation shows Work Authorizations associated with
 the selected workday without allowing Day View to create, edit, validate, or
 close authorization records.
 
@@ -177,7 +181,7 @@ Shift Reports for parent context, but Work Authorizations should own their own
 authorization fields, permit selections, technicians, completion checklist, and
 status transitions.
 
-Day View will eventually own only the selected-workday composition surface. Day
+Day View owns only the selected-workday composition surface. Day
 View may render Work Authorization records returned by the Work Authorizations
 feature, but it should not own authorization validation, persistence, permit
 rules, completion checklist logic, or lifecycle transitions.
@@ -210,7 +214,7 @@ Expected V1 data flow:
 8. Successful writes redirect to the relevant Work Authorization or parent
    Shift Report surface.
 
-Future Day View participation should use a read-only query or feature-owned
+Day View participation uses a read-only feature-owned
 helper from the Work Authorizations feature. Day View should not write or
 normalize Work Authorization data.
 
@@ -285,7 +289,7 @@ Appropriate V1 test targets:
 - Feature-owned constants and enum option behavior.
 - Optional field normalization.
 - Server Action behavior for invalid input once actions exist.
-- Feature-owned data helpers for list/detail and future Day View participation.
+- Feature-owned data helpers for list/detail and Day View participation.
 - Route-level rendering for stable empty states when component patterns mature.
 
 Avoid:
@@ -299,9 +303,9 @@ Manual verification should cover create, edit, detail, validation feedback,
 completion checklist behavior, parent Shift Report context, and empty states
 until automated coverage matures.
 
-## 10. Future Day View Participation
+## 10. Day View Participation
 
-Work Authorizations should eventually participate in Day View as shift-scoped
+Work Authorizations participate in Day View as shift-scoped
 work records.
 
 Day View responsibilities:
@@ -324,23 +328,25 @@ Work Authorizations responsibilities:
 Day View should not create, edit, validate, close, approve, export, or otherwise
 mutate Work Authorizations.
 
-Because Work Authorizations depend on Shift Reports, Day View participation
-should wait until both the parent Shift Report context and Work Authorization
-records exist.
+Work Authorizations use the parent Shift Report date as their selected-workday
+context while retaining their own feature-owned query behavior.
 
 ## 11. Future Evolution
 
 Future Work Authorizations growth should stay aligned with
 `docs/product-roadmap.md` and `docs/roadmap.md`.
 
-Planned evolution:
+Implemented evolution:
 
 - Implement Work Authorizations after Shift Reports provide parent context.
+- Participate in Day View with feature-owned date query behavior.
+
+Planned evolution:
+
 - Link Work Authorizations to related Daily Logs when a real related-record need
   exists.
 - Link Work Authorizations to STOP Cards, Daily Inspections, or Defects when
   those modules need explicit relationship records.
-- Add Day View participation after records exist and date ownership is clear.
 
 Candidate future evolution:
 
@@ -374,8 +380,8 @@ Work Authorizations architecture is successful when:
   crossing feature ownership boundaries.
 - Lockout Permit rules and completion checklist expectations are enforced at
   the server boundary.
-- Future Day View participation can compose Work Authorization records without
-  Day View owning authorization logic.
+- Day View composes Work Authorization records without owning authorization
+  logic.
 - Future links to neighboring modules can be added without duplicating their
   structured records.
 - The feature remains V1-focused and does not become exports, approvals,

@@ -196,22 +196,27 @@ The current implemented product capabilities include:
 - Multiple manual Daily Log activity entries.
 - Daily Log and activity links to existing mine and equipment records.
 - Daily Log summary and activity timeline views.
+- Daily Log feature-owned filtering and date navigation.
+- STOP Card create, edit, list, detail, filtering, and Day View workflows.
+- Daily Inspection, Shift Report, and Work Authorization create, edit, list,
+  detail, and Day View workflows.
+- Day View composition for Shift Reports, Daily Work Logs, STOP Cards, Daily
+  Inspections, and Work Authorizations on a selected date.
 
 ### Planned
 
 Planned Version 1 product scope includes:
 
-- Manual data entry.
-- Daily Log.
-- Shift Reports.
-- Work Authorizations.
 - Work Schedule.
 - Timesheet.
 - Fuel Log.
 - Work Truck Log.
-- Searchable historical records.
-- Calendar and Day View navigation.
-- Clean modular database design.
+- Feature-owned list filtering for Daily Inspections, Shift Reports, and Work
+  Authorizations where useful.
+- Broader historical lookup through feature-owned views; global cross-module
+  search remains deferred.
+- Additional calendar and Day View participation as future modules are
+  implemented.
 
 Detailed requirements live in `docs/prd.md`. Module behavior lives in
 `docs/modules.md`.

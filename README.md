@@ -86,13 +86,16 @@ Source forms and reference images are stored under:
 
 ## Current Status
 
-This project is in active application-foundation development.
+This project is in active feature development.
 
 The repository includes a Next.js, TypeScript, Prisma, PostgreSQL, Docker
 Compose, host-level Caddy development baseline, and executable Vitest testing
-foundation. Operations reference data and the Daily Work Log foundation have
-been implemented. Future modules should continue to follow the
-documentation-first, vertical-slice approach.
+foundation. Operations reference data, Daily Work Logs, STOP Cards, Daily
+Inspections, Shift Reports, Work Authorizations, and selected-date Day View
+composition have been implemented. Daily Logs and STOP Cards also provide
+feature-owned list filtering; global cross-module search remains future work.
+Future modules should continue to follow the documentation-first,
+vertical-slice approach.
 
 ## Version 1 Focus
 

@@ -1,9 +1,9 @@
 # Daily Inspections Architecture
 
-Status: Draft
+Status: Approved
 
-Product Phase: Product Roadmap Phase 2 Shift And Safety Records planned
-expansion
+Product Phase: Product Roadmap Phase 2 Shift And Safety Records foundation and
+Day View participation implemented; future expansion planned
 
 Primary Feature: Daily Inspections
 
@@ -38,7 +38,7 @@ Related Documents:
 - `docs/architecture/features/daily-work-logs.md`
 - `docs/architecture/features/stop-cards.md`
 
-Last Reviewed: 2026-07-09
+Last Reviewed: 2026-07-10
 
 ## 1. Purpose
 
@@ -78,18 +78,18 @@ Daily Inspections are responsible for:
 
 Implemented foundation:
 
-- No dedicated Daily Inspections route, form, data model, or persistence exists
-  yet.
-- Day View currently shows Daily Inspections as a "module not implemented"
-  placeholder.
-
-Planned V1 expansion:
-
 - Daily Inspection create/edit/list/detail workflow.
 - Manual inspection fields grounded in `docs/prd.md`.
 - Equipment and date context.
 - Basic condition or status tracking appropriate for personal recordkeeping.
+- Prisma persistence with feature-owned Server Actions and Zod validation.
+- Operations reference data links for mine and equipment context.
 - Date-aware Daily Inspection participation in Day View.
+
+Remaining V1 work:
+
+- Feature-owned Daily Inspection list filtering remains planned.
+- Future global cross-module search remains a separate deferred capability.
 
 ## 3. Non-Responsibilities
 
@@ -248,8 +248,7 @@ Appropriate test targets:
 - Feature-owned filter helpers if Daily Inspections list filtering is added.
 - Server Action parsing behavior where it can be tested without brittle
   framework coupling.
-- Day View contribution behavior once Daily Inspections participate in Day
-  View.
+- Day View contribution behavior for the implemented selected-date integration.
 - Component behavior for stable form or record summary interactions when the UI
   stabilizes.
 - Persistence integration tests when database-backed integration testing is
@@ -268,7 +267,7 @@ matures.
 
 ## 10. Day View Participation
 
-Daily Inspections should participate in Day View as date-aware inspection
+Daily Inspections participate in Day View as date-aware inspection
 records.
 
 Day View responsibilities:

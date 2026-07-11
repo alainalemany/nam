@@ -299,15 +299,17 @@ Manual verification should be summarized with:
 Do not design tests around features that are not implemented or not approved
 for the current phase.
 
+Daily Work Logs, Day View, STOP Cards, Daily Inspections, Shift Reports, and
+Work Authorizations are implemented and are eligible for proportional tests.
+Current unit coverage emphasizes validation, feature-owned filters, and date
+helpers. Broader route, Server Action, and PostgreSQL integration coverage
+should be added through separately approved testing-maturity slices.
+
 Deferred areas:
 
 - Authentication and authorization.
 - Attachments.
-- Day View.
 - Global search.
-- Work Authorizations.
-- Inspections.
-- STOP Cards.
 - Analytics.
 - Production deployment.
 - Metronic integration details.
@@ -347,7 +349,6 @@ Future AI assistants should:
 
 ## Open Questions
 
-- Which unit/integration test runner should be standard for the project?
 - Should Playwright run in local development, CI, or both?
 - How should test databases be created, migrated, seeded, and reset?
 - What CI provider and branch protection rules should be used?

@@ -30,6 +30,9 @@ Feature implementation architecture:
 
 `docs/architecture/features/stop-cards.md`
 
+Current status: Requirements, data model, V1 CRUD, feature-owned filtering, and
+Day View participation are implemented. Future enhancements remain deferred.
+
 ### Phase 1: Requirements Definition
 
 - Confirm V1 STOP Card fields from the product requirements.
@@ -66,6 +69,9 @@ Feature implementation architecture:
 Feature implementation architecture:
 
 `docs/architecture/features/daily-inspections.md`
+
+Current status: Requirements, data model, V1 CRUD, and Day View participation
+are implemented. Feature-owned list filtering remains planned.
 
 ### Phase 1: Requirements Definition
 
@@ -112,6 +118,11 @@ Shift Reports feature architecture:
 Work Authorizations feature architecture:
 
 `docs/architecture/features/work-authorizations.md`
+
+Current status: The V1 foundation, required Shift Report relationship,
+lifecycle validation, and Day View participation are implemented. Richer
+technician/signature structures, deeper permit records, and broader related
+record links remain future work.
 
 ### Phase 1: Requirements Definition
 
@@ -224,6 +235,11 @@ Feature implementation architecture:
 Day View feature architecture:
 
 `docs/architecture/features/day-view.md`
+
+Current status: Daily Log CRUD, multiple activities, feature-owned filtering,
+date navigation, and Day View participation are implemented. Work Schedule
+context, richer related-record links, and global cross-module search remain
+planned or deferred as described below.
 
 ### Phase 1: Requirements Definition
 
@@ -381,6 +397,8 @@ Day View feature architecture:
 
 ### Phase 1: VPS Foundation
 
+Status: Implemented
+
 - Inspect the current VPS before making system-level changes
 - Verify Ubuntu LTS baseline
 - Verify Docker Engine installation
@@ -392,6 +410,8 @@ Day View feature architecture:
 - Leave SSH hardening, Caddy, firewall changes, and deployment files for later approved phases
 
 ### Phase 2A: Docker PostgreSQL Foundation
+
+Status: Implemented
 
 - Use /home/alain/projects/nam as the development project location
 - Do not create /opt/nam during Phase 2A
@@ -414,7 +434,7 @@ Day View feature architecture:
 
 ### Phase 2B: Application Container Foundation
 
-- Status: In implementation after approval on 6/30/2026
+Status: Implemented
 - Scaffold the Next.js application only after Phase 2A is complete and verified
 - Use pnpm for package management
 - Configure TypeScript
@@ -428,13 +448,18 @@ Day View feature architecture:
 
 ### Phase 3: Reverse Proxy And HTTPS
 
+Status: Implemented for external development access through `dev.alemany.me`
+
 - Install Caddy directly on the VPS host only after the Docker application stack is functional
 - Configure Caddy as the only public reverse proxy
-- Configure HTTPS for nam.alemany.me
+- Configure HTTPS for `dev.alemany.me`
+- Keep `nam.alemany.me` reserved for future production use
 - Reverse proxy public requests to the localhost-bound Next.js container
 - Verify external access, certificate issuance, and certificate renewal behavior
 
 ### Phase 4: Production Operations
+
+Status: Planned; production deployment is not implemented
 
 - Define the production deployment location, possibly /opt/nam
 - Automate PostgreSQL backups
