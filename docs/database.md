@@ -541,7 +541,7 @@ Potential fields:
 - id
 - date
 - shift
-- workScheduleDayId
+- dailyAssignmentId
 - primaryEquipmentId
 - mineId
 - summary
@@ -552,7 +552,7 @@ Potential fields:
 
 Relationships:
 
-- May reference one WorkScheduleDay
+- May later reference one Work Schedule DailyAssignment
 - May reference one primary Equipment record
 - May reference one Mine record
 - Has many DailyLogActivity records
@@ -661,7 +661,8 @@ Potential design options:
 - Add a searchable activity/index table later if direct queries become too slow
 - Use PostgreSQL full-text search for notes, descriptions, and titles
 - Support exact-date queries for daily records
-- Support date-containment queries for period records, such as WorkScheduleWeek where the selected date falls between weekStartDate and weekEndDate
+- Support date-containment queries for period records, such as WeeklySchedule
+  where the selected date falls between weekStartDate and weekEndDate
 
 All operational records should include stable dates, timestamps, and module relationships so a selected date can show schedules, daily logs, inspections, defects, work authorizations, future work orders, KB notes, and attachments together.
 
@@ -669,9 +670,16 @@ Day View queries should return both records dated on the selected day and contex
 
 ## Work Schedule Entities
 
-### WorkScheduleWeek
+The Work Schedule feature architecture is defined in
+`docs/architecture/features/work-schedule.md`.
 
-Represents one weekly schedule period for the operator.
+The entities below are conceptual V1 data-design guidance. They are not yet
+implemented in the Prisma schema.
+
+### WeeklySchedule
+
+Represents one Monday-through-Sunday schedule planning container for the primary
+employee whose schedule is being entered.
 
 Potential fields:
 
@@ -679,9 +687,11 @@ Potential fields:
 - weekStartDate
 - weekEndDate
 - status
-- sourceType
-- sourceNote
+- primaryEmployeeDisplayName
+- assignedByDisplayName
 - receivedAt
+- sourceNote
+- scheduleNotes
 - createdAt
 - updatedAt
 
@@ -689,69 +699,114 @@ Potential statuses:
 
 - Draft
 - Active
-- Superseded
 - Archived
-
-Potential source types:
-
-- Manual Entry
-- Supervisor Message
-- Supervisor Update
 
 Relationships:
 
-- Has many WorkScheduleDay records
-- Has many WorkScheduleChange records
+- Has many DailyAssignment records
 
-### WorkScheduleDay
+### DailyAssignment
 
-Represents the assignment for one day within a weekly schedule.
+Represents the assignment for one date within a WeeklySchedule.
+
+The day is the operational and historical unit. Do not model one multi-day
+assignment spanning several dates.
 
 Potential fields:
 
 - id
-- workScheduleWeekId
-- date
+- weeklyScheduleId
+- assignmentDate
 - dayOfWeek
-- assignmentStatus
-- equipmentId
-- assignmentLabel
-- startTime
-- endTime
-- notes
+- plannedStatus
+- plannedShift
+- plannedEquipmentId
+- plannedEquipmentDisplayName
+- plannedEquipmentNumber
+- plannedEquipmentCategory
+- plannedMineName
+- plannedCityName
+- plannedCityState
+- actualStatus
+- actualShift
+- actualEquipmentId
+- actualEquipmentDisplayName
+- actualEquipmentNumber
+- actualEquipmentCategory
+- actualMineName
+- actualCityName
+- actualCityState
+- changeReason
+- plannedNotes
+- actualNotes
 - createdAt
 - updatedAt
 
 Potential assignment statuses:
 
 - Scheduled
-- Off
+- Non-working
 - Unknown
-- Changed
+- Cancelled
 
 Relationships:
 
-- Belongs to one WorkScheduleWeek
-- May reference one Equipment record
-- May later reference one ShiftReport, if a shift report entity is created
+- Belongs to one WeeklySchedule
+- May reference one planned Equipment record
+- May reference one actual Equipment record
+- Has many AssignmentCrewMember records
 
-### WorkScheduleChange
+Users select Equipment for planned and actual assignments. Mine and City are
+derived through the selected Equipment. Historical equipment, mine, and city
+display values are snapshots for schedule readability. They do not replace the
+Equipment, Mine, or City reference-data records, and they should not duplicate
+the full reference-data records.
 
-Represents a schedule update or correction received after the original schedule was entered.
+The approved historical display snapshots are limited to equipment display
+name, equipment number, equipment category, mine name, city name, and city
+state for planned and actual equipment context.
+
+### AssignmentCrewMember
+
+Represents one planned or actual crew participant for a DailyAssignment.
 
 Potential fields:
 
 - id
-- workScheduleWeekId
-- receivedAt
-- sourceNote
-- changeReason
-- changedBy
+- dailyAssignmentId
+- phase
+- role
+- displayName
+- isUnknown
+- notes
 - createdAt
+- updatedAt
+
+Potential phases:
+
+- Planned
+- Actual
+
+Potential roles:
+
+- Primary employee
+- Partner
 
 Relationships:
 
-- Belongs to one WorkScheduleWeek
+- Belongs to one DailyAssignment
+
+V1 uses name snapshots only for crew participants. It does not introduce an
+Employee, Supervisor, User, operator, owner, or workforce identity relation.
+Unknown or not-yet-registered partners should be represented explicitly without
+creating fake reference records.
+
+### Deferred Work Schedule Entities
+
+Full schedule revision history, supervisor publishing records, imported SMS
+messages, AI parsing artifacts, and future Employee or Supervisor reference
+relationships are deferred until the manual schedule workflow proves reliable
+and the product owner approves the added scope.
 
 ## Timesheet Entities
 
@@ -827,7 +882,7 @@ Relationships:
 - May reference one Equipment record
 - May reference one TimesheetWorkCode record
 - May reference one TimesheetWorkOrder record
-- May later reference one WorkScheduleDay record
+- May later reference one Work Schedule DailyAssignment record
 - May later reference one DailyLogActivity record
 - May later reference one Payslip record
 

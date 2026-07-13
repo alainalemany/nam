@@ -450,11 +450,34 @@ Dragline number is the primary equipment identifier for this workflow.
 
 NAM Dashboard must support a Work Schedule module for logging and managing weekly work assignments.
 
+Work Schedule represents employee assignments to equipment. The meaningful
+operational record is the assignment connecting date, employee or crew, shift,
+equipment, and operational context.
+
+The Weekly Schedule is the planning container for one operational week. Each
+scheduled working day is an independent Daily Assignment so one day's equipment,
+crew, shift, cancellation, or actual work can change without rewriting the
+whole week.
+
 The operator usually receives the next week's schedule by SMS on Friday, sometimes Saturday. The system should allow the schedule to be entered manually in English even if the original message was written in Spanish.
 
 Schedules must be editable because a supervisor may send a later message that changes the remaining days of the current week and also provides the next week's schedule.
 
-The system should preserve useful schedule history so the operator can see what was originally planned, what changed, and what the current expected assignment is.
+The system should preserve what was planned separately from what actually
+occurred. This includes changes to equipment, shift, partner, location,
+cancellation, or other meaningful assignment details.
+
+The system should preserve who worked together on a given date. Dragline crew
+or partner information may be known when the weekly schedule is entered,
+unknown until the employee arrives, or different from the original plan.
+
+The schedule should record who communicated or assigned the schedule using the
+label "Assigned By" without implying that a supervisor logged into NAM
+Dashboard.
+
+Equipment selection should provide the normal mine and city context where that
+context is available through reference data. Historical assignments should
+remain readable if equipment reference data changes later.
 
 Automatic SMS import or natural-language schedule parsing is not required. The supervisor's messages may contain spelling errors, grammar issues, or accidental character substitutions, so manual schedule entry and manual editing are the preferred workflow.
 

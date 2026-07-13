@@ -421,13 +421,16 @@ The module may eventually support QR codes on equipment, offline/mobile field ca
 
 ## Work Schedule
 
-The Work Schedule module tracks the operator's weekly assignments and schedule changes.
+The Work Schedule module tracks the operator's weekly employee-to-equipment
+assignments and schedule changes.
 
 ### Purpose
 
 Capture the schedule received from a supervisor and turn it into a clean, editable weekly calendar inside NAM Dashboard.
 
-The module should help the operator know where they are expected to work each day, including assigned dragline, location, or day off.
+The module should help the operator know where they are expected to work each
+day, who they were expected to work with, what equipment was assigned, and what
+actually happened if the plan changed.
 
 ### Source Workflow
 
@@ -449,21 +452,31 @@ Schedule for the rest of the week: Saturday at 137 and Sunday remains off. Next 
 
 ### Required Capabilities
 
-- Create a weekly schedule
-- Enter day-by-day assignments
-- Mark days as scheduled, off, unknown, or changed
-- Assign a dragline, equipment, mine, or location when known
-- Edit an existing schedule when a newer supervisor message changes the plan
-- Record notes from the original message or update message
-- View the current week and next week quickly
-- Preserve enough history to understand schedule changes over time
-- Support manual entry as the primary and preferred workflow
+- Create a Weekly Schedule as the planning container for one operational week.
+- Enter independent Daily Assignments for Monday through Sunday.
+- Preserve planned assignment details separately from actual assignment details.
+- Record the primary employee whose schedule is being entered.
+- Record the supervisor or source who communicated the schedule using the
+  user-facing label "Assigned By".
+- Mark days as scheduled, non-working, unknown, or cancelled.
+- Assign planned and actual equipment when known.
+- Derive normal mine and city context from Equipment while preserving
+  historical display context for the assignment.
+- Preserve planned and actual crew or partner information, including unknown or
+  replacement partners.
+- Edit an existing schedule when a newer supervisor message changes the plan.
+- Record notes from the original message or update message.
+- View the current week and next week quickly.
+- Support manual entry as the primary and preferred workflow.
 
 ### Relationship To Other Modules
 
 The Work Schedule should inform shift creation, but it should not replace the Daily Log or Shift Report.
 
 A scheduled day may later result in a Shift Report, Daily Inspection, Daily Log, Work Authorization, defect report, or KB field note.
+
+Work Schedule records planned and assigned work context. Timesheet records
+pay-facing time worked. Daily Log records what happened operationally.
 
 ### V1 Boundary
 
@@ -472,6 +485,10 @@ Version 1 should support manual schedule entry and manual edits.
 Automatic SMS reading and natural-language schedule parsing are intentionally out of scope because supervisor messages may contain spelling errors, grammar issues, or accidental character substitutions.
 
 Reminders and calendar export or sync may be evaluated later, but they should not depend on SMS import.
+
+Implementation architecture:
+
+`docs/architecture/features/work-schedule.md`
 
 ## Timesheet
 

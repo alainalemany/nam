@@ -220,30 +220,59 @@ broader related-record links remain future work.
 
 ## Work Schedule Roadmap
 
-### Phase 1: Requirements Definition
+Feature implementation architecture:
 
-- Confirm what counts as a work assignment: dragline number, mine, location, shift, or day off
-- Confirm whether time ranges are usually known or optional
-- Define how schedule changes should be displayed
-- Define schedule history display for V1
+`docs/architecture/features/work-schedule.md`
 
-### Phase 2: Data Model Design
+Current status: Product discovery and feature architecture are approved.
+Implementation has not started. V1 should implement the weekly grid,
+independent daily assignments, planned-versus-actual preservation, crew
+participants, Assigned By source context, equipment-derived location context,
+and feature-owned validation described in the feature architecture.
 
-- Define WorkScheduleWeek entity
-- Define WorkScheduleDay entity
-- Define WorkScheduleChange entity
-- Define relationship to Equipment
-- Define future relationship to ShiftReport
+### Phase 1: Requirements Definition (Complete)
 
-### Phase 3: V1 Implementation
+- Confirm Work Schedule represents employee assignments to equipment.
+- Confirm a Weekly Schedule is the planning container for independent Daily
+  Assignments.
+- Confirm planned assignment information and actual assignment information must
+  be preserved separately.
+- Confirm crew and partner history should preserve planned and actual crew
+  without becoming an enterprise workforce-management system.
+- Confirm manual entry remains the V1 workflow and SMS or AI-assisted import
+  remains deferred.
 
-- Create weekly schedules manually
-- Enter and edit day-by-day assignments
-- Mark days as scheduled, off, unknown, or changed
-- Display current week and next week
-- Capture source notes from supervisor messages or updates
+### Phase 2: Feature Architecture (Complete)
 
-### Phase 4: Future Enhancements
+- Define Weekly Schedule and Daily Assignment ownership.
+- Define planned and actual assignment data.
+- Define planned and actual crew participants.
+- Define Assigned By source context.
+- Define equipment-derived historical location context.
+- Define weekly grid UI, validation, queries, mutations, and Day View
+  participation boundaries.
+
+### Phase 3: V1 Foundation Implementation
+
+- Add Work Schedule data model and migration.
+- Create feature-owned list/archive, weekly grid create, detail, and edit
+  workflows.
+- Save Weekly Schedule and Daily Assignment records through feature-owned Server
+  Actions and Zod validation.
+- Preserve planned values when actual assignment values differ.
+- Capture planned and actual crew participants.
+- Capture Assigned By and optional schedule-level source metadata.
+- Preserve equipment-derived historical location display context.
+- Add proportional validation, query, and persistence tests.
+
+### Phase 4: Day View Participation
+
+- Add Work Schedule-owned selected-date or containing-week read helper.
+- Show Work Schedule context in Day View without moving schedule business logic
+  into Day View.
+- Distinguish no assignment from module errors and unavailable schedule context.
+
+### Phase 5: Future Enhancements
 
 - Add reminders for upcoming assignments
 - Add calendar export or sync

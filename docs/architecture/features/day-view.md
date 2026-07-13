@@ -40,8 +40,9 @@ Related Documents:
 - `docs/architecture/features/shift-reports.md`
 - `docs/architecture/features/work-authorizations.md`
 - `docs/architecture/features/defect-tracking.md`
+- `docs/architecture/features/work-schedule.md`
 
-Last Reviewed: 2026-07-10
+Last Reviewed: 2026-07-13
 
 ## 1. Purpose
 
@@ -250,7 +251,9 @@ Implemented participation:
 
 Planned evolution:
 
-- Work Schedule context for the selected date or containing week.
+- Work Schedule context for the selected date or containing week, using the
+  Work Schedule-owned read helper defined in
+  `docs/architecture/features/work-schedule.md`.
 - Additional module sections as Timesheets, Fuel Logs, Work Truck Logs, and
   other records are implemented.
 
