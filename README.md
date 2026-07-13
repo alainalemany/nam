@@ -91,11 +91,11 @@ This project is in active feature development.
 The repository includes a Next.js, TypeScript, Prisma, PostgreSQL, Docker
 Compose, host-level Caddy development baseline, and executable Vitest testing
 foundation. Operations reference data, Daily Work Logs, STOP Cards, Daily
-Inspections, Shift Reports, Work Authorizations, and selected-date Day View
-composition have been implemented. Daily Logs and STOP Cards also provide
-feature-owned list filtering; global cross-module search remains future work.
-Future modules should continue to follow the documentation-first,
-vertical-slice approach.
+Inspections, Shift Reports, Work Authorizations, Defect Tracking, selected-date
+Day View composition, and the Work Schedule V1 foundation have been
+implemented. Current operational modules provide feature-owned list filtering;
+global cross-module search remains future work. Future modules should continue
+to follow the documentation-first, vertical-slice approach.
 
 ## Version 1 Focus
 

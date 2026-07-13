@@ -673,21 +673,22 @@ Day View queries should return both records dated on the selected day and contex
 The Work Schedule feature architecture is defined in
 `docs/architecture/features/work-schedule.md`.
 
-The entities below are conceptual V1 data-design guidance. They are not yet
-implemented in the Prisma schema.
+The entities below are implemented as the Work Schedule V1 foundation in the
+Prisma schema.
 
 ### WeeklySchedule
 
 Represents one Monday-through-Sunday schedule planning container for the primary
 employee whose schedule is being entered.
 
-Potential fields:
+Implemented fields:
 
 - id
 - weekStartDate
 - weekEndDate
 - status
 - primaryEmployeeDisplayName
+- primaryEmployeeKey
 - assignedByDisplayName
 - receivedAt
 - sourceNote
@@ -695,7 +696,7 @@ Potential fields:
 - createdAt
 - updatedAt
 
-Potential statuses:
+Statuses:
 
 - Draft
 - Active
@@ -705,6 +706,12 @@ Relationships:
 
 - Has many DailyAssignment records
 
+`primaryEmployeeDisplayName` is the display/history value entered by the
+operator. `primaryEmployeeKey` is derived server-side from the display name by
+trimming, normalizing internal whitespace, and lowercasing. The key is used with
+`weekStartDate` for uniqueness and is not an Employee, Supervisor, User,
+operator, owner, or workforce identity relation.
+
 ### DailyAssignment
 
 Represents the assignment for one date within a WeeklySchedule.
@@ -712,7 +719,7 @@ Represents the assignment for one date within a WeeklySchedule.
 The day is the operational and historical unit. Do not model one multi-day
 assignment spanning several dates.
 
-Potential fields:
+Implemented fields:
 
 - id
 - weeklyScheduleId
@@ -742,7 +749,7 @@ Potential fields:
 - createdAt
 - updatedAt
 
-Potential assignment statuses:
+Assignment statuses:
 
 - Scheduled
 - Non-working
@@ -766,11 +773,18 @@ The approved historical display snapshots are limited to equipment display
 name, equipment number, equipment category, mine name, city name, and city
 state for planned and actual equipment context.
 
+When an assignment is edited, existing planned snapshots are preserved when the
+planned equipment selection is unchanged, and existing actual snapshots are
+preserved when the actual equipment selection is unchanged. Only the snapshot
+group whose equipment selection intentionally changes is refreshed from current
+Equipment reference data. Existing snapshots remain the historical display
+source if a live Equipment relation has been set null.
+
 ### AssignmentCrewMember
 
 Represents one planned or actual crew participant for a DailyAssignment.
 
-Potential fields:
+Implemented fields:
 
 - id
 - dailyAssignmentId
@@ -782,12 +796,12 @@ Potential fields:
 - createdAt
 - updatedAt
 
-Potential phases:
+Phases:
 
 - Planned
 - Actual
 
-Potential roles:
+Roles:
 
 - Primary employee
 - Partner
@@ -800,6 +814,10 @@ V1 uses name snapshots only for crew participants. It does not introduce an
 Employee, Supervisor, User, operator, owner, or workforce identity relation.
 Unknown or not-yet-registered partners should be represented explicitly without
 creating fake reference records.
+
+Actual crew rows may be absent while actual assignment or actual crew
+information is unknown. Unknown-partner flags are mutually exclusive with a
+populated partner display name for the same planned or actual phase.
 
 ### Deferred Work Schedule Entities
 

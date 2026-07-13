@@ -424,6 +424,10 @@ The module may eventually support QR codes on equipment, offline/mobile field ca
 The Work Schedule module tracks the operator's weekly employee-to-equipment
 assignments and schedule changes.
 
+Current implementation status: V1 foundation implemented with manual weekly
+schedule list, create, detail, and edit workflows. Day View participation,
+Timesheet reconciliation, SMS import, and automation remain deferred.
+
 ### Purpose
 
 Capture the schedule received from a supervisor and turn it into a clean, editable weekly calendar inside NAM Dashboard.

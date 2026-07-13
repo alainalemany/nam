@@ -224,11 +224,12 @@ Feature implementation architecture:
 
 `docs/architecture/features/work-schedule.md`
 
-Current status: Product discovery and feature architecture are approved.
-Implementation has not started. V1 should implement the weekly grid,
-independent daily assignments, planned-versus-actual preservation, crew
-participants, Assigned By source context, equipment-derived location context,
-and feature-owned validation described in the feature architecture.
+Current status: Product discovery, feature architecture, and V1 foundation are
+complete. The implementation provides the weekly grid, independent daily
+assignments, planned-versus-actual preservation, crew participants, Assigned By
+source context, equipment-derived location context, and feature-owned
+validation described in the feature architecture. Day View participation has
+not started.
 
 ### Phase 1: Requirements Definition (Complete)
 
@@ -252,7 +253,7 @@ and feature-owned validation described in the feature architecture.
 - Define weekly grid UI, validation, queries, mutations, and Day View
   participation boundaries.
 
-### Phase 3: V1 Foundation Implementation
+### Phase 3: V1 Foundation Implementation (Complete)
 
 - Add Work Schedule data model and migration.
 - Create feature-owned list/archive, weekly grid create, detail, and edit

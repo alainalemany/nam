@@ -3,7 +3,7 @@
 Status: Approved
 
 Product Phase: Product Roadmap Phase 3 Personal Work Administration
-architecture approved; implementation not started
+architecture approved; V1 foundation implemented; Day View participation pending
 
 Primary Feature: Work Schedule
 
@@ -84,7 +84,7 @@ V1 foundation should include:
 
 - Manual weekly schedule entry.
 - Monday-through-Sunday weekly grid.
-- One Weekly Schedule per primary employee and week.
+- One Weekly Schedule per normalized primary employee display name and week.
 - Independent Daily Assignment records under the weekly schedule.
 - Planned and actual assignment fields preserved independently.
 - Planned and actual crew participants with primary employee and partner
@@ -93,6 +93,16 @@ V1 foundation should include:
 - Equipment-derived context and historical location snapshots.
 - Feature-owned list or archive access for prior weeks.
 - Feature-owned validation and Server Actions.
+
+Implemented V1 foundation:
+
+- Work Schedule data model and migration.
+- Feature-owned list, create, detail, and edit routes.
+- Weekly grid entry for Monday-through-Sunday assignments.
+- Planned and actual assignment fields, crew snapshots, Assigned By, and
+  equipment/location display snapshots.
+- Feature-owned Server Actions, validation, query helpers, and proportional
+  tests.
 
 Follow-up capability:
 
@@ -242,9 +252,16 @@ model, operator model, owner model, or workforce identity model. V1 also does
 not introduce Employee or Supervisor relations on Work Schedule records.
 
 The personal schedule owner is persisted as a required display-name snapshot,
-such as `primaryEmployeeDisplayName`. Planned and actual crew participants are
-persisted as assignment-owned display-name snapshots. Unknown partners must be
-represented without creating fake Employee records.
+such as `primaryEmployeeDisplayName`. V1 also derives a normalized owner key
+server-side from that display name for weekly uniqueness. The key is an
+implementation identity key, not an Employee, User, operator, or owner
+reference.
+
+Planned and actual crew participants are persisted as assignment-owned display
+name snapshots. Actual crew participants may be absent until actual assignment
+or actual crew information is explicitly known. Unknown partners must be
+represented without creating fake Employee records, and an unknown-partner flag
+must not be stored with a populated partner display name for the same phase.
 
 The current repository has no Employee or Supervisor Prisma model, and the
 product is still personal-entry oriented. Requiring workforce reference data
@@ -317,6 +334,14 @@ Recommended V1 strategy:
   - city state
 - Snapshot enough context to keep historical assignments readable if equipment
   is later transferred to another mine.
+- Preserve existing planned snapshots on edit when planned equipment selection
+  is unchanged.
+- Preserve existing actual snapshots on edit when actual equipment selection is
+  unchanged.
+- Refresh only the planned or actual snapshot group whose equipment selection
+  intentionally changed.
+- Preserve existing snapshots when a live Equipment relation has been set null
+  after reference-data deletion.
 - Do not require users to separately choose mine or city when equipment already
   provides that context.
 
@@ -387,6 +412,8 @@ V1 mutation responsibilities should include:
 - Edit planned assignment values.
 - Confirm or update actual assignment values.
 - Preserve planned values when actual values differ.
+- Preserve historical equipment and location snapshots on edit unless the
+  corresponding planned or actual equipment selection intentionally changes.
 
 The safest V1 save behavior is one atomic Server Action for the weekly grid.
 The action should validate the full week, then use a Prisma transaction to write
@@ -452,6 +479,10 @@ V1 validation should cover:
 - Employee cannot appear twice in the same planned crew or actual crew.
 - Unknown partners must be representable without forcing a fake Employee
   record.
+- Unknown partner flags and populated partner display names are mutually
+  exclusive for each planned or actual crew phase.
+- The normalized owner key must be derived server-side from the primary
+  employee display name and must not be user-entered.
 - Assigned By must be present when the Weekly Schedule is active.
 - Equipment IDs must refer to valid Equipment records when provided.
 - Night shifts are stored against the date they start.
@@ -470,9 +501,14 @@ V1 test priorities:
 - Date-only assignment behavior.
 - Weekly-grid validation.
 - Planned and actual preservation.
+- Equipment/location snapshot preservation when equipment selection is
+  unchanged or the live Equipment relation is unavailable.
 - Duplicate Daily Assignment prevention.
 - Crew validation, including no duplicate person in the same crew.
 - Unknown partner handling.
+- Actual crew remaining absent until actual assignment or actual crew
+  information is explicitly known.
+- Normalized owner key uniqueness for equivalent display names.
 - Assigned By validation.
 - Equipment ID validation.
 - Transaction behavior for weekly grid saves.
@@ -570,6 +606,8 @@ Work Schedule V1 architecture is successful when:
   who actually worked together.
 - Unknown or replacement partners can be recorded without creating false
   reference data.
+- Actual crew can remain absent until actual assignment or actual crew
+  information is known.
 - Assigned By captures who communicated the schedule without implying
   supervisor login.
 - Equipment-derived mine and city context is available without repeated user

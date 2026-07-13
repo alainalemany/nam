@@ -47,6 +47,20 @@ export default function Home() {
         <a className="button primary" href="/defect-tracking">Open Defect Tracking</a>
       </section>
 
+      <section className="panel" aria-labelledby="work-schedule-heading">
+        <div>
+          <p className="eyebrow">Planning</p>
+          <h2 id="work-schedule-heading">Work Schedule</h2>
+          <p>
+            Preserve weekly equipment assignments with planned crew, actual crew,
+            and historical equipment context.
+          </p>
+        </div>
+        <a className="button primary" href="/work-schedule">
+          Open Work Schedule
+        </a>
+      </section>
+
       <section className="panel" aria-labelledby="work-authorizations-heading">
         <div>
           <p className="eyebrow">Operations</p>

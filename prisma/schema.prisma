@@ -156,6 +156,29 @@ enum WorkAuthorizationWorkType {
   OTHER
 }
 
+enum WeeklyScheduleStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum DailyAssignmentStatus {
+  SCHEDULED
+  NON_WORKING
+  UNKNOWN
+  CANCELLED
+}
+
+enum AssignmentCrewPhase {
+  PLANNED
+  ACTUAL
+}
+
+enum AssignmentCrewRole {
+  PRIMARY_EMPLOYEE
+  PARTNER
+}
+
 model City {
   id        String       @id @default(cuid())
   name      String
@@ -205,6 +228,8 @@ model Equipment {
   defects                     Defect[]                        @relation("DefectEquipment")
   shiftReports                ShiftReport[]                  @relation("ShiftReportEquipment")
   workAuthorizations          WorkAuthorization[]            @relation("WorkAuthorizationEquipment")
+  plannedDailyAssignments     DailyAssignment[]              @relation("DailyAssignmentPlannedEquipment")
+  actualDailyAssignments      DailyAssignment[]              @relation("DailyAssignmentActualEquipment")
   equipmentNumber             String?
   displayName                 String
   category                    EquipmentCategory
@@ -415,4 +440,83 @@ model DailyLogActivity {
   @@index([activityDate])
   @@index([activityType])
   @@index([equipmentId])
+}
+
+model WeeklySchedule {
+  id                         String                @id @default(cuid())
+  weekStartDate              DateTime              @db.Date
+  weekEndDate                DateTime              @db.Date
+  status                     WeeklyScheduleStatus  @default(DRAFT)
+  primaryEmployeeDisplayName String
+  primaryEmployeeKey         String
+  assignedByDisplayName      String
+  receivedAt                 DateTime?
+  sourceNote                 String?
+  scheduleNotes              String?
+  assignments                DailyAssignment[]
+  createdAt                  DateTime              @default(now())
+  updatedAt                  DateTime              @updatedAt
+
+  @@unique([weekStartDate, primaryEmployeeKey])
+  @@index([weekStartDate])
+  @@index([weekEndDate])
+  @@index([status])
+}
+
+model DailyAssignment {
+  id                             String                 @id @default(cuid())
+  weeklyScheduleId               String
+  weeklySchedule                 WeeklySchedule         @relation(fields: [weeklyScheduleId], references: [id], onDelete: Cascade)
+  assignmentDate                 DateTime               @db.Date
+  dayOfWeek                      Int
+  plannedStatus                  DailyAssignmentStatus  @default(UNKNOWN)
+  plannedShift                   ShiftType              @default(UNKNOWN)
+  plannedEquipmentId             String?
+  plannedEquipment               Equipment?             @relation("DailyAssignmentPlannedEquipment", fields: [plannedEquipmentId], references: [id], onDelete: SetNull)
+  plannedEquipmentDisplayName    String?
+  plannedEquipmentNumber         String?
+  plannedEquipmentCategory       EquipmentCategory?
+  plannedMineName                String?
+  plannedCityName                String?
+  plannedCityState               String?
+  actualStatus                   DailyAssignmentStatus  @default(UNKNOWN)
+  actualShift                    ShiftType              @default(UNKNOWN)
+  actualEquipmentId              String?
+  actualEquipment                Equipment?             @relation("DailyAssignmentActualEquipment", fields: [actualEquipmentId], references: [id], onDelete: SetNull)
+  actualEquipmentDisplayName     String?
+  actualEquipmentNumber          String?
+  actualEquipmentCategory        EquipmentCategory?
+  actualMineName                 String?
+  actualCityName                 String?
+  actualCityState                String?
+  changeReason                   String?
+  plannedNotes                   String?
+  actualNotes                    String?
+  crewMembers                    AssignmentCrewMember[]
+  createdAt                      DateTime               @default(now())
+  updatedAt                      DateTime               @updatedAt
+
+  @@unique([weeklyScheduleId, assignmentDate])
+  @@index([assignmentDate])
+  @@index([plannedEquipmentId])
+  @@index([actualEquipmentId])
+  @@index([plannedStatus])
+  @@index([actualStatus])
+}
+
+model AssignmentCrewMember {
+  id                String              @id @default(cuid())
+  dailyAssignmentId String
+  dailyAssignment   DailyAssignment     @relation(fields: [dailyAssignmentId], references: [id], onDelete: Cascade)
+  phase             AssignmentCrewPhase
+  role              AssignmentCrewRole
+  displayName       String?
+  isUnknown         Boolean             @default(false)
+  notes             String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@unique([dailyAssignmentId, phase, role])
+  @@index([phase])
+  @@index([role])
 }
