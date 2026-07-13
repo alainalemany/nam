@@ -1,7 +1,15 @@
 import { prisma } from "@/lib/prisma";
 
-export async function getWorkAuthorizations() {
+import {
+  buildWorkAuthorizationWhere,
+  type WorkAuthorizationFilters,
+} from "./filters";
+
+export async function getWorkAuthorizations(
+  filters: WorkAuthorizationFilters = {},
+) {
   return prisma.workAuthorization.findMany({
+    where: buildWorkAuthorizationWhere(filters),
     include: {
       shiftReport: true,
       mine: {
@@ -33,6 +41,22 @@ export async function getWorkAuthorizationsForDate(date: string) {
     },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
   });
+}
+
+export async function getWorkAuthorizationFilterOptions() {
+  const equipment = await prisma.equipment.findMany({
+    include: {
+      mine: true,
+    },
+    orderBy: [{ mine: { name: "asc" } }, { displayName: "asc" }],
+  });
+
+  return {
+    equipmentOptions: equipment.map((item) => ({
+      id: item.id,
+      label: `${item.displayName}${item.equipmentNumber ? ` #${item.equipmentNumber}` : ""} (${item.mine.name})`,
+    })),
+  };
 }
 
 export async function getWorkAuthorizationFormOptions() {

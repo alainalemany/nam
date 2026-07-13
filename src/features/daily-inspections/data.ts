@@ -1,7 +1,13 @@
 import { prisma } from "@/lib/prisma";
 
-export async function getDailyInspections() {
+import {
+  buildDailyInspectionWhere,
+  type DailyInspectionFilters,
+} from "./filters";
+
+export async function getDailyInspections(filters: DailyInspectionFilters = {}) {
   return prisma.dailyInspection.findMany({
+    where: buildDailyInspectionWhere(filters),
     include: {
       mine: {
         include: {
@@ -29,6 +35,22 @@ export async function getDailyInspectionsForDate(date: string) {
     },
     orderBy: [{ createdAt: "desc" }],
   });
+}
+
+export async function getDailyInspectionFilterOptions() {
+  const equipment = await prisma.equipment.findMany({
+    include: {
+      mine: true,
+    },
+    orderBy: [{ mine: { name: "asc" } }, { displayName: "asc" }],
+  });
+
+  return {
+    equipmentOptions: equipment.map((item) => ({
+      id: item.id,
+      label: `${item.displayName}${item.equipmentNumber ? ` #${item.equipmentNumber}` : ""} (${item.mine.name})`,
+    })),
+  };
 }
 
 export async function getDailyInspectionFormOptions() {

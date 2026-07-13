@@ -3,7 +3,8 @@
 Status: Approved
 
 Product Phase: Product Roadmap Phase 2 Shift And Safety Records foundation,
-Work Authorization parent context, and Day View participation implemented
+Work Authorization parent context, feature-owned list filtering, and Day View
+participation implemented
 
 Primary Feature: Shift Reports
 
@@ -99,7 +100,8 @@ Remaining evolution:
 
 - Links to related records only where those modules already exist or the V1 data
   model explicitly includes the relationship.
-- Feature-owned Shift Report list filtering remains planned.
+- Feature-owned Shift Report list filtering by date range, shift, equipment,
+  status, and text is implemented.
 - Future global cross-module search remains a separate deferred capability.
 
 ## 3. Non-Responsibilities

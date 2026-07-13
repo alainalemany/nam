@@ -68,10 +68,10 @@ documentation architecture milestone explicitly approves that reorganization.
 | Daily Work Logs | [Daily Work Logs Architecture](daily-work-logs.md) | Approved; V1 foundation, filtering, date navigation, and Day View participation implemented |
 | Day View | [Day View Architecture](day-view.md) | Approved; V1 composition implemented |
 | STOP Cards | [STOP Cards Architecture](stop-cards.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
-| Daily Inspections | [Daily Inspections Architecture](daily-inspections.md) | Approved; V1 foundation and Day View participation implemented |
-| Shift Reports | [Shift Reports Architecture](shift-reports.md) | Approved; V1 foundation and Day View participation implemented |
-| Work Authorizations | [Work Authorizations Architecture](work-authorizations.md) | Approved; V1 foundation and Day View participation implemented |
-| Defect Tracking | [Defect Tracking Architecture](defect-tracking.md) | Approved; V1 foundation and Day View participation implemented; filtering planned |
+| Daily Inspections | [Daily Inspections Architecture](daily-inspections.md) | Approved; V1 foundation, current-schema filtering, and Day View participation implemented |
+| Shift Reports | [Shift Reports Architecture](shift-reports.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
+| Work Authorizations | [Work Authorizations Architecture](work-authorizations.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
+| Defect Tracking | [Defect Tracking Architecture](defect-tracking.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 
 ## Standard Metadata Block
 

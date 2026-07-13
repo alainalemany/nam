@@ -2,8 +2,9 @@
 
 Status: Approved
 
-Product Phase: Product Roadmap Phase 2 Shift And Safety Records foundation and
-Day View participation implemented; future expansion planned
+Product Phase: Product Roadmap Phase 2 Shift And Safety Records foundation,
+current-schema feature-owned list filtering, and Day View participation
+implemented; future expansion planned
 
 Primary Feature: Daily Inspections
 
@@ -85,11 +86,15 @@ Implemented foundation:
 - Prisma persistence with feature-owned Server Actions and Zod validation.
 - Operations reference data links for mine and equipment context.
 - Date-aware Daily Inspection participation in Day View.
-
-Remaining V1 work:
-
-- Feature-owned Daily Inspection list filtering remains planned.
+- Feature-owned Daily Inspection list filtering by date range, equipment,
+  status, and text.
 - Future global cross-module search remains a separate deferred capability.
+
+Remaining filtering dependency:
+
+- Inspector-specific filtering requires an approved inspector field or
+  relationship. The V1 Daily Inspection record currently has no inspector
+  field, and the feature should not invent one inside list filtering.
 
 ## 3. Non-Responsibilities
 
@@ -245,7 +250,7 @@ Appropriate test targets:
 - Validation schemas for required fields, enum values, numeric fields, and
   optional field normalization.
 - Pure date and formatting helpers.
-- Feature-owned filter helpers if Daily Inspections list filtering is added.
+- Feature-owned filter helpers.
 - Server Action parsing behavior where it can be tested without brittle
   framework coupling.
 - Day View contribution behavior for the implemented selected-date integration.

@@ -71,8 +71,9 @@ Feature implementation architecture:
 
 `docs/architecture/features/daily-inspections.md`
 
-Current status: Requirements, data model, V1 CRUD, and Day View participation
-are implemented. Feature-owned list filtering remains planned.
+Current status: Requirements, data model, V1 CRUD, current-schema
+feature-owned filtering, and Day View participation are implemented. Inspector
+filtering requires an approved inspector field before implementation.
 
 ### Phase 1: Requirements Definition
 
@@ -95,8 +96,10 @@ are implemented. Feature-owned list filtering remains planned.
 
 - Create and edit Daily Inspection records manually.
 - List and review Daily Inspection records.
-- Search or filter Daily Inspections by date, equipment, condition, and defect
-  indicator where useful.
+- Search or filter Daily Inspections by date, equipment, status, and text where
+  useful.
+- Add inspector filtering only after the Daily Inspection record has an approved
+  inspector field or relationship.
 - Show Daily Inspections in Day View for the selected date.
 - Keep Daily Inspections independent from Daily Work Logs and STOP Cards while
   allowing future links.
@@ -117,8 +120,8 @@ Feature implementation architecture:
 `docs/architecture/features/defect-tracking.md`
 
 Current status: Feature architecture, data model, V1 list/create/detail/edit
-foundation, lifecycle validation, and Day View participation are implemented.
-Feature-owned list filtering remains planned.
+foundation, lifecycle validation, feature-owned filtering, and Day View
+participation are implemented.
 
 ### Phase 1: Architecture And Domain Confirmation (Complete)
 
@@ -143,7 +146,7 @@ Feature-owned list filtering remains planned.
 - Define delete behavior and lifecycle constraints.
 - Do not assume a unique Daily Log exists for a date and shift.
 
-### Phase 3: V1 Implementation (In Progress)
+### Phase 3: V1 Implementation (Complete)
 
 - Add feature-owned list, create, detail, and edit workflows.
 - Add Server Actions, Zod validation, Prisma persistence, and route states.
@@ -173,9 +176,9 @@ Work Authorizations feature architecture:
 `docs/architecture/features/work-authorizations.md`
 
 Current status: The V1 foundation, required Shift Report relationship,
-lifecycle validation, and Day View participation are implemented. Richer
-technician/signature structures, deeper permit records, and broader related
-record links remain future work.
+lifecycle validation, feature-owned filtering, and Day View participation are
+implemented. Richer technician/signature structures, deeper permit records, and
+broader related-record links remain future work.
 
 ### Phase 1: Requirements Definition
 
@@ -204,6 +207,8 @@ record links remain future work.
 - Default Lockout Permit Required to Yes
 - Require a reason when Lockout Permit Required is No
 - Capture completion checklist before closing the Work Authorization
+- Filter Work Authorization history by parent Shift Report date, equipment,
+  status, work type, and text.
 
 ### Phase 4: Future Enhancements
 

@@ -5,12 +5,30 @@ import {
   shiftOptions,
   shiftReportStatusOptions,
 } from "@/features/shift-reports/constants";
-import { displayDateOnly, getShiftReports } from "@/features/shift-reports/data";
+import {
+  displayDateOnly,
+  getShiftReportFilterOptions,
+  getShiftReports,
+} from "@/features/shift-reports/data";
+import {
+  hasShiftReportFilters,
+  parseShiftReportFilters,
+  type ShiftReportSearchParams,
+} from "@/features/shift-reports/filters";
 
 export const dynamic = "force-dynamic";
 
-export default async function ShiftReportsPage() {
-  const shiftReports = await getShiftReports();
+type ShiftReportsPageProps = {
+  searchParams?: Promise<ShiftReportSearchParams>;
+};
+
+export default async function ShiftReportsPage({ searchParams }: ShiftReportsPageProps) {
+  const filters = parseShiftReportFilters((await searchParams) ?? {});
+  const filtersActive = hasShiftReportFilters(filters);
+  const [shiftReports, options] = await Promise.all([
+    getShiftReports(filters),
+    getShiftReportFilterOptions(),
+  ]);
 
   return (
     <main className="page-stack">
@@ -27,6 +45,86 @@ export default async function ShiftReportsPage() {
         </Link>
       </section>
 
+      <section className="panel filter-panel" aria-labelledby="shift-report-filters-heading">
+        <form action="/shift-reports" className="form-stack">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Search</p>
+              <h2 id="shift-report-filters-heading">Find Shift Reports</h2>
+            </div>
+            {filtersActive ? (
+              <Link className="button secondary" href="/shift-reports">
+                Clear Filters
+              </Link>
+            ) : null}
+          </div>
+
+          <div className="form-grid">
+            <label>
+              <span>Text</span>
+              <input
+                name="q"
+                defaultValue={filters.q ?? ""}
+                placeholder="Summary, notes, location, equipment"
+                autoComplete="off"
+              />
+            </label>
+
+            <label>
+              <span>From date</span>
+              <input name="dateFrom" type="date" defaultValue={filters.dateFrom ?? ""} />
+            </label>
+
+            <label>
+              <span>To date</span>
+              <input name="dateTo" type="date" defaultValue={filters.dateTo ?? ""} />
+            </label>
+
+            <label>
+              <span>Shift</span>
+              <select name="shift" defaultValue={filters.shift ?? ""}>
+                <option value="">Any shift</option>
+                {shiftOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span>Equipment</span>
+              <select name="equipmentId" defaultValue={filters.equipmentId ?? ""}>
+                <option value="">Any equipment</option>
+                {options.equipmentOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span>Status</span>
+              <select name="status" defaultValue={filters.status ?? ""}>
+                <option value="">Any status</option>
+                {shiftReportStatusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="filter-actions">
+            <button className="button primary" type="submit">
+              Apply Filters
+            </button>
+          </div>
+        </form>
+      </section>
+
       <section className="panel table-panel" aria-labelledby="shift-report-list-heading">
         <div className="section-heading">
           <h2 id="shift-report-list-heading">Shift Report records</h2>
@@ -35,14 +133,26 @@ export default async function ShiftReportsPage() {
 
         {shiftReports.length === 0 ? (
           <div className="empty-state">
-            <h3>No Shift Reports yet</h3>
-            <p>
-              Create the first Shift Report to begin preserving shift-level
-              operational summaries.
-            </p>
-            <Link className="button primary" href="/shift-reports/new">
-              Add Shift Report
-            </Link>
+            {filtersActive ? (
+              <>
+                <h3>No Shift Reports match these filters</h3>
+                <p>Adjust the search filters or clear them to review all Shift Reports.</p>
+                <Link className="button secondary" href="/shift-reports">
+                  Clear Filters
+                </Link>
+              </>
+            ) : (
+              <>
+                <h3>No Shift Reports yet</h3>
+                <p>
+                  Create the first Shift Report to begin preserving shift-level
+                  operational summaries.
+                </p>
+                <Link className="button primary" href="/shift-reports/new">
+                  Add Shift Report
+                </Link>
+              </>
+            )}
           </div>
         ) : (
           <div className="table-wrap">

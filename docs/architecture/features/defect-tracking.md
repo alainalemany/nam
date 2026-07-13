@@ -2,8 +2,8 @@
 
 Status: Approved
 
-Product Phase: Product Roadmap Phase 2 Shift And Safety Records foundation and
-Day View participation implemented; list filtering remains planned
+Product Phase: Product Roadmap Phase 2 Shift And Safety Records foundation,
+feature-owned list filtering, and Day View participation implemented
 
 Primary Feature: Defect Tracking
 
@@ -88,10 +88,8 @@ Implemented V1 foundation:
 - Feature-owned persistence, validation, data helpers, and Server Actions.
 - Date-aware Day View participation.
 - Clear empty, loading, validation, not-found, and persistence-error states.
-
-Remaining V1 work:
-
-- Practical feature-owned list filtering remains planned.
+- Practical feature-owned list filtering by date range, equipment, status,
+  severity, priority, and text.
 
 ## 3. Non-Responsibilities
 
@@ -315,8 +313,7 @@ Initial automated coverage should prioritize:
 - Independent priority and severity enum behavior.
 - Allowed and rejected lifecycle transitions.
 - Resolution-summary and timestamp requirements for resolution and closure.
-- Feature-owned filter parsing and Prisma where-clause construction when
-  filtering is implemented.
+- Feature-owned filter parsing and Prisma where-clause construction.
 - Pure selected-date helper behavior for Day View participation.
 
 PostgreSQL integration coverage should later verify:

@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
 
-export async function getShiftReports() {
+import { buildShiftReportWhere, type ShiftReportFilters } from "./filters";
+
+export async function getShiftReports(filters: ShiftReportFilters = {}) {
   return prisma.shiftReport.findMany({
+    where: buildShiftReportWhere(filters),
     include: {
       mine: {
         include: {
@@ -29,6 +32,22 @@ export async function getShiftReportsForDate(date: string) {
     },
     orderBy: [{ shift: "asc" }, { createdAt: "desc" }],
   });
+}
+
+export async function getShiftReportFilterOptions() {
+  const equipment = await prisma.equipment.findMany({
+    include: {
+      mine: true,
+    },
+    orderBy: [{ mine: { name: "asc" } }, { displayName: "asc" }],
+  });
+
+  return {
+    equipmentOptions: equipment.map((item) => ({
+      id: item.id,
+      label: `${item.displayName}${item.equipmentNumber ? ` #${item.equipmentNumber}` : ""} (${item.mine.name})`,
+    })),
+  };
 }
 
 export async function getShiftReportFormOptions() {

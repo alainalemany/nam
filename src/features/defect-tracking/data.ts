@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
 
-export async function getDefects() {
+import { buildDefectWhere, type DefectFilters } from "./filters";
+
+export async function getDefects(filters: DefectFilters = {}) {
   return prisma.defect.findMany({
+    where: buildDefectWhere(filters),
     include: {
       equipment: { include: { mine: true } },
       sourceDailyInspection: true,
@@ -26,6 +29,20 @@ export async function getDefectsForDate(date: string) {
     include: { equipment: { include: { mine: true } } },
     orderBy: [{ priority: "desc" }, { severity: "desc" }, { createdAt: "desc" }],
   });
+}
+
+export async function getDefectFilterOptions() {
+  const equipment = await prisma.equipment.findMany({
+    include: { mine: true },
+    orderBy: [{ mine: { name: "asc" } }, { displayName: "asc" }],
+  });
+
+  return {
+    equipmentOptions: equipment.map((item) => ({
+      id: item.id,
+      label: `${item.displayName}${item.equipmentNumber ? ` #${item.equipmentNumber}` : ""} (${item.mine.name})`,
+    })),
+  };
 }
 
 export async function getDefectFormOptions() {
