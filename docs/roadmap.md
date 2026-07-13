@@ -228,8 +228,8 @@ Current status: Product discovery, feature architecture, and V1 foundation are
 complete. The implementation provides the weekly grid, independent daily
 assignments, planned-versus-actual preservation, crew participants, Assigned By
 source context, equipment-derived location context, and feature-owned
-validation described in the feature architecture. Day View participation has
-not started.
+validation described in the feature architecture. Day View participation is
+implemented through a Work Schedule-owned selected-date context helper.
 
 ### Phase 1: Requirements Definition (Complete)
 
@@ -266,7 +266,7 @@ not started.
 - Preserve equipment-derived historical location display context.
 - Add proportional validation, query, and persistence tests.
 
-### Phase 4: Day View Participation
+### Phase 4: Day View Participation (Complete)
 
 - Add Work Schedule-owned selected-date or containing-week read helper.
 - Show Work Schedule context in Day View without moving schedule business logic
@@ -325,8 +325,8 @@ Day View feature architecture:
 `docs/architecture/features/day-view.md`
 
 Current status: Daily Log CRUD, multiple activities, feature-owned filtering,
-date navigation, and Day View participation are implemented. Work Schedule
-context, richer related-record links, and global cross-module search remain
+date navigation, Work Schedule context, and Day View participation are
+implemented. Richer related-record links and global cross-module search remain
 planned or deferred as described below.
 
 ### Phase 1: Requirements Definition
@@ -353,7 +353,7 @@ planned or deferred as described below.
 - Link Daily Log activities to equipment and available related records
 - Search Daily Logs by date, text, equipment, activity type, contractor, or company
 - Add calendar navigation for historical daily records
-- Show the Work Schedule week that contains the selected date in Day View
+- Show Work Schedule context for the selected date in Day View
 
 ### Phase 4: Future Enhancements
 

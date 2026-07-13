@@ -206,8 +206,7 @@ Business value:
 
 Capabilities:
 
-- Work Schedule, with V1 foundation implemented and Day View participation
-  still planned.
+- Work Schedule, with V1 foundation and Day View participation implemented.
 - Timesheet.
 - Fuel Log.
 - Work Truck Log.
@@ -322,7 +321,7 @@ The MVP should not require:
 | Shift Reports | Creates the parent structure for shift paperwork. | Daily/date context and equipment references. Feature architecture: `docs/architecture/features/shift-reports.md`. | V1 foundation, filtering, and Day View participation implemented |
 | Work Authorizations | Captures safety and maintenance work records. | Shift Reports. Feature architecture: `docs/architecture/features/work-authorizations.md`. | V1 foundation, filtering, and Day View participation implemented |
 | Defect Tracking | Captures equipment issue history from report through closure. | Equipment reference data and feature architecture: `docs/architecture/features/defect-tracking.md`; stronger value with Day View. | V1 foundation, filtering, and Day View participation implemented |
-| Work Schedule and Timesheet | Supports personal schedule and time reconciliation. | Reference data; stronger value with Day View. Work Schedule feature architecture: `docs/architecture/features/work-schedule.md`. | Work Schedule V1 foundation implemented; Day View participation and Timesheet planned |
+| Work Schedule and Timesheet | Supports personal schedule and time reconciliation. | Reference data; stronger value with Day View. Work Schedule feature architecture: `docs/architecture/features/work-schedule.md`. | Work Schedule V1 foundation and Day View participation implemented; Timesheet planned |
 | Fuel Log and Work Truck Log | Captures supporting operational and vehicle records. | Reference data; stronger value with Day View. | Planned |
 | Knowledge Base | Preserves reusable operational knowledge. | Location, mine, and equipment organization. | Planned |
 | Payslip Repository | Preserves sensitive compensation history. | Privacy and storage decisions before expansion. | Planned |

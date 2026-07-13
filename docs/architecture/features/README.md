@@ -72,7 +72,7 @@ documentation architecture milestone explicitly approves that reorganization.
 | Shift Reports | [Shift Reports Architecture](shift-reports.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 | Work Authorizations | [Work Authorizations Architecture](work-authorizations.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 | Defect Tracking | [Defect Tracking Architecture](defect-tracking.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
-| Work Schedule | [Work Schedule Architecture](work-schedule.md) | Approved; V1 foundation implemented; Day View participation pending |
+| Work Schedule | [Work Schedule Architecture](work-schedule.md) | Approved; V1 foundation and Day View participation implemented |
 
 ## Standard Metadata Block
 

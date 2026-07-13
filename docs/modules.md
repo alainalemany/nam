@@ -425,7 +425,7 @@ The Work Schedule module tracks the operator's weekly employee-to-equipment
 assignments and schedule changes.
 
 Current implementation status: V1 foundation implemented with manual weekly
-schedule list, create, detail, and edit workflows. Day View participation,
+schedule list, create, detail, edit workflows, and Day View participation.
 Timesheet reconciliation, SMS import, and automation remain deferred.
 
 ### Purpose

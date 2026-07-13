@@ -3,7 +3,7 @@
 Status: Approved
 
 Product Phase: Product Roadmap Phase 1 MVP Workday History implemented
-composition; future module participation planned
+composition; implemented module participation ongoing
 
 Primary Feature: Day View
 
@@ -81,14 +81,14 @@ Implemented foundation:
 
 - `/day-view` selected-workday composition route.
 - Previous-day, next-day, and today navigation using feature-owned date helpers.
-- Parallel composition of Shift Reports, Daily Work Logs, STOP Cards, Daily
-  Inspections, and Work Authorizations through module-owned read helpers.
+- Parallel composition of Work Schedule, Daily Work Logs, STOP Cards, Daily
+  Inspections, Shift Reports, Work Authorizations, and Defect Tracking through
+  module-owned read helpers.
 - Module sections that link to owning detail routes and distinguish an
   implemented-empty state from an unimplemented module.
 
 Remaining expansion:
 
-- Work Schedule participation when schedule records exist.
 - Additional module participation as modules are implemented.
 
 ## 3. Non-Responsibilities
@@ -242,6 +242,8 @@ Future Day View growth should stay aligned with `docs/product-roadmap.md` and
 
 Implemented participation:
 
+- Work Schedule participation as the planning context layer, using a Work
+  Schedule-owned helper that interprets planned and actual assignment state.
 - Daily Work Logs participation as the workday narrative layer.
 - STOP Cards participation as date-aware safety records.
 - Daily Inspections participation as date-aware inspection records.
@@ -251,9 +253,6 @@ Implemented participation:
 
 Planned evolution:
 
-- Work Schedule context for the selected date or containing week, using the
-  Work Schedule-owned read helper defined in
-  `docs/architecture/features/work-schedule.md`.
 - Additional module sections as Timesheets, Fuel Logs, Work Truck Logs, and
   other records are implemented.
 

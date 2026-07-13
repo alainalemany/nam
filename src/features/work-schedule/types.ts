@@ -40,3 +40,32 @@ export type WorkScheduleFormInitialValues = {
   assignments: WorkScheduleAssignmentInitialValues[];
 };
 
+export type WorkScheduleDayViewCrewParticipant = {
+  label: string;
+  state: "known" | "unknown" | "not_recorded";
+};
+
+export type WorkScheduleDayViewAssignmentSummary = {
+  equipment: string;
+  notes?: string;
+  partner: WorkScheduleDayViewCrewParticipant;
+  shift: string;
+  status: string;
+};
+
+export type WorkScheduleDayViewContext = {
+  actual: WorkScheduleDayViewAssignmentSummary & {
+    recorded: boolean;
+  };
+  assignedByDisplayName: string;
+  assignmentDate: string;
+  assignmentStatus: string;
+  changed: boolean;
+  detailHref: string;
+  explanation?: string;
+  outcome: "Scheduled" | "Matches Plan" | "Changed" | "Cancelled" | "Non-Working" | "Actual Not Recorded" | "Unknown";
+  planned: WorkScheduleDayViewAssignmentSummary;
+  primaryEmployeeDisplayName: string;
+  scheduleId: string;
+  weeklyStatus: string;
+};

@@ -42,6 +42,7 @@ import {
   workAuthorizationWorkTypeOptions,
 } from "@/features/work-authorizations/constants";
 import { getWorkAuthorizationsForDate } from "@/features/work-authorizations/data";
+import { getWorkScheduleContextsForDate } from "@/features/work-schedule/data";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,7 @@ function displaySelectedDate(value: string) {
 export default async function DayViewPage({ searchParams }: DayViewPageProps) {
   const dateState = parseDayViewDate((await searchParams) ?? {});
   const [
+    workSchedules,
     dailyLogs,
     stopCards,
     dailyInspections,
@@ -63,6 +65,7 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
     workAuthorizations,
     defects,
   ] = await Promise.all([
+    getWorkScheduleContextsForDate(dateState.selectedDate),
     getDailyLogsForDate(dateState.selectedDate),
     getStopCardsForDate(dateState.selectedDate),
     getDailyInspectionsForDate(dateState.selectedDate),
@@ -105,132 +108,74 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
         </div>
       </section>
 
-      <section className="panel table-panel" aria-labelledby="shift-reports-heading">
+      <section className="panel table-panel" aria-labelledby="work-schedule-heading">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Operations summary</p>
-            <h2 id="shift-reports-heading">Shift Reports</h2>
+            <p className="eyebrow">Planning context</p>
+            <h2 id="work-schedule-heading">Work Schedule</h2>
           </div>
-          <span className="count-pill">{shiftReports.length}</span>
+          <span className="count-pill">{workSchedules.length}</span>
         </div>
 
-        {shiftReports.length === 0 ? (
+        {workSchedules.length === 0 ? (
           <div className="empty-state">
-            <h3>No Shift Reports for this day</h3>
+            <h3>No Work Schedule for this day</h3>
             <p>
-              Shift Reports are implemented, but no coordination records match
+              Work Schedule is implemented, but no schedule assignment matches
               the selected workday.
             </p>
             <div className="button-row">
-              <Link className="button primary" href="/shift-reports/new">
-                Add Shift Report
+              <Link className="button primary" href="/work-schedule/new">
+                Add Work Schedule
               </Link>
-              <Link className="button secondary" href="/shift-reports">
-                Open Shift Reports
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="record-list">
-            {shiftReports.map((report) => (
-              <article className="record-card" key={report.id}>
-                <div>
-                  <p className="eyebrow">
-                    {shiftReportOptionLabel(shiftReportShiftOptions, report.shift)}
-                    {" · "}
-                    {shiftReportOptionLabel(shiftReportStatusOptions, report.status)}
-                  </p>
-                  <h3>{report.summary}</h3>
-                  <p className="subtle">
-                    {report.mine
-                      ? `${report.mine.name}, ${report.mine.city.name}`
-                      : "Mine not set"}
-                    {" · "}
-                    {report.equipment?.displayName ?? report.location ?? "Location not set"}
-                  </p>
-                </div>
-                <Link className="table-action" href={`/shift-reports/${report.id}`}>
-                  View Shift Report
-                </Link>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="panel table-panel" aria-labelledby="work-authorizations-heading">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Authorized work</p>
-            <h2 id="work-authorizations-heading">Work Authorizations</h2>
-          </div>
-          <span className="count-pill">{workAuthorizations.length}</span>
-        </div>
-
-        {workAuthorizations.length === 0 ? (
-          <div className="empty-state">
-            <h3>No Work Authorizations for this day</h3>
-            <p>
-              Work Authorizations are implemented, but no authorization records
-              are linked to Shift Reports for the selected workday.
-            </p>
-            <div className="button-row">
-              <Link className="button primary" href="/work-authorizations/new">
-                Add Work Authorization
-              </Link>
-              <Link className="button secondary" href="/work-authorizations">
-                Open Work Authorizations
+              <Link className="button secondary" href="/work-schedule">
+                Open Work Schedule
               </Link>
             </div>
           </div>
         ) : (
           <div className="record-list">
-            {workAuthorizations.map((authorization) => (
-              <article className="record-card" key={authorization.id}>
+            {workSchedules.map((schedule) => (
+              <article className="record-card" key={`${schedule.scheduleId}-${schedule.assignmentDate}`}>
                 <div>
                   <p className="eyebrow">
-                    {workAuthorizationOptionLabel(
-                      workAuthorizationStatusOptions,
-                      authorization.status,
-                    )}
+                    {schedule.outcome}
                     {" · "}
-                    {workAuthorizationOptionLabel(
-                      workAuthorizationWorkTypeOptions,
-                      authorization.workType,
-                    )}
+                    {schedule.weeklyStatus}
+                    {" · "}
+                    {schedule.assignmentStatus}
                   </p>
-                  <h3>{authorization.workDescription}</h3>
-                  <p className="subtle">
-                    Shift Report:{" "}
-                    <Link
-                      className="table-action"
-                      href={`/shift-reports/${authorization.shiftReportId}`}
-                    >
-                      {shiftReportOptionLabel(
-                        shiftReportShiftOptions,
-                        authorization.shiftReport.shift,
-                      )}
-                    </Link>
-                    {" · "}
-                    {authorization.mine
-                      ? `${authorization.mine.name}, ${authorization.mine.city.name}`
-                      : "Mine not set"}
-                    {" · "}
-                    {authorization.equipment?.displayName ??
-                      authorization.jobLocation ??
-                      "Location not set"}
-                  </p>
-                  <p className="subtle">
-                    Crew: {authorization.crewWorkerCount ?? "Not recorded"}
-                    {" · "}
-                    Lockout required: {authorization.lockoutRequired ? "Yes" : "No"}
-                  </p>
+                  <h3>{schedule.primaryEmployeeDisplayName}</h3>
+                  <p className="subtle">Assigned By: {schedule.assignedByDisplayName}</p>
+                  <dl className="meta-list">
+                    <dt>Planned</dt>
+                    <dd>
+                      {schedule.planned.status} / {schedule.planned.shift}
+                      <span className="subtle">{schedule.planned.equipment}</span>
+                      <span className="subtle">Partner: {schedule.planned.partner.label}</span>
+                      {schedule.planned.notes ? (
+                        <span className="subtle">Note: {schedule.planned.notes}</span>
+                      ) : null}
+                    </dd>
+                    <dt>Actual</dt>
+                    <dd>
+                      {schedule.actual.status} / {schedule.actual.shift}
+                      <span className="subtle">{schedule.actual.equipment}</span>
+                      <span className="subtle">Partner: {schedule.actual.partner.label}</span>
+                      {schedule.actual.notes ? (
+                        <span className="subtle">Note: {schedule.actual.notes}</span>
+                      ) : null}
+                    </dd>
+                    {schedule.explanation ? (
+                      <>
+                        <dt>Explanation</dt>
+                        <dd>{schedule.explanation}</dd>
+                      </>
+                    ) : null}
+                  </dl>
                 </div>
-                <Link
-                  className="table-action"
-                  href={`/work-authorizations/${authorization.id}`}
-                >
-                  View Work Authorization
+                <Link className="table-action" href={schedule.detailHref}>
+                  View Weekly Schedule
                 </Link>
               </article>
             ))}
@@ -433,6 +378,139 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
                   href={`/daily-inspections/${inspection.id}`}
                 >
                   View Daily Inspection
+                </Link>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="panel table-panel" aria-labelledby="shift-reports-heading">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Operations summary</p>
+            <h2 id="shift-reports-heading">Shift Reports</h2>
+          </div>
+          <span className="count-pill">{shiftReports.length}</span>
+        </div>
+
+        {shiftReports.length === 0 ? (
+          <div className="empty-state">
+            <h3>No Shift Reports for this day</h3>
+            <p>
+              Shift Reports are implemented, but no coordination records match
+              the selected workday.
+            </p>
+            <div className="button-row">
+              <Link className="button primary" href="/shift-reports/new">
+                Add Shift Report
+              </Link>
+              <Link className="button secondary" href="/shift-reports">
+                Open Shift Reports
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="record-list">
+            {shiftReports.map((report) => (
+              <article className="record-card" key={report.id}>
+                <div>
+                  <p className="eyebrow">
+                    {shiftReportOptionLabel(shiftReportShiftOptions, report.shift)}
+                    {" · "}
+                    {shiftReportOptionLabel(shiftReportStatusOptions, report.status)}
+                  </p>
+                  <h3>{report.summary}</h3>
+                  <p className="subtle">
+                    {report.mine
+                      ? `${report.mine.name}, ${report.mine.city.name}`
+                      : "Mine not set"}
+                    {" · "}
+                    {report.equipment?.displayName ?? report.location ?? "Location not set"}
+                  </p>
+                </div>
+                <Link className="table-action" href={`/shift-reports/${report.id}`}>
+                  View Shift Report
+                </Link>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="panel table-panel" aria-labelledby="work-authorizations-heading">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Authorized work</p>
+            <h2 id="work-authorizations-heading">Work Authorizations</h2>
+          </div>
+          <span className="count-pill">{workAuthorizations.length}</span>
+        </div>
+
+        {workAuthorizations.length === 0 ? (
+          <div className="empty-state">
+            <h3>No Work Authorizations for this day</h3>
+            <p>
+              Work Authorizations are implemented, but no authorization records
+              are linked to Shift Reports for the selected workday.
+            </p>
+            <div className="button-row">
+              <Link className="button primary" href="/work-authorizations/new">
+                Add Work Authorization
+              </Link>
+              <Link className="button secondary" href="/work-authorizations">
+                Open Work Authorizations
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="record-list">
+            {workAuthorizations.map((authorization) => (
+              <article className="record-card" key={authorization.id}>
+                <div>
+                  <p className="eyebrow">
+                    {workAuthorizationOptionLabel(
+                      workAuthorizationStatusOptions,
+                      authorization.status,
+                    )}
+                    {" · "}
+                    {workAuthorizationOptionLabel(
+                      workAuthorizationWorkTypeOptions,
+                      authorization.workType,
+                    )}
+                  </p>
+                  <h3>{authorization.workDescription}</h3>
+                  <p className="subtle">
+                    Shift Report:{" "}
+                    <Link
+                      className="table-action"
+                      href={`/shift-reports/${authorization.shiftReportId}`}
+                    >
+                      {shiftReportOptionLabel(
+                        shiftReportShiftOptions,
+                        authorization.shiftReport.shift,
+                      )}
+                    </Link>
+                    {" · "}
+                    {authorization.mine
+                      ? `${authorization.mine.name}, ${authorization.mine.city.name}`
+                      : "Mine not set"}
+                    {" · "}
+                    {authorization.equipment?.displayName ??
+                      authorization.jobLocation ??
+                      "Location not set"}
+                  </p>
+                  <p className="subtle">
+                    Crew: {authorization.crewWorkerCount ?? "Not recorded"}
+                    {" · "}
+                    Lockout required: {authorization.lockoutRequired ? "Yes" : "No"}
+                  </p>
+                </div>
+                <Link
+                  className="table-action"
+                  href={`/work-authorizations/${authorization.id}`}
+                >
+                  View Work Authorization
                 </Link>
               </article>
             ))}

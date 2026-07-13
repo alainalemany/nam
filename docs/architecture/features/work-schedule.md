@@ -3,7 +3,7 @@
 Status: Approved
 
 Product Phase: Product Roadmap Phase 3 Personal Work Administration
-architecture approved; V1 foundation implemented; Day View participation pending
+architecture approved; V1 foundation and Day View participation implemented
 
 Primary Feature: Work Schedule
 
@@ -76,7 +76,7 @@ Work Schedule is responsible for:
   accuracy when reference data changes later.
 - Supporting weekly grid entry and review.
 - Exposing feature-owned reads for weekly lookup, selected-date lookup, and
-  future Day View participation.
+  Day View participation.
 - Owning feature-specific validation, mutation flow, query helpers, constants,
   and tests.
 
@@ -103,11 +103,11 @@ Implemented V1 foundation:
   equipment/location display snapshots.
 - Feature-owned Server Actions, validation, query helpers, and proportional
   tests.
+- Day View participation through a Work Schedule-owned date-context helper
+  that returns display-ready planned/actual interpretation.
 
 Follow-up capability:
 
-- Day View participation for the selected date or containing week after the
-  Work Schedule foundation exists.
 - More efficient copy/repeat interactions if the first grid implementation
   proves the need.
 
@@ -185,9 +185,9 @@ Expected ownership model:
 | Shift summary and work authorization parent context | Shift Reports |
 | Pay-facing hours and reconciliation | Future Timesheet |
 
-Day View may later compose Work Schedule context, but Work Schedule owns the
-queries and record shape. Day View must not infer schedule business rules or
-mutate schedule records.
+Day View composes Work Schedule context through a Work Schedule-owned helper.
+Work Schedule owns the queries and record shape. Day View must not infer
+schedule business rules or mutate schedule records.
 
 Timesheet should remain a separate future module. Work Schedule records what
 was planned and assigned; Timesheet records what time was worked for pay or
@@ -556,13 +556,17 @@ already reliable and the product owner explicitly approves the tradeoff.
 
 ## 11. Day View Participation
 
-Day View participation should be a follow-up slice after Work Schedule
-persistence and weekly grid workflows exist.
+Day View participation is implemented as a Work Schedule-owned date-context
+helper plus a compact Day View section.
 
 The Work Schedule feature should expose a read-only helper that returns
 schedule context for a selected operational date. Day View may then render that
 context without querying schedule tables directly or interpreting schedule
 business rules.
+
+The helper returns display-ready context for each matching schedule assignment
+on the selected date. This avoids silently choosing one schedule when multiple
+personal schedule records exist for the same date.
 
 Expected Day View context:
 
@@ -615,8 +619,8 @@ Work Schedule V1 architecture is successful when:
 - Historical assignment display does not silently change when equipment
   reference data changes later.
 - Weekly grid entry can save the week coherently.
-- Day View can later compose Work Schedule context through a feature-owned read
-  helper.
+- Day View composes Work Schedule context through a feature-owned read helper
+  without owning schedule interpretation.
 - Timesheet, Daily Work Logs, Shift Reports, and other modules remain
   independent.
 - SMS import, AI parsing, supervisor publishing, notifications, and payroll
