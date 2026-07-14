@@ -563,6 +563,8 @@ visible but are excluded from new selection by default. Records used
 historically should not be hard-deleted. New reusable reference records are
 managed through Timesheet-owned management surfaces rather than inline ad hoc
 creation in the weekly form.
+Used Work Orders are protected by restrictive relationship behavior and are
+retired through inactivation.
 
 ### Relationship To Other Modules
 
@@ -573,6 +575,9 @@ The relationship is optional. Timesheet must work correctly when no Work
 Schedule exists, and payroll correctness must never depend on Work Schedule.
 If a linked Work Schedule Daily Assignment is deleted, the Timesheet link should
 become null and Timesheet-owned history should remain readable.
+When selected, the assignment must match both the Daily Time Entry work date
+and the Weekly Timesheet normalized primary employee owner. Timesheet validates
+those conditions server-side.
 
 Timesheet entries may later link to Daily Log activities, Payslip records,
 Shift Reports, or other records when those modules support the relationship.

@@ -31,6 +31,7 @@ export default function RootLayout({
               <Link href="/daily-inspections">Daily Inspections</Link>
               <Link href="/defect-tracking">Defect Tracking</Link>
               <Link href="/work-schedule">Work Schedule</Link>
+              <Link href="/timesheets">Timesheets</Link>
               <Link href="/shift-reports">Shift Reports</Link>
               <Link href="/work-authorizations">Work Authorizations</Link>
             </nav>

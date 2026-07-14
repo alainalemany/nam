@@ -519,6 +519,113 @@ textarea {
   margin: 0;
 }
 
+.timesheet-week {
+  display: grid;
+  gap: 12px;
+}
+
+.timesheet-total-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.timesheet-day-preview {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  border: 1px solid #d8e0e7;
+  background: #f7f9fb;
+  padding: 12px;
+}
+
+.timesheet-day-preview span {
+  display: grid;
+  gap: 2px;
+  color: #52616d;
+  font-size: 0.85rem;
+}
+
+.timesheet-day-preview strong {
+  color: #18242d;
+}
+
+.timesheet-day-preview .balance-good {
+  color: #287044;
+  font-weight: 700;
+}
+
+.timesheet-day-preview .balance-warning,
+.count-pill.warning {
+  color: #8a4b12;
+  font-weight: 700;
+}
+
+.timesheet-day {
+  display: block;
+}
+
+.timesheet-day > summary,
+.record-card > summary {
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  list-style: none;
+}
+
+.timesheet-day > summary::-webkit-details-marker,
+.record-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+.timesheet-day[open] > summary,
+.record-card[open] > summary {
+  margin-bottom: 20px;
+  border-bottom: 1px solid #e4e9ee;
+  padding-bottom: 16px;
+}
+
+.allocation-row {
+  display: grid;
+  gap: 14px;
+  border-left: 3px solid #8aa6bd;
+  background: #f7f9fb;
+  padding: 16px;
+}
+
+.reference-form {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: end;
+}
+
+.inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.reference-picker {
+  display: grid;
+  gap: 8px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.reference-picker legend {
+  margin-bottom: 6px;
+  color: #34424d;
+  font-weight: 700;
+}
+
+.reference-picker-options {
+  display: grid;
+  max-height: 140px;
+  gap: 6px;
+  overflow-y: auto;
+}
+
 @media (max-width: 900px) {
   .detail-grid,
   .module-grid,
@@ -528,5 +635,16 @@ textarea {
 
   .record-card {
     display: grid;
+  }
+
+  .timesheet-day > summary,
+  .record-card > summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .timesheet-day-preview,
+  .timesheet-total-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

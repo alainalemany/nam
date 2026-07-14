@@ -75,6 +75,19 @@ export default function Home() {
         </a>
       </section>
 
+      <section className="panel" aria-labelledby="timesheets-heading">
+        <div>
+          <p className="eyebrow">Personal Work Administration</p>
+          <h2 id="timesheets-heading">Timesheets</h2>
+          <p>
+            Record payroll-week worked time and reconcile daily Work Allocations.
+          </p>
+        </div>
+        <a className="button primary" href="/timesheets">
+          Open Timesheets
+        </a>
+      </section>
+
       <section className="panel" aria-labelledby="reference-data-heading">
         <div>
           <p className="eyebrow">Reference data</p>

@@ -285,8 +285,9 @@ Feature implementation architecture:
 
 `docs/architecture/features/timesheets.md`
 
-Current status: Product decisions are approved and feature architecture is
-approved. Implementation has not started. Day View participation, submitted and
+Current status: Product decisions and feature architecture are approved. The
+V1 data model, weekly entry workflow, reference management, lifecycle, and
+proportional tests are implemented. Day View participation, submitted and
 locked lifecycle states, external submission, global search, reporting, and
 Payslip reconciliation remain deferred.
 
@@ -317,7 +318,7 @@ Payslip reconciliation remain deferred.
   policy, integer-minute calculations, owner key uniqueness, reference
   snapshots, and lifecycle correction rules.
 
-### Phase 3: Data Model And V1 Foundation Implementation
+### Phase 3: Data Model And V1 Foundation Implementation (Complete)
 
 - Add Timesheet data model and migration.
 - Add Timesheet-owned Work Codes, Work Orders, and Support Personnel.

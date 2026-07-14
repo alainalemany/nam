@@ -831,8 +831,9 @@ and the product owner approves the added scope.
 The Timesheet feature architecture is defined in
 `docs/architecture/features/timesheets.md`.
 
-The entities below are conceptual V1 entities. They are not implemented in the
-current Prisma schema.
+The V1 entities below are implemented in the current Prisma schema. This
+section remains the conceptual data authority; `prisma/schema.prisma` is the
+executable schema.
 
 ### WeeklyTimesheet
 
@@ -969,6 +970,8 @@ Validation notes:
 - Allocation totals must reconcile with DailyTimeEntry workedMinutes
   before the WeeklyTimesheet can be Completed.
 - Draft Timesheets may remain temporarily unbalanced.
+- A used TimesheetWorkOrder is protected by Restrict-style deletion behavior
+  and is retired through inactivation.
 
 ### TimesheetWorkCode
 
@@ -1034,6 +1037,8 @@ Rules:
 - Inactive Work Orders remain visible historically and are excluded from new
   selection by default.
 - Work Orders used by historical allocations should not be hard-deleted.
+- WorkAllocation-to-WorkOrder deletion behavior is Restrict when the Work Order
+  is used historically.
 
 ### TimesheetSupportPerson
 

@@ -3,7 +3,7 @@
 Status: Approved
 
 Product Phase: Product Roadmap Phase 3 Personal Work Administration
-architecture approved; implementation not started
+architecture approved; V1 foundation implemented
 
 Primary Feature: Timesheet
 
@@ -38,6 +38,12 @@ Related Documents:
 - `docs/architecture/features/work-schedule.md`
 
 Last Reviewed: 2026-07-13
+
+Implementation Status: The V1 foundation is implemented with weekly
+Timesheets, Daily Time Entries, Work Allocations, Timesheet-owned reference
+management, Draft/Completed lifecycle, and optional Work Schedule context.
+Day View participation and the other capabilities listed under Deferred Scope
+remain deferred.
 
 ## 1. Purpose
 
@@ -444,6 +450,8 @@ V1 rules:
 - Inactive records remain visible historically.
 - Inactive records are excluded from new selection by default.
 - A Work Order used historically is not hard-deleted.
+- The Work Allocation relationship uses Restrict-style deletion behavior so a
+  used Work Order is retired through inactivation rather than deletion.
 - No inline ad hoc creation occurs inside the Timesheet V1 form.
 - Management routes and actions belong to the Timesheet feature.
 
@@ -525,6 +533,10 @@ Expected weekly UI:
 - Optional Work Order autocomplete/selector.
 - Support Personnel selector attached to Work Allocations.
 - Allocation totals and reconciliation status.
+- Display-only daily and weekly previews for gross, worked, allocated,
+  remaining or overallocated, regular, and overtime minutes. These previews
+  reuse Timesheet-owned integer-minute calculations but never replace
+  authoritative Server Action validation and persistence.
 - Completion action gated by validation.
 - Reopen action for Completed Timesheets.
 - Read-only presentation for Completed Timesheets until reopened.
@@ -553,7 +565,8 @@ Important V1 validation:
   Timesheet weekly overtime policy.
 - Each Daily Time Entry must have one primary Equipment record.
 - Optional Work Schedule Daily Assignment references must point to valid
-  records when supplied.
+  records with the same work date and normalized primary employee owner when
+  supplied.
 - A Daily Time Entry should have one or more Work Allocations when the
   Timesheet is completed.
 - Work Allocation sequence values should be deterministic and unique within a
@@ -576,6 +589,8 @@ Important V1 validation:
 
 User-facing errors should be field- or row-specific where practical. Aggregate
 errors should be reserved for cross-entry or cross-week reconciliation failures.
+The weekly editor should preserve the expanded day while showing day-, field-,
+and allocation-specific validation feedback.
 
 Database constraints should protect relationships and uniqueness, but they
 should not be the only validation mechanism.
@@ -678,6 +693,10 @@ Daily Time Entry may optionally reference a Work Schedule Daily Assignment.
 
 The relationship is optional because Timesheet must work correctly even when no
 Work Schedule exists. Payroll correctness must never depend on Work Schedule.
+When a link is selected, both the Daily Assignment work date and its Weekly
+Schedule `primaryEmployeeKey` must match the Daily Time Entry and Weekly
+Timesheet owner. The UI scopes selectable assignments and the Server Action
+revalidates both conditions.
 
 Timesheet may use Work Schedule as context for:
 

@@ -179,6 +179,11 @@ enum AssignmentCrewRole {
   PARTNER
 }
 
+enum TimesheetStatus {
+  DRAFT
+  COMPLETED
+}
+
 model City {
   id        String       @id @default(cuid())
   name      String
@@ -194,54 +199,57 @@ model City {
 }
 
 model Mine {
-  id        String       @id @default(cuid())
-  cityId    String
-  city      City         @relation(fields: [cityId], references: [id], onDelete: Restrict)
-  name      String
-  type      String?
-  status    RecordStatus @default(ACTIVE)
-  notes     String?
-  equipment Equipment[]
-  dailyLogs DailyLog[]
-  stopCards StopCard[]
-  dailyInspections DailyInspection[]
-  shiftReports ShiftReport[]
+  id                 String              @id @default(cuid())
+  cityId             String
+  city               City                @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  name               String
+  type               String?
+  status             RecordStatus        @default(ACTIVE)
+  notes              String?
+  equipment          Equipment[]
+  dailyLogs          DailyLog[]
+  stopCards          StopCard[]
+  dailyInspections   DailyInspection[]
+  shiftReports       ShiftReport[]
   workAuthorizations WorkAuthorization[]
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   @@unique([cityId, name])
   @@index([status])
 }
 
 model Equipment {
-  id                          String                         @id @default(cuid())
-  mineId                      String
-  mine                        Mine                           @relation(fields: [mineId], references: [id], onDelete: Restrict)
-  parentEquipmentId           String?
-  parentEquipment             Equipment?                     @relation("EquipmentHierarchy", fields: [parentEquipmentId], references: [id], onDelete: SetNull)
-  childEquipment              Equipment[]                    @relation("EquipmentHierarchy")
-  primaryDailyLogs            DailyLog[]                     @relation("DailyLogPrimaryEquipment")
-  dailyLogActivities          DailyLogActivity[]             @relation("DailyLogActivityEquipment")
-  stopCards                   StopCard[]                     @relation("StopCardEquipment")
-  dailyInspections            DailyInspection[]              @relation("DailyInspectionEquipment")
-  defects                     Defect[]                        @relation("DefectEquipment")
-  shiftReports                ShiftReport[]                  @relation("ShiftReportEquipment")
-  workAuthorizations          WorkAuthorization[]            @relation("WorkAuthorizationEquipment")
-  plannedDailyAssignments     DailyAssignment[]              @relation("DailyAssignmentPlannedEquipment")
-  actualDailyAssignments      DailyAssignment[]              @relation("DailyAssignmentActualEquipment")
-  equipmentNumber             String?
-  displayName                 String
-  category                    EquipmentCategory
-  make                        String?
-  model                       String?
-  powerType                   EquipmentPowerType?
-  instrumentationType         EquipmentInstrumentationType?
-  hasDigitalAlarmScreen       Boolean                        @default(false)
-  status                      RecordStatus                   @default(ACTIVE)
-  notes                       String?
-  createdAt                   DateTime                       @default(now())
-  updatedAt                   DateTime                       @updatedAt
+  id                      String                        @id @default(cuid())
+  mineId                  String
+  mine                    Mine                          @relation(fields: [mineId], references: [id], onDelete: Restrict)
+  parentEquipmentId       String?
+  parentEquipment         Equipment?                    @relation("EquipmentHierarchy", fields: [parentEquipmentId], references: [id], onDelete: SetNull)
+  childEquipment          Equipment[]                   @relation("EquipmentHierarchy")
+  primaryDailyLogs        DailyLog[]                    @relation("DailyLogPrimaryEquipment")
+  dailyLogActivities      DailyLogActivity[]            @relation("DailyLogActivityEquipment")
+  stopCards               StopCard[]                    @relation("StopCardEquipment")
+  dailyInspections        DailyInspection[]             @relation("DailyInspectionEquipment")
+  defects                 Defect[]                      @relation("DefectEquipment")
+  shiftReports            ShiftReport[]                 @relation("ShiftReportEquipment")
+  workAuthorizations      WorkAuthorization[]           @relation("WorkAuthorizationEquipment")
+  plannedDailyAssignments DailyAssignment[]             @relation("DailyAssignmentPlannedEquipment")
+  actualDailyAssignments  DailyAssignment[]             @relation("DailyAssignmentActualEquipment")
+  timesheetDailyEntries   DailyTimeEntry[]              @relation("DailyTimeEntryPrimaryEquipment")
+  timesheetWorkCodes      TimesheetWorkCode[]           @relation("TimesheetWorkCodeEquipment")
+  timesheetWorkOrders     TimesheetWorkOrder[]          @relation("TimesheetWorkOrderEquipment")
+  equipmentNumber         String?
+  displayName             String
+  category                EquipmentCategory
+  make                    String?
+  model                   String?
+  powerType               EquipmentPowerType?
+  instrumentationType     EquipmentInstrumentationType?
+  hasDigitalAlarmScreen   Boolean                       @default(false)
+  status                  RecordStatus                  @default(ACTIVE)
+  notes                   String?
+  createdAt               DateTime                      @default(now())
+  updatedAt               DateTime                      @updatedAt
 
   @@unique([mineId, displayName])
   @@index([mineId])
@@ -329,20 +337,20 @@ model StopCard {
 }
 
 model ShiftReport {
-  id               String            @id @default(cuid())
-  reportDate       DateTime          @db.Date
-  shift            ShiftType         @default(UNKNOWN)
-  status           ShiftReportStatus @default(DRAFT)
-  mineId           String?
-  mine             Mine?             @relation(fields: [mineId], references: [id], onDelete: SetNull)
-  equipmentId      String?
-  equipment        Equipment?        @relation("ShiftReportEquipment", fields: [equipmentId], references: [id], onDelete: SetNull)
-  location         String?
-  summary          String
-  operationalNotes String?
+  id                 String              @id @default(cuid())
+  reportDate         DateTime            @db.Date
+  shift              ShiftType           @default(UNKNOWN)
+  status             ShiftReportStatus   @default(DRAFT)
+  mineId             String?
+  mine               Mine?               @relation(fields: [mineId], references: [id], onDelete: SetNull)
+  equipmentId        String?
+  equipment          Equipment?          @relation("ShiftReportEquipment", fields: [equipmentId], references: [id], onDelete: SetNull)
+  location           String?
+  summary            String
+  operationalNotes   String?
   workAuthorizations WorkAuthorization[]
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   @@index([reportDate])
   @@index([shift])
@@ -352,41 +360,41 @@ model ShiftReport {
 }
 
 model WorkAuthorization {
-  id                         String                    @id @default(cuid())
-  shiftReportId              String
-  shiftReport                ShiftReport               @relation(fields: [shiftReportId], references: [id], onDelete: Restrict)
-  status                     WorkAuthorizationStatus   @default(DRAFT)
-  workType                   WorkAuthorizationWorkType
-  mineId                     String?
-  mine                       Mine?                     @relation(fields: [mineId], references: [id], onDelete: SetNull)
-  equipmentId                String?
-  equipment                  Equipment?                @relation("WorkAuthorizationEquipment", fields: [equipmentId], references: [id], onDelete: SetNull)
-  jobLocation                String?
-  workDescription            String
-  startTime                  String?
-  endTime                    String?
-  crewWorkerCount            Int?
-  contactName                String?
-  equipmentRequired          String?
-  personInChargeName         String?
-  lockoutRequired            Boolean                   @default(true)
-  lockoutNotRequiredReason   String?
-  workplaceExamRequired      Boolean                   @default(false)
-  confinedSpaceRequired      Boolean                   @default(false)
-  lockoutTagoutRequired      Boolean                   @default(true)
-  hotWorkRequired            Boolean                   @default(false)
-  workingAtHeightsRequired   Boolean                   @default(false)
-  stopCardJhaRequired        Boolean                   @default(false)
-  jobCompleted               Boolean                   @default(false)
-  permitsClosed              Boolean                   @default(false)
-  guardsReplaced             Boolean                   @default(false)
-  lockoutTagoutRemoved       Boolean                   @default(false)
-  toolsRemoved               Boolean                   @default(false)
-  housekeepingCompleted      Boolean                   @default(false)
-  supervisorNotified         Boolean                   @default(false)
-  completionNotes            String?
-  createdAt                  DateTime                  @default(now())
-  updatedAt                  DateTime                  @updatedAt
+  id                       String                    @id @default(cuid())
+  shiftReportId            String
+  shiftReport              ShiftReport               @relation(fields: [shiftReportId], references: [id], onDelete: Restrict)
+  status                   WorkAuthorizationStatus   @default(DRAFT)
+  workType                 WorkAuthorizationWorkType
+  mineId                   String?
+  mine                     Mine?                     @relation(fields: [mineId], references: [id], onDelete: SetNull)
+  equipmentId              String?
+  equipment                Equipment?                @relation("WorkAuthorizationEquipment", fields: [equipmentId], references: [id], onDelete: SetNull)
+  jobLocation              String?
+  workDescription          String
+  startTime                String?
+  endTime                  String?
+  crewWorkerCount          Int?
+  contactName              String?
+  equipmentRequired        String?
+  personInChargeName       String?
+  lockoutRequired          Boolean                   @default(true)
+  lockoutNotRequiredReason String?
+  workplaceExamRequired    Boolean                   @default(false)
+  confinedSpaceRequired    Boolean                   @default(false)
+  lockoutTagoutRequired    Boolean                   @default(true)
+  hotWorkRequired          Boolean                   @default(false)
+  workingAtHeightsRequired Boolean                   @default(false)
+  stopCardJhaRequired      Boolean                   @default(false)
+  jobCompleted             Boolean                   @default(false)
+  permitsClosed            Boolean                   @default(false)
+  guardsReplaced           Boolean                   @default(false)
+  lockoutTagoutRemoved     Boolean                   @default(false)
+  toolsRemoved             Boolean                   @default(false)
+  housekeepingCompleted    Boolean                   @default(false)
+  supervisorNotified       Boolean                   @default(false)
+  completionNotes          String?
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
 
   @@index([shiftReportId])
   @@index([status])
@@ -443,10 +451,10 @@ model DailyLogActivity {
 }
 
 model WeeklySchedule {
-  id                         String                @id @default(cuid())
-  weekStartDate              DateTime              @db.Date
-  weekEndDate                DateTime              @db.Date
-  status                     WeeklyScheduleStatus  @default(DRAFT)
+  id                         String               @id @default(cuid())
+  weekStartDate              DateTime             @db.Date
+  weekEndDate                DateTime             @db.Date
+  status                     WeeklyScheduleStatus @default(DRAFT)
   primaryEmployeeDisplayName String
   primaryEmployeeKey         String
   assignedByDisplayName      String
@@ -454,8 +462,8 @@ model WeeklySchedule {
   sourceNote                 String?
   scheduleNotes              String?
   assignments                DailyAssignment[]
-  createdAt                  DateTime              @default(now())
-  updatedAt                  DateTime              @updatedAt
+  createdAt                  DateTime             @default(now())
+  updatedAt                  DateTime             @updatedAt
 
   @@unique([weekStartDate, primaryEmployeeKey])
   @@index([weekStartDate])
@@ -464,37 +472,38 @@ model WeeklySchedule {
 }
 
 model DailyAssignment {
-  id                             String                 @id @default(cuid())
-  weeklyScheduleId               String
-  weeklySchedule                 WeeklySchedule         @relation(fields: [weeklyScheduleId], references: [id], onDelete: Cascade)
-  assignmentDate                 DateTime               @db.Date
-  dayOfWeek                      Int
-  plannedStatus                  DailyAssignmentStatus  @default(UNKNOWN)
-  plannedShift                   ShiftType              @default(UNKNOWN)
-  plannedEquipmentId             String?
-  plannedEquipment               Equipment?             @relation("DailyAssignmentPlannedEquipment", fields: [plannedEquipmentId], references: [id], onDelete: SetNull)
-  plannedEquipmentDisplayName    String?
-  plannedEquipmentNumber         String?
-  plannedEquipmentCategory       EquipmentCategory?
-  plannedMineName                String?
-  plannedCityName                String?
-  plannedCityState               String?
-  actualStatus                   DailyAssignmentStatus  @default(UNKNOWN)
-  actualShift                    ShiftType              @default(UNKNOWN)
-  actualEquipmentId              String?
-  actualEquipment                Equipment?             @relation("DailyAssignmentActualEquipment", fields: [actualEquipmentId], references: [id], onDelete: SetNull)
-  actualEquipmentDisplayName     String?
-  actualEquipmentNumber          String?
-  actualEquipmentCategory        EquipmentCategory?
-  actualMineName                 String?
-  actualCityName                 String?
-  actualCityState                String?
-  changeReason                   String?
-  plannedNotes                   String?
-  actualNotes                    String?
-  crewMembers                    AssignmentCrewMember[]
-  createdAt                      DateTime               @default(now())
-  updatedAt                      DateTime               @updatedAt
+  id                          String                 @id @default(cuid())
+  weeklyScheduleId            String
+  weeklySchedule              WeeklySchedule         @relation(fields: [weeklyScheduleId], references: [id], onDelete: Cascade)
+  assignmentDate              DateTime               @db.Date
+  dayOfWeek                   Int
+  plannedStatus               DailyAssignmentStatus  @default(UNKNOWN)
+  plannedShift                ShiftType              @default(UNKNOWN)
+  plannedEquipmentId          String?
+  plannedEquipment            Equipment?             @relation("DailyAssignmentPlannedEquipment", fields: [plannedEquipmentId], references: [id], onDelete: SetNull)
+  plannedEquipmentDisplayName String?
+  plannedEquipmentNumber      String?
+  plannedEquipmentCategory    EquipmentCategory?
+  plannedMineName             String?
+  plannedCityName             String?
+  plannedCityState            String?
+  actualStatus                DailyAssignmentStatus  @default(UNKNOWN)
+  actualShift                 ShiftType              @default(UNKNOWN)
+  actualEquipmentId           String?
+  actualEquipment             Equipment?             @relation("DailyAssignmentActualEquipment", fields: [actualEquipmentId], references: [id], onDelete: SetNull)
+  actualEquipmentDisplayName  String?
+  actualEquipmentNumber       String?
+  actualEquipmentCategory     EquipmentCategory?
+  actualMineName              String?
+  actualCityName              String?
+  actualCityState             String?
+  changeReason                String?
+  plannedNotes                String?
+  actualNotes                 String?
+  crewMembers                 AssignmentCrewMember[]
+  timesheetEntries            DailyTimeEntry[]
+  createdAt                   DateTime               @default(now())
+  updatedAt                   DateTime               @updatedAt
 
   @@unique([weeklyScheduleId, assignmentDate])
   @@index([assignmentDate])
@@ -519,4 +528,151 @@ model AssignmentCrewMember {
   @@unique([dailyAssignmentId, phase, role])
   @@index([phase])
   @@index([role])
+}
+
+model WeeklyTimesheet {
+  id                         String           @id @default(cuid())
+  payrollWeekStartDate       DateTime         @db.Date
+  payrollWeekEndDate         DateTime         @db.Date
+  status                     TimesheetStatus  @default(DRAFT)
+  primaryEmployeeDisplayName String
+  primaryEmployeeKey         String
+  workedMinutesTotal         Int              @default(0)
+  regularMinutesTotal        Int              @default(0)
+  overtimeMinutesTotal       Int              @default(0)
+  entries                    DailyTimeEntry[]
+  createdAt                  DateTime         @default(now())
+  updatedAt                  DateTime         @updatedAt
+
+  @@unique([payrollWeekStartDate, primaryEmployeeKey])
+  @@index([payrollWeekStartDate])
+  @@index([payrollWeekEndDate])
+  @@index([status])
+  @@index([primaryEmployeeKey])
+}
+
+model DailyTimeEntry {
+  id                                  String            @id @default(cuid())
+  weeklyTimesheetId                   String
+  weeklyTimesheet                     WeeklyTimesheet   @relation(fields: [weeklyTimesheetId], references: [id], onDelete: Cascade)
+  workDate                            DateTime          @db.Date
+  clockIn                             String
+  clockOut                            String
+  unpaidBreakMinutes                  Int               @default(0)
+  workedMinutes                       Int
+  regularMinutes                      Int               @default(0)
+  overtimeMinutes                     Int               @default(0)
+  primaryEquipmentId                  String?
+  primaryEquipment                    Equipment?        @relation("DailyTimeEntryPrimaryEquipment", fields: [primaryEquipmentId], references: [id], onDelete: SetNull)
+  primaryEquipmentDisplayNameSnapshot String
+  primaryEquipmentNumberSnapshot      String?
+  primaryEquipmentCategorySnapshot    EquipmentCategory
+  primaryMineNameSnapshot             String
+  primaryCityNameSnapshot             String
+  primaryCityStateSnapshot            String?
+  workScheduleDailyAssignmentId       String?
+  workScheduleDailyAssignment         DailyAssignment?  @relation(fields: [workScheduleDailyAssignmentId], references: [id], onDelete: SetNull)
+  notes                               String?
+  allocations                         WorkAllocation[]
+  createdAt                           DateTime          @default(now())
+  updatedAt                           DateTime          @updatedAt
+
+  @@unique([weeklyTimesheetId, workDate])
+  @@index([workDate])
+  @@index([primaryEquipmentId])
+  @@index([workScheduleDailyAssignmentId])
+}
+
+model WorkAllocation {
+  id                           String                        @id @default(cuid())
+  dailyTimeEntryId             String
+  dailyTimeEntry               DailyTimeEntry                @relation(fields: [dailyTimeEntryId], references: [id], onDelete: Cascade)
+  sequence                     Int
+  workCodeId                   String
+  workCode                     TimesheetWorkCode             @relation(fields: [workCodeId], references: [id], onDelete: Restrict)
+  workCodeSnapshot             String
+  workCodeDescriptionSnapshot  String
+  workOrderId                  String?
+  workOrder                    TimesheetWorkOrder?           @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  workOrderSnapshot            String?
+  workOrderDescriptionSnapshot String?
+  allocatedMinutes             Int
+  notes                        String?
+  supportPersonnel             WorkAllocationSupportPerson[]
+  createdAt                    DateTime                      @default(now())
+  updatedAt                    DateTime                      @updatedAt
+
+  @@unique([dailyTimeEntryId, sequence])
+  @@index([workCodeId])
+  @@index([workOrderId])
+}
+
+model TimesheetWorkCode {
+  id             String           @id @default(cuid())
+  code           String
+  normalizedCode String           @unique
+  description    String
+  category       String?
+  equipmentId    String?
+  equipment      Equipment?       @relation("TimesheetWorkCodeEquipment", fields: [equipmentId], references: [id], onDelete: SetNull)
+  active         Boolean          @default(true)
+  lastUsedAt     DateTime?
+  allocations    WorkAllocation[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([active])
+  @@index([equipmentId])
+  @@index([code])
+}
+
+model TimesheetWorkOrder {
+  id                        String           @id @default(cuid())
+  workOrderNumber           String
+  normalizedWorkOrderNumber String           @unique
+  description               String
+  equipmentId               String?
+  equipment                 Equipment?       @relation("TimesheetWorkOrderEquipment", fields: [equipmentId], references: [id], onDelete: SetNull)
+  active                    Boolean          @default(true)
+  lastUsedAt                DateTime?
+  allocations               WorkAllocation[]
+  createdAt                 DateTime         @default(now())
+  updatedAt                 DateTime         @updatedAt
+
+  @@index([active])
+  @@index([equipmentId])
+  @@index([workOrderNumber])
+}
+
+model TimesheetSupportPerson {
+  id                 String                        @id @default(cuid())
+  displayName        String
+  normalizedIdentity String                        @unique
+  tradeOrRole        String
+  company            String?
+  active             Boolean                       @default(true)
+  notes              String?
+  lastUsedAt         DateTime?
+  allocationLinks    WorkAllocationSupportPerson[]
+  createdAt          DateTime                      @default(now())
+  updatedAt          DateTime                      @updatedAt
+
+  @@index([active])
+  @@index([displayName])
+}
+
+model WorkAllocationSupportPerson {
+  id                               String                 @id @default(cuid())
+  workAllocationId                 String
+  workAllocation                   WorkAllocation         @relation(fields: [workAllocationId], references: [id], onDelete: Cascade)
+  supportPersonId                  String
+  supportPerson                    TimesheetSupportPerson @relation(fields: [supportPersonId], references: [id], onDelete: Restrict)
+  supportPersonDisplayNameSnapshot String
+  supportPersonTradeOrRoleSnapshot String
+  supportPersonCompanySnapshot     String?
+  createdAt                        DateTime               @default(now())
+  updatedAt                        DateTime               @updatedAt
+
+  @@unique([workAllocationId, supportPersonId], map: "WorkAllocationSupportPerson_allocation_person_key")
+  @@index([supportPersonId])
 }
