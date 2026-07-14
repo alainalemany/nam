@@ -71,3 +71,36 @@ export type TimesheetListItem = {
   overtimeMinutesTotal: number;
   entryCount: number;
 };
+
+export type TimesheetDayViewAllocation = {
+  allocatedMinutes: number;
+  allocatedTime: string;
+  sequence: number;
+  supportPersonnel: string[];
+  workCode: string;
+  workOrder?: string;
+};
+
+export type TimesheetDayViewContext = {
+  allocatedMinutes: number;
+  allocatedTime: string;
+  allocationStatus: "Balanced" | "Underallocated" | "Overallocated";
+  allocationStatusLabel: string;
+  allocations: TimesheetDayViewAllocation[];
+  breakMinutes: number;
+  breakTime: string;
+  clockIn: string;
+  clockOut: string;
+  detailHref: string;
+  equipment: string;
+  overtimeMinutes: number;
+  overtimeTime: string;
+  primaryEmployeeDisplayName: string;
+  regularMinutes: number;
+  regularTime: string;
+  status: "Draft" | "Completed";
+  timesheetId: string;
+  workDate: string;
+  workedMinutes: number;
+  workedTime: string;
+};

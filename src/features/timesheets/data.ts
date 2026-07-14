@@ -2,8 +2,14 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
-import { dateInputValue } from "./calculations";
-import type { TimesheetFormOptions, TimesheetListItem, WeeklyTimesheetInput } from "./types";
+import { dateInputValue, formatMinutes, parseDateOnly } from "./calculations";
+import { timesheetStatusLabels } from "./constants";
+import type {
+  TimesheetDayViewContext,
+  TimesheetFormOptions,
+  TimesheetListItem,
+  WeeklyTimesheetInput,
+} from "./types";
 
 export const weeklyTimesheetInclude = {
   entries: {
@@ -58,6 +64,122 @@ export function getDailyTimeEntryByDate(weeklyTimesheetId: string, workDate: Dat
     where: { weeklyTimesheetId_workDate: { weeklyTimesheetId, workDate } },
     include: { allocations: { include: { supportPersonnel: true }, orderBy: { sequence: "asc" } } },
   });
+}
+
+export function getDailyTimeEntriesForDayView(date: string) {
+  return prisma.dailyTimeEntry.findMany({
+    where: { workDate: parseDateOnly(date) },
+    include: {
+      weeklyTimesheet: true,
+      allocations: {
+        orderBy: { sequence: "asc" },
+        include: {
+          supportPersonnel: {
+            orderBy: { supportPersonDisplayNameSnapshot: "asc" },
+          },
+        },
+      },
+    },
+    orderBy: [
+      { weeklyTimesheet: { primaryEmployeeDisplayName: "asc" } },
+      { id: "asc" },
+    ],
+  });
+}
+
+type TimesheetDayViewEntry = Awaited<
+  ReturnType<typeof getDailyTimeEntriesForDayView>
+>[number];
+
+function snapshotIdentity(
+  displayName: string,
+  number: string | null,
+  mine: string,
+  city: string,
+  state: string | null,
+) {
+  const equipment = `${displayName}${number ? ` #${number}` : ""}`;
+  const location = [mine, [city, state].filter(Boolean).join(", ")]
+    .filter(Boolean)
+    .join(" - ");
+  return location ? `${equipment} (${location})` : equipment;
+}
+
+function allocationStatus(workedMinutes: number, allocatedMinutes: number) {
+  const difference = workedMinutes - allocatedMinutes;
+  if (difference === 0) {
+    return { status: "Balanced" as const, label: "Balanced" };
+  }
+  if (difference > 0) {
+    return {
+      status: "Underallocated" as const,
+      label: `${formatMinutes(difference)} remaining`,
+    };
+  }
+  return {
+    status: "Overallocated" as const,
+    label: `${formatMinutes(Math.abs(difference))} overallocated`,
+  };
+}
+
+export function timesheetContextFromEntry(
+  entry: TimesheetDayViewEntry,
+): TimesheetDayViewContext {
+  const allocatedMinutes = entry.allocations.reduce(
+    (sum, allocation) => sum + allocation.allocatedMinutes,
+    0,
+  );
+  const reconciliation = allocationStatus(entry.workedMinutes, allocatedMinutes);
+
+  return {
+    allocatedMinutes,
+    allocatedTime: formatMinutes(allocatedMinutes),
+    allocationStatus: reconciliation.status,
+    allocationStatusLabel: reconciliation.label,
+    allocations: entry.allocations.map((allocation) => ({
+      allocatedMinutes: allocation.allocatedMinutes,
+      allocatedTime: formatMinutes(allocation.allocatedMinutes),
+      sequence: allocation.sequence,
+      supportPersonnel: allocation.supportPersonnel.map(
+        (person) => person.supportPersonDisplayNameSnapshot,
+      ),
+      workCode: `${allocation.workCodeSnapshot} - ${allocation.workCodeDescriptionSnapshot}`,
+      workOrder:
+        allocation.workOrderSnapshot && allocation.workOrderDescriptionSnapshot
+          ? `${allocation.workOrderSnapshot} - ${allocation.workOrderDescriptionSnapshot}`
+          : allocation.workOrderSnapshot ?? undefined,
+    })),
+    breakMinutes: entry.unpaidBreakMinutes,
+    breakTime: formatMinutes(entry.unpaidBreakMinutes),
+    clockIn: entry.clockIn,
+    clockOut: entry.clockOut,
+    detailHref: `/timesheets/${entry.weeklyTimesheetId}`,
+    equipment: snapshotIdentity(
+      entry.primaryEquipmentDisplayNameSnapshot,
+      entry.primaryEquipmentNumberSnapshot,
+      entry.primaryMineNameSnapshot,
+      entry.primaryCityNameSnapshot,
+      entry.primaryCityStateSnapshot,
+    ),
+    overtimeMinutes: entry.overtimeMinutes,
+    overtimeTime: formatMinutes(entry.overtimeMinutes),
+    primaryEmployeeDisplayName: entry.weeklyTimesheet.primaryEmployeeDisplayName,
+    regularMinutes: entry.regularMinutes,
+    regularTime: formatMinutes(entry.regularMinutes),
+    status: timesheetStatusLabels[entry.weeklyTimesheet.status],
+    timesheetId: entry.weeklyTimesheetId,
+    workDate: dateInputValue(entry.workDate),
+    workedMinutes: entry.workedMinutes,
+    workedTime: formatMinutes(entry.workedMinutes),
+  };
+}
+
+export function timesheetContextsFromEntries(entries: TimesheetDayViewEntry[]) {
+  return entries.map(timesheetContextFromEntry);
+}
+
+export async function getTimesheetContextsForDate(date: string) {
+  return timesheetContextsFromEntries(await getDailyTimeEntriesForDayView(date));
 }
 
 export async function getWorkScheduleAssignmentOptions(primaryEmployeeKey: string) {

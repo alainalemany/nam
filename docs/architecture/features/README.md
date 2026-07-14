@@ -73,7 +73,7 @@ documentation architecture milestone explicitly approves that reorganization.
 | Work Authorizations | [Work Authorizations Architecture](work-authorizations.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 | Defect Tracking | [Defect Tracking Architecture](defect-tracking.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 | Work Schedule | [Work Schedule Architecture](work-schedule.md) | Approved; V1 foundation and Day View participation implemented |
-| Timesheet | [Timesheet Architecture](timesheets.md) | Approved; V1 foundation implemented; Day View participation deferred |
+| Timesheet | [Timesheet Architecture](timesheets.md) | Approved; V1 foundation and Day View participation implemented |
 
 ## Standard Metadata Block
 

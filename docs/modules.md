@@ -596,12 +596,13 @@ Feature implementation architecture:
 Version 1 should support manual weekly Timesheets, Daily Time Entries, Work
 Allocations, Timesheet-owned reference lists, calculated integer-minute
 durations, allocation reconciliation, edit/delete behavior, explicit Reopen,
-and Draft/Completed lifecycle.
+Draft/Completed lifecycle, and selected-date Day View participation through a
+Timesheet-owned display-context helper.
 
-Copy behavior, Day View participation, global cross-module search, Submitted
-and Locked lifecycle states, automatic WFS login, scraping, submission,
-imports, exports, reports, approvals, authentication, and workforce management
-remain deferred unless explicitly evaluated later.
+Copy behavior, global cross-module search, Submitted and Locked lifecycle
+states, automatic WFS login, scraping, submission, imports, exports, reports,
+approvals, authentication, and workforce management remain deferred unless
+explicitly evaluated later.
 
 ## Payslip Repository
 

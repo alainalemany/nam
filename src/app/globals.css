@@ -559,6 +559,19 @@ textarea {
   font-weight: 700;
 }
 
+.compact-list {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding-left: 20px;
+}
+
+.compact-list li,
+.compact-list li span {
+  display: grid;
+  gap: 2px;
+}
+
 .timesheet-day {
   display: block;
 }

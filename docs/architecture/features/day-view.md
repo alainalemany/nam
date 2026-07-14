@@ -41,8 +41,9 @@ Related Documents:
 - `docs/architecture/features/work-authorizations.md`
 - `docs/architecture/features/defect-tracking.md`
 - `docs/architecture/features/work-schedule.md`
+- `docs/architecture/features/timesheets.md`
 
-Last Reviewed: 2026-07-13
+Last Reviewed: 2026-07-14
 
 ## 1. Purpose
 
@@ -81,9 +82,9 @@ Implemented foundation:
 
 - `/day-view` selected-workday composition route.
 - Previous-day, next-day, and today navigation using feature-owned date helpers.
-- Parallel composition of Work Schedule, Daily Work Logs, STOP Cards, Daily
-  Inspections, Shift Reports, Work Authorizations, and Defect Tracking through
-  module-owned read helpers.
+- Parallel composition of Work Schedule, Timesheet, Daily Work Logs, STOP
+  Cards, Daily Inspections, Shift Reports, Work Authorizations, and Defect
+  Tracking through module-owned read helpers.
 - Module sections that link to owning detail routes and distinguish an
   implemented-empty state from an unimplemented module.
 
@@ -142,6 +143,7 @@ Expected ownership model:
 | Work Authorization records, permit selections, completion checklist, and lifecycle | Work Authorizations |
 | Defect records, priority, severity, corrective information, resolution, and closure | Defect Tracking |
 | Work Schedule records and schedule-change semantics | Work Schedule |
+| Worked-time, payroll, allocation, and reconciliation interpretation | Timesheet |
 | Shift paperwork and related safety records | Shift Reports and related modules |
 | Fuel, truck, timesheet, and payslip records | Their owning modules |
 
@@ -184,6 +186,8 @@ Expected V1 UI surfaces:
 - Previous day, today, and next day navigation.
 - A Daily Work Logs section when records exist for the date.
 - A Work Schedule section when schedule records exist.
+- A compact Timesheet section immediately after Work Schedule, using
+  display-ready Timesheet-owned context.
 - Empty states for sections with no records.
 - Links to owning module views.
 
@@ -244,6 +248,8 @@ Implemented participation:
 
 - Work Schedule participation as the planning context layer, using a Work
   Schedule-owned helper that interprets planned and actual assignment state.
+- Timesheet participation as the worked-time context layer, using a
+  Timesheet-owned helper that interprets stored payroll and allocation state.
 - Daily Work Logs participation as the workday narrative layer.
 - STOP Cards participation as date-aware safety records.
 - Daily Inspections participation as date-aware inspection records.
@@ -253,8 +259,8 @@ Implemented participation:
 
 Planned evolution:
 
-- Additional module sections as Timesheets, Fuel Logs, Work Truck Logs, and
-  other records are implemented.
+- Additional module sections as Fuel Logs, Work Truck Logs, and other records
+  are implemented.
 
 Candidate future evolution:
 

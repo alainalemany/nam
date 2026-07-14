@@ -37,12 +37,13 @@ Related Documents:
 - `docs/architecture/features/day-view.md`
 - `docs/architecture/features/work-schedule.md`
 
-Last Reviewed: 2026-07-13
+Last Reviewed: 2026-07-14
 
 Implementation Status: The V1 foundation is implemented with weekly
 Timesheets, Daily Time Entries, Work Allocations, Timesheet-owned reference
 management, Draft/Completed lifecycle, and optional Work Schedule context.
-Day View participation and the other capabilities listed under Deferred Scope
+Selected-date Day View participation is implemented through a Timesheet-owned
+display-context helper. The other capabilities listed under Deferred Scope
 remain deferred.
 
 ## 1. Purpose
@@ -121,7 +122,7 @@ Timesheet does not own:
 - Payroll approval, supervisor review, lock, or audit history in V1.
 - Authentication, authorization, user accounts, or employee identity.
 - Enterprise workforce management.
-- Day View participation in V1.
+- Day View section ordering or cross-feature composition.
 - Global cross-module search.
 - Payroll calculations beyond daily and weekly hour totals.
 - Attachments, exports, analytics, dashboards, notifications, or reports.
@@ -748,15 +749,21 @@ document privacy behavior.
 
 ## 12. Day View Participation
 
-Timesheet Day View participation is intentionally deferred.
+Timesheet participates in Day View through a Timesheet-owned selected-date
+helper that returns display-ready Daily Time Entry summaries. The helper owns
+worked, regular, overtime, and allocated-minute interpretation; reconciliation
+status; historical Work Code, Work Order, Support Personnel, and Equipment
+display; lifecycle labels; and Weekly Timesheet detail links.
 
-V1 architecture should not design or implement Day View integration during the
-Timesheet foundation milestone.
+The helper returns every Daily Time Entry matching the selected date in
+deterministic primary-employee order. This follows the personal-entry model
+without silently choosing an arbitrary owner when more than one Timesheet
+exists for a date.
 
-When approved later, Day View participation should use a Timesheet-owned
-selected-date helper that returns display-ready Daily Time Entry summaries.
-Day View should remain composition-only and should not calculate worked hours,
-allocation totals, payroll-week status, overtime, or reconciliation state.
+Day View places Timesheet immediately after Work Schedule and remains
+composition-only. It does not calculate worked hours, allocation totals,
+payroll-week status, overtime, or reconciliation state, and it owns no
+Timesheet mutation.
 
 ## 13. Reporting Implications
 
@@ -851,7 +858,6 @@ tests cover the core behavior.
 
 Future Timesheet evolution may include:
 
-- Day View participation.
 - Feature-owned list filtering and history lookup.
 - Submitted and Locked lifecycle states.
 - External WFS submission support.
@@ -871,7 +877,6 @@ capability is approved.
 
 Deferred from V1:
 
-- Day View participation.
 - Global cross-module search.
 - Submitted and Locked lifecycle states.
 - Copy-week or copy-entry workflow.
@@ -916,6 +921,6 @@ Timesheet V1 architecture is successful when:
 - Historical snapshots preserve readable old Timesheets after reference edits.
 - Work Schedule remains optional context and does not determine payroll
   correctness.
-- Day View participation remains deferred until separately approved.
+- Day View participation uses a Timesheet-owned selected-date context helper.
 - Timesheet implementation can proceed without introducing workforce
   management, authentication, global search, or reporting scope creep.

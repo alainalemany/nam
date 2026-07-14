@@ -1123,9 +1123,10 @@ The V1 overtime policy is centralized inside Timesheet:
 Changing an earlier day requires recalculating regular and overtime splits for
 that day and all later days in the week.
 
-Day View participation is deferred. When approved later, Day View should use a
-Timesheet-owned selected-date helper and should not calculate worked hours,
-allocation totals, overtime, or completion state.
+Day View participation uses a Timesheet-owned selected-date helper that returns
+stored worked, regular, overtime, Equipment snapshot, allocation, lifecycle,
+and detail-link context. Day View does not calculate worked hours, allocation
+totals, overtime, or completion state.
 
 Timesheet-owned Work Codes, Work Orders, and Support Personnel should preserve
 historical display snapshots on Work Allocations or allocation-support records

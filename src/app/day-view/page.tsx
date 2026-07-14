@@ -36,6 +36,7 @@ import {
 } from "@/features/stop-cards/constants";
 import { getStopCardsForDate } from "@/features/stop-cards/data";
 import { stopCardFilterHref } from "@/features/stop-cards/filters";
+import { getTimesheetContextsForDate } from "@/features/timesheets/data";
 import {
   optionLabel as workAuthorizationOptionLabel,
   workAuthorizationStatusOptions,
@@ -58,6 +59,7 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
   const dateState = parseDayViewDate((await searchParams) ?? {});
   const [
     workSchedules,
+    timesheets,
     dailyLogs,
     stopCards,
     dailyInspections,
@@ -66,6 +68,7 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
     defects,
   ] = await Promise.all([
     getWorkScheduleContextsForDate(dateState.selectedDate),
+    getTimesheetContextsForDate(dateState.selectedDate),
     getDailyLogsForDate(dateState.selectedDate),
     getStopCardsForDate(dateState.selectedDate),
     getDailyInspectionsForDate(dateState.selectedDate),
@@ -176,6 +179,89 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
                 </div>
                 <Link className="table-action" href={schedule.detailHref}>
                   View Weekly Schedule
+                </Link>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="panel table-panel" aria-labelledby="timesheet-heading">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Worked-time context</p>
+            <h2 id="timesheet-heading">Timesheet</h2>
+          </div>
+          <span className="count-pill">{timesheets.length}</span>
+        </div>
+
+        {timesheets.length === 0 ? (
+          <div className="empty-state">
+            <h3>No Timesheet entry for this day</h3>
+            <p>No Daily Time Entry matches the selected workday.</p>
+            <div className="button-row">
+              <Link className="button primary" href="/timesheets/new">
+                Add Timesheet Entry
+              </Link>
+              <Link className="button secondary" href="/timesheets">
+                Open Timesheets
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="record-list">
+            {timesheets.map((timesheet) => (
+              <article className="record-card" key={`${timesheet.timesheetId}-${timesheet.workDate}`}>
+                <div>
+                  <p className="eyebrow">
+                    {timesheet.status}
+                    {" · "}
+                    {timesheet.allocationStatus}
+                  </p>
+                  <h3>{timesheet.primaryEmployeeDisplayName}</h3>
+                  <p className="subtle">
+                    {timesheet.workDate}
+                    {" · "}
+                    {timesheet.clockIn}–{timesheet.clockOut}
+                    {" · Break "}
+                    {timesheet.breakTime}
+                  </p>
+                  <p className="subtle">Equipment: {timesheet.equipment}</p>
+                  <dl className="meta-list">
+                    <dt>Worked</dt>
+                    <dd>{timesheet.workedTime}</dd>
+                    <dt>Regular</dt>
+                    <dd>{timesheet.regularTime}</dd>
+                    <dt>Overtime</dt>
+                    <dd>{timesheet.overtimeTime}</dd>
+                    <dt>Allocated</dt>
+                    <dd>
+                      {timesheet.allocatedTime}
+                      <span className="subtle">{timesheet.allocationStatusLabel}</span>
+                    </dd>
+                  </dl>
+                  {timesheet.allocations.length > 0 ? (
+                    <ol className="compact-list">
+                      {timesheet.allocations.map((allocation) => (
+                        <li key={`${timesheet.timesheetId}-${timesheet.workDate}-${allocation.sequence}`}>
+                          <strong>{allocation.workCode}</strong>
+                          {" · "}
+                          {allocation.allocatedTime}
+                          {allocation.workOrder ? (
+                            <span className="subtle">Work Order: {allocation.workOrder}</span>
+                          ) : null}
+                          {allocation.supportPersonnel.length > 0 ? (
+                            <span className="subtle">
+                              Support: {allocation.supportPersonnel.join(", ")}
+                            </span>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ol>
+                  ) : null}
+                </div>
+                <Link className="table-action" href={timesheet.detailHref}>
+                  View Weekly Timesheet
                 </Link>
               </article>
             ))}

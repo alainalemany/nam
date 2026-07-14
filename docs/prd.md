@@ -525,10 +525,10 @@ never depend on Work Schedule. If a linked Work Schedule Daily Assignment is
 deleted, the Timesheet link should become null and Timesheet-owned history
 should remain readable.
 
-Copy behavior, Day View participation, and global cross-module search are
-deferred from the V1 Timesheet foundation. Timesheet records may later link to
-Daily Log activities, Payslip records, Shift Reports, or Equipment records when
-those workflows are approved.
+Selected-date Day View participation is implemented through a Timesheet-owned
+display-context helper. Copy behavior and global cross-module search remain
+deferred. Timesheet records may later link to Daily Log activities, Payslip
+records, Shift Reports, or Equipment records when those workflows are approved.
 
 The Timesheet module should fit NAM Dashboard's UI style instead of copying the WFS mobile interface exactly.
 

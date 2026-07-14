@@ -286,10 +286,10 @@ Feature implementation architecture:
 `docs/architecture/features/timesheets.md`
 
 Current status: Product decisions and feature architecture are approved. The
-V1 data model, weekly entry workflow, reference management, lifecycle, and
-proportional tests are implemented. Day View participation, submitted and
-locked lifecycle states, external submission, global search, reporting, and
-Payslip reconciliation remain deferred.
+V1 data model, weekly entry workflow, reference management, lifecycle,
+proportional tests, and selected-date Day View participation are implemented.
+Submitted and locked lifecycle states, external submission, global search,
+reporting, and Payslip reconciliation remain deferred.
 
 ### Phase 1: Requirements Definition (Complete)
 
@@ -332,9 +332,16 @@ Payslip reconciliation remain deferred.
 - Add feature-owned Server Actions, validation, queries, and proportional
   tests.
 
-### Phase 4: Future Enhancements
+### Phase 4: Day View Participation (Complete)
 
-- Add Day View participation after Timesheet foundation is accepted.
+- Add a Timesheet-owned selected-date context query.
+- Show compact worked-time, regular/overtime, Equipment, allocation, Work Code,
+  optional Work Order, and Support Personnel context after Work Schedule.
+- Keep payroll and reconciliation interpretation inside Timesheet.
+- Preserve Day View as a read-only composition surface.
+
+### Phase 5: Future Enhancements
+
 - Add feature-owned Timesheet history filtering after foundation acceptance.
 - Add submitted and locked lifecycle states if external workflow requires them.
 - Add richer reports comparing Work Schedule, Daily Log, Timesheet, and Payslip records
