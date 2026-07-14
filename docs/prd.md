@@ -483,21 +483,52 @@ Automatic SMS import or natural-language schedule parsing is not required. The s
 
 ## Timesheet Requirements
 
-NAM Dashboard must support a Timesheet module for manually creating, editing, copying, deleting, and reviewing weekly timesheet entries.
+NAM Dashboard must support a Timesheet module for manually creating, editing,
+deleting, and reviewing weekly payroll-oriented time records.
 
-The module should preserve the key fields visible in the WFS timesheet workflow: work date, pay code, hours, equipment, work code, work order, worked pay grade, worked company code, worked business unit, injury, and comments.
+One Timesheet represents one employer payroll week. NAM's payroll week is
+Monday through Sunday. The payroll week is independent from Work Schedule's
+planning week even though both currently use Monday-Sunday boundaries.
 
-Pay code should be a fixed list with Regular Time, FTO, On Call Pay, and Unpaid Leave.
+Weekly Timesheets should be created automatically through explicit first-use
+mutations. Users should not have to manually create empty weekly containers,
+but simply viewing a payroll week must not write a database record.
 
-New entries should default to Regular Time, worked company code 00067, worked business unit 141, and injury false. These defaults must remain editable.
+Daily Time Entries are the source of truth for worked time. They should record
+work date, clock in, clock out, unpaid break minutes, calculated worked
+minutes, regular minutes, overtime minutes, primary equipment, optional Work
+Schedule Daily Assignment relationship, and notes.
 
-The module should maintain reusable lists for equipment, work codes, and work orders. Equipment and work codes should support code plus description, and the entry form should provide searchable/autocomplete selection with the ability to add a new reusable value from the form.
+Worked time and allocation duration should be stored and calculated internally
+as integer minutes. V1 weekly overtime is calculated by treating the first
+2,400 worked minutes in the Monday-Sunday payroll week as regular and
+subsequent worked minutes as overtime.
 
-Timesheet entries should be grouped by work week and work date. The module should calculate daily totals and weekly total hours automatically.
+Each Daily Time Entry should own one or more Work Allocations. Work Allocations
+explain where the day's worked hours went using sequence, work code, optional
+work order, allocated minutes, optional support personnel, and notes.
 
-Work date, pay code, and hours are required for saving a row. Other fields may be optional unless later workflow requirements make them mandatory.
+The module should maintain Timesheet-owned reusable lists for Work Codes, Work
+Orders, and Support Personnel. These are not global workforce-management
+records.
 
-Timesheet records should participate in Day View and global historical search. They may later link to Daily Log activities, Work Schedule days, Work Orders, Payslip records, Shift Reports, or Equipment records.
+Allocation totals must reconcile exactly with calculated worked minutes before a
+Timesheet can be completed. Draft Timesheets may remain temporarily
+unbalanced.
+
+V1 lifecycle states are Draft and Completed. Submitted and Locked are future
+states. Completed Timesheets are read-only until explicitly reopened to Draft.
+
+Timesheet records may optionally reference Work Schedule Daily Assignments, but
+Timesheet must work correctly without Work Schedule and payroll correctness must
+never depend on Work Schedule. If a linked Work Schedule Daily Assignment is
+deleted, the Timesheet link should become null and Timesheet-owned history
+should remain readable.
+
+Copy behavior, Day View participation, and global cross-module search are
+deferred from the V1 Timesheet foundation. Timesheet records may later link to
+Daily Log activities, Payslip records, Shift Reports, or Equipment records when
+those workflows are approved.
 
 The Timesheet module should fit NAM Dashboard's UI style instead of copying the WFS mobile interface exactly.
 

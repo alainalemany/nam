@@ -828,91 +828,161 @@ and the product owner approves the added scope.
 
 ## Timesheet Entities
 
-### TimesheetWeek
+The Timesheet feature architecture is defined in
+`docs/architecture/features/timesheets.md`.
 
-Represents one weekly timesheet period.
+The entities below are conceptual V1 entities. They are not implemented in the
+current Prisma schema.
+
+### WeeklyTimesheet
+
+Represents one employer payroll week.
+
+The employer payroll week is Monday through Sunday. It is independent from
+Work Schedule's Monday-Sunday planning week even though the current boundaries
+match. Timesheet owns payroll-week semantics.
 
 Potential fields:
 
 - id
-- weekStartDate
-- weekEndDate
-- weeklyHoursTotal
+- payrollWeekStartDate
+- payrollWeekEndDate
 - status
+- primaryEmployeeDisplayName
+- primaryEmployeeKey
+- regularMinutesTotal
+- overtimeMinutesTotal
+- workedMinutesTotal
 - createdAt
 - updatedAt
 
 Potential statuses:
 
 - Draft
-- SubmittedExternally
-- Archived
+- Completed
+
+Future statuses:
+
+- Submitted
+- Locked
 
 Relationships:
 
-- Has many TimesheetEntry records
+- Has many DailyTimeEntry records
 
-### TimesheetEntry
+Uniqueness:
 
-Represents one manually entered timesheet row.
+- payrollWeekStartDate + primaryEmployeeKey
+
+`primaryEmployeeKey` is a normalized personal identity key derived
+server-side from `primaryEmployeeDisplayName`. It is not an Employee, User,
+HR, payroll, authentication, or workforce-management identifier.
+
+### DailyTimeEntry
+
+Represents one independent work-date record inside a WeeklyTimesheet.
+
+Daily Time Entry is the source of truth for worked time. It may optionally
+reference a Work Schedule DailyAssignment for context, but payroll correctness
+does not depend on Work Schedule.
 
 Potential fields:
 
 - id
-- timesheetWeekId
+- weeklyTimesheetId
 - workDate
-- payCode
-- hours
-- equipmentId
-- equipmentCodeSnapshot
-- equipmentDescriptionSnapshot
+- clockIn
+- clockOut
+- unpaidBreakMinutes
+- workedMinutes
+- regularMinutes
+- overtimeMinutes
+- primaryEquipmentId
+- primaryEquipmentDisplayNameSnapshot
+- primaryEquipmentNumberSnapshot
+- primaryEquipmentCategorySnapshot
+- primaryMineNameSnapshot
+- primaryCityNameSnapshot
+- primaryCityStateSnapshot
+- workScheduleDailyAssignmentId
+- notes
+- createdAt
+- updatedAt
+
+Relationships:
+
+- Belongs to one WeeklyTimesheet
+- References one primary Equipment record
+- May reference one Work Schedule DailyAssignment record for context, with
+  SetNull-style behavior if the assignment is deleted
+- Has many WorkAllocation records
+
+Time and payroll notes:
+
+- Work date is the date the shift begins.
+- Clock-in and clock-out are local operational wall-clock times.
+- Clock-out may occur on the following calendar day.
+- Worked time, break duration, regular time, overtime time, allocation
+  duration, and totals use integer minutes.
+- One DailyTimeEntry may not exceed 24 gross hours.
+- Regular and overtime minutes are derived snapshots calculated by the
+  Timesheet weekly overtime policy.
+
+### WorkAllocation
+
+Represents the ordered accounting breakdown for a DailyTimeEntry.
+
+Work Allocations answer: "Where did today's worked minutes go?"
+
+Each Work Allocation stores sequence and duration, not allocation start/end
+times.
+
+Potential fields:
+
+- id
+- dailyTimeEntryId
+- sequence
 - workCodeId
 - workCodeSnapshot
 - workCodeDescriptionSnapshot
 - workOrderId
 - workOrderSnapshot
-- workedPayGrade
-- workedCompanyCode
-- workedBusinessUnit
-- injury
-- comments
-- sourceSystem
+- workOrderDescriptionSnapshot
+- allocatedMinutes
+- notes
 - createdAt
 - updatedAt
 
-Default values for new rows:
-
-- payCode: Regular Time
-- workedCompanyCode: 00067
-- workedBusinessUnit: 141
-- injury: false
-
-Potential pay codes:
-
-- Regular Time
-- FTO
-- On Call Pay
-- Unpaid Leave
-
 Relationships:
 
-- Belongs to one TimesheetWeek
-- May reference one Equipment record
-- May reference one TimesheetWorkCode record
+- Belongs to one DailyTimeEntry
+- References one TimesheetWorkCode record
 - May reference one TimesheetWorkOrder record
-- May later reference one Work Schedule DailyAssignment record
-- May later reference one DailyLogActivity record
-- May later reference one Payslip record
+- May reference zero or many TimesheetSupportPerson records through an
+  allocation-support relationship
+
+Validation notes:
+
+- Allocation minutes must be positive integers.
+- Allocation sequences should be unique and deterministic within one
+  DailyTimeEntry.
+- Allocation totals must reconcile with DailyTimeEntry workedMinutes
+  before the WeeklyTimesheet can be Completed.
+- Draft Timesheets may remain temporarily unbalanced.
 
 ### TimesheetWorkCode
 
-Represents a reusable work code option used by timesheet entries.
+Represents a reusable Timesheet-owned work-code option used by Work
+Allocations.
 
 Potential fields:
 
 - id
 - code
+- normalizedCode
 - description
+- category
+- equipmentId
 - active
 - lastUsedAt
 - createdAt
@@ -920,17 +990,32 @@ Potential fields:
 
 Relationships:
 
-- Has many TimesheetEntry records
+- Has many WorkAllocation records
+
+Rules:
+
+- Code is normalized for uniqueness.
+- Inactive Work Codes remain visible historically and are excluded from new
+  selection by default.
+- Work Codes used by historical allocations should not be hard-deleted.
+- Work Code management belongs to the Timesheet feature.
 
 ### TimesheetWorkOrder
 
-Represents a reusable work order option used by timesheet entries.
+Represents a reusable Timesheet-owned work-order option used by Work
+Allocations.
+
+Work Order is optional because production allocations typically do not use one.
+Maintenance-oriented allocations commonly use one, but Work Order remains
+optional in V1.
 
 Potential fields:
 
 - id
 - workOrderNumber
+- normalizedWorkOrderNumber
 - description
+- equipmentId
 - active
 - lastUsedAt
 - createdAt
@@ -938,17 +1023,120 @@ Potential fields:
 
 Relationships:
 
-- Has many TimesheetEntry records
+- Has many WorkAllocation records
+
+Rules:
+
+- Work order number/code is normalized for uniqueness.
+- Work Order-to-Work Code relationship is optional in V1.
+- A Work Order may be commonly associated with a Work Code, but it is not
+  globally locked to only one Work Code in V1.
+- Inactive Work Orders remain visible historically and are excluded from new
+  selection by default.
+- Work Orders used by historical allocations should not be hard-deleted.
+
+### TimesheetSupportPerson
+
+Represents a reusable Timesheet-owned person or role temporarily supporting a
+Work Allocation.
+
+Examples:
+
+- Mechanic
+- Electrician
+- Welder
+- Hydraulic Technician
+- Contractor
+- Vendor Representative
+
+Support Personnel is not an Employee system and should not create workforce
+management scope.
+
+Potential fields:
+
+- id
+- displayName
+- normalizedIdentity
+- tradeOrRole
+- company
+- active
+- notes
+- lastUsedAt
+- createdAt
+- updatedAt
+
+Relationships:
+
+- May belong to many WorkAllocation records through an allocation-support
+  relationship
+
+Rules:
+
+- Support Personnel is not Employee, User, HR, payroll, authentication, or
+  workforce identity.
+- Normalized identity should limit obvious duplicates.
+- Inactive personnel remain visible historically and are excluded from new
+  selection by default.
+- Used Support Personnel records should not be hard-deleted.
+
+### WorkAllocationSupportPerson
+
+Represents the many-to-many relationship between a WorkAllocation and
+TimesheetSupportPerson.
+
+Potential fields:
+
+- id
+- workAllocationId
+- supportPersonId
+- supportPersonDisplayNameSnapshot
+- supportPersonTradeOrRoleSnapshot
+- supportPersonCompanySnapshot
+- notes
+- createdAt
+- updatedAt
+
+Relationships:
+
+- Belongs to one WorkAllocation
+- Belongs to one TimesheetSupportPerson
 
 ### Timesheet Reporting Notes
 
-Daily totals should be calculated by summing TimesheetEntry.hours grouped by workDate.
+Daily totals should be calculated from DailyTimeEntry worked minutes and
+allocation totals grouped by workDate.
 
-Weekly totals should be calculated by summing TimesheetEntry.hours within the TimesheetWeek date range.
+Weekly totals should be calculated from DailyTimeEntry worked minutes, regular
+minutes, and overtime minutes within the WeeklyTimesheet payroll-week date
+range.
 
-Day View should include TimesheetEntry records whose workDate matches the selected date.
+The V1 overtime policy is centralized inside Timesheet:
 
-Equipment, work code, work order, worked pay grade, worked company code, and worked business unit fields should support saved history and autocomplete in the UI.
+- first 2,400 worked minutes in the Monday-Sunday payroll week are regular
+- subsequent worked minutes are overtime
+
+Changing an earlier day requires recalculating regular and overtime splits for
+that day and all later days in the week.
+
+Day View participation is deferred. When approved later, Day View should use a
+Timesheet-owned selected-date helper and should not calculate worked hours,
+allocation totals, overtime, or completion state.
+
+Timesheet-owned Work Codes, Work Orders, and Support Personnel should preserve
+historical display snapshots on Work Allocations or allocation-support records
+so old Timesheets remain readable after reference changes.
+
+DailyTimeEntry should also preserve limited primary Equipment display snapshots:
+
+- equipment display name
+- equipment number
+- equipment category
+- mine name
+- city name
+- city state
+
+Users select Equipment only. Mine and City are derived server-side through
+Equipment and should not be selected independently on Timesheet entries.
 
 ## Payslip Repository Entities
 

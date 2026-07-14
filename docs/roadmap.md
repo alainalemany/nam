@@ -281,35 +281,61 @@ implemented through a Work Schedule-owned selected-date context helper.
 
 ## Timesheet Roadmap
 
-### Phase 1: Requirements Definition
+Feature implementation architecture:
 
-- Confirm editable timesheet fields from WFS screenshots
-- Define fixed pay code options: Regular Time, FTO, On Call Pay, and Unpaid Leave
-- Define default values for new rows: Regular Time, company code 00067, business unit 141, and injury false
-- Define reusable list behavior for equipment, work codes, work orders, worked pay grade, company code, and business unit
-- Define weekly and daily total behavior
+`docs/architecture/features/timesheets.md`
 
-### Phase 2: Data Model Design
+Current status: Product decisions are approved and feature architecture is
+approved. Implementation has not started. Day View participation, submitted and
+locked lifecycle states, external submission, global search, reporting, and
+Payslip reconciliation remain deferred.
 
-- Define TimesheetWeek entity
-- Define TimesheetEntry entity
-- Define TimesheetWorkCode entity
-- Define TimesheetWorkOrder entity
-- Define relationship to Equipment
-- Define future relationships to Work Schedule, Daily Log, Payslip, Work Orders, and Shift Reports
+### Phase 1: Requirements Definition (Complete)
 
-### Phase 3: V1 Implementation
+- Confirm Timesheet represents one employer payroll week independent from Work
+  Schedule's Monday-Sunday planning week.
+- Confirm Weekly Timesheets are created through explicit first-use mutations,
+  not read-only page views.
+- Confirm Daily Time Entries are independent worked-time records.
+- Confirm optional Work Schedule Daily Assignment relationship.
+- Confirm Work Allocations explain where worked hours went.
+- Confirm Timesheet-owned reusable Work Codes, Work Orders, and Support
+  Personnel.
+- Confirm Draft and Completed are the V1 lifecycle states.
+- Defer Day View participation and global cross-module search.
 
-- Create manual timesheet entries
-- Edit, copy, and delete timesheet entries
-- Group entries by work week and work date
-- Calculate daily and weekly hour totals
-- Provide searchable/autocomplete selectors for saved equipment, work codes, and work orders
-- Allow adding new reusable equipment, work code, or work order values from the form
-- Show Timesheet entries in Day View and global search
+### Phase 2: Feature Architecture (Complete)
+
+- Define Weekly Timesheet ownership.
+- Define Daily Time Entry ownership and calculated worked-time fields.
+- Define Work Allocation ownership, sequencing, and reconciliation rules.
+- Define Work Code, Work Order, and Support Personnel reference records.
+- Define optional Work Schedule Daily Assignment context.
+- Define validation, lifecycle, weekly UI, queries, mutations, and testing
+  strategy.
+- Confirm Monday-through-Sunday payroll week, centralized weekly overtime
+  policy, integer-minute calculations, owner key uniqueness, reference
+  snapshots, and lifecycle correction rules.
+
+### Phase 3: Data Model And V1 Foundation Implementation
+
+- Add Timesheet data model and migration.
+- Add Timesheet-owned Work Codes, Work Orders, and Support Personnel.
+- Add feature-owned weekly view, explicit first-use weekly container creation, Daily
+  Time Entry editing, and Work Allocation editing.
+- Calculate worked minutes from clock in, clock out, and unpaid break duration.
+- Reconcile Work Allocation totals with calculated worked minutes before
+  completion.
+- Derive regular and overtime minutes through the centralized Timesheet weekly
+  overtime policy.
+- Add feature-owned Server Actions, validation, queries, and proportional
+  tests.
 
 ### Phase 4: Future Enhancements
 
+- Add Day View participation after Timesheet foundation is accepted.
+- Add feature-owned Timesheet history filtering after foundation acceptance.
+- Add submitted and locked lifecycle states if external workflow requires them.
 - Add richer reports comparing Work Schedule, Daily Log, Timesheet, and Payslip records
 - Add import/export if a reliable source format becomes available
 - Evaluate WFS integration only if the security and maintenance tradeoffs are acceptable

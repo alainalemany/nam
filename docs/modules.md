@@ -496,58 +496,107 @@ Implementation architecture:
 
 ## Timesheet
 
-The Timesheet module tracks the operator's weekly work time entries.
+The Timesheet module tracks payroll-oriented weekly worked time.
 
 ### Purpose
 
-Create a personal, editable record of the same timesheet information entered in the WFS timesheet system, while fitting the NAM Dashboard interface.
+Create a personal, editable record of worked time by employer payroll week,
+while fitting the NAM Dashboard interface.
 
-The module should help the operator review weekly hours, recreate past entries, and reuse common equipment, work codes, and work orders without repeatedly typing the same information.
+The module should help the operator review weekly hours, reconcile daily worked
+time, and explain where those hours went through reusable work codes, optional
+work orders, and support-personnel context.
 
 ### Source Workflow
 
-The operator manually creates, edits, copies, and deletes timesheet rows.
+The operator opens a payroll week. Viewing the week does not create a database
+record. If the Weekly Timesheet does not exist, the system creates it through
+an explicit Timesheet-owned mutation, such as saving the first Daily Time Entry
+for that payroll week.
 
-The reference WFS workflow shows a weekly timesheet grouped by work date, with each day showing total hours and one or more time entries. An entry detail screen includes work date, pay code, hours, equipment, work code, work order, worked pay grade, worked company code, worked business unit, injury, and comments.
+The operator manually creates, edits, and deletes Daily Time Entries inside the
+weekly view. Each Daily Time Entry owns one or more Work Allocations that
+explain where the day's worked minutes went. Copy behavior is deferred from the
+V1 foundation.
 
 ### Required Capabilities
 
-- Create a new timesheet entry manually
-- Edit an existing timesheet entry
-- Delete an existing timesheet entry
-- Copy an existing entry to speed up repeated work
-- Group entries by work week and work date
-- Show daily totals and weekly total hours
-- Use fixed pay code options: Regular Time, FTO, On Call Pay, and Unpaid Leave
-- Require work date, pay code, and hours before saving
-- Default new rows to Regular Time, worked company code 00067, worked business unit 141, and injury false
-- Keep worked company code, worked business unit, injury, and other row fields editable
-- Store reusable lists for equipment, work codes, and work orders
-- Provide searchable/autocomplete entry for equipment, work codes, work orders, worked pay grade, company code, and business unit
-- Allow adding new reusable equipment, work code, or work order values from the form
-- Support optional comments
+- Represent one employer payroll week as one Weekly Timesheet.
+- Use Monday-through-Sunday payroll weeks while keeping payroll-week semantics
+  independent from Work Schedule's planning week.
+- Automatically create Weekly Timesheets only through explicit first-use
+  mutations.
+- Create, edit, and delete Daily Time Entries inside the week.
+- Record work date, clock in, clock out, unpaid break duration, calculated
+  worked minutes, regular minutes, overtime minutes, primary equipment,
+  optional Work Schedule Daily Assignment reference, and notes.
+- Record one primary equipment per Daily Time Entry.
+- Store one or more ordered Work Allocations per Daily Time Entry.
+- Require each Work Allocation to have a work code, allocated minutes, sequence,
+  and optional notes.
+- Allow optional work orders when the work code and workflow support them.
+- Allow zero, one, or many support personnel on a Work Allocation.
+- Require allocation totals to reconcile with calculated worked minutes before
+  Timesheet completion.
+- Allow Draft Timesheets to remain temporarily unbalanced.
+- Support Draft and Completed lifecycle states in V1.
+- Keep Completed Timesheets read-only until explicitly reopened to Draft.
 
 ### Reusable Lists
 
-Equipment should store both a code and a description, such as 101102 / Dragline PH 2355 or 101137 / Dragline Manitowoc 4600.
+Timesheet owns reusable Work Codes, Work Orders, and Support Personnel because
+they serve payroll/time-accounting entry rather than global operational
+reference data.
 
-Work codes should store both a code and a description, such as P-102 / PRODUCTION 2355 KROME or P-137 / PRODUCTION SDIGAB4600 137.
+Work codes should store both a code and a description, such as `P-102` /
+Production 2355 Krome or `P-137` / Production Manitowoc 4600.
 
-Work orders may be blank, but previously used values should be searchable and reusable.
+Work orders should be searchable and reusable, but remain optional because
+production allocations typically do not use one.
+
+Support Personnel represents people temporarily supporting work allocations,
+such as mechanic, electrician, welder, hydraulic technician, contractor, or
+vendor representative. Support Personnel is not an Employee system.
+
+Inactive Work Codes, Work Orders, and Support Personnel remain historically
+visible but are excluded from new selection by default. Records used
+historically should not be hard-deleted. New reusable reference records are
+managed through Timesheet-owned management surfaces rather than inline ad hoc
+creation in the weekly form.
 
 ### Relationship To Other Modules
 
-Timesheet entries should participate in Day View and global historical search.
+Daily Time Entries may optionally reference the corresponding Work Schedule
+Daily Assignment.
 
-Timesheet entries may link to Equipment records when the equipment exists in the shared equipment list. They may later link to Daily Log activities, Work Schedule days, Work Orders, Payslip records, or Shift Reports when those modules support the relationship.
+The relationship is optional. Timesheet must work correctly when no Work
+Schedule exists, and payroll correctness must never depend on Work Schedule.
+If a linked Work Schedule Daily Assignment is deleted, the Timesheet link should
+become null and Timesheet-owned history should remain readable.
 
-The Timesheet module should not replace the Work Schedule or Daily Log. The schedule records expected assignments, the Daily Log records what happened during the day, and the Timesheet records payroll-facing hours and codes.
+Timesheet entries may later link to Daily Log activities, Payslip records,
+Shift Reports, or other records when those modules support the relationship.
+
+The Timesheet module should not replace the Work Schedule or Daily Log. Work
+Schedule records expected and actual assignment context, Daily Log records what
+happened during the day, and Timesheet records payroll-facing worked time and
+work accounting.
+
+Feature implementation architecture:
+
+`docs/architecture/features/timesheets.md`
 
 ### V1 Boundary
 
-Version 1 should support manual timesheet rows, weekly grouping, daily and weekly totals, reusable autocomplete lists, copy/edit/delete, and basic Day View/search participation.
+Version 1 should support manual weekly Timesheets, Daily Time Entries, Work
+Allocations, Timesheet-owned reference lists, calculated integer-minute
+durations, allocation reconciliation, edit/delete behavior, explicit Reopen,
+and Draft/Completed lifecycle.
 
-Automatic WFS login, scraping, or submission is out of scope unless explicitly evaluated later.
+Copy behavior, Day View participation, global cross-module search, Submitted
+and Locked lifecycle states, automatic WFS login, scraping, submission,
+imports, exports, reports, approvals, authentication, and workforce management
+remain deferred unless explicitly evaluated later.
 
 ## Payslip Repository
 
