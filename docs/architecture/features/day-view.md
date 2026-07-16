@@ -100,7 +100,7 @@ Day View does not own:
 - Daily Work Log creation, editing, validation, or persistence.
 - Work Schedule creation, editing, validation, or persistence.
 - Shift Report, Work Authorization, Inspection, Defect, Equipment Fuel Event,
-  Supply Request, Work Truck Log, Timesheet, Knowledge Base, or Payslip
+  Supply Request, Timesheet, Knowledge Base, or Payslip
   business rules.
 - Global search architecture.
 - A full calendar component.
@@ -147,7 +147,7 @@ Expected ownership model:
 | Work Schedule records and schedule-change semantics | Work Schedule |
 | Worked-time, payroll, allocation, and reconciliation interpretation | Timesheet |
 | Shift paperwork and related safety records | Shift Reports and related modules |
-| Fuel, truck, timesheet, and payslip records | Their owning modules |
+| Fuel, timesheet, and payslip records | Their owning modules |
 
 Day View should depend on module-owned query helpers or contribution functions
 only after those modules exist and their ownership boundaries are clear.
@@ -262,7 +262,7 @@ Implemented participation:
 Planned evolution:
 
 - Additional module sections as Operational Safety Checklists, Equipment Fuel
-  Events, Supply Requests, Work Truck Logs, and other date-relevant records
+  Events, Supply Requests, and other date-relevant records
   receive separately approved feature-owned Day View contributions.
 - Equipment Fuel Events architecture is Approved, but its Day View contribution
   remains deferred to a separate milestone after the V1 foundation.

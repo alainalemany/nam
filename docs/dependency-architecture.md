@@ -140,7 +140,8 @@ Examples:
 | A workday record depends on date context | Operational history is organized around dates and shifts. |
 | Work Authorization completion depends on required checklist context | Closing safety or maintenance work requires completion evidence. |
 | Timesheet reconciliation depends on date and schedule context | Time records become more useful when compared with schedule and workday history. |
-| Fuel and truck records depend on date and equipment context | Supporting records need enough context to be useful in history and search. |
+| Fuel and Equipment inspection records depend on date and Equipment context | Supporting records need enough context to be useful in history and search. |
+| Mid-shift Equipment replacement depends only on workday narrative context | Daily Work Logs can preserve the event without a standalone truck module or Fleet assignment dependency. |
 
 Workflow dependency questions should be answered with:
 

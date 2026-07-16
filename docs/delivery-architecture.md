@@ -155,6 +155,11 @@ Before implementation, inspect the relevant canonical documents:
 If a requirement, dependency, or architecture boundary is unclear, resolve that
 uncertainty before building on it.
 
+If confirmed operational evidence invalidates the premise of a planned
+capability, correct the canonical roadmap and supersede the affected ADR before
+architecture or implementation continues. Do not preserve a duplicate module
+merely because it appeared in an earlier plan.
+
 ### 4. Implementation Plan
 
 Implementation plans should be narrow and concrete.

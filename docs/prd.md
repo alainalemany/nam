@@ -28,7 +28,6 @@ roadmap governance is [Product Roadmap](product-roadmap.md).
 - [Payslip Repository Requirements](#payslip-repository-requirements)
 - [Equipment Fuel Event Requirements](#equipment-fuel-event-requirements)
 - [Supply Request Requirements](#supply-request-requirements)
-- [Work Truck Log Requirements](#work-truck-log-requirements)
 
 You are a Senior Software Architect, Senior UX Designer, Senior Next.js Developer, and Product Manager.
 
@@ -79,7 +78,7 @@ The dashboard should become the central location for:
 - Documentation
 - Work schedule tracking
 - Fuel delivery and diesel usage tracking
-- Work truck daily logs and mileage tracking
+- Shift-start Dragline and Mobile Equipment inspections
 - Permanent historical records with search and calendar navigation
 
 The system should be designed to reduce paperwork, improve organization, and create historical records for future analysis.
@@ -144,6 +143,17 @@ Potential context:
 - Supervisor display name
 - Approved checklist item responses
 - Problem description
+
+One independent checklist belongs to each piece of Equipment inspected at
+shift start. The Mobile checklist applies to work trucks, tractors, forklifts,
+and other supported mobile Equipment. A shift using a dragline, work truck, and
+tractor therefore produces three independent checklist records.
+
+The implemented V1 foundation currently records the approved Hour Meter
+context. The next architecture amendment will define an explicit `HOURS` or
+`MILES` meter unit, optional checklist-level image evidence with captions, and
+clear confirmation that the NAM record was saved. Those enhancements are not
+implemented yet.
 
 ### 4. Daily Log
 
@@ -276,24 +286,6 @@ Potential fields:
 Preserve operator-originated requests for supplies without owning warehouse
 inventory, purchasing, vendors, or ERP processing. Detailed fields remain in
 product discovery.
-
-### 9. Work Truck Log
-
-Track daily work truck usage for mine travel, mileage, required website daily
-log data, and future Fleet purchase context.
-
-Potential fields:
-
-- Date
-- Work truck identifier
-- Starting mileage
-- Ending mileage
-- Miles driven
-- Mine or work area
-- Daily website form responses
-- Notes
-- Submitted status
-- Attachments or screenshots
 
 ## Required Output
 
@@ -617,6 +609,11 @@ Daily Log entries should support links to related modules. For example, a daily 
 
 The Daily Log should be searchable and visible through the global calendar/history view.
 
+A mid-shift work truck or other Equipment replacement belongs in the Daily Log
+as operational narrative or an appropriate existing activity. It does not
+alter the original shift-start checklist, automatically create another
+checklist, or require a standalone truck log or Fleet assignment history.
+
 ## Payslip Repository Requirements
 
 NAM Dashboard should support a dedicated Payslip Repository module for archiving weekly work payment PDFs and turning them into searchable financial records.
@@ -673,8 +670,9 @@ replacement plus a complete valid Tank Fill set. Creation also requires active
 eligible Equipment; unchanged inactive Equipment may remain during correction.
 
 Fleet vehicle gas-station purchases are excluded. Company fuel cards, receipts,
-car washes, mileage, and temporary replacement-truck assignment belong to a
-separate future Fleet domain.
+car washes, and temporary replacement-truck assignment belong to a separate
+future Fleet domain. Starting meter readings belong to Operational Safety
+Checklists.
 
 Feature-owned structured history filtering is part of the V1 architecture.
 Day View participation, analytics, reporting, prices, and global cross-module
@@ -696,19 +694,3 @@ activities, and Work Orders when explicit links provide operational value.
 Request lifecycle, requested-item detail, quantities and units, fulfillment,
 correction behavior, and Version 1 placement require further product discovery
 before feature architecture begins.
-
-## Work Truck Log Requirements
-
-NAM Dashboard must support a Work Truck Log module for recording daily work truck usage inside the mine.
-
-The operator parks a personal vehicle at the parking place, transfers to a work truck, and uses that work truck to move inside the mine. The operator also submits a daily log through a work website that includes radio-button responses and mileage input.
-
-The Work Truck Log should preserve the same daily information in NAM Dashboard so the operator has a personal searchable history of work truck mileage, usage, website form responses, and related notes.
-
-The exact website fields will be documented later after the operator provides the daily form details. Until then, the module should be designed to support configurable daily checklist or radio-button fields, mileage fields, free-text notes, and attachments or screenshots.
-
-Work Truck Log records should eventually participate in Day View. They should
-link to the work truck Equipment record, the relevant mine or work area, and an
-optional Daily Log activity. Fleet fuel-card and gas-station purchases may
-later relate to the Work Truck Log, but they must remain separate from Equipment
-Fuel Events. Global cross-module search remains deferred.

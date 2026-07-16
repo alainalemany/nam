@@ -66,7 +66,7 @@ architecture, or implementation work begins.
 
 NAM Dashboard is a personal mining operations dashboard for centralizing daily
 work records, safety activity, equipment notes, schedules, timesheets, fuel
-tracking, work truck logs, payslip records, and long-term operational history.
+tracking, payslip records, and long-term operational history.
 
 The product is initially for personal use by a dragline operator. It should
 remain simple enough for reliable manual entry while being structured enough to
@@ -78,7 +78,7 @@ grow into a more complete operations system over time.
 
 - A dragline operator who needs a reliable personal system for daily work
   records, equipment context, paperwork history, schedule records, timesheets,
-  fuel records, truck logs, and payslip history.
+  fuel records, Equipment inspection history, and payslip history.
 
 ### Operational Context
 
@@ -100,8 +100,8 @@ NAM Dashboard should:
 - Preserve a permanent historical timeline by date, equipment, mine, and
   module.
 - Connect daily logs, shift reports, inspections, work authorizations, defects,
-  schedules, fuel records, work truck logs, payslip records, and related
-  documents.
+  schedules, fuel records, Equipment inspection records, payslip records, and
+  related documents.
 - Reduce manual record-finding effort when reviewing past workdays.
 - Keep Version 1 focused on manual entry, clean workflows, and reliable
   historical records.
@@ -129,8 +129,9 @@ records are first-class concepts because the product value is historical lookup.
 ### Modules Should Connect Without Becoming One Large Form
 
 Daily logs, shift reports, inspections, work authorizations, schedules,
-timesheets, fuel records, truck logs, and payslip records should remain distinct
-modules while linking to shared operational context where useful.
+timesheets, fuel records, Equipment inspections, and payslip records should
+remain distinct modules while linking to shared operational context where
+useful.
 
 ### Sensitive Financial Context Stays Separate
 
@@ -166,7 +167,9 @@ into confirmed requirements.
 - Track timesheet entries and weekly totals.
 - Record operational Equipment fueling history separately from future Fleet
   purchase history.
-- Record work truck mileage, website log responses, and submission status.
+- Amend Operational Safety Checklist architecture for explicit `HOURS` or
+  `MILES` meter units, optional checklist-level image evidence, and clear NAM
+  save confirmation before implementing those enhancements.
 - Archive payslip PDFs and extracted payroll data.
 - Search and navigate historical records by date, date range, equipment, mine,
   and module.
@@ -217,7 +220,8 @@ The current implemented product capabilities include:
 
 Planned Version 1 product scope includes:
 
-- Work Truck Log.
+- Operational Safety Checklist meter-unit, optional image-evidence, and NAM
+  save-confirmation enhancements after architecture approval.
 - Operational Safety Checklist Day View participation through a separately
   approved feature-owned contribution.
 - Broader historical lookup through feature-owned views; global cross-module
@@ -260,8 +264,8 @@ support, or multi-user organizational workflows.
 
 NAM Dashboard should become a durable personal operations memory for mining
 work: a place where daily activity, equipment context, paperwork, schedules,
-timesheets, fuel activity, truck records, and payslip history can be reviewed
-across months and years.
+timesheets, fuel activity, Equipment inspections, and payslip history can be
+reviewed across months and years.
 
 Long-term growth should preserve the product's core discipline:
 

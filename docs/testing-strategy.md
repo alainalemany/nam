@@ -133,8 +133,9 @@ Good candidates:
 - Date-only conversion and formatting helpers.
 - Enum option labels and constants.
 - Pure transformation logic.
-- Future calculation helpers for schedules, timesheets, fuel totals, and work
-  truck mileage.
+- Calculation helpers for schedules, timesheets, fuel totals, and explicit
+  checklist meter-unit behavior after that enhancement architecture is
+  approved.
 
 Unit tests should be fast and deterministic.
 
@@ -311,7 +312,10 @@ justifies that infrastructure.
 Deferred areas:
 
 - Authentication and authorization.
-- Attachments.
+- Attachment infrastructure. Optional Operational Safety Checklist image
+  evidence is confirmed product scope, but its storage, security, lifecycle,
+  and executable test strategy require the next architecture amendment before
+  implementation.
 - Global search.
 - Analytics.
 - Production deployment.

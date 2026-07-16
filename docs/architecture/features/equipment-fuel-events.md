@@ -32,7 +32,7 @@ Related Documents:
 - `docs/architecture/features/daily-work-logs.md`
 - `docs/architecture/features/day-view.md`
 - `docs/decisions/adr-006-fuel-log-structured-operational-module.md`
-- `docs/decisions/adr-007-work-truck-log-personal-record.md`
+- `docs/decisions/adr-017-supersede-standalone-work-truck-log.md`
 
 Last Reviewed: 2026-07-15
 
@@ -56,8 +56,9 @@ operational record, while ordered Tank Fills preserve the separate delivered
 quantities.
 
 This feature does not represent Fleet gas-station purchases. Fuel cards,
-receipts, prices, mileage, vehicle assignments, and car washes belong to a
-separate future Fleet domain.
+receipts, prices, vehicle assignments, and car washes belong to a separate
+future Fleet domain. Starting meter readings belong to Operational Safety
+Checklists, not Equipment Fuel Events.
 
 ## 2. Responsibilities
 
@@ -648,8 +649,9 @@ create nor mutate Defects. No V1 relationship is required.
 
 ### Fleet
 
-Fleet remains a separate future domain for company vehicle assignment,
-gas-station purchases, fuel cards, receipts, prices, mileage, and car washes.
+Fleet remains a separate future domain for company vehicle ownership and
+assignment, gas-station purchases, fuel cards, receipts, prices, and car
+washes. Starting meter readings remain owned by Operational Safety Checklists.
 An operational Equipment Fuel Event must not be reused as a Fleet purchase
 record.
 

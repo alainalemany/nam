@@ -297,7 +297,7 @@ Events use server-rendered reads, feature-owned queries, Server Actions for
 mutations, transactional aggregate persistence, and limited client interaction
 state. Validation, derived totals, and historical snapshots remain
 server-authoritative, and Day View participation remains deferred. Supply
-Requests, Work Truck Log, and other future operational modules should follow
+Requests and other future operational modules should follow
 the established pattern unless their requirements justify a different one.
 
 ## What Not To Standardize Yet

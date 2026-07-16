@@ -35,8 +35,9 @@ Related Documents:
 - `docs/architecture/features/day-view.md`
 - `docs/reference/checklists/dragline-checklist-v1.md`
 - `docs/reference/checklists/mobile-checklist-v1.md`
+- `docs/decisions/adr-017-supersede-standalone-work-truck-log.md`
 
-Last Reviewed: 2026-07-15
+Last Reviewed: 2026-07-16
 
 Implementation Status: The V1 foundation is implemented with canonical
 Dragline and Mobile code-owned templates, complete-only submission, explicit
@@ -44,7 +45,12 @@ completed-record correction, feature-owned history filtering, historical
 snapshots, and PostgreSQL-backed persistence. The implementation and its
 corrections have completed independent review with no remaining findings. Day
 View, Equipment Activity Timeline, Defect linkage, Planner Review, and the
-other deferred capabilities remain unimplemented.
+other deferred capabilities remain unimplemented. ADR-017 confirms that this
+feature owns shift-start Mobile inspections for work trucks, tractors,
+forklifts, and other supported mobile Equipment. Explicit `HOURS`/`MILES`
+meter units, optional checklist-level image evidence with captions, and clear
+NAM save confirmation are follow-up architecture work and are not implemented
+by the current foundation.
 
 ## 1. Purpose
 
@@ -73,6 +79,8 @@ closing the final implementation-blocking product decision.
 Operational Safety Checklists own:
 
 - Start-of-shift checklist records for one Equipment subject.
+- One independent checklist for every piece of Equipment inspected at shift
+  start.
 - Dragline and Mobile template definitions and version identity.
 - Checklist item identifiers, labels, ordering, required markers, and allowed
   response sets.
@@ -100,12 +108,16 @@ Operational Safety Checklists do not own:
 - Employee, User, Supervisor, authentication, authorization, or workforce
   management.
 - A database-admin checklist builder or generic survey platform.
-- Attachments, analytics, exports, notifications, global search, or external
-  form submission in V1.
+- Image storage or serving in the current V1 foundation. Optional
+  checklist-level image evidence is confirmed follow-up scope but requires an
+  approved storage, privacy, backup, serving, cleanup, and correction
+  architecture before implementation.
+- Analytics, exports, notifications, global search, or external form
+  submission in V1.
 
 ## 4. User Workflow
 
-The proposed V1 workflow is:
+The implemented V1 workflow is:
 
 1. The operator starts a checklist at the beginning of the operational shift.
 2. The operator selects the actual Equipment inspected.
@@ -171,6 +183,12 @@ The Equipment determines the template, so template identity must not create a
 second uniqueness path. Multiple shifts may inspect the same Equipment on the
 same calendar date. A correction updates the existing checklist; it does not
 create a same-shift reinspection record.
+
+Each actual Equipment inspected at shift start receives its own record. A shift
+using Dragline 133, one work truck, and one tractor therefore produces one
+Dragline checklist and two independent Mobile checklists. A mid-shift Equipment
+replacement does not create another corporate inspection; it belongs in Daily
+Work Logs as operational narrative or an appropriate existing activity.
 
 ## 7. Template Strategy
 
@@ -300,13 +318,13 @@ attributes.
 The checklist needs a narrow meter concept rather than a field that assumes all
 Equipment uses odometer mileage.
 
-The two approved V1 catalogs use one meter kind:
+The implemented V1 catalogs use one meter kind:
 
 - Operating hours.
 
-Mobile does not imply odometer: draglines and the mobile Equipment covered by
-the canonical V1 form use operating hours. The user selects Equipment rather
-than a meter interpretation.
+The implemented foundation follows the canonical source field and currently
+uses operating hours for both templates. That describes current persistence,
+not a durable rule that every Mobile Equipment category uses Hours.
 
 The checklist preserves an Equipment Meter Reading with the server-derived
 meter-kind snapshot and integer starting value. The V1 Hour Meter value is
@@ -316,10 +334,21 @@ business limit. Decimal and floating-point Hour Meter values are invalid.
 
 The two canonical V1 templates define `HOURS` as their feature-owned meter kind,
 so Phase 21.4 does not add an Equipment-level meter-classification field. A
-future Equipment or template type may define Mileage, Not Applicable, or
-another independently confirmed meter semantic only after later operational
-evidence and architecture approval. Those future semantics are not V1
-implementation requirements.
+confirmed follow-up will add explicit `HOURS` and `MILES` checklist semantics
+without changing the source catalogs. Any other unit still requires separate
+operational evidence and architecture approval.
+
+Confirmed follow-up architecture will replace the implicit single-unit
+assumption with an explicit checklist meter unit of `HOURS` or `MILES`. Work
+Truck may default to Miles and Dragline to Hours. Tractor and Forklift must not
+receive a forced default until operational evidence confirms one. The selected
+unit must remain explicit and historically preserved; no global odometer or
+hour-meter continuity is required. This paragraph records product input for the
+upcoming amendment and does not describe implemented behavior.
+
+The selector and stored explicit unit will be NAM Dashboard metadata. They do
+not alter the exact source-form wording preserved by the canonical Dragline and
+Mobile catalogs or the source PDFs.
 
 ## 12. Person Identity
 
@@ -438,6 +467,9 @@ Correction rules:
   Equipment and location snapshots, resolves the compatible current template,
   and requires a complete new response set even when both Equipment records use
   the same template family.
+- A mid-shift replacement is not a checklist correction and does not change the
+  original shift-start inspection. Daily Work Logs own that later operational
+  event without cross-feature mutation.
 - If Equipment deletion has set the live relation to null, historical detail
   remains readable from snapshots. Correction must explain that the original
   Equipment is unavailable and cannot be submitted until the operator
@@ -716,7 +748,9 @@ Deferred capabilities include:
 - User-configurable templates or a generic form builder.
 - Automatic Defect creation or lifecycle mutation.
 - Explicit response-to-Defect links until separately approved.
-- Attachments and photos.
+- Optional checklist-level image evidence with captions until storage, privacy,
+  backup, serving, cleanup, and correction architecture is approved and
+  implemented.
 - Analytics, compliance dashboards, exports, and notifications.
 - Global cross-module search.
 - External NACCO form submission or synchronization.
@@ -740,8 +774,8 @@ Deferred capabilities include:
 - Exactly one actual Equipment is selected, including temporary replacement and
   rental units.
 - Equipment determines Dragline or Mobile; Mine and City are derived.
-- Draglines and many mobile assets use hours, while some future mobile assets
-  use mileage.
+- Draglines use Hours and work trucks use Miles. Tractor and Forklift defaults
+  remain unconfirmed and must not be inferred.
 - V1 Hour Meter readings use whole integers from `0` through `999999`; the
   maximum is a validation guard rather than a business rule.
 - Needs Repair does not create a Defect.
@@ -770,16 +804,19 @@ Deferred capabilities include:
   snapshotted with the integer reading.
 - Needs Repair requires overall problem context; Previously Noted requires no
   repeated text, and an explicit text-only reuse action may reduce typing.
-- Unknown and future Equipment categories require explicit architecture approval
-  and feature-owned template eligibility before selection. Any future meter
-  semantic belongs to that approved template rather than an Equipment field.
+- Unknown and future Equipment categories require explicit architecture
+  approval and feature-owned template eligibility before selection. The
+  confirmed follow-up stores an explicit unit on the checklist; no Equipment
+  preferred-unit field is approved yet.
 - No automatic Defect mutation exists in V1.
 - Day View and Equipment timeline participation remain feature-owned and
   deferred.
 
 ### Still Unresolved
 
-None. All product decisions required for the V1 foundation are resolved.
+None for the implemented V1 foundation. The separately confirmed meter-unit,
+optional image-evidence, and NAM save-confirmation enhancements require an
+architecture amendment before implementation.
 
 ## 29. Implementation Sequence
 
@@ -791,8 +828,12 @@ Recommended later sequence:
    filtering. (Implemented in Phase 21.4.)
 2. Independent implementation audit, correction review, and repository
    acceptance. (Completed in Phase 21.)
-3. Day View participation only after separate approval.
-4. Optional Defect traceability only after separate approval.
+3. Supersede the invalid standalone Work Truck Log premise and correct roadmap
+   ownership. (Completed in Phase 23.2; see ADR-017.)
+4. Amend this architecture for explicit meter units, optional checklist-level
+   image evidence, and NAM save confirmation before implementation.
+5. Day View participation only after separate approval.
+6. Optional Defect traceability only after separate approval.
 
 ## 30. Success Criteria
 

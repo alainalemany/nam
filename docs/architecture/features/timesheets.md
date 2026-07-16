@@ -117,7 +117,7 @@ Timesheet does not own:
 - Daily Work Log operational narratives or activity timelines.
 - Shift Report summaries or Work Authorization parent context.
 - STOP Cards, Daily Inspections, Operational Safety Checklists, Defect
-  Tracking, Equipment Fuel Events, Supply Requests, Work Truck Log, or Payslip
+  Tracking, Equipment Fuel Events, Supply Requests, or Payslip
   behavior.
 - Payroll provider submission, WFS login, scraping, or automation.
 - Payroll approval, supervisor review, lock, or audit history in V1.

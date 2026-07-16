@@ -97,7 +97,7 @@ Daily Work Logs do not own:
 - Defect lifecycle.
 - Knowledge Base article management.
 - Work Schedule, Timesheet, Operational Safety Checklist, Equipment Fuel Event,
-  Supply Request, Work Truck Log, or Payslip workflows.
+  Supply Request, or Payslip workflows.
 - Global search architecture.
 - Calendar or Day View architecture beyond exposing date-aware Daily Log data.
 - Attachment storage.
@@ -157,8 +157,13 @@ Daily Work Logs should treat related modules as external owners:
   A Fuel Event may own one optional unique reference to a matching
   `FUEL_SERVICE` activity; the activity does not own the Fuel Event, and its
   deletion only clears that optional link.
-- Future Fleet or Work Truck capabilities own vehicle assignment and purchase
-  evidence.
+- A mid-shift work truck or other Equipment replacement remains Daily Work Log
+  narrative or an appropriate existing activity. It does not alter the
+  shift-start Operational Safety Checklist, create another checklist, or create
+  a separate truck-use record.
+- A future Fleet domain may own purchases, ownership, assignments, fuel cards,
+  receipts, registration, insurance, and replacement lifecycle. Daily Work
+  Logs do not mutate that future domain.
 - Supply Requests own operator-originated requests; warehouse pickup for an
   order placed by someone else remains Daily Work Log narrative activity.
 

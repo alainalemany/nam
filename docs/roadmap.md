@@ -24,7 +24,6 @@ future phases.
 - [Payslip Repository Roadmap](#payslip-repository-roadmap)
 - [Equipment Fuel Events Roadmap](#equipment-fuel-events-roadmap)
 - [Supply Requests Roadmap](#supply-requests-roadmap)
-- [Work Truck Log Roadmap](#work-truck-log-roadmap)
 - [Equipment Activity Timeline](#equipment-activity-timeline)
 - [Infrastructure Roadmap](#infrastructure-roadmap)
 
@@ -111,8 +110,8 @@ filtering requires an approved inspector field before implementation.
 
 - Add photo or attachment support after attachment architecture exists.
 - Preserve the implemented summary-inspection workflow while Operational Safety
-  Checklists proceed through separate feature architecture within the same
-  bounded context.
+  Checklists remain a distinct implemented record type within the same bounded
+  context.
 - Extend explicit Defect source links to Operational Safety Checklists only if
   the checklist architecture approves operator-controlled traceability.
 - Add inspection statistics after enough reliable records exist.
@@ -162,15 +161,26 @@ graph and formally closed Phase 21. Day View participation remains deferred.
   form engine.
 - Validate the persistence behavior against PostgreSQL.
 
-### Phase 4: Future Enhancements
+### Phase 4: Confirmed Enhancement Architecture (Next)
+
+- Amend the approved architecture for explicit `HOURS` and `MILES` meter
+  units. Work Truck may default to Miles and Dragline to Hours; Tractor and
+  Forklift receive no forced default until operational evidence confirms one.
+- Define optional checklist-level image evidence with captions, including
+  storage, privacy, backup, serving, cleanup, and correction behavior.
+- Define a clear modern confirmation that means the NAM record was saved and
+  does not claim an external corporate submission.
+- Preserve complete-only persistence and explicit correction.
+
+### Phase 5: Future Enhancements
 
 - Add Operational Safety Checklist Day View participation only through a
   separately approved feature-owned contribution.
 - Add explicit operator-controlled Defect links if approved.
 - Add Planner Review only if future identity and multi-user workflows require
   it.
-- Add attachments, analytics, exports, or configurable administration only
-  after separate approval.
+- Add analytics, exports, or configurable administration only after separate
+  approval.
 
 ## Defect Tracking Roadmap
 
@@ -584,46 +594,6 @@ Feature architecture is blocked by remaining product decisions.
 ### Phase 3: V1 Foundation
 
 - Define only after feature architecture is approved.
-
-## Work Truck Log Roadmap
-
-### Phase 1: Requirements Definition
-
-- Collect the exact daily work website form fields
-- Identify all radio-button options, numeric inputs, text inputs, and required fields
-- Confirm mileage fields used by the work website
-- Confirm whether one work truck is usually assigned or whether the truck changes by day
-- Define how Work Truck Log records should appear in Day View; keep global
-  cross-module search deferred
-
-### Phase 2: Data Model Design
-
-- Define WorkTruckLog entity
-- Define WorkTruckLogResponse entity for flexible website form answers
-- Define Equipment category for Work Truck
-- Define optional relationship to DailyLogActivity
-- Define future Fleet purchase context separately from Equipment Fuel Events
-- Define attachment support for screenshots, receipts, photos, and notes
-
-### Phase 3: V1 Implementation
-
-- Create manual Work Truck Log records
-- Link each record to a work truck Equipment record
-- Record date, shift, starting mileage, ending mileage, and calculated miles driven
-- Capture website daily log responses using configurable fields
-- Track whether the official website daily log was submitted
-- Link approved future Fleet purchase records to the relevant Work Truck Log
-- Search truck logs by date, truck, mileage, submitted status, missing fields, and notes
-- Show Work Truck Log records in Day View; keep global cross-module search
-  deferred
-
-### Phase 4: Future Enhancements
-
-- Add reusable form templates once the website fields are stable
-- Add missing-submission reminders
-- Add mileage trend charts by week, month, year, and work truck
-- Add export or print views for personal records
-- Evaluate whether any official website automation is appropriate only after manual logging works reliably
 
 ## Equipment Activity Timeline
 

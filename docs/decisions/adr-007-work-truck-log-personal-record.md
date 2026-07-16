@@ -2,9 +2,11 @@
 
 Date: 2026-06-24
 
-Status: Accepted
+Status: Superseded
 
 Category: Product workflow
+
+Superseded by: [ADR-017: Supersede Standalone Work Truck Log](adr-017-supersede-standalone-work-truck-log.md)
 
 ## Scope Clarification (2026-07-14)
 

@@ -1,6 +1,6 @@
 # NAM Dashboard
 
-A personal mining operations dashboard for centralizing daily work records, safety activity, equipment notes, schedules, timesheets, fuel tracking, work truck logs, and long-term operational history.
+A personal mining operations dashboard for centralizing daily work records, safety activity, equipment notes, schedules, timesheets, fuel tracking, and long-term operational history.
 
 NAM Dashboard is being built as a professional, modular web application for personal use by a dragline operator. The project is now in active foundation development, with documentation remaining the source of truth for requirements, architecture, infrastructure, and implementation direction.
 
@@ -36,14 +36,13 @@ NAM Dashboard is being built as a professional, modular web application for pers
 | Shift Reports | Structured shift-level records that connect work activity, inspections, and related paperwork. |
 | Work Authorizations | Safety and maintenance work records tied to shift reports, including permits and completion checklists. |
 | Daily Inspections | Manual equipment and work-area inspection summaries. |
-| Operational Safety Checklists | Implemented Dragline and Mobile pre-shift Equipment inspections with canonical response catalogs and permanent history. |
+| Operational Safety Checklists | Implemented Dragline and Mobile pre-shift Equipment inspections, one per inspected Equipment, with canonical response catalogs and permanent history. |
 | Defect Tracking | Equipment issue tracking from report through closure. |
 | Knowledge Base | Field notes, procedures, safety notes, troubleshooting guides, and equipment-specific knowledge. |
 | Work Schedule | Manual weekly schedule entry, edits, assignment history, and schedule context. |
 | Timesheet | Personal record of weekly time entries, pay codes, equipment, work codes, and totals. |
 | Equipment Fuel Events | Operational fuel delivered to Equipment, including occurrences with multiple tank fills. |
 | Supply Requests | Planned personal records for operator-originated supply requests without inventory ownership. |
-| Work Truck Log | Planned daily work-truck mileage and website-log history; Fleet purchases remain a separate future domain. |
 | Payslip Repository | Secure archive of payslip PDFs with extracted payroll fields and date-range analytics. |
 
 ## Documentation
@@ -115,7 +114,6 @@ Version 1 should prioritize:
 - Work Schedule
 - Timesheet
 - Equipment Fuel Events
-- Work Truck Log
 - Searchable historical records
 - Calendar / Day View navigation
 - Clean, modular database design

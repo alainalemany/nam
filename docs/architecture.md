@@ -132,6 +132,7 @@ Confirmed deployment baseline:
 | Data model | `docs/database.md` |
 | Architecture overview | `docs/architecture.md` |
 | Equipment Operations boundary assessment | `docs/architecture/equipment-operations.md` |
+| Operational Safety Checklists feature architecture | `docs/architecture/features/operational-safety-checklists.md` |
 | Equipment Fuel Events feature architecture | `docs/architecture/features/equipment-fuel-events.md` |
 | Architecture decisions | `docs/decisions/README.md` |
 | Development workflow | `docs/development.md` |
@@ -139,6 +140,12 @@ Confirmed deployment baseline:
 | Infrastructure identity and recovery | `docs/infrastructure/` |
 | Implementation roadmap | `docs/roadmap.md` |
 | Future ideas | `docs/ideas.md` |
+
+Current Equipment workflow ownership follows ADR-017: Operational Safety
+Checklists own independent shift-start Dragline and Mobile inspections and
+their starting meter context; Daily Work Logs own mid-shift Equipment
+replacement narrative; Equipment owns asset identity; and Fleet remains a
+separate deferred domain. No standalone Work Truck Log architecture exists.
 
 ## Architecture Decision Records
 

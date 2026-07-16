@@ -17,7 +17,6 @@ relationships, enums, and data modeling notes.
 - [Work Schedule Entities](#work-schedule-entities)
 - [Timesheet Entities](#timesheet-entities)
 - [Payslip Repository Entities](#payslip-repository-entities)
-- [Work Truck Log Entities](#work-truck-log-entities)
 - [Equipment Fuel Event Concepts](#equipment-fuel-event-concepts)
 - [Supply Request Concepts](#supply-request-concepts)
 
@@ -151,6 +150,12 @@ different meter semantics only after separate operational confirmation.
 
 Checklist responses do not automatically create Defect records. Any future
 relationship must be explicit and preserve Defect Tracking lifecycle ownership.
+
+The implemented schema currently stores the V1 Hour Meter kind and integer
+reading. Confirmed follow-up architecture work will assess an explicit
+`HOURS`/`MILES` checklist meter-unit extension and feature-owned image metadata.
+No attachment model or file-storage design is approved here, and image bytes
+are not presumed to belong in PostgreSQL.
 
 ## Defect Tracking Entities
 
@@ -1449,80 +1454,6 @@ Relationships:
 
 - Belongs to one PayslipDocument
 - May belong to one Payslip
-
-## Work Truck Log Entities
-
-### WorkTruckLog
-
-Represents one daily or shift-level work truck usage record.
-
-Potential fields:
-
-- id
-- logDate
-- shift
-- equipmentId
-- mineId
-- dailyLogActivityId
-- parkingArea
-- workArea
-- startingMileage
-- endingMileage
-- milesDriven
-- websiteSubmitted
-- websiteSubmittedAt
-- submittedBy
-- notes
-- createdAt
-- updatedAt
-
-Relationships:
-
-- Belongs to one Equipment record where category is Work Truck
-- May belong to one Mine record
-- May reference one DailyLogActivity record
-- Has many WorkTruckLogResponse records
-- May later reference separate Fleet purchase records after that domain is
-  defined
-- Has many Attachments
-
-### WorkTruckLogResponse
-
-Represents one answer from the work website daily log form.
-
-This allows the exact website form fields to be added later without redesigning the Work Truck Log when the operator provides the radio buttons, mileage fields, and other inputs.
-
-Potential fields:
-
-- id
-- workTruckLogId
-- fieldKey
-- fieldLabel
-- fieldType
-- optionLabel
-- optionValue
-- numericValue
-- textValue
-- booleanValue
-- required
-- displayOrder
-- notes
-- createdAt
-- updatedAt
-
-Potential field types:
-
-- Radio
-- Checkbox
-- Number
-- Text
-- Textarea
-- Date
-- Time
-
-Relationships:
-
-- Belongs to one WorkTruckLog
 
 ## Equipment Fuel Event Concepts
 

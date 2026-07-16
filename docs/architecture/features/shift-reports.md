@@ -114,8 +114,8 @@ Shift Reports do not own:
 - Work Authorization permit rules, completion checklist, validation, or
   lifecycle logic.
 - Defect lifecycle.
-- Work Schedule, Timesheet, Equipment Fuel Events, Supply Requests, Work Truck
-  Log, Knowledge Base, or Payslip workflows.
+- Work Schedule, Timesheet, Equipment Fuel Events, Supply Requests, Knowledge
+  Base, or Payslip workflows.
 - Day View composition.
 - Attachment storage or photo upload until attachment architecture is approved.
 - Authentication, authorization, or multi-user workflow.

@@ -180,6 +180,9 @@ Implemented foundations and current Day View participation:
 
 Remaining:
 
+- Amend Operational Safety Checklist architecture for explicit `HOURS` or
+  `MILES` meter units, optional checklist-level image evidence, and clear NAM
+  save confirmation before implementing those enhancements.
 - Add Operational Safety Checklist Day View participation only through a
   separately approved feature-owned contribution. The V1 foundation and its
   independent assessment are complete.
@@ -206,7 +209,8 @@ Status: In progress
 
 Business value:
 
-- Centralizes the operator's schedule, time, fuel, and truck records.
+- Centralizes the operator's schedule, time, fuel, and related personal
+  operational records.
 - Improves personal reconciliation across schedule, work performed, submitted
   logs, and historical records.
 
@@ -215,7 +219,7 @@ Capabilities:
 - Work Schedule, with V1 foundation and Day View participation implemented.
 - Timesheet, with the V1 foundation and Day View participation implemented.
 - Equipment Fuel Events for operational fuel delivered to Equipment.
-- Work Truck Log and separate future Fleet purchase context.
+- Separate future Fleet context remains deferred.
 - Supply Requests after remaining product discovery is complete.
 
 Success criteria:
@@ -224,7 +228,6 @@ Success criteria:
 - Timesheet entries can be tracked by week and date.
 - Equipment fueling can be reviewed by date, Equipment, fuel type, tank-fill
   quantity, and service context.
-- Work truck mileage and submission status can be reviewed historically.
 - Operator-originated supply requests can be retrieved without introducing
   inventory or purchasing ownership.
 
@@ -299,7 +302,8 @@ MVP capabilities:
 - Work Schedule.
 - Timesheet.
 - Equipment Fuel Events.
-- Work Truck Log.
+- Operational Safety Checklist meter-unit, optional image-evidence, and NAM
+  save-confirmation enhancements after architecture approval.
 - Searchable historical records.
 - Calendar and Day View navigation.
 - Clean modular database design.
@@ -333,7 +337,8 @@ The MVP should not require:
 | Work Schedule and Timesheet | Supports personal schedule and time reconciliation. | Reference data; stronger value with Day View. Work Schedule feature architecture: `docs/architecture/features/work-schedule.md`; Timesheet feature architecture: `docs/architecture/features/timesheets.md`. | Work Schedule and Timesheet V1 foundations and Day View participation implemented |
 | Equipment Fuel Events | Captures operational fuel delivered to one Equipment subject, including multi-tank occurrences. | Equipment reference data; boundary assessment: `docs/architecture/equipment-operations.md`; feature architecture: `docs/architecture/features/equipment-fuel-events.md`; stronger value with Day View. | V1 foundation and structured history filtering implemented; Day View deferred |
 | Supply Requests | Preserves operator-originated supply requests without inventory ownership. | Remaining product discovery; boundary assessment: `docs/architecture/equipment-operations.md`. | Discovery-stage future feature |
-| Work Truck Log and Fleet | Captures work-truck usage and separate Fleet purchase or assignment context. | Work-truck source workflow and separate Fleet discovery. | Planned; Fleet boundary remains separate from Equipment Fuel Events |
+| Operational Safety Checklist enhancements | Adds explicit `HOURS`/`MILES` meter units, optional checklist-level image evidence, and clear NAM save confirmation. | Architecture amendment approval before implementation. | Confirmed next architecture work; current Phase 21 foundation remains implemented |
+| Fleet | May later address purchases, ownership, assignments, cards, receipts, registration, insurance, and replacement lifecycle. | Separate product discovery and architecture. | Deferred; not a prerequisite for Operational Safety Checklists |
 | Equipment Activity Timeline | Provides derived Equipment-centered history from feature-owned records. | Multiple implemented Equipment-centered contributors and demonstrated user need. | Deferred derived capability |
 | Knowledge Base | Preserves reusable operational knowledge. | Location, mine, and equipment organization. | Planned |
 | Payslip Repository | Preserves sensitive compensation history. | Privacy and storage decisions before expansion. | Planned |

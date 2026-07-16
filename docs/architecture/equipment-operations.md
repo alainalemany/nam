@@ -20,8 +20,9 @@ Related Documents:
 - `docs/modules.md`
 - `docs/database.md`
 - `docs/roadmap.md`
+- `docs/decisions/adr-017-supersede-standalone-work-truck-log.md`
 
-Last Reviewed: 2026-07-15
+Last Reviewed: 2026-07-16
 
 ## 1. Purpose
 
@@ -82,7 +83,7 @@ domain model.
 | Equipment Fuel Events | Approved V1 foundation implemented; Day View deferred | Independent Equipment Fuel Events feature |
 | Warehouse pickup performed for someone else's order | Confirmed activity | Daily Work Logs only |
 | Operator-originated Supply Requests | Confirmed future feature; discovery-stage | Independent Supply Requests feature |
-| Fleet fuel purchases and time-dependent vehicle assignment | Separate future domain | Future Fleet or Work Truck capability |
+| Fleet purchases, ownership, assignments, cards, receipts, registration, insurance, and replacement lifecycle | Separate deferred domain | Future Fleet capability |
 | Equipment Activity Timeline | Deferred derived capability | Future composition surface using feature-owned queries |
 
 No generic Equipment Operations service, repository, CRUD framework, form
@@ -115,9 +116,15 @@ The templates may share response vocabulary and common metadata while retaining
 different approved item sets. This does not justify two independent features or
 a user-configurable checklist engine.
 
+The Mobile template applies to work trucks, tractors, forklifts, and other
+supported mobile Equipment. Each actual Equipment inspected at shift start
+receives an independent checklist. A later Equipment replacement belongs in
+Daily Work Logs and does not create another corporate inspection.
+
 Template identity and version must remain visible in historical records so later
 item changes do not rewrite what was inspected. Exact template content and
-versioning behavior belong to the next feature architecture milestone.
+versioning are now preserved by the approved feature architecture and canonical
+Dragline and Mobile catalogs.
 
 ### V1 Boundary
 
@@ -134,8 +141,10 @@ The checklist foundation should focus on:
 - Feature-owned validation and historical review.
 
 Planner Review, planner authentication, approvals, configurable template
-administration, attachments, analytics, and automatic Defect creation remain
-outside the initial checklist foundation.
+administration, analytics, and automatic Defect creation remain outside the
+initial checklist foundation. Explicit `HOURS`/`MILES` meter units, optional
+checklist-level image evidence with captions, and NAM save confirmation are
+confirmed follow-up architecture work, not current implementation.
 
 ## 6. Defect Tracking Boundary
 
@@ -219,22 +228,24 @@ correction rules must be confirmed before feature architecture begins.
 
 ## 9. Fleet Separation
 
-Fleet fuel and vehicle-use records are a separate future domain because their
-subject is the time-dependent company vehicle assignment and purchase evidence,
-not an operational Equipment service event.
+Fleet is a separate deferred domain because its subject is company-vehicle
+ownership and administrative history, not a shift-start Equipment inspection,
+Daily Work Log narrative, or operational Equipment service event.
 
 Fleet discovery must account for:
 
-- The vehicle actually used on a date.
-- Temporary replacement trucks.
+- Vehicle ownership and time-dependent assignments.
 - Company fuel-card purchases.
 - Gas-station receipts.
-- Mileage.
+- Registration and insurance.
+- Replacement lifecycle.
 - Optional car washes and related evidence.
 
-The future Fleet or Work Truck architecture may reuse Equipment references when
-appropriate, but it must not place receipt and vehicle-assignment behavior
-inside Equipment Fuel Events.
+Future Fleet architecture may reuse Equipment references when appropriate, but
+it must not place receipt and vehicle-assignment behavior inside Operational
+Safety Checklists, Daily Work Logs, or Equipment Fuel Events. Starting meter
+readings remain checklist-owned, and mid-shift replacement narrative remains
+Daily Work Log-owned.
 
 ## 10. Equipment History
 
@@ -302,17 +313,26 @@ misrepresented as an Equipment service or condition event.
    review, corrections, and repository acceptance. (Completed in Phase 21.)
 2. Equipment Fuel Events feature architecture. (Completed in Phase 22.2.)
 3. Equipment Fuel Events V1 foundation, independent review, scoped lookup and
-   test corrections, and acceptance. (Completed in Phases 22.3 and 22.3.1.)
-4. Equipment Fuel Events Day View participation when separately approved.
-5. Supply Requests product discovery completion and later feature architecture.
-6. Fleet product discovery as a separate future domain.
-7. Equipment Activity Timeline assessment only after enough contributors exist.
+   test corrections, deterministic ordering correction, and acceptance.
+   (Completed in Phases 22.3 through 22.3.2.)
+4. Supersede the invalid standalone Work Truck Log premise and correct roadmap
+   ownership. (Completed in Phase 23.2; see ADR-017.)
+5. Amend Operational Safety Checklist architecture for explicit meter units,
+   optional checklist-level image evidence, and NAM save confirmation.
+6. Equipment Fuel Events or Operational Safety Checklist Day View participation
+   only when separately approved.
+7. Supply Requests product discovery completion and later feature architecture.
+8. Fleet product discovery as a separate future domain.
+9. Equipment Activity Timeline assessment only after enough contributors exist.
 
 ## 14. Remaining Product Decisions
 
 Operational Safety Checklists have no remaining V1 product decisions. The
 approved Hour Meter uses whole integers from `0` through `999999`; future meter
-semantics require separate operational evidence.
+semantics are outside the implemented foundation. Confirmed follow-up
+architecture must define explicit `HOURS`/`MILES` storage and defaults, optional
+checklist-level image evidence, and NAM save confirmation before those changes
+are implemented.
 
 Equipment Fuel Events have no remaining V1 product decisions. The approved
 architecture defines operational work date plus local event time, Diesel,
@@ -345,3 +365,8 @@ deferred. The implementation introduced no Fleet purchase behavior or shared
 Equipment Operations infrastructure. Supply Requests remain a later
 discovery-stage feature, Fleet remains a separate future domain, and the
 Equipment Activity Timeline remains derived and deferred.
+
+ADR-017 supersedes the standalone Work Truck Log proposal. Shift-start work
+truck, tractor, forklift, and other supported mobile inspections remain owned
+by Operational Safety Checklists; mid-shift Equipment replacements remain
+owned by Daily Work Logs.

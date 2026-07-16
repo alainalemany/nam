@@ -27,7 +27,6 @@ Implementation standards for turning these modules into feature slices live in
 - [Payslip Repository](#payslip-repository)
 - [Equipment Fuel Events](#equipment-fuel-events)
 - [Supply Requests](#supply-requests)
-- [Work Truck Log](#work-truck-log)
 - [Equipment Activity Timeline](#equipment-activity-timeline)
 
 ## Source Documents
@@ -245,6 +244,17 @@ catalogs. Canonical V1 Hour Meter readings are integers from `0` through
 `999999`; the maximum is an implementation validation guard. Day View and
 explicit Defect traceability remain deferred.
 
+One independent checklist is recorded for each Equipment inspected at shift
+start. Work trucks, tractors, forklifts, and other supported mobile Equipment
+use the Mobile checklist; Dragline Equipment uses the Dragline checklist. A
+mid-shift replacement does not change the original checklist and belongs in
+the Daily Log as operational context.
+
+Confirmed follow-up architecture work will define explicit `HOURS` or `MILES`
+meter units, optional checklist-level image evidence with captions, and clear
+NAM save confirmation. Those enhancements are not implemented by the current
+V1 foundation.
+
 ## Daily Log
 
 The Daily Log module records the operator's full workday as a searchable timeline of activities, events, observations, and linked records.
@@ -298,6 +308,10 @@ Potential Daily Log activities:
 ### Relationship To Other Modules
 
 The Daily Log should act as the operator's narrative layer across the system.
+
+A mid-shift work truck or other Equipment replacement is part of that narrative
+and timing context. Recording it does not create or mutate an Operational
+Safety Checklist, a standalone truck record, or future Fleet assignment data.
 
 Structured modules such as Work Authorizations, future Work Orders, Defects, Inspections, and Knowledge Base records should be linkable from Daily Log activities instead of being duplicated as plain text only.
 
@@ -734,9 +748,9 @@ work may also appear narratively as a Daily Work Log `FUEL_SERVICE` activity.
 - Equipment Fuel Events own structured delivered-quantity facts.
 - A Daily Work Log may own optional narrative context for the same occurrence.
 - Timesheet Work Allocations do not own Equipment Fuel Events.
-- Fleet gas-station purchases, company fuel cards, receipts, mileage, car
-  washes, and temporary vehicle assignment belong to a separate future Fleet
-  domain.
+- Fleet gas-station purchases, company fuel cards, receipts, car washes, and
+  temporary vehicle assignment belong to a separate future Fleet domain.
+- Starting meter readings belong to Operational Safety Checklists.
 
 ### Approved V1 Workflow
 
@@ -808,60 +822,6 @@ Boundary assessment:
 
 `docs/architecture/equipment-operations.md`
 
-## Work Truck Log
-
-The Work Truck Log module records daily usage of the work truck used to travel inside the mine.
-
-### Purpose
-
-Create a permanent searchable record of work truck mileage, daily website log data, and related vehicle activity.
-
-The operator should be able to answer questions such as:
-
-- Which work truck was used on a specific date?
-- What mileage was entered for the truck on that day?
-- How many miles were driven during a week, month, year, or custom date range?
-- What daily website form responses were submitted?
-- Which days are missing truck mileage or required form data?
-- Which Fleet fuel-card or gas-station purchases belong to the work truck?
-
-### Source Workflow
-
-The operator parks a personal vehicle at the parking place, gets into the assigned work truck, and uses that truck to move inside the mine.
-
-On a daily basis, the operator fills out a work website daily log. The website includes radio-button selections and input fields such as mileage. The exact fields will be documented after the operator provides the form details.
-
-### Required Capabilities
-
-- Create one Work Truck Log record per workday or shift
-- Link the record to a work truck Equipment record
-- Record date, shift, mine, parking area, work area, or route notes when useful
-- Record starting mileage, ending mileage, and calculated miles driven
-- Store configurable daily form responses matching the work website fields
-- Support radio-button, checkbox, numeric, text, and notes-style field types
-- Record whether the website daily log was submitted
-- Attach screenshots, photos, receipts, or notes
-- Link to future Fleet purchase records when that separate domain is approved
-- Link to Daily Log activities when the truck activity belongs in the operator's workday timeline
-- Search and filter by date, date range, work truck, mileage, submitted status, missing fields, mine, and notes
-- Show Work Truck Log records in Day View and global search
-
-### Relationship To Other Modules
-
-Work Truck Log records should link to Equipment because the work truck is an asset used during the shift.
-
-Work Truck Log records may later link to Fleet fuel-card or gas-station purchase
-records. Those purchases are separate from Equipment Fuel Events. Work Truck
-Log records may also link to Daily Log activities when work truck usage is part
-of the broader workday narrative.
-
-### V1 Boundary
-
-Version 1 should support manual Work Truck Log records, mileage fields,
-configurable form responses, submitted status, notes, attachments, search, and
-Day View participation after Fleet product discovery resolves time-dependent
-vehicle assignment and purchase evidence.
-
 ## Equipment Activity Timeline
 
 The Equipment Activity Timeline is a deferred derived capability. It should
@@ -872,5 +832,3 @@ It should not store duplicate event records or become a shared business-logic
 owner. Timeline architecture should begin only after several Equipment-centered
 features are implemented and users demonstrate a recurring cross-feature
 history need.
-
-Automatic submission to the work website is out of scope. NAM Dashboard should preserve the operator's personal record of what was entered, not replace the official work website workflow.
