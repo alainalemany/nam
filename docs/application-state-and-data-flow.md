@@ -300,6 +300,16 @@ server-authoritative, and Day View participation remains deferred. Supply
 Requests and other future operational modules should follow
 the established pattern unless their requirements justify a different one.
 
+The approved Operational Safety Checklist enhancement preserves this flow.
+Meter defaults are client interaction hints; the submitted `HOURS`/`MILES`
+unit, integer reading, and mismatch confirmation are server-validated. Save
+confirmation uses Post/Redirect/Get to server-rendered detail rather than
+client-memory success state. Future photo actions remain checklist-owned and
+separate from completed checklist creation. Filesystem placement and Prisma
+metadata cannot share one transaction, so photo actions require staging,
+atomic same-volume moves, database transactions, and explicit compensation;
+ADR-018's access gate must fail closed before those actions are enabled.
+
 ## What Not To Standardize Yet
 
 Do not standardize these areas until requirements justify them:

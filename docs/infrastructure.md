@@ -181,6 +181,45 @@ Verify backup files:
 ls -lh /home/alain/backups/nam/postgres/
 ```
 
+## Planned Operational Safety Checklist Media Storage
+
+ADR-018 approves private local persistent storage for future checklist photo
+evidence on the current single-node deployment. Phase 23.3 defines the
+architecture only; no Docker volume, media directory, processor package, or
+media route exists yet.
+
+Phase 23.5 may mount a private named volume into the application container at:
+
+```text
+/var/lib/nam/media
+```
+
+The implementation must verify ownership and write permissions for the
+non-root application runtime user. Media must not be placed under `public/`,
+served as direct static files, or named from uploaded filenames. The
+feature-owned storage adapter uses staging, final checklist/photo paths, and a
+trash area on the same volume. Real workplace-photo upload and serving remain
+disabled until ADR-018's authentication/authorization or separately approved
+deny-by-default access boundary exists.
+
+Planned development media backups belong outside the repository at:
+
+```text
+/home/alain/backups/nam/media/
+```
+
+A media backup is valid only as part of a matched backup set. Photo mutations
+must be paused while operators create a PostgreSQL dump and a read-only media
+archive plus a key/size/SHA-256 manifest. Database and media files should share
+one backup-set identifier and retention decision. This is coordinated
+consistency, not a transaction across PostgreSQL and the filesystem.
+
+Restore must occur with the application stopped: restore PostgreSQL, restore
+the matching media archive, run checksum/missing/orphan reconciliation, and
+then start the application. Named volumes survive container recreation but not
+explicit volume deletion or host loss. Future production use requires
+encrypted off-host copies and regular restore exercises.
+
 ## PostgreSQL Restore
 
 Restore procedures should be documented before production use.

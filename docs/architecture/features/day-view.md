@@ -264,6 +264,10 @@ Planned evolution:
 - Additional module sections as Operational Safety Checklists, Equipment Fuel
   Events, Supply Requests, and other date-relevant records
   receive separately approved feature-owned Day View contributions.
+- Operational Safety Checklist meter-unit, save-confirmation, and photo
+  enhancements do not add Day View participation. Any later summary remains a
+  separately approved checklist-owned contribution, and Day View must not
+  query or serve photo evidence directly.
 - Equipment Fuel Events architecture is Approved, but its Day View contribution
   remains deferred to a separate milestone after the V1 foundation.
 

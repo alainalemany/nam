@@ -147,6 +147,14 @@ their starting meter context; Daily Work Logs own mid-shift Equipment
 replacement narrative; Equipment owns asset identity; and Fleet remains a
 separate deferred domain. No standalone Work Truck Log architecture exists.
 
+Phase 23.3 approves explicit checklist-level `HOURS`/`MILES` meter snapshots
+and NAM-only save confirmation as the next implementation slice. ADR-018
+approves private local photo storage for the current single-node deployment,
+but real checklist-photo upload and serving remain blocked until authentication
+or another explicitly approved deny-by-default access boundary exists. Photo
+metadata and storage remain Operational Safety Checklist-owned rather than a
+generic attachment platform.
+
 ## Architecture Decision Records
 
 The ADR index is:
@@ -203,8 +211,9 @@ overview outgrows this document.
 
 ## Open Questions
 
-- Security architecture for authentication, authorization, financial data, and
-  attachment access still needs deeper design.
+- General authentication, authorization, and financial-data security still
+  need deeper design. ADR-018 defines the narrower checklist-photo access gate
+  without implementing authentication.
 - Testing strategy and quality gates are defined in `docs/testing-strategy.md`.
 - Engineering quality process and Definition of Done are defined in
   `docs/engineering-quality-standards.md`.

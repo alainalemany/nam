@@ -151,11 +151,21 @@ different meter semantics only after separate operational confirmation.
 Checklist responses do not automatically create Defect records. Any future
 relationship must be explicit and preserve Defect Tracking lifecycle ownership.
 
-The implemented schema currently stores the V1 Hour Meter kind and integer
-reading. Confirmed follow-up architecture work will assess an explicit
-`HOURS`/`MILES` checklist meter-unit extension and feature-owned image metadata.
-No attachment model or file-storage design is approved here, and image bytes
-are not presumed to belong in PostgreSQL.
+The implemented schema currently stores the V1 `HOURS` meter kind and integer
+reading. Phase 23.3 approves extending the existing required meter-kind enum
+with `MILES` while retaining the required integer reading and current range.
+Existing `HOURS` rows remain unchanged; no Equipment-category backfill or
+Equipment preferred-unit field is required.
+
+Phase 23.3 also approves a future checklist-owned photo metadata child for
+Phase 23.5. Conceptually, it preserves opaque normalized-image and thumbnail
+keys, sanitized original filename, detected and normalized MIME types, separate
+byte sizes for source, normalized full-image, and thumbnail content,
+dimensions, optional caption, contiguous display sequence, SHA-256 checksum,
+and upload timestamp. Parent/sequence and parent/checksum are unique, and the
+parent owns metadata lifecycle. Image bytes remain outside PostgreSQL in the
+private storage approved by ADR-018. This conceptual entity is not yet a Prisma
+model, generic attachment model, or implemented schema.
 
 ## Defect Tracking Entities
 

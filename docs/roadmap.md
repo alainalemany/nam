@@ -161,18 +161,41 @@ graph and formally closed Phase 21. Day View participation remains deferred.
   form engine.
 - Validate the persistence behavior against PostgreSQL.
 
-### Phase 4: Confirmed Enhancement Architecture (Next)
+### Phase 4: Confirmed Enhancement Architecture (Complete)
 
 - Amend the approved architecture for explicit `HOURS` and `MILES` meter
-  units. Work Truck may default to Miles and Dragline to Hours; Tractor and
-  Forklift receive no forced default until operational evidence confirms one.
+  units. Work Truck defaults to Miles and Dragline to Hours as editable
+  suggestions; Tractor and Forklift receive no default.
 - Define optional checklist-level image evidence with captions, including
   storage, privacy, backup, serving, cleanup, and correction behavior.
 - Define a clear modern confirmation that means the NAM record was saved and
   does not claim an external corporate submission.
 - Preserve complete-only persistence and explicit correction.
 
-### Phase 5: Future Enhancements
+Phase 23.3 completed this architecture. ADR-018 approves private local media
+storage and requires an explicit access gate before real photo use.
+
+### Phase 5: Meter Units And NAM Save Confirmation (Next)
+
+- Add `MILES` to the existing checklist meter enum through one additive
+  migration; preserve existing `HOURS` rows unchanged.
+- Require a visible, explicit whole-number `HOURS` or `MILES` selection.
+- Use editable Work Truck and Dragline defaults with confirmed mismatch
+  warnings; do not add Equipment preferred-meter metadata.
+- Add Post/Redirect/Get NAM-only create/correction confirmation and a safe
+  Create Another workflow.
+- Keep photo storage, media packages, Docker volume changes, and routes out of
+  this slice.
+
+### Phase 6: Optional Photo Evidence (Access-Gated)
+
+- Add checklist-owned photo metadata, private normalized media storage,
+  upload/manage/serve actions, cleanup, backup, and verification only after the
+  ADR-018 access and runtime prerequisites close.
+- Keep photo evidence optional and checklist-level; do not create Defects,
+  Daily Log records, or a generic attachment platform.
+
+### Phase 7: Future Enhancements
 
 - Add Operational Safety Checklist Day View participation only through a
   separately approved feature-owned contribution.

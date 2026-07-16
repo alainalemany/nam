@@ -250,10 +250,17 @@ use the Mobile checklist; Dragline Equipment uses the Dragline checklist. A
 mid-shift replacement does not change the original checklist and belongs in
 the Daily Log as operational context.
 
-Confirmed follow-up architecture work will define explicit `HOURS` or `MILES`
-meter units, optional checklist-level image evidence with captions, and clear
-NAM save confirmation. Those enhancements are not implemented by the current
-V1 foundation.
+Phase 23.3 approves explicit `HOURS` or `MILES` meter units, optional
+checklist-level photo evidence with captions, and clear NAM save confirmation.
+The explicit unit remains a required whole-number checklist snapshot in the
+existing `0` through `999999` range. Dragline and Work Truck receive editable
+Hours and Miles suggestions respectively; Tractor and Forklift require explicit
+selection.
+
+Meter units and confirmation form the implementation-ready Phase 23.4 slice.
+Photo evidence remains checklist-owned, optional, and access-gated under
+ADR-018 for Phase 23.5. Photos do not create Defects or Daily Log records.
+These enhancements are not implemented by the current V1 foundation.
 
 ## Daily Log
 

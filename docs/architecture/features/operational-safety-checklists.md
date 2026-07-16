@@ -36,6 +36,7 @@ Related Documents:
 - `docs/reference/checklists/dragline-checklist-v1.md`
 - `docs/reference/checklists/mobile-checklist-v1.md`
 - `docs/decisions/adr-017-supersede-standalone-work-truck-log.md`
+- `docs/decisions/adr-018-private-operational-safety-checklist-photo-storage.md`
 
 Last Reviewed: 2026-07-16
 
@@ -47,10 +48,11 @@ corrections have completed independent review with no remaining findings. Day
 View, Equipment Activity Timeline, Defect linkage, Planner Review, and the
 other deferred capabilities remain unimplemented. ADR-017 confirms that this
 feature owns shift-start Mobile inspections for work trucks, tractors,
-forklifts, and other supported mobile Equipment. Explicit `HOURS`/`MILES`
-meter units, optional checklist-level image evidence with captions, and clear
-NAM save confirmation are follow-up architecture work and are not implemented
-by the current foundation.
+forklifts, and other supported mobile Equipment. Phase 23.3 approves explicit
+`HOURS`/`MILES` meter units, clear NAM save confirmation, and the architecture
+for optional checklist-level photo evidence. Meter and save-confirmation
+implementation remains Not Started. Photo implementation and real photo use
+remain blocked by the access boundary in ADR-018.
 
 ## 1. Purpose
 
@@ -86,6 +88,8 @@ Operational Safety Checklists own:
   response sets.
 - Record metadata, meter context, operator and supervisor display snapshots,
   problem context, and item responses.
+- Optional checklist-level photo evidence, captions, ordering, normalization,
+  storage metadata, and private serving after the approved access gate exists.
 - Complete-on-submit and explicit correction behavior.
 - Feature-owned validation, queries, mutations, UI, filters, and tests.
 - Historical template, item, response, person-name, and Equipment display
@@ -108,10 +112,8 @@ Operational Safety Checklists do not own:
 - Employee, User, Supervisor, authentication, authorization, or workforce
   management.
 - A database-admin checklist builder or generic survey platform.
-- Image storage or serving in the current V1 foundation. Optional
-  checklist-level image evidence is confirmed follow-up scope but requires an
-  approved storage, privacy, backup, serving, cleanup, and correction
-  architecture before implementation.
+- A generic attachment platform or photos attached to individual checklist
+  responses.
 - Analytics, exports, notifications, global search, or external form
   submission in V1.
 
@@ -165,7 +167,7 @@ a stable reusable boundary.
 
 One Operational Safety Checklist conceptually represents:
 
-- One operational work date.
+- One operational shift-start date stored as `inspectionDate`.
 - One shift.
 - One actual Equipment record.
 - One approved template key and version.
@@ -183,6 +185,14 @@ The Equipment determines the template, so template identity must not create a
 second uniqueness path. Multiple shifts may inspect the same Equipment on the
 same calendar date. A correction updates the existing checklist; it does not
 create a same-shift reinspection record.
+
+`inspectionDate` is the date on which the operational shift began. An overnight
+inspection retains that shift-start date even when submission occurs after
+midnight. A later correction retains the original shift-start date unless the
+operator intentionally corrects a date that was entered incorrectly. The
+feature uses an explicit date-only value and does not derive operational
+ownership through UTC or timezone conversion. This follows the platform's
+Work Schedule, Timesheet, and Daily Work Log work-date boundaries.
 
 Each actual Equipment inspected at shift start receives its own record. A shift
 using Dragline 133, one work truck, and one tractor therefore produces one
@@ -318,35 +328,41 @@ attributes.
 The checklist needs a narrow meter concept rather than a field that assumes all
 Equipment uses odometer mileage.
 
-The implemented V1 catalogs use one meter kind:
+The implemented Phase 21 foundation currently has a required
+`OperationalSafetyChecklistMeterKind` with only `HOURS` and a required integer
+`startingMeter`. Phase 23.4 will extend that existing enum with `MILES`; it will
+not introduce a second unit field or an Equipment-level preferred-unit field.
 
-- Operating hours.
+Every checklist will preserve an explicit event-level meter-kind snapshot and
+one whole-number starting value. Both `HOURS` and `MILES` accept integers from
+`0` through `999999` inclusive. The upper bound is a validation guard rather
+than a business limit. Decimal, floating-point, missing, and malformed values
+are invalid. V1 does not calculate distance, record ending mileage, or enforce
+continuity across checklists.
 
-The implemented foundation follows the canonical source field and currently
-uses operating hours for both templates. That describes current persistence,
-not a durable rule that every Mobile Equipment category uses Hours.
+New-entry defaults are editable suggestions:
 
-The checklist preserves an Equipment Meter Reading with the server-derived
-meter-kind snapshot and integer starting value. The V1 Hour Meter value is
-required, uses whole units only, and must be from `0` through `999999`
-inclusive. The upper bound is an implementation validation guard rather than a
-business limit. Decimal and floating-point Hour Meter values are invalid.
+- `DRAGLINE` suggests `HOURS`.
+- `WORK_TRUCK` suggests `MILES`.
+- `TRACTOR` and `FORKLIFT` do not suggest a unit; the operator must select one.
 
-The two canonical V1 templates define `HOURS` as their feature-owned meter kind,
-so Phase 21.4 does not add an Equipment-level meter-classification field. A
-confirmed follow-up will add explicit `HOURS` and `MILES` checklist semantics
-without changing the source catalogs. Any other unit still requires separate
-operational evidence and architecture approval.
+Known-category mismatches use a warn-but-accept policy. A Dragline with
+`MILES`, or a Work Truck with `HOURS`, requires explicit operator confirmation
+for a new or changed value, but the server does not reject it solely because it
+differs from the default. This catches likely entry mistakes while preserving
+the confirmed rule that category defaults are not immutable Equipment truth.
+The transient confirmation is validated server-side and is not historical
+domain data. An unchanged stored value during correction does not require a new
+confirmation.
 
-Confirmed follow-up architecture will replace the implicit single-unit
-assumption with an explicit checklist meter unit of `HOURS` or `MILES`. Work
-Truck may default to Miles and Dragline to Hours. Tractor and Forklift must not
-receive a forced default until operational evidence confirms one. The selected
-unit must remain explicit and historically preserved; no global odometer or
-hour-meter continuity is required. This paragraph records product input for the
-upcoming amendment and does not describe implemented behavior.
+Equipment selection changes reset the meter kind and reading with all other
+machine-specific form state. The applicable editable default is then suggested
+again. Inactive or deleted Equipment history remains readable from the stored
+meter kind and reading; no current category lookup may rewrite that snapshot.
+Any unit beyond `HOURS` and `MILES` requires separate operational evidence and
+architecture approval.
 
-The selector and stored explicit unit will be NAM Dashboard metadata. They do
+The selector and stored explicit unit are NAM Dashboard metadata. They do
 not alter the exact source-form wording preserved by the canonical Dragline and
 Mobile catalogs or the source PDFs.
 
@@ -392,6 +408,8 @@ The checklist also snapshots:
 - Selected response labels.
 - Operator and supervisor display names.
 - Meter kind and entered value.
+- Photo captions, order, dimensions, normalized format, byte size, checksum,
+  and upload timestamp after photo evidence is implemented.
 
 Snapshots are generated or verified server-side. Client-submitted Equipment,
 template, item, and response labels are never authoritative. Complete Equipment,
@@ -467,6 +485,10 @@ Correction rules:
   Equipment and location snapshots, resolves the compatible current template,
   and requires a complete new response set even when both Equipment records use
   the same template family.
+- A checklist with photo evidence cannot change Equipment until the operator
+  explicitly removes every photo. Photos must never silently carry to a
+  different machine, and Equipment correction must not perform an implicit
+  bulk evidence deletion.
 - A mid-shift replacement is not a checklist correction and does not change the
   original shift-start inspection. Daily Work Logs own that later operational
   event without cross-feature mutation.
@@ -520,7 +542,11 @@ Expected flow:
 6. Parent and response writes occur in one Prisma transaction.
 7. Successful mutations revalidate checklist list/detail routes and later Day
    View routes only after participation exists.
-8. The action redirects to durable server-rendered detail state.
+8. The action redirects to durable server-rendered detail state with a one-time
+   NAM save-result marker.
+9. Photo evidence, once enabled, uses separate checklist-owned actions after
+   the completed checklist exists; it does not extend the checklist transaction
+   or introduce Draft state.
 
 No global state, API layer, generic mutation service, or client-owned business
 validation is required.
@@ -568,6 +594,12 @@ Mutations must:
 - Return structured field, item, completion, and correction errors without
   exposing Prisma details.
 
+After photo evidence is enabled, separate feature-owned actions may add one
+normalized photo, update a caption, reorder photos, or remove one photo. These
+actions must enforce checklist ownership, count and sequence constraints,
+access controls, and filesystem/database compensation. They may not mutate
+Defects, Daily Work Logs, Equipment, or another feature.
+
 No mutation may update Daily Inspections, Defects, Equipment, Daily Work Logs,
 Day View, or person identity records.
 
@@ -606,6 +638,7 @@ The checklist form should provide:
 - Searchable Equipment selection.
 - Suggested or constrained template selection.
 - Meter kind and starting value together.
+- A visible explicit `HOURS`/`MILES` selector next to Starting Meter Reading.
 - Grouped checklist items in stable template order.
 - Clear radio or segmented response controls with accessible labels.
 - Visible overall problem context.
@@ -620,6 +653,9 @@ poor mobile layout or present the disabled Planner Review controls.
 List and detail views should remain dense and scannable. They should show date,
 shift, Equipment snapshot, template/version, completion, meter context, and
 Needs Repair or Previously Noted counts without reproducing the full form.
+After the access gate and photo implementation exist, detail may also show the
+ordered checklist-level evidence gallery and its feature-owned management
+commands.
 
 ## 23. Day View And Equipment Timeline Boundaries
 
@@ -646,12 +682,15 @@ generic contribution registry until implemented contributors prove that need.
 
 Server validation should enforce:
 
-- A valid date-only operational date.
+- A valid date-only `inspectionDate` representing the operational shift-start
+  date, including overnight work submitted after midnight.
 - A valid shift.
 - Required existing Equipment at creation.
 - An approved template key/version compatible with Equipment category.
-- Server-derived Hours meter kind and a required integer starting value from
-  `0` through `999999` inclusive.
+- Required `HOURS` or `MILES` meter kind and a required integer starting value
+  from `0` through `999999` inclusive.
+- Explicit server-validated mismatch confirmation when a new or changed meter
+  kind differs from a known category default.
 - Required, nonblank operator and supervisor display-name snapshots.
 - One response for each required item before persistence.
 - No unknown or duplicate item responses.
@@ -659,6 +698,11 @@ Server validation should enforce:
 - Needs Repair overall-description and Previously Noted no-repeat rules.
 - Complete-only persistence, explicit correction, and no-deletion rules.
 - One-record-per-Equipment/date/shift uniqueness.
+
+Correction preserves the original shift-start date unless the operator
+intentionally submits a corrected date. A mid-shift Equipment replacement does
+not create a second checklist or change the original checklist date; Daily Work
+Logs own that later operational context.
 
 Snapshot validation should reload and trust server-owned Equipment and template
 data. Client-submitted labels, ordering, categories, Mine/City names, and
@@ -682,6 +726,7 @@ Implementation testing should follow `docs/testing-strategy.md`.
   negative, decimal, and greater-than-maximum values.
 - Needs Repair and Previously Noted context rules.
 - Date-only and shift handling.
+- Overnight submission and correction retaining the explicit shift-start date.
 - Complete-only submission and full correction validation.
 - Snapshot and display transformations.
 - Filter parsing and query-condition construction.
@@ -735,6 +780,10 @@ enforcement, but implementation should:
 - Keep Planner Review and approval out of V1.
 - Avoid presenting personal notes as official planner or employer decisions.
 - Return user-safe errors without internal database or infrastructure details.
+- Do not expose photo upload, management, or serving to real Internet-reachable
+  use until the access gate defined by ADR-018 is satisfied.
+- Treat generated media keys as storage identifiers, not authorization tokens.
+- Strip device metadata, including GPS, before final photo persistence.
 
 Future multi-user access requires separate authentication, authorization,
 privacy, and retention decisions.
@@ -748,9 +797,9 @@ Deferred capabilities include:
 - User-configurable templates or a generic form builder.
 - Automatic Defect creation or lifecycle mutation.
 - Explicit response-to-Defect links until separately approved.
-- Optional checklist-level image evidence with captions until storage, privacy,
-  backup, serving, cleanup, and correction architecture is approved and
-  implemented.
+- Photo implementation and real photo use until the ADR-018 access gate,
+  runtime image-processing support, private volume, and backup procedures are
+  implemented and verified.
 - Analytics, compliance dashboards, exports, and notifications.
 - Global cross-module search.
 - External NACCO form submission or synchronization.
@@ -774,8 +823,8 @@ Deferred capabilities include:
 - Exactly one actual Equipment is selected, including temporary replacement and
   rental units.
 - Equipment determines Dragline or Mobile; Mine and City are derived.
-- Draglines use Hours and work trucks use Miles. Tractor and Forklift defaults
-  remain unconfirmed and must not be inferred.
+- Dragline defaults to Hours and Work Truck defaults to Miles. These are
+  editable suggestions; Tractor and Forklift have no confirmed default.
 - V1 Hour Meter readings use whole integers from `0` through `999999`; the
   maximum is a validation guard rather than a business rule.
 - Needs Repair does not create a Defect.
@@ -800,23 +849,27 @@ Deferred capabilities include:
   identity cannot bypass that uniqueness.
 - Every persisted checklist is Completed. Correction is an explicit full-record
   edit of the same checklist; Draft, Reopen, and deletion are excluded.
-- The approved V1 Equipment mappings use a server-owned Hours meter kind,
-  snapshotted with the integer reading.
+- Phase 23.3 approves required checklist-level `HOURS`/`MILES` snapshots,
+  editable known-category defaults, explicit mismatch confirmation, and no
+  Equipment-level preferred-unit field.
 - Needs Repair requires overall problem context; Previously Noted requires no
   repeated text, and an explicit text-only reuse action may reduce typing.
 - Unknown and future Equipment categories require explicit architecture
   approval and feature-owned template eligibility before selection. The
-  confirmed follow-up stores an explicit unit on the checklist; no Equipment
-  preferred-unit field is approved yet.
+  Phase 23.3 enhancement stores an explicit unit on the checklist; no Equipment
+  preferred-unit field is approved.
+- Optional photo evidence remains checklist-owned and does not create a Defect
+  or Daily Work Log record.
 - No automatic Defect mutation exists in V1.
 - Day View and Equipment timeline participation remain feature-owned and
   deferred.
 
 ### Still Unresolved
 
-None for the implemented V1 foundation. The separately confirmed meter-unit,
-optional image-evidence, and NAM save-confirmation enhancements require an
-architecture amendment before implementation.
+No product decision blocks Phase 23.4. Phase 23.5 remains implementation-gated
+by an approved access-control boundary and by proving the selected image
+processor's HEIC/HEIF support in the actual application container. These are
+technical and security prerequisites, not unresolved checklist workflow.
 
 ## 29. Implementation Sequence
 
@@ -831,9 +884,12 @@ Recommended later sequence:
 3. Supersede the invalid standalone Work Truck Log premise and correct roadmap
    ownership. (Completed in Phase 23.2; see ADR-017.)
 4. Amend this architecture for explicit meter units, optional checklist-level
-   image evidence, and NAM save confirmation before implementation.
-5. Day View participation only after separate approval.
-6. Optional Defect traceability only after separate approval.
+   image evidence, and NAM save confirmation. (Completed in Phase 23.3.)
+5. Implement explicit meter units and NAM save confirmation as Phase 23.4.
+6. Implement photo storage and evidence management as Phase 23.5 only after its
+   access and runtime prerequisites are satisfied.
+7. Day View participation only after separate approval.
+8. Optional Defect traceability only after separate approval.
 
 ## 30. Success Criteria
 
@@ -852,3 +908,377 @@ The accepted V1 implementation satisfies the approved architecture because:
   authentication, or a generic checklist platform.
 - Queries, mutations, UI, validation, and tests remain feature-owned.
 - Day View and Equipment Activity Timeline boundaries remain composition-only.
+
+## 31. Meter UI And Correction Architecture
+
+The form labels should be `Starting Meter Reading` and `Starting Meter Unit`.
+Because the unit set contains two short mutually exclusive values, an accessible
+segmented control or radio group is preferred over a select. Each option must
+expose the full visible label `Hours` or `Miles`; color alone cannot communicate
+selection.
+
+The reading uses a numeric input with whole-number stepping, numeric mobile
+keyboard hints, and visible `0` through `999999` guidance. Client interaction
+may suggest a default and show immediate validation, but Zod and the Server
+Action remain authoritative for unit membership, integer/range checks, and
+mismatch confirmation.
+
+For Tractor, Forklift, and any future eligible category without confirmed
+evidence, neither unit is preselected. The user must make the explicit choice.
+Known-category mismatch guidance should name the expected default and require a
+separate confirmation control before save. It must remain usable by keyboard
+and screen readers and must not rely on a transient toast.
+
+Correction may change the meter value or unit. A changed known-category
+mismatch requires confirmation; an unchanged historical mismatch does not.
+Changing Equipment clears the unit, reading, answers, and Problem Description,
+then reapplies only the safe editable default for the replacement Equipment.
+
+## 32. Meter Migration Architecture
+
+Phase 23.4 should use one additive migration that appends `MILES` to the
+existing PostgreSQL `OperationalSafetyChecklistMeterKind` enum. The existing
+required `meterKind` and integer `startingMeter` columns remain in place. No
+backfill statement and no Equipment-category rewrite are required: every
+existing row already represents the historical `HOURS` value entered under the
+Phase 21 architecture and must remain `HOURS`.
+
+The reviewed development database contained zero checklist rows on 2026-07-16,
+but migration correctness must not depend on that count. Other environments may
+contain historical rows, and the additive enum change preserves them without a
+table rewrite. Prisma Client must be regenerated after the future schema edit.
+PostgreSQL enum-value removal is not a safe routine rollback after `MILES` data
+exists; recovery should use a pre-migration backup or a forward correction.
+
+## 33. Photo Evidence Domain Model
+
+Phase 23.5 may add one feature-owned child concept,
+`OperationalSafetyChecklistPhoto`. It is not a generic attachment model.
+
+Required conceptual fields:
+
+- Durable photo ID and required checklist parent ID.
+- Opaque unique normalized-image storage key and unique thumbnail storage key.
+- Sanitized original filename snapshot for display only, maximum 255
+  characters.
+- Detected source MIME type, source byte size, normalized stored MIME type, and
+  normalized full-image byte size.
+- Thumbnail byte size.
+- Normalized pixel width and pixel height.
+- Optional caption, maximum 500 characters.
+- Deterministic display sequence beginning at one.
+- SHA-256 checksum of normalized image bytes.
+- Created/uploaded timestamp.
+
+The normalized image key is the primary storage key; a separate original-file
+or normalized-file key is unnecessary because original device bytes are not
+retained. The parent owns photo metadata. Parent plus sequence and parent plus
+checksum should be unique, storage keys should be globally unique, and the
+parent/sequence lookup should be indexed. Parent deletion may cascade to owned
+metadata for administrative cleanup, but normal checklist deletion remains
+unavailable and filesystem cleanup still requires compensation.
+
+Historical detail renders photos by stored sequence. Caption updates, reorder,
+and removal are explicit checklist-owned operations. A missing file must render
+an unavailable-evidence state without making the checklist or its responses
+unreadable.
+
+## 34. Photo Limits And Image Normalization
+
+Approved V1 guards are:
+
+- Maximum 6 photos per checklist.
+- Maximum 15 MiB source file per photo and 60 MiB aggregate accepted source
+  bytes per checklist.
+- Maximum 5 MiB per normalized full image and 30 MiB aggregate normalized
+  full-image bytes per checklist.
+- Thumbnails are excluded from the full-image aggregate. Each thumbnail is at
+  most 512 KiB, and thumbnail bytes total at most 3 MiB for six photos.
+- Caption maximum 500 characters.
+- JPEG, PNG, WebP, HEIC, and HEIF source formats only.
+- Maximum 16,384 pixels on either dimension and 50 megapixels decoded area.
+- Decode and preserve only the primary still image. Auxiliary images, embedded
+  thumbnails, depth maps, gain maps, and other non-primary auxiliary content
+  are ignored and stripped. True image sequences, animations, and timed or
+  multi-frame media are rejected.
+- SVG and every non-image format are rejected.
+
+Every per-file and aggregate source, normalized full-image, and thumbnail limit
+is enforced server-side. Client checks are interaction guidance only.
+
+Declared MIME type and extension are hints only. The server must inspect magic
+bytes, successfully decode the image with bounded resources, and normalize the
+detected MIME type. Original filenames are display metadata only: path
+components and control characters are removed, and the value never becomes a
+filesystem path.
+
+The server processing pipeline should:
+
+1. Decode the primary still image, including HEIC/HEIF on the server rather
+   than assuming device or browser conversion.
+2. Apply embedded orientation.
+3. Ignore and strip auxiliary images and reject true sequences or timed media.
+4. Convert color output to sRGB.
+5. Strip all EXIF and other device metadata, including GPS.
+6. Resize the full image to a maximum 2,560-pixel long edge while preserving
+   aspect ratio and sufficient operational detail.
+7. Encode a nonanimated WebP full image at quality 88.
+8. Encode a WebP thumbnail with a maximum 480-pixel long edge.
+9. Verify source, full-image, thumbnail, and aggregate byte limits separately,
+   then compute SHA-256 before final persistence.
+
+The concrete processor must be pinned and proven against JPEG, PNG, WebP,
+HEIC, and HEIF in the actual Docker image before Phase 23.5 is enabled. That
+proof must cover primary-image selection, auxiliary-content handling, sequence
+rejection, codec availability, and processor licensing and redistribution
+compatibility. Decode timeouts, bounded concurrency, pixel limits, and
+request-size limits protect against decompression and processing denial of
+service. A duplicate normalized checksum within one checklist is rejected or
+safely returns the existing photo.
+
+## 35. Private Storage Architecture
+
+ADR-018 approves a private persistent Docker volume for the current single-node
+deployment. The future application mount is `/var/lib/nam/media`; implementation
+must provision it for the non-root application runtime user.
+
+Feature-owned storage uses these conceptual paths beneath that mount:
+
+```text
+staging/<upload-id>/
+operational-safety-checklists/<checklist-id>/<photo-id>/image.webp
+operational-safety-checklists/<checklist-id>/<photo-id>/thumbnail.webp
+trash/<removal-id>/
+```
+
+All path components are server-generated IDs. Staging and final files remain on
+the same volume to permit atomic rename. The application uses a narrow
+checklist-photo storage adapter so a future migration can copy and checksum
+objects into private object storage without changing the checklist domain.
+There is no Tank-style catalog, public static directory, or generic attachment
+repository.
+
+Staging uploads older than 24 hours are eligible for cleanup. Removed files and
+unclassified orphans remain quarantined for 7 days before deletion. An orphan
+reconciliation command is required. Reconciliation
+must distinguish database rows missing files, files missing rows, active
+staging uploads, and removal trash before deleting anything. PostgreSQL binary
+storage is rejected because it would inflate the operational database and its
+backups. Private object storage remains a future scale/durability option rather
+than a Phase 23.5 prerequisite.
+
+## 36. Security And Access Gate
+
+Photo architecture and metadata may be approved now, but real workplace-photo
+upload or serving must not be enabled until one of these boundaries protects
+every read and mutation:
+
+1. Application authentication plus authorization that verifies access to the
+   parent checklist; or
+2. A separately documented and approved deny-by-default network or
+   reverse-proxy boundary that limits the application to trusted users and
+   devices, such as a private VPN or authenticated proxy.
+
+TLS, an Internet-facing Caddy hostname, client-side hiding, `robots.txt`, and
+unpredictable media URLs do not satisfy this gate. Loopback-only development
+with synthetic, non-sensitive fixtures is permitted. Photo routes may be built
+behind a disabled capability flag, but they must fail closed in deployments
+that do not meet the gate.
+
+Media must be served through application-owned routes after parent-access
+validation. Routes never accept raw storage paths. Responses use the detected
+normalized `image/webp` type, `X-Content-Type-Options: nosniff`, sanitized
+inline `Content-Disposition`, and an initially private/no-store cache policy.
+Uploads need body-size limits, processing concurrency and time bounds, count and
+quota checks, user-safe errors, and logs that omit image bytes, original paths,
+GPS data, and access secrets. Random identifiers are defense in depth, not
+authorization.
+
+## 37. Upload, Correction, And Cleanup Workflow
+
+Checklist creation remains completed-only:
+
+1. Save the completed checklist.
+2. Redirect to detail with the NAM success confirmation.
+3. Offer `Add Photo Evidence` only when the photo capability and access gate are
+   enabled.
+4. Upload and manage photos through dedicated checklist-owned actions.
+
+One photo is normalized and committed atomically from the user's perspective;
+a multi-photo UI may queue those operations and show each result independently.
+The client should show per-file pending/progress, success, retry, and error
+states and upload one file at a time by default for mobile reliability. A failed
+file does not roll back an earlier successful file, and the operator can retry
+without resubmitting the completed checklist.
+The server writes the bounded source to staging, validates and normalizes it,
+locks/revalidates the parent and count, places normalized files using atomic
+rename, inserts metadata in a PostgreSQL transaction, and removes staging.
+Database failure removes newly placed files. Final-move failure rolls back
+metadata. Crash leftovers are handled by age-aware staging and orphan
+reconciliation. Retry is idempotent through parent/checksum uniqueness.
+
+Concurrent uploads must serialize count and next-sequence allocation for one
+checklist. Reordering persists a complete contiguous sequence. Removal requires
+explicit confirmation, moves files to trash, deletes metadata transactionally,
+restores files if the database operation fails, and finalizes deletion after
+commit. There is no silent bulk removal and no Draft lifecycle.
+
+Meter value/unit, date, shift, responses, Problem Description, captions, order,
+and individual photos may be corrected while the checklist remains Completed.
+Photos may remain through corrections that keep the same Equipment. An
+Equipment identity change is blocked until the operator manually removes all
+photos; after removal, the existing Equipment-change reset and snapshot rules
+apply. This is safer and simpler than carrying evidence to another machine or
+performing an implicit compensating bulk delete.
+
+## 38. NAM Save Confirmation And Create Another
+
+Create and correction use Post/Redirect/Get to the server-rendered detail page
+with a short-lived, server-signed presentation marker. Its signed payload binds
+the supported result (`created` or `corrected`) to the checklist ID, persisted
+record version or update timestamp, issuance time, and expiration no more than
+five minutes after issuance. Only a successful Server Action persistence
+transaction may produce the marker. Failed mutations remain on the form with
+validation or persistence feedback and never redirect with a success marker.
+
+The detail route validates the signature, checklist binding, current persisted
+version, expiration, and exact supported result before rendering either message:
+
+- `Checklist saved in NAM Dashboard.`
+- `Checklist correction saved in NAM Dashboard.`
+
+Unknown, malformed, manually invented, expired, unsupported, incorrectly bound,
+or superseded markers render no success banner. The marker is presentation
+evidence that NAM persistence completed; it is neither authorization evidence
+nor proof of corporate website submission.
+
+The banner uses an accessible status role and visible success treatment. Any
+animation is lightweight, nonessential, and disabled by reduced-motion
+preferences. After the server-rendered banner is established, a minimal client
+enhancement marks that page state consumed, removes the marker from the visible
+URL with `history.replaceState`, and hides the banner on a consumed BFCache
+restoration. Refresh after URL replacement and later back navigation therefore
+cannot recreate the banner from an already-consumed URL. No session, flash
+message, cookie, or authentication system is introduced solely for this flow;
+the signing material is server-only configuration used only to validate the
+short-lived presentation marker.
+
+Submission controls disable while pending, while server validation and the
+database uniqueness rule remain the duplicate-submission authority. The detail
+page provides `View inspection`, `Create another inspection`, and, only when
+enabled, `Add photo evidence`. None of the wording claims that the corporate
+website received, accepted, or changed a submission.
+
+`Create another inspection` should reference the saved checklist by ID and let
+the server prefill only operational date, shift, operator, and supervisor.
+Equipment and derived Mine, meter kind, reading, answers, Problem Description,
+and photos start empty. This supports a Dragline-plus-truck-plus-tractor shift
+without carrying machine-specific inspection facts forward.
+
+## 39. Backup And Recovery Boundary
+
+Photo backup is a coordinated database-and-media maintenance set, not an atomic
+cross-system transaction. While photo mutations are paused, operations should:
+
+1. Record a backup-set identifier and current migration state.
+2. Create the PostgreSQL backup.
+3. Archive the read-only media volume with a manifest of storage keys, sizes,
+   and SHA-256 checksums.
+4. Store both artifacts outside the repository under the documented backup
+   root and verify them before resuming mutations.
+
+Restore occurs with the application stopped: restore PostgreSQL first, restore
+the matching media archive second, run checksum and missing/orphan
+reconciliation, and then enable the application. Missing files render an
+unavailable-evidence state and integrity warning rather than breaking the
+checklist. Orphans are quarantined and removed only after a grace period.
+
+The media backup location should be `/home/alain/backups/nam/media/`, alongside
+the existing PostgreSQL backup root. Database and media artifacts should share
+retention identifiers. Named volumes survive container replacement but not
+explicit volume deletion or host loss. Future production use requires
+encrypted off-host copies, retention policy, and regular restore testing.
+Live evidence has no automatic age-based expiry and remains with its checklist
+until explicit removal. Backup sets must not expire database and media halves
+independently; automated backup retention remains an infrastructure decision
+that Phase 23.5 must document before production enablement.
+
+## 40. Enhancement Testing Architecture
+
+Phase 23.4 requires:
+
+- Unit tests for `HOURS`/`MILES`, integer/range validation, defaults, unknown
+  categories, mismatch confirmation, Equipment reset, legacy `HOURS`, no
+  continuity rule, and overnight operational date.
+- Component and route tests for the accessible unit control, warning and
+  confirmation behavior, valid create and correction markers, invalid,
+  expired, unsupported, and directly constructed markers, failed mutations
+  producing no success redirect, marker consumption, refresh and browser
+  back/BFCache restoration, create another, pending-submit protection, and
+  reduced-motion behavior.
+- Server Action and PostgreSQL tests for enum persistence, correction,
+  Equipment-change reset, historical snapshots, uniqueness, and migration of
+  existing `HOURS` rows.
+
+Phase 23.5 requires:
+
+- Unit tests for magic-byte/MIME detection, limits, keys, caption and sequence
+  validation, checksums, normalization, duplicate detection, EXIF/GPS removal,
+  primary-image selection, auxiliary-content stripping, sequence rejection,
+  orientation, resizing, and separate full-image/thumbnail accounting.
+- Component and route tests for upload queues, per-file errors, captions,
+  order, removal confirmation, missing media, access denial, serving headers,
+  and blocked Equipment change.
+- PostgreSQL tests for parent ownership, sequence/checksum uniqueness, cascade
+  metadata cleanup, count enforcement, and transaction rollback.
+- Filesystem integration tests for staging, atomic final placement, processor
+  and database failures, cleanup, trash restoration, orphan reconciliation,
+  and missing files.
+- Runtime Docker smoke tests for JPEG, PNG, WebP, HEIC/HEIF decoding,
+  primary-image selection, auxiliary-content handling, sequence rejection,
+  codec availability and redistribution compatibility, runtime user
+  permissions, volume persistence through container recreation, access
+  fail-closed behavior, and backup/restore verification.
+
+Broad browser E2E remains deferred unless implementation exposes a concrete
+cross-route risk that narrower tests cannot protect.
+
+## 41. Implementation Slices And Gates
+
+### Phase 23.4: Meter Units And NAM Save Confirmation
+
+Phase 23.4 is architecture-approved and implementation-ready. It includes one
+additive enum migration, Prisma regeneration, explicit unit UI and validation,
+editable defaults, mismatch confirmation, correction/reset behavior, PRG
+success banners, safe create-another context, and focused tests. It does not
+include photo metadata, packages, storage, Docker volumes, or media routes.
+
+### Phase 23.5: Photo Evidence Storage And Management
+
+Phase 23.5 is architecture-approved but implementation-blocked until:
+
+- Authentication/authorization or a separately approved deny-by-default access
+  boundary satisfies ADR-018.
+- The selected pinned server image processor proves JPEG, PNG, WebP, HEIC, and
+  HEIF primary-image selection, auxiliary-content handling, sequence rejection,
+  codec availability, and licensing/redistribution compatibility in the actual
+  Docker image within the approved resource bounds.
+- The private volume permissions, backup-set procedure, restore verification,
+  and orphan-reconciliation operating path are implementation-ready.
+
+Once those gates close, Phase 23.5 may add one photo metadata migration,
+processor dependency, private Docker volume, checklist-owned upload/manage/serve
+actions and routes, backup documentation, and the tests in Section 40. It must
+not become an authentication milestone or generic attachment platform.
+
+## 42. Phase 23.3 Architecture Status
+
+The enhancement architecture is Approved. Meter-unit and save-confirmation
+product decisions are closed, and Phase 23.4 may proceed. Photo workflow,
+limits, metadata, storage, cleanup, backup, and security policies are also
+approved, but Phase 23.5 implementation and real workplace-photo use remain
+blocked by the explicit prerequisites in Section 41.
+
+Day View, Equipment Activity Timeline, explicit Defect linkage, Planner Review,
+external corporate submission, authentication implementation, and a generic
+attachment system remain outside this enhancement.

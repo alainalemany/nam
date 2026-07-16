@@ -150,10 +150,11 @@ and other supported mobile Equipment. A shift using a dragline, work truck, and
 tractor therefore produces three independent checklist records.
 
 The implemented V1 foundation currently records the approved Hour Meter
-context. The next architecture amendment will define an explicit `HOURS` or
-`MILES` meter unit, optional checklist-level image evidence with captions, and
-clear confirmation that the NAM record was saved. Those enhancements are not
-implemented yet.
+context. Phase 23.3 approves an explicit whole-number `HOURS` or `MILES` meter
+unit and clear confirmation that the NAM record was saved. Optional
+checklist-level photo evidence with captions is also approved architecturally,
+but implementation and real photo use remain gated by ADR-018. These
+enhancements are not implemented yet.
 
 ### 4. Daily Log
 
@@ -582,6 +583,19 @@ meter kind. Exact source wording, ordering, markers, and response sets are
 canonical in `docs/reference/checklists/`. V1 Hour Meter readings are required
 whole integers from `0` through `999999`; the maximum is an implementation
 validation guard rather than a business rule.
+
+The approved meter enhancement retains that integer range and stores an
+explicit checklist-level `HOURS` or `MILES` snapshot. Dragline suggests Hours,
+Work Truck suggests Miles, and Tractor/Forklift require explicit selection.
+Suggestions remain editable; a known-category mismatch requires explicit
+confirmation rather than server-forced category truth. No cross-record meter
+continuity, ending mileage, or Equipment-level preferred unit is added.
+
+Approved optional evidence consists of up to six checklist-level normalized
+photos with optional captions. Photos remain optional for Needs Repair and do
+not create Defects or Daily Log activities. Real upload and serving remain
+disabled until the access boundary and private storage requirements in ADR-018
+are implemented.
 
 Implemented V1 surfaces include history filtering, create, detail, and explicit
 completed-record correction. Day View participation and Defect traceability

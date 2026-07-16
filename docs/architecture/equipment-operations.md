@@ -79,7 +79,7 @@ domain model.
 | Capability | Status | Recommended owner |
 | --- | --- | --- |
 | Manual Daily Inspection summaries | Implemented | Daily Inspections |
-| Operational Safety Checklists | V1 foundation independently accepted; Phase 21 complete; Day View deferred | Daily Inspections bounded context, as a distinct checklist record type and workflow |
+| Operational Safety Checklists | V1 foundation accepted; Phase 23.3 enhancement architecture approved; meter/save slice ready, photo slice access-gated; Day View deferred | Daily Inspections bounded context, as a distinct checklist record type and workflow |
 | Equipment Fuel Events | Approved V1 foundation implemented; Day View deferred | Independent Equipment Fuel Events feature |
 | Warehouse pickup performed for someone else's order | Confirmed activity | Daily Work Logs only |
 | Operator-originated Supply Requests | Confirmed future feature; discovery-stage | Independent Supply Requests feature |
@@ -142,9 +142,10 @@ The checklist foundation should focus on:
 
 Planner Review, planner authentication, approvals, configurable template
 administration, analytics, and automatic Defect creation remain outside the
-initial checklist foundation. Explicit `HOURS`/`MILES` meter units, optional
-checklist-level image evidence with captions, and NAM save confirmation are
-confirmed follow-up architecture work, not current implementation.
+initial checklist foundation. Phase 23.3 approves explicit `HOURS`/`MILES`
+meter units, optional checklist-level photo evidence with captions, and NAM
+save confirmation. The meter/save slice is implementation-ready; photo
+implementation and real use remain gated by ADR-018.
 
 ## 6. Defect Tracking Boundary
 
@@ -319,20 +320,23 @@ misrepresented as an Equipment service or condition event.
    ownership. (Completed in Phase 23.2; see ADR-017.)
 5. Amend Operational Safety Checklist architecture for explicit meter units,
    optional checklist-level image evidence, and NAM save confirmation.
-6. Equipment Fuel Events or Operational Safety Checklist Day View participation
+   (Completed in Phase 23.3.)
+6. Implement meter units and NAM save confirmation as Phase 23.4.
+7. Implement optional photo evidence only after ADR-018's access, processing,
+   storage, and backup gates close.
+8. Equipment Fuel Events or Operational Safety Checklist Day View participation
    only when separately approved.
-7. Supply Requests product discovery completion and later feature architecture.
-8. Fleet product discovery as a separate future domain.
-9. Equipment Activity Timeline assessment only after enough contributors exist.
+9. Supply Requests product discovery completion and later feature architecture.
+10. Fleet product discovery as a separate future domain.
+11. Equipment Activity Timeline assessment only after enough contributors exist.
 
 ## 14. Remaining Product Decisions
 
-Operational Safety Checklists have no remaining V1 product decisions. The
-approved Hour Meter uses whole integers from `0` through `999999`; future meter
-semantics are outside the implemented foundation. Confirmed follow-up
-architecture must define explicit `HOURS`/`MILES` storage and defaults, optional
-checklist-level image evidence, and NAM save confirmation before those changes
-are implemented.
+Operational Safety Checklists have no remaining Phase 23.4 product decisions.
+Phase 23.3 approves explicit whole-integer `HOURS`/`MILES` storage, editable
+known-category defaults, optional checklist-level photo evidence, and NAM save
+confirmation. Photo implementation remains technically and security-gated by
+ADR-018 rather than blocked by checklist product ambiguity.
 
 Equipment Fuel Events have no remaining V1 product decisions. The approved
 architecture defines operational work date plus local event time, Diesel,
@@ -365,6 +369,11 @@ deferred. The implementation introduced no Fleet purchase behavior or shared
 Equipment Operations infrastructure. Supply Requests remain a later
 discovery-stage feature, Fleet remains a separate future domain, and the
 Equipment Activity Timeline remains derived and deferred.
+
+The Phase 23.3 checklist enhancement architecture is Approved. Phase 23.4 may
+implement meter units and NAM save confirmation. Phase 23.5 photo evidence
+remains blocked until its explicit access and runtime prerequisites are met;
+this does not create shared Equipment Operations media infrastructure.
 
 ADR-017 supersedes the standalone Work Truck Log proposal. Shift-start work
 truck, tractor, forklift, and other supported mobile inspections remain owned

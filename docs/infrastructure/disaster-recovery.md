@@ -125,6 +125,21 @@ Those backup payloads are intentionally outside Git. A complete future disaster
 recovery plan should include off-server backup storage, restore testing, and
 documented secret recovery.
 
+ADR-018 adds a planned media recovery boundary for Operational Safety
+Checklist photos. After Phase 23.5 implementation, a recoverable set must pair
+the PostgreSQL backup with the matching archive and checksum manifest from:
+
+```text
+/home/alain/backups/nam/media/
+```
+
+Photo mutations must be paused while that set is created. Restore PostgreSQL
+first and media second while the application is stopped, then reconcile
+checksums, missing files, and orphans before service resumes. A missing media
+file must not make the completed checklist unreadable. Named-volume persistence
+alone is not disaster recovery, and this runbook does not claim atomic
+consistency between PostgreSQL and the filesystem.
+
 ## Verification Checklist
 
 - `/etc/nam/environment` exists.

@@ -121,11 +121,15 @@ authentication, or workforce-management models.
 
 ## 7. Meter Type
 
-The exact source field is `Hour Meter (Start)`. Dragline Inspection V1 therefore
-uses an Hours meter kind. Confirmed operational evidence requires a whole-number
-value from `0` through `999999` inclusive. The upper bound is an implementation
-validation guard rather than a business rule. Decimal and floating-point values
-are not accepted.
+The exact source field remains `Hour Meter (Start)`. NAM adds explicit `HOURS`
+or `MILES` meter metadata without claiming that the corporate source form
+contains a unit selector. The selected unit is visible and editable; Dragline
+suggests `HOURS`. The governing behavior is defined by
+`docs/architecture/features/operational-safety-checklists.md`.
+
+NAM meter readings use whole-number values from `0` through `999999` inclusive.
+The upper bound is an implementation validation guard rather than a business
+rule. Decimal and floating-point values are not accepted.
 
 ## 8. Historical Snapshot Notes
 
@@ -136,7 +140,7 @@ Historical checklist records should retain:
   markers, and response-set identity.
 - Selected response code and visible label.
 - Operator and supervisor display-name snapshots.
-- Hour-meter kind and entered value.
+- Explicit NAM meter kind and entered value.
 - Limited Equipment, Mine, and City display snapshots defined by feature
   architecture.
 

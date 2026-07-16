@@ -346,6 +346,9 @@ Potential future growth must remain separately approved:
   Checklists only if future traceability is approved. Checklist findings and
   repeated problem text do not automatically create Defects; Defect Tracking
   retains independent lifecycle ownership.
+- Operational Safety Checklist photos and captions remain optional historical
+  evidence. Needs Repair and photo upload do not create, update, close, reopen,
+  or link a Defect automatically.
 - Deeper links to STOP Cards, Shift Reports, Work Authorizations, Daily Logs,
   work orders, or Knowledge Base records when a concrete workflow requires them.
 

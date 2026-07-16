@@ -42,6 +42,11 @@ photo evidence with captions, and a clear NAM save-confirmation experience are
 separate follow-up architecture work. This ADR does not approve their technical
 design or implementation.
 
+Subsequent status: Phase 23.3 approved that enhancement architecture. ADR-018
+governs private photo storage and its access gate. Meter/save implementation
+remains separate from access-gated photo implementation; this status note does
+not rewrite ADR-017's original Work Truck Log decision.
+
 ## Context
 
 ADR-007 assumed that the operator completed a separate corporate Work Truck Log
@@ -80,3 +85,4 @@ Equipment, and Daily Work Log ownership without representing a real workflow.
 - [Equipment Operations Architecture Assessment](../architecture/equipment-operations.md)
 - [Product Roadmap](../product-roadmap.md)
 - [Implementation Roadmap](../roadmap.md)
+- [ADR-018: Private Operational Safety Checklist Photo Storage](adr-018-private-operational-safety-checklist-photo-storage.md)

@@ -167,9 +167,9 @@ into confirmed requirements.
 - Track timesheet entries and weekly totals.
 - Record operational Equipment fueling history separately from future Fleet
   purchase history.
-- Amend Operational Safety Checklist architecture for explicit `HOURS` or
-  `MILES` meter units, optional checklist-level image evidence, and clear NAM
-  save confirmation before implementing those enhancements.
+- Implement approved Operational Safety Checklist `HOURS`/`MILES` meter units
+  and clear NAM save confirmation. Optional checklist-level photo evidence
+  remains separately access-gated under ADR-018.
 - Archive payslip PDFs and extracted payroll data.
 - Search and navigate historical records by date, date range, equipment, mine,
   and module.
@@ -220,8 +220,10 @@ The current implemented product capabilities include:
 
 Planned Version 1 product scope includes:
 
-- Operational Safety Checklist meter-unit, optional image-evidence, and NAM
-  save-confirmation enhancements after architecture approval.
+- Operational Safety Checklist meter-unit and NAM save-confirmation
+  enhancements under the approved Phase 23.3 architecture.
+- Optional checklist-level photo evidence after ADR-018's access, processing,
+  storage, and backup gates are satisfied.
 - Operational Safety Checklist Day View participation through a separately
   approved feature-owned contribution.
 - Broader historical lookup through feature-owned views; global cross-module

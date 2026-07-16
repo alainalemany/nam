@@ -161,6 +161,9 @@ Daily Work Logs should treat related modules as external owners:
   narrative or an appropriate existing activity. It does not alter the
   shift-start Operational Safety Checklist, create another checklist, or create
   a separate truck-use record.
+- Operational Safety Checklist meter changes, save confirmation, photos, and
+  captions remain checklist-owned. Photo upload does not create a Daily Log
+  activity, and Daily Work Logs do not mutate checklist evidence.
 - A future Fleet domain may own purchases, ownership, assignments, fuel cards,
   receipts, registration, insurance, and replacement lifecycle. Daily Work
   Logs do not mutate that future domain.

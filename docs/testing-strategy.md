@@ -133,9 +133,8 @@ Good candidates:
 - Date-only conversion and formatting helpers.
 - Enum option labels and constants.
 - Pure transformation logic.
-- Calculation helpers for schedules, timesheets, fuel totals, and explicit
-  checklist meter-unit behavior after that enhancement architecture is
-  approved.
+- Calculation helpers for schedules, timesheets, fuel totals, and approved
+  checklist meter-unit behavior.
 
 Unit tests should be fast and deterministic.
 
@@ -312,15 +311,32 @@ justifies that infrastructure.
 Deferred areas:
 
 - Authentication and authorization.
-- Attachment infrastructure. Optional Operational Safety Checklist image
-  evidence is confirmed product scope, but its storage, security, lifecycle,
-  and executable test strategy require the next architecture amendment before
-  implementation.
+- Generic attachment infrastructure. Operational Safety Checklist photo
+  evidence has feature-owned testing architecture, but implementation remains
+  blocked by ADR-018's access and runtime gates.
 - Global search.
 - Analytics.
 - Production deployment.
 - Metronic integration details.
 - External automation or third-party integrations.
+
+Phase 23.4 meter and save-confirmation tests should cover enum/range behavior,
+editable category defaults, mismatch confirmation, Equipment reset, legacy
+`HOURS`, correction, PostgreSQL migration behavior, Post/Redirect/Get result
+markers, accessible success status, create another, and duplicate-submit
+protection. Result-marker coverage should include valid create/correction,
+invalid or expired markers, failed mutations, direct constructed URLs, refresh
+after consumption, and browser back/BFCache restoration.
+
+Phase 23.5 requires unit and integration evidence for file-signature and decode
+validation, HEIC/HEIF primary-image and auxiliary-content handling, sequence
+rejection, normalization and metadata stripping, separate full-image and
+thumbnail limits, photo ownership and ordering, filesystem compensation and
+orphan cleanup, private serving, access fail-closed behavior, runtime volume
+permissions, processor redistribution compatibility, and coordinated
+database/media backup restoration. Filesystem and Docker smoke tests are
+required because mocks cannot prove decoder, permission, or persistent volume
+behavior. Broad browser E2E remains deferred absent a concrete gap.
 
 Tests for these areas should be added when their requirements and
 implementation exist.

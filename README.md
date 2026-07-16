@@ -36,7 +36,7 @@ NAM Dashboard is being built as a professional, modular web application for pers
 | Shift Reports | Structured shift-level records that connect work activity, inspections, and related paperwork. |
 | Work Authorizations | Safety and maintenance work records tied to shift reports, including permits and completion checklists. |
 | Daily Inspections | Manual equipment and work-area inspection summaries. |
-| Operational Safety Checklists | Implemented Dragline and Mobile pre-shift Equipment inspections, one per inspected Equipment, with canonical response catalogs and permanent history. |
+| Operational Safety Checklists | Implemented Dragline and Mobile pre-shift Equipment inspections, one per inspected Equipment, with canonical response catalogs and permanent history; explicit meter units and NAM save confirmation are the next approved slice, while private photo evidence remains access-gated. |
 | Defect Tracking | Equipment issue tracking from report through closure. |
 | Knowledge Base | Field notes, procedures, safety notes, troubleshooting guides, and equipment-specific knowledge. |
 | Work Schedule | Manual weekly schedule entry, edits, assignment history, and schedule context. |
@@ -101,6 +101,11 @@ remains limited to its existing participants. Current operational modules
 provide feature-owned list filtering; global cross-module search remains future
 work. Future modules should continue to follow the documentation-first,
 vertical-slice approach.
+
+Phase 23.3 approves the Operational Safety Checklist enhancement architecture:
+explicit `HOURS`/`MILES` meter units and clear NAM save confirmation may proceed
+independently, while optional checklist-level photo evidence remains blocked
+until ADR-018's access, media-processing, and backup prerequisites are met.
 
 ## Version 1 Focus
 

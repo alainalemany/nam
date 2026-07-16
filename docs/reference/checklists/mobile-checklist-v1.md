@@ -126,16 +126,17 @@ authentication, or workforce-management models.
 
 ## 7. Meter Type
 
-The exact source field is `Hour Meter (Start)`. Mobile Inspection V1 therefore
-uses an Hours meter kind for the canonical source template. The broader feature
-architecture may support Mileage for explicitly approved future mobile
-Equipment, but Mobile must never be hardcoded to odometer.
+The exact source field remains `Hour Meter (Start)`. NAM adds explicit `HOURS`
+or `MILES` meter metadata without claiming that the corporate source form
+contains a unit selector. The selected unit is visible and editable. Work Truck
+suggests `MILES`; Tractor and Forklift have no confirmed default and require an
+explicit selection. The governing behavior is defined by
+`docs/architecture/features/operational-safety-checklists.md`.
 
-The canonical V1 Hour Meter uses a whole-number value from `0` through
-`999999` inclusive. The upper bound is an implementation validation guard
-rather than a business rule. Decimal and floating-point values are not
-accepted. Future Equipment types may define different meter semantics only
-after separate operational evidence and template/version approval.
+NAM meter readings use whole-number values from `0` through `999999` inclusive.
+The upper bound is an implementation validation guard rather than a business
+rule. Decimal and floating-point values are not accepted. Mobile must never be
+hardcoded to odometer solely from its template family.
 
 ## 8. Historical Snapshot Notes
 
@@ -147,7 +148,7 @@ Historical checklist records should retain:
 - Selected response code and visible label.
 - Rental and Fuel Card response history.
 - Operator and supervisor display-name snapshots.
-- Hour-meter kind and entered value.
+- Explicit NAM meter kind and entered value.
 - Limited Equipment, Mine, and City display snapshots defined by feature
   architecture.
 
