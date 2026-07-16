@@ -69,11 +69,22 @@ documentation architecture milestone explicitly approves that reorganization.
 | Day View | [Day View Architecture](day-view.md) | Approved; V1 composition implemented |
 | STOP Cards | [STOP Cards Architecture](stop-cards.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 | Daily Inspections | [Daily Inspections Architecture](daily-inspections.md) | Approved; V1 foundation, current-schema filtering, and Day View participation implemented |
+| Operational Safety Checklists | [Operational Safety Checklists Architecture](operational-safety-checklists.md) | Approved; V1 foundation independently accepted and feature-owned history filtering implemented; Day View deferred |
 | Shift Reports | [Shift Reports Architecture](shift-reports.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 | Work Authorizations | [Work Authorizations Architecture](work-authorizations.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 | Defect Tracking | [Defect Tracking Architecture](defect-tracking.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 | Work Schedule | [Work Schedule Architecture](work-schedule.md) | Approved; V1 foundation and Day View participation implemented |
 | Timesheet | [Timesheet Architecture](timesheets.md) | Approved; V1 foundation and Day View participation implemented |
+| Equipment Fuel Events | [Equipment Fuel Events Architecture](equipment-fuel-events.md) | Approved; V1 foundation and feature-owned history filtering implemented; Day View deferred |
+
+## Related Domain Assessments
+
+The following documents assess boundaries before separate feature architecture
+is ready. They do not authorize implementation:
+
+| Domain | Document | Status |
+| --- | --- | --- |
+| Equipment Operations | [Equipment Operations Architecture Assessment](../equipment-operations.md) | Assessment complete; separate feature architectures and implementation statuses remain feature-owned |
 
 ## Standard Metadata Block
 

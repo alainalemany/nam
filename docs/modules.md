@@ -19,13 +19,16 @@ Implementation standards for turning these modules into feature slices live in
 - [Work Authorizations](#work-authorizations)
 - [STOP Cards](#stop-cards)
 - [Daily Inspections](#daily-inspections)
+- [Operational Safety Checklists](#operational-safety-checklists)
 - [Daily Log](#daily-log)
 - [Knowledge Base](#knowledge-base-kb)
 - [Work Schedule](#work-schedule)
 - [Timesheet](#timesheet)
 - [Payslip Repository](#payslip-repository)
-- [Fuel Log](#fuel-log)
+- [Equipment Fuel Events](#equipment-fuel-events)
+- [Supply Requests](#supply-requests)
 - [Work Truck Log](#work-truck-log)
+- [Equipment Activity Timeline](#equipment-activity-timeline)
 
 ## Source Documents
 
@@ -37,7 +40,7 @@ Implementation standards for turning these modules into feature slices live in
 ## Pending Collection
 
 - STOP Card
-- Daily Inspection Form
+- Final approved Dragline and Mobile checklist item sets
 - Greasing Form
 - PM Form
 - Shift Handover Form
@@ -196,13 +199,51 @@ module owns inspection findings, condition and status logic, validation, and
 persistence while remaining independent from Daily Logs and STOP Cards.
 
 The implemented V1 module provides list, create, edit, detail, mine and
-equipment context, and selected-date Day View participation. Feature-owned list
-filtering, attachments, templates, approvals, analytics, and global
+equipment context, current-schema feature-owned filtering, and selected-date
+Day View participation. Attachments, approvals, analytics, and global
 cross-module search remain future or deferred work.
 
 Implementation architecture:
 
 `docs/architecture/features/daily-inspections.md`
+
+## Operational Safety Checklists
+
+Operational Safety Checklists are start-of-shift, Equipment-specific inspection
+records using the approved Dragline Inspection or Mobile Inspection item set.
+They preserve repeated responses such as OK, Needs Repair, Previously Noted,
+and N/A together with common shift and Equipment context.
+
+These checklists are distinct from the implemented Daily Inspection summary
+record, but they belong to the same Daily Inspections bounded context. The
+Approved feature architecture preserves the distinction instead of forcing
+both workflows into one ambiguous record or creating a generic configurable
+form platform.
+
+The operator-owned V1 workflow does not include the external form's Planner
+Review section. Checklist results do not automatically create or update
+Defects. Future explicit links may connect a checklist finding to Defect
+Tracking while each feature retains ownership.
+
+Boundary assessment:
+
+`docs/architecture/equipment-operations.md`
+
+Approved feature architecture:
+
+`docs/architecture/features/operational-safety-checklists.md`
+
+Canonical V1 source catalogs:
+
+- [Dragline Inspection V1](reference/checklists/dragline-checklist-v1.md)
+- [Mobile Inspection V1](reference/checklists/mobile-checklist-v1.md)
+
+The V1 foundation is implemented with complete-only submission, explicit
+in-place correction, no deletion, Equipment-derived templates, required
+person-name snapshots, feature-owned history filtering, and exact source
+catalogs. Canonical V1 Hour Meter readings are integers from `0` through
+`999999`; the maximum is an implementation validation guard. Day View and
+explicit Defect traceability remain deferred.
 
 ## Daily Log
 
@@ -665,63 +706,107 @@ Version 1 should support manual PDF upload, original PDF storage, core field ext
 
 Payroll-provider login integration, automatic Workday sync, tax advice, retirement advice, and automated financial recommendations are out of scope.
 
-## Fuel Log
+## Equipment Fuel Events
 
-The Fuel Log module records diesel deliveries, gasoline purchases, and fuel service events for draglines, work trucks, and related equipment.
+Equipment Fuel Events record operational fuel service for fuel-consuming
+Equipment such as diesel draglines, cable tractors, forklifts, generators, and
+future support equipment.
 
 ### Purpose
 
-Create a permanent searchable history of fuel added to equipment and work vehicles.
-
-The operator should be able to answer questions such as:
-
-- How many gallons were added to a dragline on a specific date?
-- How many gallons were delivered during a month, year, or custom date range?
-- How much diesel or gasoline has been delivered or purchased from the first recorded fueling event to the present?
-- What is the estimated or actual value of fuel using a known or estimated price per gallon?
-- Which fueling events have attachments, receipts, vendor notes, or missing information?
+Create a permanent history of delivered fuel by date and Equipment while
+preserving separate quantities when one service occurrence fills more than one
+tank.
 
 ### Source Workflow
 
-A diesel tank truck services the dragline several times per week.
+A fuel-service person fills one or more tanks on one Equipment record and
+reports the delivered quantity. For example, one dragline service occurrence
+may fill a main tank and a walking-engine tank with separate gallon amounts.
 
-The operator may also take the work truck to a nearby gas station and purchase gasoline.
+The operator records the occurrence as structured Equipment history. The same
+work may also appear narratively as a Daily Work Log `FUEL_SERVICE` activity.
 
-The operator manually records the fueling event in NAM Dashboard. If exact pricing is known from a receipt, invoice, gas station purchase, vendor note, or reliable manual source, the operator may enter price per gallon, total USD, and source details. If pricing is not known, the record should still be saved with gallons and operational context.
+### Confirmed Boundary
 
-### Required Capabilities
+- One occurrence concerns one Equipment subject.
+- One occurrence may contain one or more tank-fill facts.
+- Equipment Fuel Events own structured delivered-quantity facts.
+- A Daily Work Log may own optional narrative context for the same occurrence.
+- Timesheet Work Allocations do not own Equipment Fuel Events.
+- Fleet gas-station purchases, company fuel cards, receipts, mileage, car
+  washes, and temporary vehicle assignment belong to a separate future Fleet
+  domain.
 
-- Create a fuel service record manually
-- Record date and time of fueling
-- Link the record to equipment, such as a dragline or work truck
-- Link the record to mine or location
-- Record fuel type, such as diesel, off-road diesel, or gasoline
-- Record gallons delivered
-- Record vendor, service provider, gas station, or delivery truck identifier when known
-- Record gas station name and address for gasoline purchases
-- Record optional hour-meter, engine-hour, odometer, or tank readings when relevant
-- Record price per gallon when known or estimated
-- Record total USD when known
-- Record price source and whether the price is actual, estimated, or unknown
-- Calculate estimated total value as gallons delivered multiplied by price per gallon
-- Attach receipts, photos, notes, or other evidence
-- Search and filter by date, date range, equipment, mine, fuel type, vendor, gallons, price status, and notes
-- Show totals by day, month, year, custom date range, equipment, and all-time history
-- Show Fuel Log records in Day View and global search
+### Approved V1 Workflow
 
-### Relationship To Other Modules
+- Record operational work date and actual local event time.
+- Select one fuel-consuming Equipment record; derive Mine and City through
+  Equipment.
+- Select exactly one V1 fuel type: Diesel, Off-road Diesel, or Gasoline.
+- Record one or more ordered Tank Fills as positive integer whole US gallons.
+- Apply conservative V1 guards of `1` through `10` fills, `1` through `100`
+  characters per unique normalized tank label, `1` through `999999` gallons per
+  fill, and a maximum derived total of `9999990`.
+- Use suggested Equipment tank labels with manual override and no Tank
+  Management subsystem. Suggestions come from feature-owned history and are
+  normalized and deduplicated for display.
+- Derive event total gallons from the ordered Tank Fills.
+- Optionally select or create a feature-owned Fuel Service Person and preserve
+  the historical display-name snapshot.
+- Retire Fuel Service Person records through inactivation; inactive records are
+  excluded from new selection while unchanged historical references remain
+  readable and used records are protected from hard deletion through
+  Restrict-style relationship behavior.
+- Optionally own a nullable one-to-one link to a matching Daily Work Log
+  `FUEL_SERVICE` activity without changing either feature's ownership.
+  Activity deletion clears the link rather than rewriting the event.
+- Allow optional notes only for exceptional operational context.
+- Persist completed records only, allow explicit in-place correction, and
+  provide no normal deletion workflow.
 
-Fuel Log records should be operational records linked to Equipment and Mine. Work trucks should be represented as Equipment records so fuel, mileage, and daily usage can be searched consistently.
+Meter readings are excluded. Hour Meter remains owned by Operational Safety
+Checklists. Equipment Fuel Events preserve limited Equipment, Mine, and City
+display snapshots for historical readability. Structured feature-owned history
+filters are part of V1; analytics, reports, global search, and Day View
+implementation remain deferred.
 
-A fueling event may optionally link to a Daily Log activity when the operator wants the fuel service to appear in the workday timeline. The Fuel Log should store the structured gallons, pricing, and vendor data; the Daily Log should provide the narrative context if needed.
+New events and Equipment replacements require active eligible Equipment.
+Unchanged inactive Equipment may remain during correction, while a missing live
+relation requires intentional active eligible replacement.
 
-Fuel Log records may also link to Work Truck Log records when the fuel purchase happened during a work truck day. Fuel Log records may later connect to Shift Reports, attachments, maintenance notes, or vendor records if those modules are defined.
+Current implementation status: V1 foundation implemented with feature-owned
+history filtering, completed-record creation and correction, ordered Tank Fill
+persistence, Fuel Service Person management and inline creation, optional
+Daily Work Log activity linking, and historical snapshots. Day View remains
+deferred.
 
-### V1 Boundary
+Boundary assessment:
 
-Version 1 should support manual fuel records, equipment links, gallons, date and time, optional vendor, gas station, address, work truck, odometer, manual price per gallon, total USD, attachments, search, and basic totals.
+`docs/architecture/equipment-operations.md`
 
-Automatic historical fuel price lookup, gas station price scraping, vendor invoice import, and fuel forecasting are future capabilities and should not block the first useful version.
+Approved feature architecture:
+
+`docs/architecture/features/equipment-fuel-events.md`
+
+## Supply Requests
+
+Supply Requests preserve operator-originated requests as durable personal
+operational records. They do not own warehouse inventory, stock, purchasing,
+vendor management, or ERP order processing.
+
+Warehouse pickup for supplies ordered by someone else remains a Daily Work Log
+activity because its purpose is to explain time away from the dragline and may
+mention one or more destination draglines.
+
+Supply Requests may later relate explicitly and optionally to Equipment,
+Defects, Daily Work Logs or activities, and Work Orders. The request lifecycle,
+item and quantity detail, fulfillment meaning, and V1 scope remain in product
+discovery. Feature architecture has not started.
+
+Boundary assessment:
+
+`docs/architecture/equipment-operations.md`
 
 ## Work Truck Log
 
@@ -738,7 +823,7 @@ The operator should be able to answer questions such as:
 - How many miles were driven during a week, month, year, or custom date range?
 - What daily website form responses were submitted?
 - Which days are missing truck mileage or required form data?
-- Which fuel purchases belong to the work truck?
+- Which Fleet fuel-card or gas-station purchases belong to the work truck?
 
 ### Source Workflow
 
@@ -756,7 +841,7 @@ On a daily basis, the operator fills out a work website daily log. The website i
 - Support radio-button, checkbox, numeric, text, and notes-style field types
 - Record whether the website daily log was submitted
 - Attach screenshots, photos, receipts, or notes
-- Link to related Fuel Log records for gasoline purchases
+- Link to future Fleet purchase records when that separate domain is approved
 - Link to Daily Log activities when the truck activity belongs in the operator's workday timeline
 - Search and filter by date, date range, work truck, mileage, submitted status, missing fields, mine, and notes
 - Show Work Truck Log records in Day View and global search
@@ -765,10 +850,27 @@ On a daily basis, the operator fills out a work website daily log. The website i
 
 Work Truck Log records should link to Equipment because the work truck is an asset used during the shift.
 
-Work Truck Log records may link to Fuel Log records for gas station purchases. They may also link to Daily Log activities when the work truck usage is part of the broader workday narrative.
+Work Truck Log records may later link to Fleet fuel-card or gas-station purchase
+records. Those purchases are separate from Equipment Fuel Events. Work Truck
+Log records may also link to Daily Log activities when work truck usage is part
+of the broader workday narrative.
 
 ### V1 Boundary
 
-Version 1 should support manual Work Truck Log records, mileage fields, configurable form responses, submitted status, notes, attachments, search, and Day View participation.
+Version 1 should support manual Work Truck Log records, mileage fields,
+configurable form responses, submitted status, notes, attachments, search, and
+Day View participation after Fleet product discovery resolves time-dependent
+vehicle assignment and purchase evidence.
+
+## Equipment Activity Timeline
+
+The Equipment Activity Timeline is a deferred derived capability. It should
+compose feature-owned Equipment history from checklists, Defects, Daily Work
+Logs, Equipment Fuel Events, Supply Requests, and other approved contributors.
+
+It should not store duplicate event records or become a shared business-logic
+owner. Timeline architecture should begin only after several Equipment-centered
+features are implemented and users demonstrate a recurring cross-feature
+history need.
 
 Automatic submission to the work website is out of scope. NAM Dashboard should preserve the operator's personal record of what was entered, not replace the official work website workflow.

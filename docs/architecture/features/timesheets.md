@@ -116,8 +116,9 @@ Timesheet does not own:
   actual schedule change semantics.
 - Daily Work Log operational narratives or activity timelines.
 - Shift Report summaries or Work Authorization parent context.
-- STOP Cards, Daily Inspections, Defect Tracking, Fuel Log, Work Truck Log, or
-  Payslip behavior.
+- STOP Cards, Daily Inspections, Operational Safety Checklists, Defect
+  Tracking, Equipment Fuel Events, Supply Requests, Work Truck Log, or Payslip
+  behavior.
 - Payroll provider submission, WFS login, scraping, or automation.
 - Payroll approval, supervisor review, lock, or audit history in V1.
 - Authentication, authorization, user accounts, or employee identity.

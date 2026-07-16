@@ -184,6 +184,44 @@ enum TimesheetStatus {
   COMPLETED
 }
 
+enum EquipmentFuelType {
+  DIESEL
+  OFF_ROAD_DIESEL
+  GASOLINE
+}
+
+enum OperationalSafetyChecklistTemplate {
+  DRAGLINE_INSPECTION
+  MOBILE_INSPECTION
+}
+
+enum OperationalSafetyChecklistMeterKind {
+  HOURS
+}
+
+enum OperationalSafetyChecklistItemSection {
+  METADATA
+  INSPECTION
+}
+
+enum OperationalSafetyChecklistResponseSet {
+  CONDITION_FOUR
+  CONDITION_THREE
+  YES_NO
+  PRESENCE_THREE
+}
+
+enum OperationalSafetyChecklistResponseCode {
+  OK
+  NEEDS_REPAIR
+  PREVIOUSLY_NOTED
+  NOT_APPLICABLE
+  YES
+  NO
+  PRESENT
+  NOT_PRESENT
+}
+
 model City {
   id        String       @id @default(cuid())
   name      String
@@ -238,6 +276,8 @@ model Equipment {
   timesheetDailyEntries   DailyTimeEntry[]              @relation("DailyTimeEntryPrimaryEquipment")
   timesheetWorkCodes      TimesheetWorkCode[]           @relation("TimesheetWorkCodeEquipment")
   timesheetWorkOrders     TimesheetWorkOrder[]          @relation("TimesheetWorkOrderEquipment")
+  safetyChecklists        OperationalSafetyChecklist[]  @relation("OperationalSafetyChecklistEquipment")
+  fuelEvents              EquipmentFuelEvent[]          @relation("EquipmentFuelEventEquipment")
   equipmentNumber         String?
   displayName             String
   category                EquipmentCategory
@@ -282,6 +322,58 @@ model DailyInspection {
   @@index([condition])
   @@index([status])
   @@index([defectsIdentified])
+}
+
+model OperationalSafetyChecklist {
+  id                    String                               @id @default(cuid())
+  inspectionDate        DateTime                             @db.Date
+  shift                 ShiftType
+  equipmentId           String?
+  equipment             Equipment?                           @relation("OperationalSafetyChecklistEquipment", fields: [equipmentId], references: [id], onDelete: SetNull, map: "SafetyChecklist_equipment_fkey")
+  equipmentDisplayName  String
+  equipmentNumber       String?
+  equipmentCategory     EquipmentCategory
+  mineName              String
+  cityName              String
+  cityState             String?
+  templateKey           OperationalSafetyChecklistTemplate
+  templateVersion       Int
+  templateName          String
+  meterKind             OperationalSafetyChecklistMeterKind
+  startingMeter         Int
+  operatorDisplayName   String
+  supervisorDisplayName String
+  problemDescription    String?
+  responses             OperationalSafetyChecklistResponse[]
+  createdAt             DateTime                             @default(now())
+  updatedAt             DateTime                             @updatedAt
+
+  @@unique([equipmentId, inspectionDate, shift], map: "SafetyChecklist_equipment_date_shift_key")
+  @@index([inspectionDate], map: "SafetyChecklist_date_idx")
+  @@index([shift], map: "SafetyChecklist_shift_idx")
+  @@index([equipmentId], map: "SafetyChecklist_equipment_idx")
+  @@index([templateKey], map: "SafetyChecklist_template_idx")
+}
+
+model OperationalSafetyChecklistResponse {
+  id                           String                                 @id @default(cuid())
+  operationalSafetyChecklistId String
+  checklist                    OperationalSafetyChecklist             @relation(fields: [operationalSafetyChecklistId], references: [id], onDelete: Cascade, map: "SafetyChecklistResponse_parent_fkey")
+  itemKey                      String
+  itemLabel                    String
+  itemOrder                    Int
+  itemSection                  OperationalSafetyChecklistItemSection
+  requiredMarker               String?
+  responseSet                  OperationalSafetyChecklistResponseSet
+  responseCode                 OperationalSafetyChecklistResponseCode
+  responseLabel                String
+  createdAt                    DateTime                               @default(now())
+  updatedAt                    DateTime                               @updatedAt
+
+  @@unique([operationalSafetyChecklistId, itemKey], map: "SafetyChecklistResponse_parent_item_key")
+  @@unique([operationalSafetyChecklistId, itemOrder], map: "SafetyChecklistResponse_parent_order_key")
+  @@index([responseCode], map: "SafetyChecklistResponse_code_idx")
+  @@index([itemKey], map: "SafetyChecklistResponse_item_idx")
 }
 
 model Defect {
@@ -425,29 +517,89 @@ model DailyLog {
 }
 
 model DailyLogActivity {
-  id                String               @id @default(cuid())
-  dailyLogId        String
-  dailyLog          DailyLog             @relation(fields: [dailyLogId], references: [id], onDelete: Cascade)
-  activityDate      DateTime             @db.Date
-  startTime         String?
-  endTime           String?
-  sequence          Int
-  activityType      DailyLogActivityType
-  title             String
-  description       String?
-  equipmentId       String?
-  equipment         Equipment?           @relation("DailyLogActivityEquipment", fields: [equipmentId], references: [id], onDelete: SetNull)
-  location          String?
-  contractorCompany String?
-  personName        String?
-  notes             String?
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
+  id                 String               @id @default(cuid())
+  dailyLogId         String
+  dailyLog           DailyLog             @relation(fields: [dailyLogId], references: [id], onDelete: Cascade)
+  activityDate       DateTime             @db.Date
+  startTime          String?
+  endTime            String?
+  sequence           Int
+  activityType       DailyLogActivityType
+  title              String
+  description        String?
+  equipmentId        String?
+  equipment          Equipment?           @relation("DailyLogActivityEquipment", fields: [equipmentId], references: [id], onDelete: SetNull)
+  equipmentFuelEvent EquipmentFuelEvent?  @relation("EquipmentFuelEventDailyLogActivity")
+  location           String?
+  contractorCompany  String?
+  personName         String?
+  notes              String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
   @@index([dailyLogId])
   @@index([activityDate])
   @@index([activityType])
   @@index([equipmentId])
+}
+
+model EquipmentFuelEvent {
+  id                                   String                       @id @default(cuid())
+  operationalWorkDate                  DateTime                     @db.Date
+  eventTime                            String
+  equipmentId                          String?
+  equipment                            Equipment?                   @relation("EquipmentFuelEventEquipment", fields: [equipmentId], references: [id], onDelete: SetNull, map: "FuelEvent_equipment_fkey")
+  equipmentDisplayName                 String
+  equipmentNumber                      String?
+  equipmentCategory                    EquipmentCategory
+  mineName                             String
+  cityName                             String
+  cityState                            String?
+  fuelType                             EquipmentFuelType
+  totalGallons                         Int
+  fuelServicePersonId                  String?
+  fuelServicePerson                    FuelServicePerson?           @relation(fields: [fuelServicePersonId], references: [id], onDelete: Restrict, map: "FuelEvent_servicePerson_fkey")
+  fuelServicePersonDisplayNameSnapshot String?
+  dailyLogActivityId                   String?                      @unique(map: "FuelEvent_dailyLogActivity_key")
+  dailyLogActivity                     DailyLogActivity?            @relation("EquipmentFuelEventDailyLogActivity", fields: [dailyLogActivityId], references: [id], onDelete: SetNull, map: "FuelEvent_dailyLogActivity_fkey")
+  notes                                String?
+  tankFills                            EquipmentFuelEventTankFill[]
+  createdAt                            DateTime                     @default(now())
+  updatedAt                            DateTime                     @updatedAt
+
+  @@index([operationalWorkDate], map: "FuelEvent_workDate_idx")
+  @@index([equipmentId], map: "FuelEvent_equipment_idx")
+  @@index([fuelType], map: "FuelEvent_fuelType_idx")
+  @@index([fuelServicePersonId], map: "FuelEvent_servicePerson_idx")
+}
+
+model EquipmentFuelEventTankFill {
+  id                   String             @id @default(cuid())
+  equipmentFuelEventId String
+  equipmentFuelEvent   EquipmentFuelEvent @relation(fields: [equipmentFuelEventId], references: [id], onDelete: Cascade, map: "FuelTankFill_event_fkey")
+  sequence             Int
+  tankLabel            String
+  normalizedTankLabel  String
+  gallons              Int
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@unique([equipmentFuelEventId, sequence], map: "FuelTankFill_event_sequence_key")
+  @@unique([equipmentFuelEventId, normalizedTankLabel], map: "FuelTankFill_event_label_key")
+  @@index([equipmentFuelEventId], map: "FuelTankFill_event_idx")
+}
+
+model FuelServicePerson {
+  id            String               @id @default(cuid())
+  displayName   String
+  normalizedKey String               @unique(map: "FuelServicePerson_normalizedKey_key")
+  active        Boolean              @default(true)
+  fuelEvents    EquipmentFuelEvent[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([active], map: "FuelServicePerson_active_idx")
+  @@index([displayName], map: "FuelServicePerson_displayName_idx")
 }
 
 model WeeklySchedule {

@@ -42,8 +42,9 @@ Related Documents:
 - `docs/architecture/features/defect-tracking.md`
 - `docs/architecture/features/work-schedule.md`
 - `docs/architecture/features/timesheets.md`
+- `docs/architecture/features/equipment-fuel-events.md`
 
-Last Reviewed: 2026-07-14
+Last Reviewed: 2026-07-15
 
 ## 1. Purpose
 
@@ -98,8 +99,9 @@ Day View does not own:
 
 - Daily Work Log creation, editing, validation, or persistence.
 - Work Schedule creation, editing, validation, or persistence.
-- Shift Report, Work Authorization, Inspection, Defect, Fuel Log, Work Truck
-  Log, Timesheet, Knowledge Base, or Payslip business rules.
+- Shift Report, Work Authorization, Inspection, Defect, Equipment Fuel Event,
+  Supply Request, Work Truck Log, Timesheet, Knowledge Base, or Payslip
+  business rules.
 - Global search architecture.
 - A full calendar component.
 - Cross-module analytics or reporting.
@@ -259,8 +261,11 @@ Implemented participation:
 
 Planned evolution:
 
-- Additional module sections as Fuel Logs, Work Truck Logs, and other records
-  are implemented.
+- Additional module sections as Operational Safety Checklists, Equipment Fuel
+  Events, Supply Requests, Work Truck Logs, and other date-relevant records
+  receive separately approved feature-owned Day View contributions.
+- Equipment Fuel Events architecture is Approved, but its Day View contribution
+  remains deferred to a separate milestone after the V1 foundation.
 
 Candidate future evolution:
 

@@ -639,6 +639,120 @@ textarea {
   overflow-y: auto;
 }
 
+.checklist-derived-context {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid #d8e0e7;
+  background: #f7f9fb;
+  padding: 14px;
+}
+
+.checklist-derived-context div {
+  display: grid;
+  gap: 3px;
+}
+
+.checklist-derived-context span {
+  color: #667581;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.checklist-response-list,
+.checklist-detail-responses {
+  display: grid;
+  gap: 10px;
+}
+
+.checklist-response-row {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #d8e0e7;
+  margin: 0;
+  padding: 14px;
+}
+
+.checklist-response-row legend {
+  padding: 0 6px;
+  color: #25343f;
+  font-weight: 800;
+}
+
+.source-marker {
+  color: #8a4b12;
+}
+
+.checklist-response-options {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+}
+
+.checklist-response-option {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #c5ced6;
+  padding: 8px 10px;
+}
+
+.checklist-response-option:has(input:checked) {
+  border-color: #1f6feb;
+  background: #eef6ff;
+  color: #164f99;
+}
+
+.checklist-response-option input {
+  width: auto;
+}
+
+.checklist-detail-response {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid #e4e9ee;
+  padding-top: 10px;
+}
+
+.checklist-detail-response:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.response-warning {
+  color: #a12622;
+}
+
+.response-noted {
+  color: #8a4b12;
+}
+
+.fuel-fill-list {
+  display: grid;
+  gap: 12px;
+}
+
+.fuel-fill-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(180px, 2fr) minmax(150px, 1fr) auto;
+  border: 1px solid #d9e0e6;
+  padding: 14px;
+}
+
+.fuel-fill-row legend {
+  padding: 0 6px;
+  font-weight: 700;
+}
+
+.fuel-fill-actions {
+  align-items: end;
+}
+
 @media (max-width: 900px) {
   .detail-grid,
   .module-grid,
@@ -650,6 +764,10 @@ textarea {
     display: grid;
   }
 
+  .fuel-fill-row {
+    grid-template-columns: 1fr;
+  }
+
   .timesheet-day > summary,
   .record-card > summary {
     align-items: flex-start;
@@ -657,7 +775,20 @@ textarea {
   }
 
   .timesheet-day-preview,
-  .timesheet-total-grid {
+  .timesheet-total-grid,
+  .checklist-derived-context {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .checklist-derived-context,
+  .checklist-response-options {
+    grid-template-columns: 1fr;
+  }
+
+  .checklist-detail-response {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

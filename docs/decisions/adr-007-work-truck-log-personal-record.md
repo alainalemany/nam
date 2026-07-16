@@ -6,6 +6,14 @@ Status: Accepted
 
 Category: Product workflow
 
+## Scope Clarification (2026-07-14)
+
+Later operational discovery confirmed that Fleet gas-station purchases and
+time-dependent vehicle assignment form a separate future domain from Equipment
+Fuel Events. Work Truck Log remains a personal vehicle-use record. Any future
+purchase relationship must target the Fleet-owned purchase record rather than
+an Equipment Fuel Event.
+
 ## Decision
 
 Work truck daily records will be modeled as a structured personal log linked to
@@ -27,7 +35,7 @@ authentication, layout, or submission workflow.
   website questions can be added later.
 - Work Truck Log records should participate in Day View and global historical
   search.
-- Gasoline purchases for the work truck should be stored in `FuelServiceRecord`
-  and may link back to `WorkTruckLog`.
+- Future Fleet purchase records may link back to `WorkTruckLog` after that
+  separate domain is defined.
 - Automatic submission to the official work website is out of scope unless
   explicitly evaluated in a future phase.

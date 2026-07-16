@@ -35,13 +35,15 @@ NAM Dashboard is being built as a professional, modular web application for pers
 | Daily Log | Full-day operator activity timeline with notes, linked records, equipment, contractors, and attachments. |
 | Shift Reports | Structured shift-level records that connect work activity, inspections, and related paperwork. |
 | Work Authorizations | Safety and maintenance work records tied to shift reports, including permits and completion checklists. |
-| Daily Inspections | Pre-shift and operational inspection records with findings, defects, notes, and photos. |
+| Daily Inspections | Manual equipment and work-area inspection summaries. |
+| Operational Safety Checklists | Implemented Dragline and Mobile pre-shift Equipment inspections with canonical response catalogs and permanent history. |
 | Defect Tracking | Equipment issue tracking from report through closure. |
 | Knowledge Base | Field notes, procedures, safety notes, troubleshooting guides, and equipment-specific knowledge. |
 | Work Schedule | Manual weekly schedule entry, edits, assignment history, and schedule context. |
 | Timesheet | Personal record of weekly time entries, pay codes, equipment, work codes, and totals. |
-| Fuel Log | Diesel deliveries, gasoline purchases, gallons, vendors, pricing, receipts, and equipment links. |
-| Work Truck Log | Daily work truck mileage, website log responses, submitted status, and related fuel activity. |
+| Equipment Fuel Events | Operational fuel delivered to Equipment, including occurrences with multiple tank fills. |
+| Supply Requests | Planned personal records for operator-originated supply requests without inventory ownership. |
+| Work Truck Log | Planned daily work-truck mileage and website-log history; Fleet purchases remain a separate future domain. |
 | Payslip Repository | Secure archive of payslip PDFs with extracted payroll fields and date-range analytics. |
 
 ## Documentation
@@ -91,12 +93,15 @@ This project is in active feature development.
 The repository includes a Next.js, TypeScript, Prisma, PostgreSQL, Docker
 Compose, host-level Caddy development baseline, and executable Vitest testing
 foundation. Operations reference data, Daily Work Logs, STOP Cards, Daily
-Inspections, Shift Reports, Work Authorizations, Defect Tracking, Work
-Schedule, Timesheet V1, and selected-date Day View composition have been
-implemented. Current
-operational modules provide feature-owned list filtering; global cross-module
-search remains future work. Future modules should continue to follow the
-documentation-first, vertical-slice approach.
+Inspections, Operational Safety Checklists, Shift Reports, Work Authorizations,
+Defect Tracking, Work Schedule, and Timesheet V1 have been implemented.
+Equipment Fuel Events also record completed fueling occurrences with ordered
+Tank Fills, Equipment and location snapshots, an optional Fuel Service Person,
+and an optional Daily Work Log activity link. Selected-date Day View composition
+remains limited to its existing participants. Current operational modules
+provide feature-owned list filtering; global cross-module search remains future
+work. Future modules should continue to follow the documentation-first,
+vertical-slice approach.
 
 ## Version 1 Focus
 
@@ -106,9 +111,10 @@ Version 1 should prioritize:
 - Daily Log
 - Shift Reports
 - Work Authorizations
+- Operational Safety Checklists
 - Work Schedule
 - Timesheet
-- Fuel Log
+- Equipment Fuel Events
 - Work Truck Log
 - Searchable historical records
 - Calendar / Day View navigation

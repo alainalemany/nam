@@ -38,6 +38,20 @@ export default function Home() {
         </a>
       </section>
 
+      <section className="panel" aria-labelledby="safety-checklists-heading">
+        <div>
+          <p className="eyebrow">Daily Inspections</p>
+          <h2 id="safety-checklists-heading">Operational Safety Checklists</h2>
+          <p>
+            Complete the approved Dragline or Mobile pre-shift inspection for
+            the actual Equipment used.
+          </p>
+        </div>
+        <a className="button primary" href="/operational-safety-checklists">
+          Open Safety Checklists
+        </a>
+      </section>
+
       <section className="panel" aria-labelledby="defect-tracking-heading">
         <div>
           <p className="eyebrow">Operations</p>
@@ -45,6 +59,20 @@ export default function Home() {
           <p>Track equipment issues, corrective actions, resolution, and closure.</p>
         </div>
         <a className="button primary" href="/defect-tracking">Open Defect Tracking</a>
+      </section>
+
+      <section className="panel" aria-labelledby="equipment-fuel-events-heading">
+        <div>
+          <p className="eyebrow">Equipment Operations</p>
+          <h2 id="equipment-fuel-events-heading">Equipment Fuel Events</h2>
+          <p>
+            Record completed operational fueling occurrences with ordered Tank
+            Fills, whole-gallon quantities, and historical Equipment context.
+          </p>
+        </div>
+        <a className="button primary" href="/equipment-fuel-events">
+          Open Fuel Events
+        </a>
       </section>
 
       <section className="panel" aria-labelledby="work-schedule-heading">

@@ -131,6 +131,8 @@ Confirmed deployment baseline:
 | Module boundaries and workflows | `docs/modules.md` |
 | Data model | `docs/database.md` |
 | Architecture overview | `docs/architecture.md` |
+| Equipment Operations boundary assessment | `docs/architecture/equipment-operations.md` |
+| Equipment Fuel Events feature architecture | `docs/architecture/features/equipment-fuel-events.md` |
 | Architecture decisions | `docs/decisions/README.md` |
 | Development workflow | `docs/development.md` |
 | Infrastructure operations | `docs/infrastructure.md` |

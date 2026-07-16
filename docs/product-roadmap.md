@@ -135,7 +135,8 @@ Implemented:
 - Day View navigation and selected-workday composition, guided by
   `docs/architecture/features/day-view.md`.
 - Date-aware participation for Shift Reports, Daily Work Logs, STOP Cards,
-  Daily Inspections, and Work Authorizations.
+  Daily Inspections, Work Authorizations, Defect Tracking, Work Schedule, and
+  Timesheet.
 
 Remaining:
 
@@ -164,7 +165,7 @@ Business value:
 
 Capabilities:
 
-Implemented foundations and Day View participation:
+Implemented foundations and current Day View participation:
 
 - STOP Cards, including feature-owned list filtering.
 - Shift Reports, including feature-owned list filtering.
@@ -173,11 +174,16 @@ Implemented foundations and Day View participation:
 - Daily Inspections, including current-schema feature-owned list filtering.
 - Defect Tracking, with approved architecture, V1 foundation, and Day View
   participation implemented, including feature-owned list filtering.
+- Operational Safety Checklists, with accepted V1 foundation, canonical
+  Dragline and Mobile catalogs, correction workflow, and feature-owned history
+  filtering.
 
 Remaining:
 
-- Additional cross-record relationships only where approved workflows require
-  them.
+- Add Operational Safety Checklist Day View participation only through a
+  separately approved feature-owned contribution. The V1 foundation and its
+  independent assessment are complete.
+- Add cross-record relationships only where approved workflows require them.
 
 Success criteria:
 
@@ -208,16 +214,19 @@ Capabilities:
 
 - Work Schedule, with V1 foundation and Day View participation implemented.
 - Timesheet, with the V1 foundation and Day View participation implemented.
-- Fuel Log.
-- Work Truck Log.
+- Equipment Fuel Events for operational fuel delivered to Equipment.
+- Work Truck Log and separate future Fleet purchase context.
+- Supply Requests after remaining product discovery is complete.
 
 Success criteria:
 
 - The operator can manually record schedules and changes.
 - Timesheet entries can be tracked by week and date.
-- Fuel records can be reviewed by date, equipment, vendor, amount, and price
-  context where available.
+- Equipment fueling can be reviewed by date, Equipment, fuel type, tank-fill
+  quantity, and service context.
 - Work truck mileage and submission status can be reviewed historically.
+- Operator-originated supply requests can be retrieved without introducing
+  inventory or purchasing ownership.
 
 Dependency notes:
 
@@ -289,7 +298,7 @@ MVP capabilities:
 - Work Authorizations.
 - Work Schedule.
 - Timesheet.
-- Fuel Log.
+- Equipment Fuel Events.
 - Work Truck Log.
 - Searchable historical records.
 - Calendar and Day View navigation.
@@ -317,12 +326,15 @@ The MVP should not require:
 | Daily Work Log foundation | Establishes the first usable workday history. | Operations reference data. Feature architecture: `docs/architecture/features/daily-work-logs.md`. | Implemented |
 | Feature filtering, date navigation, and Day View | Makes historical lookup practical across implemented modules. | Daily records and date-aware modules. | Feature-owned filtering and Day View composition implemented for current operational modules; global cross-module search deferred |
 | STOP Cards | Captures safety observations and corrective actions. | Day View context; feature architecture: `docs/architecture/features/stop-cards.md`. | V1 foundation, filtering, and Day View participation implemented |
-| Daily Inspections | Captures equipment inspection findings and condition context. | Equipment reference data and Day View context; feature architecture: `docs/architecture/features/daily-inspections.md`. | V1 foundation, current-schema filtering, and Day View participation implemented; inspector-specific filtering requires an approved inspector field |
+| Daily Inspections | Captures equipment inspection findings and condition context. | Equipment reference data and Day View context; feature architecture: `docs/architecture/features/daily-inspections.md`. | Daily Inspection V1 foundation, filtering, and Day View participation implemented; Operational Safety Checklists accepted V1 foundation and feature-owned history filtering implemented, with Day View deferred |
 | Shift Reports | Creates the parent structure for shift paperwork. | Daily/date context and equipment references. Feature architecture: `docs/architecture/features/shift-reports.md`. | V1 foundation, filtering, and Day View participation implemented |
 | Work Authorizations | Captures safety and maintenance work records. | Shift Reports. Feature architecture: `docs/architecture/features/work-authorizations.md`. | V1 foundation, filtering, and Day View participation implemented |
 | Defect Tracking | Captures equipment issue history from report through closure. | Equipment reference data and feature architecture: `docs/architecture/features/defect-tracking.md`; stronger value with Day View. | V1 foundation, filtering, and Day View participation implemented |
 | Work Schedule and Timesheet | Supports personal schedule and time reconciliation. | Reference data; stronger value with Day View. Work Schedule feature architecture: `docs/architecture/features/work-schedule.md`; Timesheet feature architecture: `docs/architecture/features/timesheets.md`. | Work Schedule and Timesheet V1 foundations and Day View participation implemented |
-| Fuel Log and Work Truck Log | Captures supporting operational and vehicle records. | Reference data; stronger value with Day View. | Planned |
+| Equipment Fuel Events | Captures operational fuel delivered to one Equipment subject, including multi-tank occurrences. | Equipment reference data; boundary assessment: `docs/architecture/equipment-operations.md`; feature architecture: `docs/architecture/features/equipment-fuel-events.md`; stronger value with Day View. | V1 foundation and structured history filtering implemented; Day View deferred |
+| Supply Requests | Preserves operator-originated supply requests without inventory ownership. | Remaining product discovery; boundary assessment: `docs/architecture/equipment-operations.md`. | Discovery-stage future feature |
+| Work Truck Log and Fleet | Captures work-truck usage and separate Fleet purchase or assignment context. | Work-truck source workflow and separate Fleet discovery. | Planned; Fleet boundary remains separate from Equipment Fuel Events |
+| Equipment Activity Timeline | Provides derived Equipment-centered history from feature-owned records. | Multiple implemented Equipment-centered contributors and demonstrated user need. | Deferred derived capability |
 | Knowledge Base | Preserves reusable operational knowledge. | Location, mine, and equipment organization. | Planned |
 | Payslip Repository | Preserves sensitive compensation history. | Privacy and storage decisions before expansion. | Planned |
 | Automation and integrations | Reduces manual work after workflows prove stable. | Reliable manual workflow and documented tradeoffs. | Deferred / Candidate Future |

@@ -342,6 +342,10 @@ Potential future growth must remain separately approved:
 - Global cross-module search after search architecture is approved.
 - Automated defect creation, escalation, assignment, or permit suggestions only
   after manual workflows prove reliable.
+- Explicit operator-controlled links from implemented Operational Safety
+  Checklists only if future traceability is approved. Checklist findings and
+  repeated problem text do not automatically create Defects; Defect Tracking
+  retains independent lifecycle ownership.
 - Deeper links to STOP Cards, Shift Reports, Work Authorizations, Daily Logs,
   work orders, or Knowledge Base records when a concrete workflow requires them.
 

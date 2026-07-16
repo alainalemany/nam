@@ -33,10 +33,13 @@ The current development platform includes:
 - Docker application service
 - Localhost-only application publishing behind optional host-level Caddy
 - Operations reference data
-- Daily Work Logs, STOP Cards, Daily Inspections, Shift Reports, and Work
-  Authorizations feature foundations
-- Selected-date Day View composition across the implemented operational modules
-- Feature-owned list filtering for Daily Logs and STOP Cards
+- Daily Work Logs, STOP Cards, Daily Inspections, Operational Safety Checklists,
+  Shift Reports, Work Authorizations, Defect Tracking, Work Schedule, and
+  Timesheet feature foundations
+- Selected-date Day View composition across the eight participating operational
+  modules; Operational Safety Checklist participation remains deferred
+- Feature-owned list filtering for implemented modules that expose filterable
+  operational history
 
 The current development platform does not implement authentication, user
 management, production deployment, monitoring, or background workers.
@@ -229,9 +232,12 @@ The local health endpoint should return:
 
 The Prisma schema contains the PostgreSQL datasource, generated client
 configuration, shared operations reference data, and implemented operational
-models for Daily Work Logs, STOP Cards, Daily Inspections, Shift Reports, and
-Work Authorizations. Schema changes must continue through reviewed Prisma
-migrations after the relevant module requirements and data decisions are
+models for Daily Work Logs, STOP Cards, Daily Inspections, Operational Safety
+Checklists, Shift Reports, Work Authorizations, Defect Tracking, Work Schedule,
+Timesheet, and Equipment Fuel Events. The Equipment Fuel Events aggregate uses
+the implemented `EquipmentFuelEvent`, `EquipmentFuelEventTankFill`, and
+`FuelServicePerson` models. Schema changes must continue through reviewed
+Prisma migrations after the relevant module requirements and data decisions are
 confirmed.
 
 ## Testing

@@ -118,6 +118,9 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Understand module behavior | [Modules](modules.md) |
 | Understand entities and relationships | [Database Design](database.md) |
 | Understand current architecture | [Architecture Overview](architecture.md) |
+| Understand Equipment Operations boundaries | [Equipment Operations Architecture Assessment](architecture/equipment-operations.md) |
+| Understand Equipment Fuel Events architecture | [Equipment Fuel Events Architecture](architecture/features/equipment-fuel-events.md) |
+| Review source-derived reference catalogs | [Reference Catalogs](reference/README.md) |
 | Understand why decisions were made | [ADR Index](decisions/README.md) |
 | Run the application foundation | [Development Guide](development.md) |
 | Operate infrastructure | [Infrastructure Operations](infrastructure.md) |
@@ -154,6 +157,7 @@ to that home but should not restate the same policy in detail.
 | Version 1 scope | `docs/prd.md` |
 | Module definitions | `docs/modules.md` |
 | Database philosophy and entities | `docs/database.md` |
+| Source-derived field, item, ordering, and response catalogs | `docs/reference/` |
 | Architecture philosophy | `docs/architecture.md`, principles in `docs/philosophy.md` |
 | Architecture decisions | `docs/decisions/` |
 | Infrastructure philosophy | `docs/infrastructure.md`, durable decisions in `docs/decisions/` |

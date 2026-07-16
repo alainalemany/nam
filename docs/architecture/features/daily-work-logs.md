@@ -34,8 +34,9 @@ Related Documents:
 - `docs/testing-strategy.md`
 - `docs/engineering-quality-standards.md`
 - `docs/architecture/features/day-view.md`
+- `docs/architecture/features/equipment-fuel-events.md`
 
-Last Reviewed: 2026-07-10
+Last Reviewed: 2026-07-15
 
 ## 1. Purpose
 
@@ -95,7 +96,8 @@ Daily Work Logs do not own:
 - Daily Inspection forms.
 - Defect lifecycle.
 - Knowledge Base article management.
-- Work Schedule, Timesheet, Fuel Log, Work Truck Log, or Payslip workflows.
+- Work Schedule, Timesheet, Operational Safety Checklist, Equipment Fuel Event,
+  Supply Request, Work Truck Log, or Payslip workflows.
 - Global search architecture.
 - Calendar or Day View architecture beyond exposing date-aware Daily Log data.
 - Attachment storage.
@@ -151,7 +153,14 @@ Daily Work Logs should treat related modules as external owners:
 - Work Authorizations own permit and completion workflow.
 - Defects own defect lifecycle.
 - Knowledge Base owns reusable operational knowledge.
-- Fuel Log and Work Truck Log own structured fuel and vehicle records.
+- Equipment Fuel Events own structured operational fueling records.
+  A Fuel Event may own one optional unique reference to a matching
+  `FUEL_SERVICE` activity; the activity does not own the Fuel Event, and its
+  deletion only clears that optional link.
+- Future Fleet or Work Truck capabilities own vehicle assignment and purchase
+  evidence.
+- Supply Requests own operator-originated requests; warehouse pickup for an
+  order placed by someone else remains Daily Work Log narrative activity.
 
 The Daily Log should provide workday narrative context and links, not become a
 large cross-module form.

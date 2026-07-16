@@ -79,10 +79,16 @@ Status: Future evaluation
 
 Reason: The system can calculate historical totals, but financial advice introduces accuracy, liability, and personalization concerns. V1 should focus on archiving, extraction, search, and factual analytics.
 
-### Historical Fuel Price Lookup
+### Fleet Fuel Price Lookup
 
-Estimate the value of fuel deliveries and gasoline purchases by looking up diesel or gasoline prices for the service date and nearby location, such as public fuel price datasets, commercial APIs, vendor data, or manually curated local gas station estimates.
+Estimate the value of future Fleet gas-station purchases by looking up gasoline
+prices for the purchase date and nearby location, such as public fuel price
+datasets, commercial APIs, vendor data, or manually curated local gas-station
+estimates.
 
 Status: Future evaluation
 
-Reason: Fuel value estimates would be useful for daily, monthly, yearly, and all-time reporting, but external fuel price history may be incomplete, location-dependent, paid, or unreliable. V1 should first support manual price entry and source notes so fuel records remain useful without depending on outside data.
+Reason: Fleet purchase-value estimates may be useful later, but external price
+history may be incomplete, location-dependent, paid, or unreliable. Fleet
+purchase evidence and manual price capture must be defined before external
+lookup is considered. This idea does not belong to Equipment Fuel Events.

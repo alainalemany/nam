@@ -38,8 +38,10 @@ Related Documents:
 - `docs/architecture/features/day-view.md`
 - `docs/architecture/features/daily-work-logs.md`
 - `docs/architecture/features/stop-cards.md`
+- `docs/architecture/equipment-operations.md`
+- `docs/architecture/features/operational-safety-checklists.md`
 
-Last Reviewed: 2026-07-10
+Last Reviewed: 2026-07-14
 
 ## 1. Purpose
 
@@ -300,6 +302,9 @@ Future Daily Inspections growth should stay aligned with
 
 Planned evolution:
 
+- Preserve the implemented Operational Safety Checklists as a distinct
+  start-of-shift record and workflow within the Daily Inspections bounded
+  context. Do not merge it into the implemented Daily Inspection summary.
 - Link Daily Inspections to related Daily Logs when a real related-record need
   exists.
 - Allow a Defect record to identify a Daily Inspection as its optional source
@@ -312,14 +317,19 @@ Planned evolution:
 Candidate future evolution:
 
 - Photo or attachment support after attachment architecture exists.
-- Inspection templates or checklists after source forms are reviewed and V1
-  manual records prove the workflow.
+- Additional checklist templates only after the approved Dragline and Mobile
+  templates prove the workflow. Do not introduce a generic configurable-form
+  engine under the initial checklist milestone.
 - Inspection statistics or analytics after enough reliable records exist.
 - Approval or review workflow if multi-user behavior is approved.
 - Export or report generation after V1 manual records prove useful.
 
 Future evolution should not:
 
+- Merge Operational Safety Checklist item responses into the implemented
+  summary record without an explicit feature-architecture decision.
+- Automatically create or update Defects from Needs Repair, Previously Noted,
+  or repeated problem-description text.
 - Move Daily Log narrative behavior into Daily Inspections.
 - Move STOP Card safety observation workflow into Daily Inspections.
 - Move Daily Inspection business rules into Day View.

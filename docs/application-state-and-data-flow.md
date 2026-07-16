@@ -277,7 +277,7 @@ Examples that might justify future evaluation:
 
 Any durable global state decision should be documented and may require an ADR.
 
-## Future Module Pattern
+## Operational Module Pattern
 
 Future modules should follow the same state/data-flow pattern:
 
@@ -291,8 +291,14 @@ Future modules should follow the same state/data-flow pattern:
 7. Redirect to durable server-rendered state.
 8. Verify the workflow according to `docs/testing-strategy.md`.
 
-This applies to Work Schedule, Timesheet, Fuel Log, Work Truck Log, and future
-operational modules unless their requirements justify a different pattern.
+Implemented modules including Work Schedule, Timesheet, Operational Safety
+Checklists, and Equipment Fuel Events follow this pattern. Equipment Fuel
+Events use server-rendered reads, feature-owned queries, Server Actions for
+mutations, transactional aggregate persistence, and limited client interaction
+state. Validation, derived totals, and historical snapshots remain
+server-authoritative, and Day View participation remains deferred. Supply
+Requests, Work Truck Log, and other future operational modules should follow
+the established pattern unless their requirements justify a different one.
 
 ## What Not To Standardize Yet
 

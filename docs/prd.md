@@ -22,10 +22,12 @@ roadmap governance is [Product Roadmap](product-roadmap.md).
 - [Work Authorization Requirements](#work-authorization-requirements)
 - [Work Schedule Requirements](#work-schedule-requirements)
 - [Timesheet Requirements](#timesheet-requirements)
+- [Operational Safety Checklist Requirements](#operational-safety-checklist-requirements)
 - [Historical Record And Search Requirements](#historical-record-and-search-requirements)
 - [Daily Log Requirements](#daily-log-requirements)
 - [Payslip Repository Requirements](#payslip-repository-requirements)
-- [Fuel Log Requirements](#fuel-log-requirements)
+- [Equipment Fuel Event Requirements](#equipment-fuel-event-requirements)
+- [Supply Request Requirements](#supply-request-requirements)
 - [Work Truck Log Requirements](#work-truck-log-requirements)
 
 You are a Senior Software Architect, Senior UX Designer, Senior Next.js Developer, and Product Manager.
@@ -114,7 +116,7 @@ Potential fields:
 
 ### 3. Daily Inspection
 
-Record pre-shift and operational inspections.
+Record manual equipment and work-area inspection summaries.
 
 Potential fields:
 
@@ -125,6 +127,23 @@ Potential fields:
 - Defects Identified
 - Notes
 - Photos
+
+### 3A. Operational Safety Checklists
+
+Record start-of-shift Dragline and Mobile Equipment checklist responses using
+approved item sets. This remains a distinct record type within the Daily
+Inspections bounded context.
+
+Potential context:
+
+- Date
+- Shift
+- Equipment
+- Starting meter
+- Operator display name
+- Supervisor display name
+- Approved checklist item responses
+- Problem description
 
 ### 4. Daily Log
 
@@ -233,30 +252,35 @@ Potential fields:
 - Notes
 - Last updated date
 
-### 8. Fuel Log
+### 8. Equipment Fuel Events
 
-Track diesel deliveries, gasoline purchases, and fuel service events for draglines, work trucks, and other equipment.
+Track operational fuel delivered to fuel-consuming Equipment, including service
+occurrences that fill more than one tank.
 
 Potential fields:
 
-- Date
-- Time
-- Equipment
-- Mine or location
-- Fuel type
-- Gallons delivered
-- Vendor, service provider, or gas station
-- Gas station address, when applicable
-- Delivery truck identifier
-- Price per gallon, when known or estimated
-- Price source
-- Total USD
-- Estimated total value
-- Receipt, invoice, photos, or notes
+- Operational work date
+- Actual local event time
+- Equipment, with Mine and City derived through Equipment
+- One fuel type: Diesel, Off-road Diesel, or Gasoline
+- One or more ordered Tank Fills
+- Required tank label with suggestions and manual override
+- Positive integer whole-US-gallon quantity per Tank Fill
+- Derived event total gallons
+- Optional feature-owned Fuel Service Person reference and name snapshot
+- Optional Daily Work Log fueling-activity context
+- Optional exceptional notes
+
+### 8A. Supply Requests
+
+Preserve operator-originated requests for supplies without owning warehouse
+inventory, purchasing, vendors, or ERP processing. Detailed fields remain in
+product discovery.
 
 ### 9. Work Truck Log
 
-Track daily work truck usage for mine travel, mileage, and required website daily log data.
+Track daily work truck usage for mine travel, mileage, required website daily
+log data, and future Fleet purchase context.
 
 Potential fields:
 
@@ -532,6 +556,45 @@ records, Shift Reports, or Equipment records when those workflows are approved.
 
 The Timesheet module should fit NAM Dashboard's UI style instead of copying the WFS mobile interface exactly.
 
+## Operational Safety Checklist Requirements
+
+NAM Dashboard should support start-of-shift Operational Safety Checklists for
+Dragline and Mobile Equipment.
+
+The checklist capability should preserve common metadata such as date, shift,
+Equipment, starting meter, operator display name, supervisor display name, and
+problem-description context together with one response for each approved item.
+Most condition items use OK, Needs Repair, Previously Noted, and N/A. Verified
+template-specific items may instead use a narrower Yes/No or Present, Not
+Present, and N/A response set.
+
+Dragline and Mobile checklists have different approved item sets but belong to
+one inspection capability within the Daily Inspections bounded context. They
+are distinct from the implemented Daily Inspection summary record. V1 should
+not introduce a generic user-configurable form engine.
+
+The external Planner Review section is not part of the operator-owned V1
+workflow. Needs Repair, Previously Noted, and repeated problem descriptions do
+not automatically create or update Defects. Future explicit links may support
+operator-controlled traceability while Defect Tracking retains lifecycle
+ownership.
+
+Detailed feature architecture is Approved and the V1 foundation is implemented.
+
+The Approved feature architecture is
+`docs/architecture/features/operational-safety-checklists.md`. V1 persists one
+completed checklist per Equipment, operational date, and shift; it has no Draft
+state, supports explicit in-place correction, and does not permit deletion.
+Equipment determines the Dragline or Mobile template and server-owned Hours
+meter kind. Exact source wording, ordering, markers, and response sets are
+canonical in `docs/reference/checklists/`. V1 Hour Meter readings are required
+whole integers from `0` through `999999`; the maximum is an implementation
+validation guard rather than a business rule.
+
+Implemented V1 surfaces include history filtering, create, detail, and explicit
+completed-record correction. Day View participation and Defect traceability
+remain deferred.
+
 ## Historical Record And Search Requirements
 
 NAM Dashboard must be designed as a permanent personal work history.
@@ -566,27 +629,73 @@ Because payslip data is sensitive personal financial information, the module sho
 
 The sample payslip appears to be generated by Workday and may include image-based or compressed PDF content. Extraction should therefore support both text extraction and OCR, with confidence scores and manual correction when a field cannot be parsed reliably.
 
-## Fuel Log Requirements
+## Equipment Fuel Event Requirements
 
-NAM Dashboard must support a Fuel Log module for recording diesel deliveries, gasoline purchases, and fuel service events for draglines, work trucks, and other equipment.
+NAM Dashboard should support Equipment Fuel Events for operational fuel service
+performed on fuel-consuming Equipment such as diesel draglines, cable tractors,
+forklifts, generators, and future support equipment.
 
-The diesel tank truck may service the dragline several times per week. Each fueling event should be captured as a structured record so the operator can later search, filter, and calculate fuel usage by date, date range, equipment, mine, vendor, delivery truck, notes, or other meaningful criteria.
+One event represents one fueling occurrence for one Equipment subject. One
+occurrence may contain multiple tank fills. For example, one dragline service
+may record separate quantities for its main tank and walking-engine tank while
+remaining one operational event.
 
-The operator may also take the work truck to a nearby gas station and purchase gasoline. These purchases should be captured with gallons, price per gallon, total USD, gas station name, gas station address, receipt details, and optional mileage.
+The fuel-service person reports delivered quantity. The operator should record
+the operational work date, actual local event time, Equipment, exactly one fuel
+type, and one or more ordered Tank Fills. V1 fuel types are Diesel, Off-road
+Diesel, and Gasoline. Each Tank Fill uses a required suggested-or-overridden
+label and a positive integer whole-US-gallon quantity. Event total gallons are
+derived from the fills. V1 permits `1` through `10` fills, labels from `1`
+through `100` characters, quantities from `1` through `999999` gallons per
+fill, and a maximum derived total of `9999990`. Duplicate labels after
+whitespace and case normalization are invalid within one event.
 
-The Fuel Log should answer questions such as:
+Fuel Service Person is optional feature-owned reference data with searchable
+selection, inline creation, and a historical display-name snapshot. It does not
+introduce Employee, User, or authentication behavior. Active records are
+available for new selection, inactivation is the retirement workflow, unchanged
+inactive historical references may remain during correction, and used records
+are protected from hard deletion through Restrict-style relationship behavior.
+Notes are optional, limited to `2000` characters, and reserved for exceptional
+operational context. Meter and level readings are not recorded; Hour Meter
+remains owned by Operational Safety Checklists.
 
-- How many gallons were added on a specific day?
-- How much diesel or gasoline was added this month, this year, or from the first record to today?
-- Which dragline, work truck, or equipment received fuel during a selected date range?
-- What was the estimated or actual value of the fuel, using a manually entered price or sourced estimate?
-- Which fueling records are missing price, vendor, meter, or receipt details?
+An Equipment Fuel Event may own an optional nullable one-to-one reference to a
+matching Daily Work Log fueling activity for narrative context. The structured
+fuel event and narrative activity remain independently owned, and activity
+deletion clears the link without rewriting Fuel Event history. Equipment Fuel
+Events do not belong to Timesheet Work Allocations.
 
-Each fuel service event should support gallons delivered, equipment serviced, fuel type, date and time, vendor, service provider or gas station, address when applicable, delivery truck identifier when known, operator notes, attachments, and optional hour-meter, odometer, or tank readings when relevant.
+V1 persists completed events only, supports explicit correction in place, and
+provides no normal deletion workflow. Equipment changes during correction
+refresh the limited Equipment/location snapshots and require an active eligible
+replacement plus a complete valid Tank Fill set. Creation also requires active
+eligible Equipment; unchanged inactive Equipment may remain during correction.
 
-Fuel records should participate in global historical search and Day View. When the operator selects a date, the system should show fuel service events that happened that day alongside Daily Logs, Work Schedules, Shift Reports, inspections, defects, Work Authorizations, and other operational records.
+Fleet vehicle gas-station purchases are excluded. Company fuel cards, receipts,
+car washes, mileage, and temporary replacement-truck assignment belong to a
+separate future Fleet domain.
 
-Estimated fuel value should be treated as an operational estimate unless it comes from an actual receipt or invoice. Version 1 should allow manual price entry per gallon, total USD, and source notes. Future phases may evaluate historical fuel price lookup from external sources if reliable data is available.
+Feature-owned structured history filtering is part of the V1 architecture.
+Day View participation, analytics, reporting, prices, and global cross-module
+search remain deferred. Approved implementation architecture is
+`docs/architecture/features/equipment-fuel-events.md`.
+
+## Supply Request Requirements
+
+NAM Dashboard should preserve operator-originated Supply Requests as durable
+personal operational records. Supply Requests do not imply warehouse inventory,
+stock management, purchasing, vendor management, or ERP order processing.
+
+Warehouse pickup for supplies ordered by someone else remains a Daily Work Log
+activity. Its purpose is to preserve time away from the dragline and narrative
+context, including one or more destination draglines when relevant.
+
+Supply Requests may later reference Equipment, Defects, Daily Work Logs or
+activities, and Work Orders when explicit links provide operational value.
+Request lifecycle, requested-item detail, quantities and units, fulfillment,
+correction behavior, and Version 1 placement require further product discovery
+before feature architecture begins.
 
 ## Work Truck Log Requirements
 
@@ -598,4 +707,8 @@ The Work Truck Log should preserve the same daily information in NAM Dashboard s
 
 The exact website fields will be documented later after the operator provides the daily form details. Until then, the module should be designed to support configurable daily checklist or radio-button fields, mileage fields, free-text notes, and attachments or screenshots.
 
-Work Truck Log records should participate in Day View and global search. They should link to the work truck Equipment record, the relevant mine or work area, optional Daily Log activity, and any related Fuel Log records.
+Work Truck Log records should eventually participate in Day View. They should
+link to the work truck Equipment record, the relevant mine or work area, and an
+optional Daily Log activity. Fleet fuel-card and gas-station purchases may
+later relate to the Work Truck Log, but they must remain separate from Equipment
+Fuel Events. Global cross-module search remains deferred.

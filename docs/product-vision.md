@@ -164,7 +164,8 @@ into confirmed requirements.
 - Maintain a location, mine, equipment, and topic-based Knowledge Base.
 - Enter and revise work schedules manually.
 - Track timesheet entries and weekly totals.
-- Record fuel delivery and gasoline purchase history.
+- Record operational Equipment fueling history separately from future Fleet
+  purchase history.
 - Record work truck mileage, website log responses, and submission status.
 - Archive payslip PDFs and extracted payroll data.
 - Search and navigate historical records by date, date range, equipment, mine,
@@ -200,19 +201,25 @@ The current implemented product capabilities include:
 - STOP Card create, edit, list, detail, filtering, and Day View workflows.
 - Daily Inspection, Shift Report, and Work Authorization create, edit, list,
   detail, and Day View workflows.
-- Day View composition for Shift Reports, Daily Work Logs, STOP Cards, Daily
-  Inspections, and Work Authorizations on a selected date.
+- Defect Tracking create, edit, list, detail, filtering, lifecycle, and Day View
+  workflows.
+- Work Schedule and Timesheet weekly workflows with feature-owned Day View
+  contributions.
+- Operational Safety Checklist history, create, detail, correction, canonical
+  Dragline and Mobile templates, and feature-owned filtering.
+- Equipment Fuel Event history, create, detail, correction, ordered Tank Fills,
+  optional Fuel Service Person context, and feature-owned filtering.
+- Day View composition for Work Schedule, Timesheet, Daily Work Logs, STOP
+  Cards, Daily Inspections, Shift Reports, Work Authorizations, and Defect
+  Tracking on a selected date.
 
 ### Planned
 
 Planned Version 1 product scope includes:
 
-- Work Schedule.
-- Timesheet.
-- Fuel Log.
 - Work Truck Log.
-- Feature-owned list filtering for Daily Inspections, Shift Reports, and Work
-  Authorizations where useful.
+- Operational Safety Checklist Day View participation through a separately
+  approved feature-owned contribution.
 - Broader historical lookup through feature-owned views; global cross-module
   search remains deferred.
 - Additional calendar and Day View participation as future modules are

@@ -15,14 +15,17 @@ future phases.
 
 - [STOP Cards Roadmap](#stop-cards-roadmap)
 - [Daily Inspections Roadmap](#daily-inspections-roadmap)
+- [Operational Safety Checklists Roadmap](#operational-safety-checklists-roadmap)
 - [Defect Tracking Roadmap](#defect-tracking-roadmap)
 - [Work Authorization Roadmap](#work-authorization-roadmap)
 - [Work Schedule Roadmap](#work-schedule-roadmap)
 - [Timesheet Roadmap](#timesheet-roadmap)
 - [Daily Log And Historical Search Roadmap](#daily-log-and-historical-search-roadmap)
 - [Payslip Repository Roadmap](#payslip-repository-roadmap)
-- [Fuel Log Roadmap](#fuel-log-roadmap)
+- [Equipment Fuel Events Roadmap](#equipment-fuel-events-roadmap)
+- [Supply Requests Roadmap](#supply-requests-roadmap)
 - [Work Truck Log Roadmap](#work-truck-log-roadmap)
+- [Equipment Activity Timeline](#equipment-activity-timeline)
 - [Infrastructure Roadmap](#infrastructure-roadmap)
 
 ## STOP Cards Roadmap
@@ -107,11 +110,67 @@ filtering requires an approved inspector field before implementation.
 ### Phase 4: Future Enhancements
 
 - Add photo or attachment support after attachment architecture exists.
-- Add inspection templates or checklists after source forms are reviewed.
-- Add Defect Tracking links after the Defect module exists.
+- Preserve the implemented summary-inspection workflow while Operational Safety
+  Checklists proceed through separate feature architecture within the same
+  bounded context.
+- Extend explicit Defect source links to Operational Safety Checklists only if
+  the checklist architecture approves operator-controlled traceability.
 - Add inspection statistics after enough reliable records exist.
 - Add approval or review workflow only if multi-user behavior is approved.
 - Add exports or reports after V1 manual records prove useful.
+
+## Operational Safety Checklists Roadmap
+
+Boundary assessment:
+
+`docs/architecture/equipment-operations.md`
+
+Current status: Operational discovery and boundary assessment are complete.
+Phase 21.3.1 resolved workflow, uniqueness, lifecycle, correction, deletion,
+identity, template-selection, and problem-context decisions. Feature
+architecture is Approved. Phase 21.3.2 completed the canonical Dragline and
+Mobile V1 catalogs, and Phase 21.3.3 resolved integer-only Hour Meter
+validation. Phase 21.4 implemented the V1 foundation and feature-owned history
+filtering, completed correction review, and received independent acceptance.
+Phase 21.5 integrated the accepted capability into the repository knowledge
+graph and formally closed Phase 21. Day View participation remains deferred.
+
+### Phase 1: Product And Boundary Discovery (Complete)
+
+- Confirm separate Dragline Inspection and Mobile Inspection source workflows.
+- Confirm shared metadata and response vocabulary.
+- Distinguish start-of-shift Equipment checklists from implemented Daily
+  Inspection summary records.
+- Exclude Planner Review and automatic Defect creation from the operator-owned
+  V1 workflow.
+
+### Phase 2: Feature Architecture (Complete)
+
+- Preserve the verified Dragline and Mobile V1 catalogs in
+  `docs/reference/checklists/`.
+- Preserve integer-only V1 Hour Meter values from `0` through `999999`, with
+  the maximum treated as an implementation validation guard.
+- Preserve the resolved one-record-per-Equipment/date/shift uniqueness,
+  complete-only submission, explicit correction, no-deletion, person snapshot,
+  problem-context, template, Defect, history, and future Day View boundaries.
+
+### Phase 3: V1 Foundation (Complete)
+
+- Implement the approved checklist architecture as a feature-owned vertical
+  slice.
+- Preserve Dragline and Mobile item differences without a generic configurable
+  form engine.
+- Validate the persistence behavior against PostgreSQL.
+
+### Phase 4: Future Enhancements
+
+- Add Operational Safety Checklist Day View participation only through a
+  separately approved feature-owned contribution.
+- Add explicit operator-controlled Defect links if approved.
+- Add Planner Review only if future identity and multi-user workflows require
+  it.
+- Add attachments, analytics, exports, or configurable administration only
+  after separate approval.
 
 ## Defect Tracking Roadmap
 
@@ -439,43 +498,92 @@ planned or deferred as described below.
 - Add automatic Workday import only if the security and maintenance tradeoffs are acceptable
 - Add encryption-at-rest and redacted display modes for sensitive financial fields
 
-## Fuel Log Roadmap
+## Equipment Fuel Events Roadmap
 
-### Phase 1: Requirements Definition
+Boundary assessment:
 
-- Confirm required fuel record fields for diesel tank truck service events and gasoline purchases
-- Confirm whether fuel records usually need equipment hour-meter, odometer, or tank-level readings
-- Define price status values: actual, estimated, or unknown
-- Define Day View and global search behavior for Fuel Log records
-- Define reporting totals by day, month, year, equipment, vendor, custom date range, and all-time history
+`docs/architecture/equipment-operations.md`
 
-### Phase 2: Data Model Design
+Approved feature architecture:
 
-- Define FuelServiceRecord entity
-- Define FuelPriceReference entity
-- Define relationship to Equipment
-- Define optional relationship to Mine
-- Define optional relationship to DailyLogActivity
-- Define attachment support for receipts, photos, notes, and invoices
+`docs/architecture/features/equipment-fuel-events.md`
 
-### Phase 3: V1 Implementation
+Current status: Product decisions, feature architecture, and V1 foundation are
+complete. Day View participation remains deferred.
 
-- Create manual Fuel Log records
-- Record date, time, equipment, fuel type, and gallons delivered
-- Record optional vendor, gas station, address, service truck, driver, tank, meter, odometer, receipt, invoice, and notes
-- Record optional manual price per gallon, total USD, and price source
-- Calculate estimated total value when price is available
-- Search fuel records by date, date range, equipment, mine, vendor, fuel type, price status, and notes
-- Show fuel totals by day, month, year, custom date range, equipment, and all-time history
-- Show Fuel Log records in Day View and global search
+### Phase 1: Product And Boundary Discovery (Complete)
+
+- Confirm one operational fueling occurrence belongs to one Equipment subject.
+- Confirm one occurrence may contain multiple tank-fill quantities.
+- Confirm delivered quantity comes from the fuel-service person.
+- Keep optional Daily Work Log narrative context independent.
+- Exclude Fleet gas-station receipts, fuel cards, mileage, car washes, and
+  temporary vehicle assignment.
+- Exclude Timesheet Work Allocation ownership.
+
+### Phase 2: Feature Architecture (Complete)
+
+- Approved operational work date plus actual local event time.
+- Approved Diesel, Off-road Diesel, and Gasoline as the fixed V1 fuel types.
+- Approved one or more ordered Tank Fills using positive integer whole US
+  gallons, suggested labels with manual override, and server-derived totals.
+- Approved conservative fill-count, label, quantity, total, and notes guards,
+  including unique normalized labels within one event.
+- Excluded meter and level readings; Hour Meter remains owned by Operational
+  Safety Checklists.
+- Approved optional feature-owned Fuel Service Person references with inline
+  creation, active/inactive retirement, normalized uniqueness, deletion
+  protection, and historical name snapshots.
+- Approved completed-only persistence, explicit correction, no normal
+  deletion, limited Equipment/location snapshots, and structured V1 filters.
+- Approved optional explicit Daily Work Log fueling-activity context while
+  preserving independent ownership through a unique nullable Fuel Event-owned
+  link with SetNull-style deletion behavior.
+- Deferred Day View, Fleet purchase evidence, analytics, and reporting.
+
+### Phase 3: V1 Foundation (Complete)
+
+- Implement manual Equipment Fuel Events and tank-fill history.
+- Add feature-owned validation, persistence, structured history filtering,
+  queries, and tests.
+- Validate the schema and event operations against PostgreSQL.
 
 ### Phase 4: Future Enhancements
 
-- Evaluate historical diesel and gasoline price lookup from public or commercial data sources
-- Add vendor invoice import if reliable source documents become available
-- Add fuel usage trend charts by equipment and date range
-- Add missing-data reports for records without price, vendor, receipt, or meter readings
-- Add fuel forecasting only after enough reliable history exists
+- Add Day View participation through a feature-owned display-ready date query.
+- Evaluate approved operational totals and reporting only after reliable event
+  history exists.
+- Evaluate Equipment usage trends only after enough reliable history exists.
+- Keep global cross-module search and automated forecasting deferred.
+
+## Supply Requests Roadmap
+
+Boundary assessment:
+
+`docs/architecture/equipment-operations.md`
+
+Current status: Supply Requests are a confirmed discovery-stage feature.
+Feature architecture is blocked by remaining product decisions.
+
+### Phase 1: Product Discovery
+
+- Confirm request lifecycle and retrieval questions.
+- Confirm item, quantity, unit, destination, fulfillment, correction, and
+  deletion behavior.
+- Confirm whether one request may concern multiple Equipment records.
+- Confirm which optional links to Defects, Daily Work Logs, or Work Orders have
+  real operational value.
+- Keep warehouse pickup for someone else's order in Daily Work Logs.
+
+### Phase 2: Feature Architecture
+
+- Begin only after the product workflow is complete.
+- Preserve Supply Request ownership without inventory, purchasing, vendor, or
+  ERP responsibilities.
+
+### Phase 3: V1 Foundation
+
+- Define only after feature architecture is approved.
 
 ## Work Truck Log Roadmap
 
@@ -485,7 +593,8 @@ planned or deferred as described below.
 - Identify all radio-button options, numeric inputs, text inputs, and required fields
 - Confirm mileage fields used by the work website
 - Confirm whether one work truck is usually assigned or whether the truck changes by day
-- Define how Work Truck Log records should appear in Day View and global search
+- Define how Work Truck Log records should appear in Day View; keep global
+  cross-module search deferred
 
 ### Phase 2: Data Model Design
 
@@ -493,7 +602,7 @@ planned or deferred as described below.
 - Define WorkTruckLogResponse entity for flexible website form answers
 - Define Equipment category for Work Truck
 - Define optional relationship to DailyLogActivity
-- Define relationship between WorkTruckLog and FuelServiceRecord
+- Define future Fleet purchase context separately from Equipment Fuel Events
 - Define attachment support for screenshots, receipts, photos, and notes
 
 ### Phase 3: V1 Implementation
@@ -503,9 +612,10 @@ planned or deferred as described below.
 - Record date, shift, starting mileage, ending mileage, and calculated miles driven
 - Capture website daily log responses using configurable fields
 - Track whether the official website daily log was submitted
-- Link gasoline purchases from Fuel Log to the relevant Work Truck Log
+- Link approved future Fleet purchase records to the relevant Work Truck Log
 - Search truck logs by date, truck, mileage, submitted status, missing fields, and notes
-- Show Work Truck Log records in Day View and global search
+- Show Work Truck Log records in Day View; keep global cross-module search
+  deferred
 
 ### Phase 4: Future Enhancements
 
@@ -514,6 +624,17 @@ planned or deferred as described below.
 - Add mileage trend charts by week, month, year, and work truck
 - Add export or print views for personal records
 - Evaluate whether any official website automation is appropriate only after manual logging works reliably
+
+## Equipment Activity Timeline
+
+Current status: Deferred derived capability. No feature architecture or
+implementation is authorized.
+
+Revisit only after several Equipment-centered features are implemented and
+users demonstrate a recurring need to review one Equipment record across
+modules and dates. The timeline should compose feature-owned queries rather
+than store duplicate event records or introduce a generic contribution
+registry.
 
 ## Infrastructure Roadmap
 

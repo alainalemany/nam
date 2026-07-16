@@ -7,6 +7,7 @@ relationships, enums, and data modeling notes.
 
 - [STOP Card Entities](#stop-card-entities)
 - [Daily Inspection Entities](#daily-inspection-entities)
+- [Operational Safety Checklist Entities](#operational-safety-checklist-entities)
 - [Defect Tracking Entities](#defect-tracking-entities)
 - [Shift Report Entities](#shift-report-entities)
 - [Work Authorization Entities](#work-authorization-entities)
@@ -17,7 +18,8 @@ relationships, enums, and data modeling notes.
 - [Timesheet Entities](#timesheet-entities)
 - [Payslip Repository Entities](#payslip-repository-entities)
 - [Work Truck Log Entities](#work-truck-log-entities)
-- [Fuel Log Entities](#fuel-log-entities)
+- [Equipment Fuel Event Concepts](#equipment-fuel-event-concepts)
+- [Supply Request Concepts](#supply-request-concepts)
 
 ## STOP Card Entities
 
@@ -110,6 +112,45 @@ Relationships:
 - May belong to one Mine record
 - May belong to one Equipment record
 - May originate zero or many Defect records
+
+## Operational Safety Checklist Entities
+
+Operational Safety Checklists are implemented within the Daily Inspections
+bounded context as a separate record type from the current `DailyInspection`
+summary. The Approved architecture is
+`docs/architecture/features/operational-safety-checklists.md`.
+
+The implemented `OperationalSafetyChecklist` parent and owned
+`OperationalSafetyChecklistResponse` rows preserve:
+
+- One start-of-shift checklist record for one Equipment subject.
+- The approved Dragline or Mobile template identity and version.
+- Common date, shift, starting-meter, operator-display-name,
+  supervisor-display-name, and problem-description context as confirmed by
+  feature architecture.
+- One completed record per Equipment, operational date, and shift; incomplete
+  form state is not persisted.
+- A server-derived Hours meter-kind snapshot and integer starting reading from
+  `0` through `999999` for the approved V1 templates.
+- One ordered response per approved checklist item.
+- Item-specific response sets using the approved three-option Condition,
+  four-option Condition, Yes/No, or Presence semantics.
+- Relational response facts with stable item identity and historical label,
+  ordering, and response snapshots.
+- Historical Equipment display context without copying complete Equipment,
+  Mine, or City records.
+
+An area or summary `DailyInspection` and an Operational Safety Checklist are
+distinct business records even though the Daily Inspections feature owns both.
+Template identity is versioned but must not bypass Equipment/date/shift
+uniqueness. Completed records are corrected explicitly in place and are not
+deleted in V1. Canonical template catalogs are approved in
+`docs/reference/checklists/`. The maximum Hour Meter value is an implementation
+validation guard rather than a business limit. Future Equipment types may add
+different meter semantics only after separate operational confirmation.
+
+Checklist responses do not automatically create Defect records. Any future
+relationship must be explicit and preserve Defect Tracking lifecycle ownership.
 
 ## Defect Tracking Entities
 
@@ -577,7 +618,6 @@ Potential fields:
 - location
 - contractorCompany
 - personName
-- fuelServiceRecordId
 - notes
 - createdAt
 - updatedAt
@@ -612,7 +652,8 @@ Relationships:
 - May later reference one WorkOrder record
 - May reference one Defect record
 - May reference one DailyInspection record
-- May reference one FuelServiceRecord record
+- May be referenced by zero or one Equipment Fuel Event for explicit narrative
+  context; the Fuel Event owns the optional link
 - May reference one KnowledgeBaseArticle or field note
 - Has many Attachments
 
@@ -1441,7 +1482,8 @@ Relationships:
 - May belong to one Mine record
 - May reference one DailyLogActivity record
 - Has many WorkTruckLogResponse records
-- Has many FuelServiceRecord records
+- May later reference separate Fleet purchase records after that domain is
+  defined
 - Has many Attachments
 
 ### WorkTruckLogResponse
@@ -1482,113 +1524,138 @@ Relationships:
 
 - Belongs to one WorkTruckLog
 
-## Fuel Log Entities
+## Equipment Fuel Event Concepts
 
-### FuelServiceRecord
+Equipment Fuel Events are implemented operational service records governed by
+`docs/architecture/features/equipment-fuel-events.md`. The Prisma aggregate is
+`EquipmentFuelEvent` with owned `EquipmentFuelEventTankFill` children and the
+feature-owned `FuelServicePerson` reference.
 
-Represents one diesel delivery, gasoline purchase, or fuel service event for equipment.
+### Equipment Fuel Event
 
-Potential fields:
+Represents one completed fueling service occurrence for one Equipment subject.
 
-- id
-- serviceDate
-- serviceTime
-- equipmentId
-- mineId
-- dailyLogActivityId
-- workTruckLogId
-- fuelType
-- gallonsDelivered
-- unitOfMeasure
-- vendorName
-- serviceProviderName
-- gasStationName
-- gasStationAddress
-- gasStationCity
-- gasStationState
-- gasStationZip
-- deliveryTruckIdentifier
-- driverName
-- tankIdentifier
-- preFuelLevel
-- postFuelLevel
-- odometerReading
-- hourMeterReading
-- engineHourReading
-- pricePerGallon
-- priceCurrency
-- totalAmount
-- priceStatus
-- priceSource
-- priceSourceDate
-- estimatedTotalValue
-- receiptNumber
-- invoiceNumber
-- notes
-- createdAt
-- updatedAt
+Conceptual fields:
 
-Potential fuel types:
-
-- Diesel
-- Off-Road Diesel
-- Gasoline
-- Other
-
-Potential price statuses:
-
-- Actual
-- Estimated
-- Unknown
+- Durable event identity.
+- Required operational work date.
+- Required actual local event time.
+- Required live Equipment reference at creation.
+- Required fuel type: Diesel, Off-road Diesel, or Gasoline.
+- Optional live Fuel Service Person reference.
+- Fuel Service Person display-name snapshot when selected.
+- Optional unique Daily Work Log fueling-activity reference owned by the Fuel
+  Event.
+- Optional exceptional notes.
+- Equipment display name snapshot.
+- Equipment number snapshot.
+- Equipment category snapshot.
+- Mine name snapshot.
+- City name snapshot.
+- City state snapshot.
+- Created and updated timestamps.
 
 Relationships:
 
-- Belongs to one Equipment record
-- May belong to one Mine record
-- May reference one DailyLogActivity record
-- May reference one WorkTruckLog record
-- Has many Attachments
-- Has many FuelPriceReference records
+- Belongs to one Equipment when created; the live relation may later become
+  null while historical snapshots remain.
+- Owns one or more ordered Tank Fills.
+- May reference one feature-owned Fuel Service Person using Restrict-style
+  deletion behavior for historically used records.
+- May reference one matching Daily Work Log `FUEL_SERVICE` activity without
+  owning that activity. The nullable Fuel Event-side reference is unique and
+  uses SetNull-style behavior when the activity is deleted.
 
-### FuelPriceReference
+Equipment, work date, and event time are not a natural unique key because one
+Equipment may have multiple legitimate fueling occurrences. V1 is
+completed-only, supports explicit correction in place, and provides no normal
+delete action.
 
-Represents the source used to estimate or verify a fuel price for one or more fuel service records.
+### Equipment Fuel Event Tank Fill
 
-Potential fields:
+Represents one ordered delivered-quantity fact owned by one Equipment Fuel
+Event.
 
-- id
-- fuelServiceRecordId
-- priceDate
-- fuelType
-- pricePerGallon
-- currency
-- sourceType
-- sourceName
-- sourceLocation
-- sourceUrl
-- confidence
-- notes
-- createdAt
-- updatedAt
+Conceptual fields:
 
-Potential source types:
+- Durable child identity.
+- Parent Fuel Event reference.
+- Sequence unique within the parent event.
+- Required trimmed tank-label snapshot from `1` through `100` characters.
+- Required normalized tank-label comparison key unique within the parent event.
+- Required positive integer whole-US-gallon quantity from `1` through `999999`.
 
-- Receipt
-- Invoice
-- Vendor
-- Manual Estimate
-- Gas Station Estimate
-- Public Data Source
-- Other
+An event owns between `1` and `10` Tank Fills. The parent total is derived from
+their integer sum and may not exceed `9999990`. Tank Fills have no independent
+lifecycle or reusable Tank reference. Suggested historical labels are
+normalized and deduplicated for display; manual override remains valid and does
+not create a Tank Management subsystem.
 
-Relationships:
+### Fuel Service Person
 
-- Belongs to one FuelServiceRecord
+Represents a reusable, feature-owned optional display-name reference.
 
-### Fuel Reporting Notes
+Conceptual fields:
 
-Fuel totals should be calculated from FuelServiceRecord.gallonsDelivered and grouped by date, month, year, equipment, mine, vendor, gas station, fuel type, or custom date range.
+- Durable reference identity.
+- Required display name, maximum `200` characters.
+- Unique server-derived normalized name key for equivalent-name matching.
+- Active/inactive status, active by default.
+- Created and updated timestamps.
 
-Estimated fuel value should be calculated from gallons delivered and the selected price per gallon. Actual purchase value may also be stored as totalAmount when a receipt or gas station purchase provides it. If no price is available, the record should still count toward gallon totals and appear in reports as missing price data.
+Fuel Service Person is not an Employee, User, vendor, payroll, or
+authentication record. Events preserve the historical display-name snapshot so
+reference changes do not rewrite prior records. Active records are available
+for new selection; an unchanged inactive historical reference may remain during
+correction. Inactivation is the retirement mechanism, and historically used
+records must not be hard-deleted.
 
-Day View should include FuelServiceRecord records whose serviceDate matches the selected date.
+### Historical And Relationship Rules
+
+- Mine and City derive through Equipment and are not independently selected.
+- Creation and Equipment replacement require active Equipment. Electric-only
+  Equipment is ineligible; Diesel and Gasoline power contexts constrain fuel
+  choice, while Hybrid, Other, Unknown, or missing power context requires an
+  explicit supported choice with no detected contradiction.
+- Equipment/location and service-person snapshots are server-generated.
+- Complete Equipment, Mine, City, or person records are not duplicated.
+- Unchanged references preserve snapshots during correction.
+- Changed Equipment refreshes the Equipment/location snapshot group and
+  requires an active eligible replacement and a complete valid Tank Fill set.
+- An unchanged inactive Equipment reference may remain during correction; a
+  null relation requires intentional active eligible replacement.
+- The optional Daily Work Log relationship must match operational date,
+  fueling activity type, noncontradictory Equipment context, and one-to-one
+  uniqueness.
+- Daily Work Log deletion must not delete or rewrite a Fuel Event.
+- Duplicate normalized tank labels within one event are invalid.
+- Optional notes are limited to `2000` characters.
+- Meter and level readings are not part of the model.
+
+Equipment Fuel Event concepts explicitly exclude:
+
+- Fleet gas-station purchases.
+- Company fuel cards.
+- Receipts and car washes.
+- Vehicle mileage and temporary assignment.
+- Timesheet Work Allocation ownership.
+- A duplicate persisted Equipment timeline event.
+- Runtime-configurable fuel types or Tank records.
+
+Fleet purchase pricing and receipt evidence require separate future discovery.
+The older conceptual `FuelPriceReference` does not belong to the confirmed
+Equipment Fuel Event boundary.
+
+## Supply Request Concepts
+
+Supply Requests are discovery-stage personal operational records for supplies
+requested by the operator. Final entities and fields are not approved.
+
+The future data design may need to preserve request identity, requested items,
+quantities or units, destination Equipment context, status or fulfillment
+meaning, notes, and explicit related-record links. Those concepts must not be
+finalized until product discovery confirms the workflow.
+
+Supply Requests must not own warehouse inventory, stock, purchasing, vendors,
+or ERP orders. Warehouse pickup performed for an order placed by someone else
+remains a Daily Work Log activity and does not create a Supply Request.

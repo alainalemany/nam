@@ -299,11 +299,14 @@ Manual verification should be summarized with:
 Do not design tests around features that are not implemented or not approved
 for the current phase.
 
-Daily Work Logs, Day View, STOP Cards, Daily Inspections, Shift Reports, and
-Work Authorizations are implemented and are eligible for proportional tests.
-Current unit coverage emphasizes validation, feature-owned filters, and date
-helpers. Broader route, Server Action, and PostgreSQL integration coverage
-should be added through separately approved testing-maturity slices.
+Daily Work Logs, Day View, STOP Cards, Daily Inspections, Operational Safety
+Checklists, Shift Reports, Work Authorizations, Defect Tracking, Work Schedule,
+Timesheet, and Equipment Fuel Events are implemented and are eligible for
+proportional tests. Equipment Fuel Events include unit validation,
+component/route, Server Action, persistence, and explicitly opt-in rollback-only
+PostgreSQL integration coverage. The normal suite does not run the PostgreSQL
+tests. Broad browser end-to-end coverage remains deferred until a concrete risk
+justifies that infrastructure.
 
 Deferred areas:
 
