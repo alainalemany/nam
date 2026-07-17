@@ -36,8 +36,8 @@ The current development platform includes:
 - Daily Work Logs, STOP Cards, Daily Inspections, Operational Safety Checklists,
   Shift Reports, Work Authorizations, Defect Tracking, Work Schedule, and
   Timesheet feature foundations
-- Selected-date Day View composition across the eight participating operational
-  modules; Operational Safety Checklist participation remains deferred
+- Selected-date Day View composition across ten participating operational
+  modules, including Operational Safety Checklists and Equipment Fuel Events
 - Feature-owned list filtering for implemented modules that expose filterable
   operational history
 
@@ -169,6 +169,11 @@ publicly. `nam.alemany.me` is reserved for future production use and should not
 be configured for the development app.
 
 ## Docker Compose Workflow
+
+These commands support local development. A controlled real-data pilot must use
+the gated deployment, rollback, route, migration, and runtime verification
+sequence in the
+[Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md).
 
 Build and start the full development stack:
 

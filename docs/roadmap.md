@@ -23,6 +23,7 @@ future phases.
 - [Daily Log And Historical Search Roadmap](#daily-log-and-historical-search-roadmap)
 - [Payslip Repository Roadmap](#payslip-repository-roadmap)
 - [Equipment Fuel Events Roadmap](#equipment-fuel-events-roadmap)
+- [Operational Pilot Readiness Roadmap](#operational-pilot-readiness-roadmap)
 - [Supply Requests Roadmap](#supply-requests-roadmap)
 - [Equipment Activity Timeline](#equipment-activity-timeline)
 - [Infrastructure Roadmap](#infrastructure-roadmap)
@@ -613,6 +614,43 @@ source links without moving fuel interpretation into Day View.
   history exists.
 - Evaluate Equipment usage trends only after enough reliable history exists.
 - Keep global cross-module search and automated forecasting deferred.
+
+## Operational Pilot Readiness Roadmap
+
+Canonical procedure:
+
+`docs/infrastructure/operational-pilot-runbook.md`
+
+Current status: Phase 24.2 readiness assessment is complete and Phase 24.2.1
+runbook preparation is complete. The real-data pilot has not started and is not
+authorized. No new feature implementation is required before operational
+preparation continues.
+
+### Phase 1: Close Pilot Gates
+
+- Select and approve a private-access boundary; the current public
+  unauthenticated endpoint does not qualify.
+- Deploy and verify the intended current commit, including ten Day View
+  contributors.
+- Prepare and review minimum operational reference data without fabricating
+  unknown facts.
+- Create a current-schema baseline backup and prove it through a guarded
+  disposable restore.
+- Confirm the first-shift scope and entry order.
+
+### Phase 2: Controlled Use
+
+- Run the bounded first-shift workflow only after every gate passes.
+- Expand to a one-week pilot while preserving daily backups and a manual pilot
+  log.
+- Keep Phase 23.5 photo evidence blocked and unavailable.
+
+### Phase 3: Evidence-Based Exit Review
+
+- Classify blocking, significant, minor, and future findings.
+- Select a next milestone only from observed operational need.
+- Treat Supply Requests discovery as a likely candidate, not an automatic next
+  step.
 
 ## Supply Requests Roadmap
 

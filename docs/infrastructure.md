@@ -30,6 +30,7 @@ Key documents:
 - `docs/infrastructure/bootstrap-and-verification.md`
 - `docs/infrastructure/server-config.md`
 - `docs/infrastructure/disaster-recovery.md`
+- `docs/infrastructure/operational-pilot-runbook.md`
 
 Phase 2B includes:
 
@@ -177,25 +178,15 @@ Development PostgreSQL backups should be written to:
 /home/alain/backups/nam/postgres/
 ```
 
-Manual backup documentation should be created before backup automation is introduced.
+The canonical current-schema pilot backup procedure is the
+[Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md). It
+defines private file permissions, custom-format `pg_dump`, partial-file failure
+handling, a manifest, migration and record-count context, SHA-256 validation,
+and a mandatory disposable restore before real pilot data is authorized.
 
-Create the backup directory outside the repository before running backups:
-
-```bash
-mkdir -p /home/alain/backups/nam/postgres
-```
-
-Manual custom-format backup:
-
-```bash
-docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "/home/alain/backups/nam/postgres/nam_$(date +%Y%m%d_%H%M%S).dump"
-```
-
-Verify backup files:
-
-```bash
-ls -lh /home/alain/backups/nam/postgres/
-```
+Older Phase 2A archives and archive listings are not current-schema recovery
+evidence. No pilot backup or restore is considered proven until the runbook is
+executed successfully in a separately authorized operations milestone.
 
 ## Planned Operational Safety Checklist Media Storage
 
@@ -238,24 +229,17 @@ encrypted off-host copies and regular restore exercises.
 
 ## PostgreSQL Restore
 
-Restore procedures should be documented before production use.
+Never validate a pilot backup by restoring over the live database. Use the
+guarded disposable-database procedure in the
+[Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md), then
+drop only that unmistakably named validation database after comparing migration
+and record counts with the backup manifest.
 
-Manual restore into an existing database should be handled carefully because it can overwrite data.
-
-Example restore command for a selected backup file:
-
-```bash
-docker compose exec -T postgres sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' < /home/alain/backups/nam/postgres/example.dump
-```
-
-Before restoring:
-
-- Confirm the backup file path.
-- Confirm whether the target database should be emptied or overwritten.
-- Confirm whether the existing `postgres-data` volume should be reused.
-- Take a fresh backup first if preserving current data matters.
-
-After restoring, verify database connectivity and inspect expected tables or records.
+An actual disaster recovery restore is a separate, destructive operation that
+requires explicit authorization and the
+[Server Identity Disaster Recovery](infrastructure/disaster-recovery.md)
+boundary. A successful disposable restore test is recovery evidence, not
+permission to overwrite live data.
 
 ## Verification Commands
 
@@ -349,6 +333,13 @@ docker compose down -v
 ## Deployment Workflow
 
 Phase 2B deployment workflow should remain development-only.
+
+The exact pilot deployment gate, stale-image replacement checks, route and
+ten-contributor Day View verification, evidence record, and application-only
+rollback are defined in the
+[Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md). The
+pilot remains unauthorized until that procedure is executed after an approved
+private-access boundary is active.
 
 The expected sequence is:
 

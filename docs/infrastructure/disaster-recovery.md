@@ -21,8 +21,11 @@ application source code exists. Its identity, reusable configuration, bootstrap
 path, verification checks, and operational documentation must also be recoverable
 from GitHub.
 
-Application data recovery, PostgreSQL restore, object storage restore, and
-production deployment restore require separate runbooks as those systems mature.
+Application data disaster recovery, object storage restore, and production
+deployment restore require separate runbooks as those systems mature. The
+[Operational Pilot Runbook](operational-pilot-runbook.md) now defines the
+non-destructive current-schema PostgreSQL backup and disposable-restore evidence
+required before a controlled pilot; it does not authorize a live restore.
 
 ## Minimum Recovery Inputs
 
@@ -121,9 +124,13 @@ For PostgreSQL development backups, current documentation points to:
 /home/alain/backups/nam/postgres/
 ```
 
-Those backup payloads are intentionally outside Git. A complete future disaster
-recovery plan should include off-server backup storage, restore testing, and
-documented secret recovery.
+Those backup payloads are intentionally outside Git. Before a real-data pilot,
+the [Operational Pilot Runbook](operational-pilot-runbook.md) requires a
+current-schema custom-format archive, manifest, SHA-256, and successful restore
+into a guarded disposable database. That test must leave the live database
+untouched. It is not proven until the later execution milestone records the
+result. A complete future disaster recovery plan should additionally include
+off-server storage and documented secret recovery.
 
 ADR-018 adds a planned media recovery boundary for Operational Safety
 Checklist photos. After Phase 23.5 implementation, a recoverable set must pair

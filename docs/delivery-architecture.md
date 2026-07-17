@@ -295,6 +295,13 @@ Use the right verification source:
 If verification cannot be run, or if it fails, the handoff should say so
 plainly with the command, result, and likely cause.
 
+Implementation acceptance does not by itself authorize real operational data.
+The first controlled pilot additionally depends on the fail-closed access,
+deployment, reference-data, recovery, and scope gates in the
+[Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md). Pilot
+observations and the exit review should determine whether another product
+milestone is justified.
+
 ## Relationship To Future Implementation Architecture
 
 Delivery architecture defines the lifecycle for turning planned capabilities
