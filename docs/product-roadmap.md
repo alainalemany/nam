@@ -241,9 +241,12 @@ Status: Preparation gated
 
 Phase 24.2 readiness assessment is complete. Phase 24.2.1 provides the
 [Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md), but
-real operational use is not yet authorized. The access, current-deployment,
-reference-data, recovery, and pilot-scope gates must all pass before the first
-real shift.
+real operational use is not yet authorized. Phase 24.2.2 selected the private
+access architecture, and ADR-019 records the approved managed private overlay
+with Tailscale as the implementation reference. Phase 24.2.2.1 records the
+controlled implementation and verification plan. The access implementation,
+current-deployment, reference-data, recovery, and pilot-scope gates must all
+pass before the first real shift.
 
 No new product feature is required merely to continue preparation. Phase 23.5
 photo evidence remains blocked by its approved access and media prerequisites.
@@ -343,7 +346,7 @@ The MVP should not require:
 | Operations reference data | Establishes shared mine and equipment context. | None beyond the application foundation. | Implemented |
 | Daily Work Log foundation | Establishes the first usable workday history. | Operations reference data. Feature architecture: `docs/architecture/features/daily-work-logs.md`. | Implemented |
 | Feature filtering, date navigation, and Day View | Makes historical lookup practical across implemented modules. | Daily records and date-aware modules. | Feature-owned filtering and Day View composition implemented for current operational modules; global cross-module search deferred |
-| Controlled operational pilot | Validates implemented workflows with narrowly governed real use. | Approved private access, current verified deployment, reviewed reference data, and proven current-schema recovery. | Phase 24.2 assessment complete; Phase 24.2.1 runbook complete; real pilot not yet authorized |
+| Controlled operational pilot | Validates implemented workflows with narrowly governed real use. | Implemented and verified ADR-019 private access, current verified deployment, reviewed reference data, and proven current-schema recovery. | Phase 24.2 assessment and Phase 24.2.1 runbook complete; Phase 24.2.2.1 access architecture approved; implementation pending; real pilot not authorized |
 | STOP Cards | Captures safety observations and corrective actions. | Day View context; feature architecture: `docs/architecture/features/stop-cards.md`. | V1 foundation, filtering, and Day View participation implemented |
 | Daily Inspections | Captures equipment inspection findings and condition context. | Equipment reference data and Day View context; feature architecture: `docs/architecture/features/daily-inspections.md`. | Daily Inspection and Operational Safety Checklist foundations, feature-owned filtering, and Day View participation implemented |
 | Shift Reports | Creates the parent structure for shift paperwork. | Daily/date context and equipment references. Feature architecture: `docs/architecture/features/shift-reports.md`. | V1 foundation, filtering, and Day View participation implemented |

@@ -42,6 +42,11 @@ Optional but recommended:
 - Any saved `.env` secrets from the operator's password manager.
 - DNS records if rebuilding a public staging or production host.
 
+For the controlled pilot, ADR-019 additionally requires an independent
+key-only SSH recovery path through a non-root administrator account. The
+recovery key must remain outside Git and on an administrator-controlled device
+that does not depend on the managed overlay.
+
 ## Rebuild Steps
 
 Install base packages:
@@ -97,6 +102,24 @@ Run repository-defined verification:
 ```bash
 infrastructure/checks/verify-server.sh
 ```
+
+## Pilot Access Recovery Boundary
+
+ADR-019 approves Tailscale as the managed private-overlay implementation
+reference, but the overlay is not the administrator recovery boundary. Before
+public web access is disabled, a later authorized milestone must verify the
+effective SSH configuration, disabled password authentication, and key-only
+access through the VPS public address by a non-root administrator.
+
+Recovery documentation should preserve non-secret tailnet policy intent,
+approved-device inventory, private-service naming, revocation steps, and
+emergency-disable behavior. It must not contain private keys, reusable auth
+keys, MFA recovery codes, or other credentials.
+
+If the overlay or private HTTPS service fails after public removal, NAM must
+remain unavailable remotely. Use independent SSH to inspect or disable the
+private service and recover the approved boundary; do not re-enable the
+unauthenticated public Caddy route as an automatic fallback.
 
 ## Recovering Other Server Configuration
 

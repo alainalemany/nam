@@ -168,6 +168,12 @@ Caddy reverse proxies to `127.0.0.1:3000`. Do not publish Docker port `3000`
 publicly. `nam.alemany.me` is reserved for future production use and should not
 be configured for the development app.
 
+This current public endpoint is limited to non-sensitive development use. It
+does not satisfy the controlled-pilot Access Gate. ADR-019 approves a managed
+private overlay with tailnet-only HTTPS for the pilot, but implementation has
+not started. The canonical sequence and evidence requirements are in the
+[Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md).
+
 ## Docker Compose Workflow
 
 These commands support local development. A controlled real-data pilot must use
@@ -219,6 +225,10 @@ Approved development network behavior:
 - PostgreSQL host binding: none
 - Application-to-database path: `app` container to `postgres` container over `nam-network`
 - Public Internet exposure: Caddy only, through `dev.alemany.me` on HTTP/HTTPS
+
+These bullets describe the current development runtime, not the approved pilot
+boundary. The pilot must remove the public Caddy application route while
+preserving the loopback application binding and unpublished PostgreSQL service.
 
 Verify published ports:
 

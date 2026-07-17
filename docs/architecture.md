@@ -78,8 +78,10 @@ Architecture-specific principles:
 - Add infrastructure components only when a real requirement justifies them.
 - Prefer server-owned persisted data and local UI state by default; detailed
   state and mutation rules live in `docs/application-state-and-data-flow.md`.
-- Public HTTP/S traffic should terminate at host-level Caddy; application
-  services should not be exposed directly to the public Internet.
+- Application services should not be exposed directly to the public Internet.
+  Public authenticated deployments may terminate HTTP/S at host-level Caddy;
+  the controlled pilot instead uses the approved ADR-019 private-overlay
+  boundary after that boundary is implemented and verified.
 
 ## Current Platform Baseline
 
@@ -109,6 +111,9 @@ Confirmed deployment baseline:
 - The current development app is published only on `127.0.0.1:3000`.
 - Host-level Caddy reverse proxies `dev.alemany.me` to `127.0.0.1:3000` for
   external development access.
+- ADR-019 approves a managed private overlay with Tailscale as the
+  implementation reference for the controlled pilot. It is not implemented;
+  the current public Caddy route remains ineligible for real operational data.
 - `nam.alemany.me` is reserved for future production use.
 - Staging and production deployment remain future work.
 
@@ -151,10 +156,11 @@ Phase 23.4 implements explicit checklist-level `HOURS`/`MILES` meter snapshots
 and NAM-only save confirmation. Phase 24.1 adds feature-owned Operational
 Safety Checklist and Equipment Fuel Event contributions to Day View. ADR-018
 approves private local photo storage for the current single-node deployment,
-but real checklist-photo upload and serving remain blocked until authentication
-or another explicitly approved deny-by-default access boundary exists. Photo
-metadata and storage remain Operational Safety Checklist-owned rather than a
-generic attachment platform.
+and ADR-019 approves the managed private-overlay access architecture. Real
+checklist-photo upload and serving remain blocked until that boundary is
+implemented and verified and the remaining Phase 23.5 processing, storage,
+backup, and recovery prerequisites close. Photo metadata and storage remain
+Operational Safety Checklist-owned rather than a generic attachment platform.
 
 ## Architecture Decision Records
 

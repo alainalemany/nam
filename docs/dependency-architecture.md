@@ -117,8 +117,8 @@ Examples:
 | --- | --- |
 | Persistence depends on Prisma schema and migrations | Database-backed behavior must be represented in schema and committed migrations. |
 | Form writes depend on validation and mutation boundaries | Persisted user input needs server-side validation and a documented write path. |
-| Public access depends on Caddy routing | Public HTTP/S traffic should go through host-level Caddy, not direct app exposure. |
-| Real operational use depends on pilot authorization gates | Private access, current verified deployment, reviewed reference data, and a current-schema disposable restore must pass before real pilot entry. See `docs/infrastructure/operational-pilot-runbook.md`. |
+| Public development access depends on Caddy routing | The current synthetic-data development endpoint uses host-level Caddy, not direct application exposure; it is not approved for real pilot data. |
+| Real operational use depends on pilot authorization gates | ADR-019 approves a managed private overlay, but its implementation and verification, current deployment, reviewed reference data, current-schema disposable restore, and pilot scope must all pass before real pilot entry. See `docs/infrastructure/operational-pilot-runbook.md`. |
 | Checklist photo evidence depends on private access and media operations | Real photo use requires ADR-018's authentication/authorization or approved deny-by-default access boundary, proven HEIC/HEIF processing, persistent private storage, cleanup, and matched database/media recovery. |
 | Runtime confidence depends on verification commands | Build, test, health, and infrastructure checks provide evidence before completion. |
 

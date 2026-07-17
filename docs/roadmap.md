@@ -622,14 +622,17 @@ Canonical procedure:
 `docs/infrastructure/operational-pilot-runbook.md`
 
 Current status: Phase 24.2 readiness assessment is complete and Phase 24.2.1
-runbook preparation is complete. The real-data pilot has not started and is not
-authorized. No new feature implementation is required before operational
-preparation continues.
+runbook preparation is complete. Phase 24.2.2 selected a managed private
+overlay, and ADR-019 records the approved architecture with Tailscale as the
+implementation reference. Phase 24.2.2.1 records the controlled implementation
+and verification plan. The boundary is not implemented, the real-data pilot has
+not started, and the pilot is not authorized. No new product feature is required
+before operational preparation continues.
 
 ### Phase 1: Close Pilot Gates
 
-- Select and approve a private-access boundary; the current public
-  unauthenticated endpoint does not qualify.
+- Implement and independently verify the ADR-019 managed private-overlay
+  boundary; the current public unauthenticated endpoint still does not qualify.
 - Deploy and verify the intended current commit, including ten Day View
   contributors.
 - Prepare and review minimum operational reference data without fabricating

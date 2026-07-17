@@ -302,6 +302,11 @@ deployment, reference-data, recovery, and scope gates in the
 observations and the exit review should determine whether another product
 milestone is justified.
 
+ADR-019 now approves the managed private-overlay architecture for the Access
+Gate. The implementation, public-route removal, device and revocation checks,
+and independent acceptance remain a separate infrastructure milestone. An
+approved architecture does not pass the gate or authorize pilot data.
+
 ## Relationship To Future Implementation Architecture
 
 Delivery architecture defines the lifecycle for turning planned capabilities

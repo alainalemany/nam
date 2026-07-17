@@ -28,6 +28,7 @@ maintainability.
 | [ADR-016](adr-016-testing-foundation.md) | 2026-07-06 | Testing architecture | Vitest, jsdom, React Testing Library, and top-level test directories establish the executable testing foundation. |
 | [ADR-017](adr-017-supersede-standalone-work-truck-log.md) | 2026-07-16 | Product/domain architecture | Operational Safety Checklists and Daily Work Logs supersede the proposed standalone Work Truck Log. |
 | [ADR-018](adr-018-private-operational-safety-checklist-photo-storage.md) | 2026-07-16 | Infrastructure/security architecture | Checklist photo evidence uses private feature-owned metadata and local persistent media storage behind an explicit access gate. |
+| [ADR-019](adr-019-managed-private-overlay-operational-pilot.md) | 2026-07-17 | Infrastructure/security architecture | The controlled operational pilot uses a managed private overlay with Tailscale as the implementation reference and independent key-only SSH recovery. |
 
 ## Categories
 
@@ -58,6 +59,7 @@ Infrastructure and deployment:
 - ADR-012
 - ADR-013
 - ADR-018
+- ADR-019
 
 UI architecture:
 

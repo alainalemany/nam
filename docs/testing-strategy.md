@@ -313,7 +313,8 @@ Deferred areas:
 - Authentication and authorization.
 - Generic attachment infrastructure. Operational Safety Checklist photo
   evidence has feature-owned testing architecture, but implementation remains
-  blocked by ADR-018's access and runtime gates.
+  blocked by ADR-018's access and runtime gates. ADR-019 approves the access
+  architecture, not its implementation or verification.
 - Global search.
 - Analytics.
 - Production deployment.

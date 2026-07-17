@@ -49,6 +49,13 @@ existing development app:
 - `nam.alemany.me` is reserved for a future production deployment and is not
   configured in Caddy yet.
 
+ADR-019 approves a managed private overlay, with Tailscale as the implementation
+reference, for the controlled real-data pilot. That boundary is not implemented
+yet. The current public Caddy route remains development-only and does not
+authorize real operational data. The later access milestone must establish
+tailnet-only HTTPS, remove the public NAM route, and close public HTTP/HTTPS
+ingress over IPv4 and IPv6 before the Access Gate can pass.
+
 Phase 2B does not include:
 
 - Creating `/opt/nam`
@@ -115,6 +122,16 @@ Internet -> Caddy :443 -> 127.0.0.1:3000 -> nam-app
 ```
 
 Docker should continue to publish the app only on `127.0.0.1:3000`.
+
+The approved but unimplemented pilot path is:
+
+```text
+Approved tailnet device -> private HTTPS -> 127.0.0.1:3000 -> nam-app
+```
+
+The public Caddy path must be absent when the pilot Access Gate passes. See
+[ADR-019](decisions/adr-019-managed-private-overlay-operational-pilot.md) and
+the [Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md).
 
 ## Volumes
 
@@ -339,7 +356,8 @@ ten-contributor Day View verification, evidence record, and application-only
 rollback are defined in the
 [Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md). The
 pilot remains unauthorized until that procedure is executed after an approved
-private-access boundary is active.
+private-access boundary is active. ADR-019 approves the boundary architecture;
+it does not make the current public deployment eligible for pilot data.
 
 The expected sequence is:
 
@@ -356,7 +374,8 @@ The expected sequence is:
 
 ## Caddy Configuration
 
-Phase 3.2 uses host-level Caddy for external development access.
+Phase 3.2 currently uses host-level Caddy for external development access. This
+public route is not approved for real pilot data.
 
 The repository-owned Caddy example is:
 
@@ -397,13 +416,22 @@ If HTTPS does not load externally, verify:
 - Provider firewall/security group allows inbound TCP `80` and `443`.
 - The local app health endpoint succeeds at `http://127.0.0.1:3000/api/health`.
 
+The later ADR-019 implementation must remove this public application route,
+remove public DNS reachability for `dev.alemany.me`, and verify that Caddy does
+not provide an IPv4 or IPv6 bypass. Do not restore unauthenticated public Caddy
+access as a fallback when private overlay access is unavailable.
+
 ## Firewall Considerations
 
 PostgreSQL must not be exposed to the host or Internet. The application should
 remain reachable directly only through `127.0.0.1:3000`.
 
-For external development access, public traffic should terminate at Caddy on
-ports `80` and `443`. Do not open port `3000` publicly.
+For current synthetic-data development access, public traffic terminates at
+Caddy on ports `80` and `443`. Do not open port `3000` publicly.
+
+For the controlled pilot, public TCP `80` and `443` and UDP `443` must be
+closed over IPv4 and IPv6 after the private path is verified. Exact privileged
+UFW state must be captured before implementation and verified afterward.
 
 ## Maintenance Tasks
 

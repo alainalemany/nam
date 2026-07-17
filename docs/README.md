@@ -125,6 +125,7 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Run the application foundation | [Development Guide](development.md) |
 | Operate infrastructure | [Infrastructure Operations](infrastructure.md) |
 | Prepare and execute a controlled operational pilot | [Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md) |
+| Understand the controlled-pilot private-access decision | [ADR-019: Managed Private Overlay](decisions/adr-019-managed-private-overlay-operational-pilot.md) |
 | Understand server identity | [Server Environment Identity](infrastructure/server-environment.md) |
 | Understand bootstrap and verification | [Bootstrap And Verification](infrastructure/bootstrap-and-verification.md) |
 | Understand recovery | [Disaster Recovery](infrastructure/disaster-recovery.md) |
@@ -163,6 +164,7 @@ to that home but should not restate the same policy in detail.
 | Architecture decisions | `docs/decisions/` |
 | Infrastructure philosophy | `docs/infrastructure.md`, durable decisions in `docs/decisions/` |
 | Operational pilot authorization, preparation, execution, and exit review | `docs/infrastructure/operational-pilot-runbook.md` |
+| Controlled-pilot private-access architecture | `docs/decisions/adr-019-managed-private-overlay-operational-pilot.md` |
 | Environment identity | `docs/infrastructure/server-environment.md` |
 | Deployment philosophy | `docs/architecture.md`, deployment operations in `docs/infrastructure.md` |
 | Recovery philosophy | `docs/infrastructure/disaster-recovery.md` |

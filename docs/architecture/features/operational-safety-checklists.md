@@ -37,6 +37,7 @@ Related Documents:
 - `docs/reference/checklists/mobile-checklist-v1.md`
 - `docs/decisions/adr-017-supersede-standalone-work-truck-log.md`
 - `docs/decisions/adr-018-private-operational-safety-checklist-photo-storage.md`
+- `docs/decisions/adr-019-managed-private-overlay-operational-pilot.md`
 
 Last Reviewed: 2026-07-17
 
@@ -52,8 +53,10 @@ feature owns shift-start Mobile inspections for work trucks, tractors,
 forklifts, and other supported mobile Equipment. Phase 23.4 implements explicit
 `HOURS`/`MILES` meter units, editable category suggestions, server-validated
 mismatch confirmation, signed NAM-only save results, and Create Another. Photo
-implementation and real photo use remain blocked by the access boundary in
-ADR-018.
+implementation and real photo use remain blocked. ADR-019 approves the managed
+private-overlay architecture for ADR-018's access requirement, but that
+boundary is not implemented and the remaining processing, storage, backup, and
+recovery prerequisites also remain open.
 
 ## 1. Purpose
 
@@ -1094,6 +1097,14 @@ every read and mutation:
    reverse-proxy boundary that limits the application to trusted users and
    devices, such as a private VPN or authenticated proxy.
 
+ADR-019 selects the second boundary for the controlled pilot, with Tailscale as
+the managed private-overlay implementation reference. Architecture approval is
+not gate completion. Real photo routes remain disabled until the overlay is
+implemented, deny-by-default grants and device approval are verified, and no
+public Caddy, DNS, IPv4, IPv6, Funnel, or other bypass remains. Tailscale
+controls network reachability; it does not provide checklist-level application
+authorization.
+
 TLS, an Internet-facing Caddy hostname, client-side hiding, `robots.txt`, and
 unpredictable media URLs do not satisfy this gate. Loopback-only development
 with synthetic, non-sensitive fixtures is permitted. Photo routes may be built
@@ -1292,8 +1303,8 @@ presentation work fails. The Phase 23.4 meter migration remains unchanged.
 
 Phase 23.5 is architecture-approved but implementation-blocked until:
 
-- Authentication/authorization or a separately approved deny-by-default access
-  boundary satisfies ADR-018.
+- The ADR-019 deny-by-default boundary is implemented and independently
+  verified, satisfying the access portion of ADR-018.
 - The selected pinned server image processor proves JPEG, PNG, WebP, HEIC, and
   HEIF primary-image selection, auxiliary-content handling, sequence rejection,
   codec availability, and licensing/redistribution compatibility in the actual
@@ -1313,7 +1324,8 @@ confirmation are implemented in Phase 23.4, with acceptance corrections in
 Phase 23.4.2. Photo workflow, limits, metadata,
 storage, cleanup, backup, and security policies are approved, but Phase 23.5
 implementation and real workplace-photo use remain blocked by the explicit
-prerequisites in Section 41.
+prerequisites in Section 41. ADR-019 resolves the access architecture choice,
+not its implementation or the remaining media prerequisites.
 
 Day View participation is implemented separately in Phase 24.1. Equipment
 Activity Timeline, explicit Defect linkage, Planner Review, external corporate

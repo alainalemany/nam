@@ -58,12 +58,10 @@ result for each gate before authorizing the first shift.
 
 ### Access Gate
 
-One of these categories must be approved and implemented:
-
-- Loopback access through an SSH tunnel.
-- A deny-by-default private network or VPN.
-- An authenticated reverse-proxy boundary.
-- Future application authentication and authorization.
+ADR-019 approves a managed private overlay network, with Tailscale as the
+implementation reference, for the controlled pilot. Independent administrator
+recovery remains key-only SSH to the VPS public address through a non-root
+account.
 
 The current public unauthenticated Caddy endpoint does not qualify. TLS, hidden
 navigation, unpredictable URLs, `robots.txt`, and obscurity do not provide
@@ -83,20 +81,99 @@ Verification must prove all of the following:
 - PostgreSQL has no host-published port.
 - Access can be disabled quickly without deleting application data.
 
-Boundary selection and implementation are a separate infrastructure decision.
+Architecture approval does not pass the Access Gate. The later implementation
+must execute the sequence below, preserve evidence, and receive independent
+acceptance. Tailscale controls network reachability only; it does not authorize
+users or records inside NAM Dashboard.
 
-### Private-Access Decision Checklist
+#### Access Policy Requirements
 
-| Option | Security and operation | Mobile and remote use | Future compatibility | Decision evidence required |
-| --- | --- | --- | --- | --- |
-| SSH tunnel | Strong when Caddy public access is disabled and only loopback is reachable; requires tunnel administration. | Practical on managed laptops; higher friction on iPad, iPhone, and Android. | Can coexist with later VPN, proxy, or application authentication. | Device client support, reconnect behavior, tunnel shutdown, and administrator recovery. |
-| Private VPN or network | Deny-by-default network membership can protect all routes without changing the app. | Usually the strongest balance for trusted mobile devices and remote mine-site access. | Application authentication may be added later as defense in depth. | Device enrollment, revocation, DNS/TLS behavior, network-loss behavior, and emergency disablement. |
-| Authenticated reverse proxy | Protects the existing web workflow at ingress if every route and asset is covered. | Low user friction when the identity flow works on all approved devices. | Can remain an outer boundary after application authentication is added. | No bypass to loopback/public origin, session expiry, logout, recovery identity, and complete route coverage. |
-| Full application authentication | Provides application-owned identity and authorization across modules. | Potentially seamless after a larger product and security implementation. | Best long-term integration, but materially broader than pilot preparation. | Identity source, authorization rules, account recovery, session security, audit expectations, and tests. |
+The future tailnet policy must:
 
-All options require TLS for remote use, no direct PostgreSQL exposure, a
-fail-closed unauthorized path, and a tested way to revoke access. Public
-unauthenticated use is not an option for real pilot data.
+- Remove the default allow-all policy and deny access by default.
+- Grant only approved pilot devices or approved identities.
+- Grant only the NAM private HTTPS service and its required port.
+- Avoid all-device, all-destination, and all-port grants.
+- Prevent unapproved tailnet members from reaching NAM.
+- Support immediate device removal and require approval before re-enrollment.
+- Keep SSH recovery outside the NAM application path.
+- Keep Tailscale Funnel and every public-sharing capability disabled.
+
+Do not record reusable auth keys, private keys, recovery codes, or real
+credential values in this repository or in pilot evidence.
+
+#### Controlled Implementation Sequence
+
+Execute these steps only in a separately authorized infrastructure milestone:
+
+1. Capture the current privileged UFW rules and effective SSH configuration.
+2. Verify independent key-only SSH recovery through the non-root administrator
+   account.
+3. Create and secure the Tailscale administrative account.
+4. Enable administrator MFA and device approval.
+5. Install and enroll the VPS.
+6. Enroll approved Windows and mobile devices.
+7. Remove the default allow-all policy and configure explicit deny-by-default
+   grants for the NAM HTTPS service only.
+8. Configure tailnet-only private HTTPS forwarding to `127.0.0.1:3000`.
+9. Confirm Tailscale Funnel and every public-sharing capability are disabled.
+10. Verify private access from each approved device class in pilot scope.
+11. Verify denial from an unapproved overlay device.
+12. Remove the public Caddy application route.
+13. Remove public DNS reachability for `dev.alemany.me`.
+14. Close public TCP `80` and `443` and UDP `443` over IPv4 and IPv6.
+15. Verify no direct IP, hostname, Caddy, IPv4, IPv6, or other public bypass
+    exists.
+16. Verify private-only access persists across VPS reboot and Docker restart.
+17. Verify device removal revokes access and re-enrollment requires approval.
+18. Record the Access Gate evidence and independent review result.
+
+Do not enter real operational data during this transition. Removing only the
+public DNS `A` record is insufficient. Public Caddy routing and public firewall
+ingress must both be removed or blocked, and both address families must be
+tested.
+
+The pilot uses a non-sensitive private overlay hostname with HTTPS and no
+browser warning. Consider certificate-transparency visibility when selecting
+the hostname. Direct IP bookmarks with certificate warnings are not the normal
+mobile workflow. `dev.alemany.me` remains reserved for a future explicitly
+authenticated public deployment.
+
+#### Administrator Recovery Evidence
+
+Before public web access is disabled, verify and record that:
+
+- A non-root administrator can connect by SSH key through the VPS public
+  address.
+- Password authentication is disabled in the effective SSH configuration.
+- A recovery key exists on a separate administrator-controlled device.
+- Recovery does not depend on Tailscale, Caddy, DNS, Docker, or the application
+  database.
+- The administrator can disable private serving or revoke devices without
+  exposing private keys or access-policy secrets.
+
+Failure of the private path after public removal must leave NAM unavailable.
+Do not restore unauthenticated public Caddy access as an automatic fallback.
+
+#### Access Gate Verification Evidence
+
+The implementation record must prove:
+
+- Public unauthenticated IPv4 and IPv6 access fail.
+- Approved Windows access and at least one approved mobile-device path succeed.
+- An unapproved overlay device cannot reach NAM.
+- Private HTTPS produces no browser warning.
+- Port `3000` remains loopback-only and PostgreSQL remains unpublished.
+- No Caddy, direct IP, DNS, Funnel, or other public bypass remains.
+- Application health, required routes, and all ten Day View contributors work
+  through the private service.
+- Device removal revokes access and re-enrollment requires approval.
+- VPS reboot and Docker restart preserve private-only access.
+- Key-only SSH recovery works independently.
+- Access can be disabled rapidly without modifying application data.
+
+The durable boundary and rollback rules are recorded in
+[ADR-019](../decisions/adr-019-managed-private-overlay-operational-pilot.md).
 
 ### Deployment Gate
 

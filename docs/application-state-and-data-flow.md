@@ -316,6 +316,9 @@ separate from completed checklist creation. Filesystem placement and Prisma
 metadata cannot share one transaction, so photo actions require staging,
 atomic same-volume moves, database transactions, and explicit compensation;
 ADR-018's access gate must fail closed before those actions are enabled.
+ADR-019 approves the managed private-overlay boundary, but Tailscale controls
+network reachability rather than checklist authorization, and the unimplemented
+boundary does not yet permit real photo actions.
 
 ## What Not To Standardize Yet
 
