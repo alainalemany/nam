@@ -584,7 +584,7 @@ canonical in `docs/reference/checklists/`. V1 Hour Meter readings are required
 whole integers from `0` through `999999`; the maximum is an implementation
 validation guard rather than a business rule.
 
-The approved meter enhancement retains that integer range and stores an
+The implemented meter enhancement retains that integer range and stores an
 explicit checklist-level `HOURS` or `MILES` snapshot. Dragline suggests Hours,
 Work Truck suggests Miles, and Tractor/Forklift require explicit selection.
 Suggestions remain editable; a known-category mismatch requires explicit

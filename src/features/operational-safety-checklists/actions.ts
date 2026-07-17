@@ -9,6 +9,10 @@ import {
   SafetyChecklistPersistenceError,
 } from "./persistence";
 import {
+  createSafetyChecklistResultMarker,
+  type SafetyChecklistResultOutcome,
+} from "./result-marker";
+import {
   emptySafetyChecklistActionState,
   safetyChecklistFieldErrors,
   safetyChecklistSubmissionSchema,
@@ -35,7 +39,9 @@ function parseFormData(formData: FormData):
     equipmentId: formData.get("equipmentId"),
     templateKey: formData.get("templateKey"),
     templateVersion: formData.get("templateVersion"),
+    meterKind: formData.get("meterKind"),
     startingMeter: formData.get("startingMeter"),
+    meterMismatchConfirmed: formData.get("meterMismatchConfirmed"),
     operatorDisplayName: formData.get("operatorDisplayName"),
     supervisorDisplayName: formData.get("supervisorDisplayName"),
     problemDescription: formData.get("problemDescription"),
@@ -82,6 +88,36 @@ function persistenceErrorState(error: unknown): SafetyChecklistActionState {
   };
 }
 
+function redirectAfterSuccessfulChecklistPersistence(
+  checklist: { id: string; recordVersion: number },
+  outcome: SafetyChecklistResultOutcome,
+  pathsToRevalidate: string[],
+): never {
+  const detailPath = `/operational-safety-checklists/${checklist.id}`;
+  let result: string | undefined;
+
+  try {
+    for (const path of pathsToRevalidate) revalidatePath(path);
+    result = createSafetyChecklistResultMarker(
+      outcome,
+      checklist.id,
+      checklist.recordVersion,
+    );
+  } catch (error) {
+    console.error("Checklist saved without result presentation marker.", {
+      checklistId: checklist.id,
+      outcome,
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
+  }
+
+  return redirect(
+    result
+      ? `${detailPath}?${new URLSearchParams({ result })}`
+      : detailPath,
+  );
+}
+
 export async function createOperationalSafetyChecklistAction(
   _previousState: SafetyChecklistActionState,
   formData: FormData,
@@ -89,15 +125,18 @@ export async function createOperationalSafetyChecklistAction(
   const parsed = parseFormData(formData);
   if (!parsed.ok) return parsed.state;
 
-  let checklistId: string;
+  let checklist: { id: string; recordVersion: number };
   try {
-    checklistId = (await persistOperationalSafetyChecklist(parsed.data)).id;
+    checklist = await persistOperationalSafetyChecklist(parsed.data);
   } catch (error) {
     return persistenceErrorState(error);
   }
 
-  revalidatePath("/operational-safety-checklists");
-  redirect(`/operational-safety-checklists/${checklistId}`);
+  return redirectAfterSuccessfulChecklistPersistence(
+    checklist,
+    "created",
+    ["/operational-safety-checklists"],
+  );
 }
 
 export async function correctOperationalSafetyChecklistAction(
@@ -108,13 +147,19 @@ export async function correctOperationalSafetyChecklistAction(
   const parsed = parseFormData(formData);
   if (!parsed.ok) return parsed.state;
 
+  let checklist: { id: string; recordVersion: number };
   try {
-    await persistOperationalSafetyChecklist(parsed.data, checklistId);
+    checklist = await persistOperationalSafetyChecklist(parsed.data, checklistId);
   } catch (error) {
     return persistenceErrorState(error);
   }
 
-  revalidatePath("/operational-safety-checklists");
-  revalidatePath(`/operational-safety-checklists/${checklistId}`);
-  redirect(`/operational-safety-checklists/${checklistId}`);
+  return redirectAfterSuccessfulChecklistPersistence(
+    checklist,
+    "corrected",
+    [
+      "/operational-safety-checklists",
+      `/operational-safety-checklists/${checklistId}`,
+    ],
+  );
 }

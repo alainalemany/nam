@@ -5,10 +5,16 @@ import {
   localSafetyChecklistDateValue,
 } from "@/features/operational-safety-checklists/date";
 import {
+  safetyChecklistMeterKindSuggestion,
+} from "@/features/operational-safety-checklists/constants";
+import {
   getSafetyChecklistTemplate,
   safetyChecklistTemplates,
 } from "@/features/operational-safety-checklists/templates";
-import { safetyChecklistSubmissionSchema } from "@/features/operational-safety-checklists/validation";
+import {
+  safetyChecklistCreateAnotherSourceSchema,
+  safetyChecklistSubmissionSchema,
+} from "@/features/operational-safety-checklists/validation";
 
 const draglineCatalog = [
   ["bench_condition", "Bench Condition", 6, null, "CONDITION_FOUR"],
@@ -81,7 +87,9 @@ function validInput(templateKey: "DRAGLINE_INSPECTION" | "MOBILE_INSPECTION") {
     equipmentId: "equipment-1",
     templateKey,
     templateVersion: 1,
+    meterKind: "HOURS",
     startingMeter: "12345",
+    meterMismatchConfirmed: false,
     operatorDisplayName: "Alex Operator",
     supervisorDisplayName: "Sam Supervisor",
     problemDescription: "",
@@ -177,17 +185,41 @@ describe("Operational Safety Checklist date-only behavior", () => {
 });
 
 describe("Operational Safety Checklist validation", () => {
-  it.each(["0", "999999"])("accepts integer Hour Meter boundary %s", (startingMeter) => {
+  it.each([
+    ["DRAGLINE", "HOURS"],
+    ["WORK_TRUCK", "MILES"],
+    ["TRACTOR", null],
+    ["FORKLIFT", null],
+    ["OTHER", null],
+  ] as const)("suggests the approved meter unit for %s", (category, expected) => {
+    expect(safetyChecklistMeterKindSuggestion(category)).toBe(expected);
+  });
+
+  it.each(["HOURS", "MILES"] as const)("accepts %s as an explicit meter unit", (meterKind) => {
+    expect(safetyChecklistSubmissionSchema.safeParse({
+      ...validInput("DRAGLINE_INSPECTION"),
+      meterKind,
+    }).success).toBe(true);
+  });
+
+  it.each(["0", "999999"])("accepts integer meter boundary %s", (startingMeter) => {
     expect(safetyChecklistSubmissionSchema.safeParse({
       ...validInput("DRAGLINE_INSPECTION"),
       startingMeter,
     }).success).toBe(true);
   });
 
-  it.each(["-1", "1.5", "1000000", ""])("rejects invalid Hour Meter value %s", (startingMeter) => {
+  it.each(["-1", "1.5", "1000000", "", "not-a-number"])("rejects invalid meter value %s", (startingMeter) => {
     expect(safetyChecklistSubmissionSchema.safeParse({
       ...validInput("DRAGLINE_INSPECTION"),
       startingMeter,
+    }).success).toBe(false);
+  });
+
+  it.each(["", "KILOMETERS", "hours"])("rejects unsupported meter unit %s", (meterKind) => {
+    expect(safetyChecklistSubmissionSchema.safeParse({
+      ...validInput("DRAGLINE_INSPECTION"),
+      meterKind,
     }).success).toBe(false);
   });
 
@@ -240,4 +272,17 @@ describe("Operational Safety Checklist validation", () => {
     input.problemDescription = "Seat belt latch does not hold.";
     expect(safetyChecklistSubmissionSchema.safeParse(input).success).toBe(true);
   });
+});
+
+describe("Operational Safety Checklist Create Another source", () => {
+  it("accepts a bounded record identity", () => {
+    expect(safetyChecklistCreateAnotherSourceSchema.safeParse("checklist_123-abc").success).toBe(true);
+  });
+
+  it.each(["", "../checklist", "checklist?result=created", "x".repeat(121)])(
+    "rejects unsafe source value %s",
+    (value) => {
+      expect(safetyChecklistCreateAnotherSourceSchema.safeParse(value).success).toBe(false);
+    },
+  );
 });

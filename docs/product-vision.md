@@ -220,7 +220,7 @@ The current implemented product capabilities include:
 
 Planned Version 1 product scope includes:
 
-- Operational Safety Checklist meter-unit and NAM save-confirmation
+- Implemented Operational Safety Checklist meter-unit and NAM save-confirmation
   enhancements under the approved Phase 23.3 architecture.
 - Optional checklist-level photo evidence after ADR-018's access, processing,
   storage, and backup gates are satisfied.

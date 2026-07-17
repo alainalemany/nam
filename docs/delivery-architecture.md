@@ -253,7 +253,7 @@ begins.
 When one enhancement mixes an ordinary application/schema change with a new
 security or infrastructure boundary, split delivery at that dependency. Phase
 23.3 applies this rule to Operational Safety Checklists: explicit meter units
-and NAM save confirmation form one implementation-ready slice, while photo
+and NAM save confirmation formed the completed Phase 23.4 slice, while photo
 metadata, media processing, persistent storage, private serving, and backup
 form a later access-gated slice under ADR-018. Do not pull the blocked media
 dependency into the meter milestone or enable real photo use merely because its

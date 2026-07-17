@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import { safetyChecklistShiftValues } from "./constants";
+import {
+  safetyChecklistMeterKindValues,
+  safetyChecklistShiftValues,
+} from "./constants";
 import { isSafetyChecklistDateOnly } from "./date";
 import {
   getResponseOption,
@@ -33,10 +36,15 @@ const integerMeter = z.preprocess(
     return value;
   },
   z
-    .number({ error: "Hour Meter must be a whole number." })
-    .int("Hour Meter must be a whole number.")
-    .min(0, "Hour Meter cannot be negative.")
-    .max(999999, "Hour Meter must be 999999 or less."),
+    .number({ error: "Starting Meter Reading must be a whole number." })
+    .int("Starting Meter Reading must be a whole number.")
+    .min(0, "Starting Meter Reading cannot be negative.")
+    .max(999999, "Starting Meter Reading must be 999999 or less."),
+);
+
+const transientConfirmation = z.preprocess(
+  (value) => value === true || value === "true" || value === "on",
+  z.boolean(),
 );
 
 export const safetyChecklistResponseInputSchema = z.object({
@@ -54,7 +62,11 @@ export const safetyChecklistSubmissionSchema = z
     equipmentId: requiredText("Equipment", 120),
     templateKey: z.enum(safetyChecklistTemplateKeys),
     templateVersion: z.coerce.number().int().positive(),
+    meterKind: z.enum(safetyChecklistMeterKindValues, {
+      error: "Select Hours or Miles for the Starting Meter Reading.",
+    }),
     startingMeter: integerMeter,
+    meterMismatchConfirmed: transientConfirmation,
     operatorDisplayName: requiredText("Operator", 120),
     supervisorDisplayName: requiredText("Supervisor", 120),
     problemDescription: optionalText(2000),
@@ -136,6 +148,13 @@ export const emptySafetyChecklistActionState: SafetyChecklistActionState = {
   message: "",
   fieldErrors: {},
 };
+
+export const safetyChecklistCreateAnotherSourceSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(120)
+  .regex(/^[A-Za-z0-9_-]+$/);
 
 export function safetyChecklistFieldErrors(
   error: z.ZodError,

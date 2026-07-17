@@ -1,11 +1,14 @@
 import { Prisma } from "@prisma/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getSafetyChecklistTemplate } from "@/features/operational-safety-checklists/templates";
 
-const mocks = vi.hoisted(() => ({ persist: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  persist: vi.fn(),
+  revalidatePath: vi.fn(),
+}));
 
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((href: string) => {
     throw new Error(`redirect:${href}`);
@@ -32,6 +35,7 @@ function formData() {
   data.set("equipmentId", "equipment-1");
   data.set("templateKey", template.key);
   data.set("templateVersion", String(template.version));
+  data.set("meterKind", "HOURS");
   data.set("startingMeter", "200");
   data.set("operatorDisplayName", "Alex Operator");
   data.set("supervisorDisplayName", "Sam Supervisor");
@@ -45,16 +49,26 @@ function formData() {
 describe("Operational Safety Checklist Server Actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.persist.mockResolvedValue({ id: "checklist-1" });
+    process.env.NAM_CHECKLIST_RESULT_SIGNING_SECRET = "test-result-signing-secret-at-least-32-bytes";
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    mocks.persist.mockResolvedValue({
+      id: "checklist-1",
+      recordVersion: 1,
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("submits one complete checklist through feature-owned persistence", async () => {
     await expect(
       createOperationalSafetyChecklistAction(emptySafetyChecklistActionState, formData()),
-    ).rejects.toThrow("redirect:/operational-safety-checklists/checklist-1");
+    ).rejects.toThrow(/redirect:\/operational-safety-checklists\/checklist-1\?result=/);
     expect(mocks.persist).toHaveBeenCalledWith(
       expect.objectContaining({
         inspectionDate: "2026-07-15",
+        meterKind: "HOURS",
         startingMeter: 200,
         responses: expect.arrayContaining([
           { itemKey: "bench_condition", responseCode: "OK" },
@@ -70,8 +84,53 @@ describe("Operational Safety Checklist Server Actions", () => {
         emptySafetyChecklistActionState,
         formData(),
       ),
-    ).rejects.toThrow("redirect:/operational-safety-checklists/checklist-1");
+    ).rejects.toThrow(/redirect:\/operational-safety-checklists\/checklist-1\?result=/);
     expect(mocks.persist).toHaveBeenCalledWith(expect.any(Object), "checklist-1");
+  });
+
+  it("redirects to bare detail after persistence when marker signing is unavailable", async () => {
+    delete process.env.NAM_CHECKLIST_RESULT_SIGNING_SECRET;
+    await expect(
+      createOperationalSafetyChecklistAction(
+        emptySafetyChecklistActionState,
+        formData(),
+      ),
+    ).rejects.toThrow(/^redirect:\/operational-safety-checklists\/checklist-1$/);
+    expect(mocks.persist).toHaveBeenCalledTimes(1);
+    expect(console.error).toHaveBeenCalledWith(
+      "Checklist saved without result presentation marker.",
+      expect.objectContaining({ checklistId: "checklist-1", outcome: "created" }),
+    );
+  });
+
+  it("redirects correction to bare detail when marker signing fails after persistence", async () => {
+    delete process.env.NAM_CHECKLIST_RESULT_SIGNING_SECRET;
+    await expect(
+      correctOperationalSafetyChecklistAction(
+        "checklist-1",
+        emptySafetyChecklistActionState,
+        formData(),
+      ),
+    ).rejects.toThrow(/^redirect:\/operational-safety-checklists\/checklist-1$/);
+    expect(mocks.persist).toHaveBeenCalledTimes(1);
+    expect(console.error).toHaveBeenCalledWith(
+      "Checklist saved without result presentation marker.",
+      expect.objectContaining({ checklistId: "checklist-1", outcome: "corrected" }),
+    );
+  });
+
+  it("uses bare detail when nonessential post-commit revalidation fails", async () => {
+    mocks.revalidatePath.mockImplementationOnce(() => {
+      throw new Error("revalidation unavailable");
+    });
+    await expect(
+      createOperationalSafetyChecklistAction(
+        emptySafetyChecklistActionState,
+        formData(),
+      ),
+    ).rejects.toThrow(/^redirect:\/operational-safety-checklists\/checklist-1$/);
+    expect(mocks.persist).toHaveBeenCalledTimes(1);
+    expect(console.error).toHaveBeenCalled();
   });
 
   it("returns item-specific validation without creating incomplete state", async () => {
@@ -100,6 +159,20 @@ describe("Operational Safety Checklist Server Actions", () => {
     expect(result.message).toBe(
       "A checklist already exists for this Equipment, date, and shift.",
     );
+  });
+
+  it("reports an actual persistence failure without presentation work", async () => {
+    mocks.persist.mockRejectedValue(new Error("database unavailable"));
+    const result = await createOperationalSafetyChecklistAction(
+      emptySafetyChecklistActionState,
+      formData(),
+    );
+    expect(result).toMatchObject({
+      status: "error",
+      message: "The checklist could not be saved. Review the fields and try again.",
+    });
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+    expect(console.error).not.toHaveBeenCalled();
   });
 
   it("returns a safe uniqueness conflict during identity correction", async () => {

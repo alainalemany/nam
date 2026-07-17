@@ -324,6 +324,35 @@ textarea {
   color: #a12622;
 }
 
+.success-confirmation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border: 1px solid #8fc7a6;
+  border-radius: 8px;
+  background: #effaf3;
+  color: #174d2c;
+  padding: 16px 18px;
+  animation: confirmation-enter 180ms ease-out;
+}
+
+.success-confirmation p {
+  margin: 4px 0 0;
+  color: #2f5c40;
+}
+
+@keyframes confirmation-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .field-error {
   margin: 0;
   font-size: 0.875rem;
@@ -666,6 +695,60 @@ textarea {
   gap: 10px;
 }
 
+.meter-kind-fieldset {
+  display: grid;
+  gap: 8px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.meter-kind-fieldset legend {
+  margin-bottom: 8px;
+  color: #34424d;
+  font-weight: 700;
+}
+
+.meter-kind-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.meter-kind-option {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #c5ced6;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 8px 10px;
+}
+
+.meter-kind-option:has(input:checked) {
+  border-color: #1f6feb;
+  background: #eef6ff;
+  color: #164f99;
+}
+
+.meter-kind-option input {
+  width: auto;
+}
+
+.meter-mismatch-warning {
+  border: 1px solid #e7b66a;
+  border-radius: 8px;
+  background: #fff8e8;
+  color: #70430e;
+  padding: 14px;
+}
+
+.meter-mismatch-warning p,
+.meter-unit-change-note {
+  color: #70430e;
+}
+
 .checklist-response-row {
   display: grid;
   gap: 10px;
@@ -782,6 +865,15 @@ textarea {
 }
 
 @media (max-width: 560px) {
+  .success-confirmation {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .success-confirmation .inline-actions {
+    width: 100%;
+  }
+
   .checklist-derived-context,
   .checklist-response-options {
     grid-template-columns: 1fr;
@@ -790,5 +882,11 @@ textarea {
   .checklist-detail-response {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .success-confirmation {
+    animation: none;
   }
 }

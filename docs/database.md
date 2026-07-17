@@ -129,8 +129,10 @@ The implemented `OperationalSafetyChecklist` parent and owned
   feature architecture.
 - One completed record per Equipment, operational date, and shift; incomplete
   form state is not persisted.
-- A server-derived Hours meter-kind snapshot and integer starting reading from
-  `0` through `999999` for the approved V1 templates.
+- A required explicit `HOURS` or `MILES` meter-kind snapshot and integer
+  starting reading from `0` through `999999`.
+- Required internal `recordVersion`, defaulting to `1` and incremented
+  atomically with every successful aggregate correction.
 - One ordered response per approved checklist item.
 - Item-specific response sets using the approved three-option Condition,
   four-option Condition, Yes/No, or Presence semantics.
@@ -144,18 +146,24 @@ distinct business records even though the Daily Inspections feature owns both.
 Template identity is versioned but must not bypass Equipment/date/shift
 uniqueness. Completed records are corrected explicitly in place and are not
 deleted in V1. Canonical template catalogs are approved in
-`docs/reference/checklists/`. The maximum Hour Meter value is an implementation
-validation guard rather than a business limit. Future Equipment types may add
-different meter semantics only after separate operational confirmation.
+`docs/reference/checklists/`. The maximum meter value is an implementation
+validation guard rather than a business limit. No ending reading, calculated
+distance, or cross-record continuity rule exists.
 
 Checklist responses do not automatically create Defect records. Any future
 relationship must be explicit and preserve Defect Tracking lifecycle ownership.
 
-The implemented schema currently stores the V1 `HOURS` meter kind and integer
-reading. Phase 23.3 approves extending the existing required meter-kind enum
-with `MILES` while retaining the required integer reading and current range.
-Existing `HOURS` rows remain unchanged; no Equipment-category backfill or
-Equipment preferred-unit field is required.
+The implemented schema stores required `HOURS` or `MILES` meter kind with the
+integer reading. Phase 23.4 added `MILES` through one additive enum migration;
+existing `HOURS` rows remained unchanged. No Equipment-category backfill or
+Equipment preferred-unit field exists.
+
+Phase 23.4.2 added `recordVersion` through a second additive migration. The
+field is not user-editable and does not represent revision history. Its
+monotonic value supersedes older short-lived save-result markers without using
+millisecond `updatedAt` precision. Correction increments it in the same
+transaction as parent and owned-response changes; failed transactions leave it
+unchanged.
 
 Phase 23.3 also approves a future checklist-owned photo metadata child for
 Phase 23.5. Conceptually, it preserves opaque normalized-image and thumbnail

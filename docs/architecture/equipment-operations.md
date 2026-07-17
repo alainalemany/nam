@@ -144,8 +144,9 @@ Planner Review, planner authentication, approvals, configurable template
 administration, analytics, and automatic Defect creation remain outside the
 initial checklist foundation. Phase 23.3 approves explicit `HOURS`/`MILES`
 meter units, optional checklist-level photo evidence with captions, and NAM
-save confirmation. The meter/save slice is implementation-ready; photo
-implementation and real use remain gated by ADR-018.
+save confirmation. The Phase 23.4 meter/save slice is implemented; photo
+implementation and real use remain gated by ADR-018. Phase 23.4.2 completes the
+accepted monotonic save-marker and post-commit presentation fallback corrections.
 
 ## 6. Defect Tracking Boundary
 
@@ -321,7 +322,8 @@ misrepresented as an Equipment service or condition event.
 5. Amend Operational Safety Checklist architecture for explicit meter units,
    optional checklist-level image evidence, and NAM save confirmation.
    (Completed in Phase 23.3.)
-6. Implement meter units and NAM save confirmation as Phase 23.4.
+6. Implement meter units and NAM save confirmation as Phase 23.4, including
+   Phase 23.4.2 acceptance corrections. (Completed.)
 7. Implement optional photo evidence only after ADR-018's access, processing,
    storage, and backup gates close.
 8. Equipment Fuel Events or Operational Safety Checklist Day View participation
@@ -370,8 +372,9 @@ Equipment Operations infrastructure. Supply Requests remain a later
 discovery-stage feature, Fleet remains a separate future domain, and the
 Equipment Activity Timeline remains derived and deferred.
 
-The Phase 23.3 checklist enhancement architecture is Approved. Phase 23.4 may
-implement meter units and NAM save confirmation. Phase 23.5 photo evidence
+The Phase 23.3 checklist enhancement architecture is Approved. Phase 23.4 and
+its Phase 23.4.2 acceptance corrections implement meter units and NAM save
+confirmation. Phase 23.5 photo evidence
 remains blocked until its explicit access and runtime prerequisites are met;
 this does not create shared Equipment Operations media infrastructure.
 

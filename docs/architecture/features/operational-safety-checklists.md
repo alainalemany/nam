@@ -48,11 +48,11 @@ corrections have completed independent review with no remaining findings. Day
 View, Equipment Activity Timeline, Defect linkage, Planner Review, and the
 other deferred capabilities remain unimplemented. ADR-017 confirms that this
 feature owns shift-start Mobile inspections for work trucks, tractors,
-forklifts, and other supported mobile Equipment. Phase 23.3 approves explicit
-`HOURS`/`MILES` meter units, clear NAM save confirmation, and the architecture
-for optional checklist-level photo evidence. Meter and save-confirmation
-implementation remains Not Started. Photo implementation and real photo use
-remain blocked by the access boundary in ADR-018.
+forklifts, and other supported mobile Equipment. Phase 23.4 implements explicit
+`HOURS`/`MILES` meter units, editable category suggestions, server-validated
+mismatch confirmation, signed NAM-only save results, and Create Another. Photo
+implementation and real photo use remain blocked by the access boundary in
+ADR-018.
 
 ## 1. Purpose
 
@@ -328,10 +328,10 @@ attributes.
 The checklist needs a narrow meter concept rather than a field that assumes all
 Equipment uses odometer mileage.
 
-The implemented Phase 21 foundation currently has a required
-`OperationalSafetyChecklistMeterKind` with only `HOURS` and a required integer
-`startingMeter`. Phase 23.4 will extend that existing enum with `MILES`; it will
-not introduce a second unit field or an Equipment-level preferred-unit field.
+The implemented schema has a required `OperationalSafetyChecklistMeterKind`
+with `HOURS` and `MILES` and a required integer `startingMeter`. Phase 23.4
+extended the existing enum without introducing a second unit field or an
+Equipment-level preferred-unit field.
 
 Every checklist will preserve an explicit event-level meter-kind snapshot and
 one whole-number starting value. Both `HOURS` and `MILES` accept integers from
@@ -886,6 +886,7 @@ Recommended later sequence:
 4. Amend this architecture for explicit meter units, optional checklist-level
    image evidence, and NAM save confirmation. (Completed in Phase 23.3.)
 5. Implement explicit meter units and NAM save confirmation as Phase 23.4.
+   (Completed.)
 6. Implement photo storage and evidence management as Phase 23.5 only after its
    access and runtime prerequisites are satisfied.
 7. Day View participation only after separate approval.
@@ -936,7 +937,7 @@ then reapplies only the safe editable default for the replacement Equipment.
 
 ## 32. Meter Migration Architecture
 
-Phase 23.4 should use one additive migration that appends `MILES` to the
+Phase 23.4 uses one additive migration that appends `MILES` to the
 existing PostgreSQL `OperationalSafetyChecklistMeterKind` enum. The existing
 required `meterKind` and integer `startingMeter` columns remain in place. No
 backfill statement and no Equipment-category rewrite are required: every
@@ -944,11 +945,20 @@ existing row already represents the historical `HOURS` value entered under the
 Phase 21 architecture and must remain `HOURS`.
 
 The reviewed development database contained zero checklist rows on 2026-07-16,
-but migration correctness must not depend on that count. Other environments may
+but migration correctness does not depend on that count. Other environments may
 contain historical rows, and the additive enum change preserves them without a
-table rewrite. Prisma Client must be regenerated after the future schema edit.
+table rewrite. Phase 23.4 regenerated Prisma Client and applied the additive
+meter migration.
 PostgreSQL enum-value removal is not a safe routine rollback after `MILES` data
 exists; recovery should use a pre-migration backup or a forward correction.
+
+Phase 23.4.2 adds a separate additive migration for required internal
+`recordVersion Int @default(1)` metadata. Existing and new rows begin at version
+one. Every successful correction atomically increments the parent version in
+the same transaction as response replacement and the rest of the aggregate
+write. Failed corrections do not increment it. This field is not editable and
+is not an audit log; it provides monotonic supersession for short-lived save
+result markers.
 
 ## 33. Photo Evidence Domain Model
 
@@ -1136,10 +1146,13 @@ performing an implicit compensating bulk delete.
 Create and correction use Post/Redirect/Get to the server-rendered detail page
 with a short-lived, server-signed presentation marker. Its signed payload binds
 the supported result (`created` or `corrected`) to the checklist ID, persisted
-record version or update timestamp, issuance time, and expiration no more than
-five minutes after issuance. Only a successful Server Action persistence
+`recordVersion`, issuance time, and expiration no more than five minutes after
+issuance. `updatedAt` remains ordinary record metadata and is not the marker
+supersession authority. Only a successful Server Action persistence
 transaction may produce the marker. Failed mutations remain on the form with
 validation or persistence feedback and never redirect with a success marker.
+Every successful correction increments `recordVersion` atomically, so a marker
+from an earlier correction no longer verifies against current persisted state.
 
 The detail route validates the signature, checklist binding, current persisted
 version, expiration, and exact supported result before rendering either message:
@@ -1162,6 +1175,15 @@ cannot recreate the banner from an already-consumed URL. No session, flash
 message, cookie, or authentication system is introduced solely for this flow;
 the signing material is server-only configuration used only to validate the
 short-lived presentation marker.
+
+Checklist persistence is authoritative once its database transaction commits.
+Path revalidation and marker creation are nonessential post-commit presentation
+work. If either fails, including because the signing secret is missing or
+invalid, the action logs a safe server-side diagnostic and redirects to the
+saved checklist detail without a marker or banner. It must not report the
+completed database mutation as failed, encourage resubmission, or emit an
+unsigned marker. Actual validation and persistence failures still remain on the
+form and do not redirect as successful work.
 
 Submission controls disable while pending, while server validation and the
 database uniqueness rule remain the duplicate-submission authority. The detail
@@ -1205,20 +1227,23 @@ that Phase 23.5 must document before production enablement.
 
 ## 40. Enhancement Testing Architecture
 
-Phase 23.4 requires:
+Phase 23.4 and the Phase 23.4.2 acceptance corrections implement:
 
 - Unit tests for `HOURS`/`MILES`, integer/range validation, defaults, unknown
   categories, mismatch confirmation, Equipment reset, legacy `HOURS`, no
   continuity rule, and overnight operational date.
 - Component and route tests for the accessible unit control, warning and
   confirmation behavior, valid create and correction markers, invalid,
-  expired, unsupported, and directly constructed markers, failed mutations
-  producing no success redirect, marker consumption, refresh and browser
-  back/BFCache restoration, create another, pending-submit protection, and
-  reduced-motion behavior.
+  expired, unsupported, and directly constructed markers, marker consumption,
+  BFCache `pageshow` handling, and Create Another field clearing. URL cleanup
+  and BFCache behavior have component-level coverage; full browser refresh and
+  back-navigation E2E remain deferred.
 - Server Action and PostgreSQL tests for enum persistence, correction,
-  Equipment-change reset, historical snapshots, uniqueness, and migration of
-  existing `HOURS` rows.
+  Equipment-change reset, historical snapshots, uniqueness, existing `HOURS`
+  compatibility, `recordVersion` defaults and atomic increments, rollback, and
+  safe bare-detail fallback after post-commit presentation failure.
+- Pending-submit disabling and reduced-motion styling are implemented UI
+  behavior. They are not described as full browser-navigation E2E evidence.
 
 Phase 23.5 requires:
 
@@ -1247,11 +1272,16 @@ cross-route risk that narrower tests cannot protect.
 
 ### Phase 23.4: Meter Units And NAM Save Confirmation
 
-Phase 23.4 is architecture-approved and implementation-ready. It includes one
-additive enum migration, Prisma regeneration, explicit unit UI and validation,
-editable defaults, mismatch confirmation, correction/reset behavior, PRG
-success banners, safe create-another context, and focused tests. It does not
-include photo metadata, packages, storage, Docker volumes, or media routes.
+Phase 23.4 is implemented. It includes one additive enum migration, explicit
+unit UI and validation, editable defaults, mismatch confirmation,
+correction/reset behavior, signed PRG success banners, safe Create Another
+context, and focused tests. It does not include photo metadata, image packages,
+storage, Docker media volumes, or media routes.
+
+Phase 23.4.2 adds one separate additive `recordVersion` migration, monotonic
+marker supersession, Compose parsing/build behavior that does not require the
+runtime signing value, and bare-detail fallback when nonessential post-commit
+presentation work fails. The Phase 23.4 meter migration remains unchanged.
 
 ### Phase 23.5: Photo Evidence Storage And Management
 
@@ -1273,11 +1303,12 @@ not become an authentication milestone or generic attachment platform.
 
 ## 42. Phase 23.3 Architecture Status
 
-The enhancement architecture is Approved. Meter-unit and save-confirmation
-product decisions are closed, and Phase 23.4 may proceed. Photo workflow,
-limits, metadata, storage, cleanup, backup, and security policies are also
-approved, but Phase 23.5 implementation and real workplace-photo use remain
-blocked by the explicit prerequisites in Section 41.
+The enhancement architecture remains Approved. Meter units and NAM save
+confirmation are implemented in Phase 23.4, with acceptance corrections in
+Phase 23.4.2. Photo workflow, limits, metadata,
+storage, cleanup, backup, and security policies are approved, but Phase 23.5
+implementation and real workplace-photo use remain blocked by the explicit
+prerequisites in Section 41.
 
 Day View, Equipment Activity Timeline, explicit Defect linkage, Planner Review,
 external corporate submission, authentication implementation, and a generic

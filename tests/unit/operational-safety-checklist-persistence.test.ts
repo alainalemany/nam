@@ -43,6 +43,8 @@ const equipment = {
 function input(
   equipmentId = "equipment-1",
   templateKey: "DRAGLINE_INSPECTION" | "MOBILE_INSPECTION" = "DRAGLINE_INSPECTION",
+  meterKind: "HOURS" | "MILES" = templateKey === "MOBILE_INSPECTION" ? "MILES" : "HOURS",
+  meterMismatchConfirmed = false,
 ) {
   const template = getSafetyChecklistTemplate(templateKey, 1)!;
   return safetyChecklistSubmissionSchema.parse({
@@ -51,7 +53,9 @@ function input(
     equipmentId,
     templateKey,
     templateVersion: 1,
+    meterKind,
     startingMeter: "123",
+    meterMismatchConfirmed,
     operatorDisplayName: "Alex Operator",
     supervisorDisplayName: "Sam Supervisor",
     problemDescription: "",
@@ -88,6 +92,7 @@ function existing() {
     operatorDisplayName: "Alex Operator",
     supervisorDisplayName: "Sam Supervisor",
     problemDescription: null,
+    recordVersion: 1,
     createdAt: new Date(),
     updatedAt: new Date(),
     responses: template.fields.map((field, index) => ({
@@ -103,8 +108,8 @@ function existing() {
 beforeEach(() => {
   vi.clearAllMocks();
   transaction.equipment.findUnique.mockResolvedValue(equipment);
-  transaction.operationalSafetyChecklist.create.mockResolvedValue({ id: "checklist-1" });
-  transaction.operationalSafetyChecklist.update.mockResolvedValue({ id: "checklist-1" });
+  transaction.operationalSafetyChecklist.create.mockResolvedValue({ id: "checklist-1", recordVersion: 1 });
+  transaction.operationalSafetyChecklist.update.mockResolvedValue({ id: "checklist-1", recordVersion: 2 });
   transaction.operationalSafetyChecklistResponse.deleteMany.mockResolvedValue({ count: 0 });
   transaction.operationalSafetyChecklistResponse.createMany.mockResolvedValue({ count: 24 });
   transaction.operationalSafetyChecklistResponse.upsert.mockResolvedValue({});
@@ -137,10 +142,103 @@ describe("Operational Safety Checklist persistence", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           equipmentDisplayName: "Current Dragline",
+          meterKind: "HOURS",
           responses: { create: expect.arrayContaining([expect.objectContaining({ itemKey: "bench_condition", itemLabel: "Bench Condition" })]) },
         }),
+        select: { id: true, recordVersion: true },
       }),
     );
+  });
+
+  it("increments the persisted record version atomically during correction", async () => {
+    transaction.operationalSafetyChecklist.findUnique.mockResolvedValue(existing());
+    await expect(
+      persistOperationalSafetyChecklist(input(), "checklist-1"),
+    ).resolves.toEqual({ id: "checklist-1", recordVersion: 2 });
+    expect(transaction.operationalSafetyChecklist.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ recordVersion: { increment: 1 } }),
+        select: { id: true, recordVersion: true },
+      }),
+    );
+  });
+
+  it("persists an explicitly confirmed Dragline Miles mismatch", async () => {
+    transaction.operationalSafetyChecklist.findUnique.mockResolvedValue(undefined);
+    await persistOperationalSafetyChecklist(
+      input("equipment-1", "DRAGLINE_INSPECTION", "MILES", true),
+    );
+    expect(transaction.operationalSafetyChecklist.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ meterKind: "MILES" }) }),
+    );
+  });
+
+  it("rejects a crafted unconfirmed known-category mismatch", async () => {
+    transaction.operationalSafetyChecklist.findUnique.mockResolvedValue(undefined);
+    await expect(
+      persistOperationalSafetyChecklist(
+        input("equipment-1", "DRAGLINE_INSPECTION", "MILES", false),
+      ),
+    ).rejects.toEqual(
+      expect.objectContaining({ field: "meterKind", message: expect.stringContaining("Draglines normally use Hours") }),
+    );
+    expect(transaction.operationalSafetyChecklist.create).not.toHaveBeenCalled();
+  });
+
+  it("enforces the Work Truck Hours mismatch server-side", async () => {
+    transaction.operationalSafetyChecklist.findUnique.mockResolvedValue(undefined);
+    transaction.equipment.findUnique.mockResolvedValue({
+      ...equipment,
+      id: "truck-1",
+      category: "WORK_TRUCK",
+    });
+    await expect(
+      persistOperationalSafetyChecklist(
+        input("truck-1", "MOBILE_INSPECTION", "HOURS", false),
+      ),
+    ).rejects.toEqual(
+      expect.objectContaining({ field: "meterKind", message: expect.stringContaining("Work trucks normally use Miles") }),
+    );
+  });
+
+  it.each(["HOURS", "MILES"] as const)(
+    "allows Tractor %s without a known-category confirmation",
+    async (meterKind) => {
+      transaction.operationalSafetyChecklist.findUnique.mockResolvedValue(undefined);
+      transaction.equipment.findUnique.mockResolvedValue({
+        ...equipment,
+        id: "tractor-1",
+        category: "TRACTOR",
+      });
+      await expect(
+        persistOperationalSafetyChecklist(
+          input("tractor-1", "MOBILE_INSPECTION", meterKind, false),
+        ),
+      ).resolves.toMatchObject({ id: "checklist-1" });
+    },
+  );
+
+  it("preserves an unchanged historical mismatch without reconfirmation", async () => {
+    transaction.operationalSafetyChecklist.findUnique.mockResolvedValue({
+      ...existing(),
+      meterKind: "MILES",
+    });
+    await expect(
+      persistOperationalSafetyChecklist(
+        input("equipment-1", "DRAGLINE_INSPECTION", "MILES", false),
+        "checklist-1",
+      ),
+    ).resolves.toMatchObject({ id: "checklist-1" });
+  });
+
+  it("requires reconfirmation after changing an existing mismatch", async () => {
+    transaction.operationalSafetyChecklist.findUnique.mockResolvedValue(existing());
+    await expect(
+      persistOperationalSafetyChecklist(
+        input("equipment-1", "DRAGLINE_INSPECTION", "MILES", false),
+        "checklist-1",
+      ),
+    ).rejects.toEqual(expect.objectContaining({ field: "meterKind" }));
   });
 
   it("preserves unchanged historical snapshots while updating response values", async () => {

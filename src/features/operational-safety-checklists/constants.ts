@@ -1,3 +1,8 @@
+import type {
+  EquipmentCategory,
+  OperationalSafetyChecklistMeterKind,
+} from "@prisma/client";
+
 export const safetyChecklistShiftValues = [
   "DAY",
   "NIGHT",
@@ -29,6 +34,34 @@ export const safetyChecklistResponseLabels = {
   PRESENT: "Present",
   NOT_PRESENT: "Not Present",
 } as const;
+
+export const safetyChecklistMeterKindValues = ["HOURS", "MILES"] as const;
+
+export const safetyChecklistMeterKindOptions = [
+  { value: "HOURS", label: "Hours" },
+  { value: "MILES", label: "Miles" },
+] as const;
+
+export function safetyChecklistMeterKindSuggestion(
+  category: EquipmentCategory,
+): OperationalSafetyChecklistMeterKind | null {
+  if (category === "DRAGLINE") return "HOURS";
+  if (category === "WORK_TRUCK") return "MILES";
+  return null;
+}
+
+export function safetyChecklistMeterMismatchMessage(
+  category: EquipmentCategory,
+  meterKind: OperationalSafetyChecklistMeterKind,
+) {
+  if (category === "DRAGLINE" && meterKind === "MILES") {
+    return "Draglines normally use Hours. Confirm that Miles is correct for this inspection.";
+  }
+  if (category === "WORK_TRUCK" && meterKind === "HOURS") {
+    return "Work trucks normally use Miles. Confirm that Hours is correct for this inspection.";
+  }
+  return null;
+}
 
 export function safetyChecklistOptionLabel(
   options: readonly { value: string; label: string }[],

@@ -69,7 +69,7 @@ documentation architecture milestone explicitly approves that reorganization.
 | Day View | [Day View Architecture](day-view.md) | Approved; V1 composition implemented |
 | STOP Cards | [STOP Cards Architecture](stop-cards.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 | Daily Inspections | [Daily Inspections Architecture](daily-inspections.md) | Approved; V1 foundation, current-schema filtering, and Day View participation implemented |
-| Operational Safety Checklists | [Operational Safety Checklists Architecture](operational-safety-checklists.md) | Approved; V1 foundation accepted; Phase 23.3 enhancement architecture approved; meter units and NAM save confirmation implementation-ready, photo evidence access-gated under ADR-018; Day View deferred |
+| Operational Safety Checklists | [Operational Safety Checklists Architecture](operational-safety-checklists.md) | Approved; V1 foundation accepted; Phase 23.4 meter units, mismatch confirmation, NAM save feedback, and Create Another implemented; Phase 23.4.2 monotonic marker and fallback corrections complete; photo evidence access-gated under ADR-018; Day View deferred |
 | Shift Reports | [Shift Reports Architecture](shift-reports.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 | Work Authorizations | [Work Authorizations Architecture](work-authorizations.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 | Defect Tracking | [Defect Tracking Architecture](defect-tracking.md) | Approved; V1 foundation, filtering, and Day View participation implemented |

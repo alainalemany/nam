@@ -116,6 +116,7 @@ export function safetyChecklistToFormInitial(
     equipmentId: checklist.equipmentId ?? "",
     templateKey: checklist.templateKey,
     templateVersion: checklist.templateVersion,
+    meterKind: checklist.meterKind,
     startingMeter: String(checklist.startingMeter),
     operatorDisplayName: checklist.operatorDisplayName,
     supervisorDisplayName: checklist.supervisorDisplayName,
@@ -124,6 +125,24 @@ export function safetyChecklistToFormInitial(
       checklist.responses.map((response) => [response.itemKey, response.responseCode]),
     ),
   };
+}
+
+export async function getSafetyChecklistCreateAnotherInitial(id: string) {
+  const checklist = await getOperationalSafetyChecklistById(id);
+  if (!checklist) return undefined;
+  return {
+    inspectionDate: checklist.inspectionDate.toISOString().slice(0, 10),
+    shift: checklist.shift,
+    equipmentId: "",
+    templateKey: "",
+    templateVersion: 1,
+    meterKind: "" as const,
+    startingMeter: "",
+    operatorDisplayName: checklist.operatorDisplayName,
+    supervisorDisplayName: checklist.supervisorDisplayName,
+    problemDescription: "",
+    responses: {},
+  } satisfies SafetyChecklistFormInitialValues;
 }
 
 export function displaySafetyChecklistDate(value: Date) {

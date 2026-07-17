@@ -147,6 +147,22 @@ Phase 2B also documents:
 DATABASE_URL=postgresql://nam_app:replace-with-a-strong-local-password@localhost:5432/nam_dashboard?schema=public
 ```
 
+Phase 23.4 also requires this application-only server secret:
+
+```text
+NAM_CHECKLIST_RESULT_SIGNING_SECRET=replace-with-at-least-32-random-characters
+```
+
+It signs five-minute Operational Safety Checklist save-result markers. It is
+not an authentication credential or corporate-submission proof. Use at least
+32 random characters, keep the real value only in ignored/deployment secret
+configuration, and pass it to the application container. Compose configuration
+parsing and image builds do not require the runtime value and never bake it into
+the image. At runtime, missing or invalid configuration fails marker signing
+closed: authoritative checklist persistence still succeeds, the action logs a
+safe server-side diagnostic, and the user is redirected to saved detail without
+a marker or unverified success banner.
+
 The Compose `app` service uses the Docker-internal database host `postgres`, not `localhost`.
 
 The local `.env` file should replace the placeholder password with a local-only secret.

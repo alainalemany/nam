@@ -197,6 +197,7 @@ enum OperationalSafetyChecklistTemplate {
 
 enum OperationalSafetyChecklistMeterKind {
   HOURS
+  MILES
 }
 
 enum OperationalSafetyChecklistItemSection {
@@ -345,6 +346,7 @@ model OperationalSafetyChecklist {
   supervisorDisplayName String
   problemDescription    String?
   responses             OperationalSafetyChecklistResponse[]
+  recordVersion         Int                                  @default(1)
   createdAt             DateTime                             @default(now())
   updatedAt             DateTime                             @updatedAt
 

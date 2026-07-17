@@ -76,7 +76,17 @@ POSTGRES_DB=nam_dashboard
 POSTGRES_USER=nam_app
 POSTGRES_PASSWORD=replace-with-a-strong-local-password
 DATABASE_URL=postgresql://nam_app:replace-with-a-strong-local-password@localhost:5432/nam_dashboard?schema=public
+NAM_CHECKLIST_RESULT_SIGNING_SECRET=replace-with-at-least-32-random-characters
 ```
+
+`NAM_CHECKLIST_RESULT_SIGNING_SECRET` is a server-only secret used to sign the
+short-lived Operational Safety Checklist create/correction presentation marker.
+Use at least 32 random characters. Compose parsing and image building work when
+it is absent because the value is required only for runtime marker operations.
+At runtime, missing or short configuration fails marker generation closed while
+authoritative checklist persistence still succeeds; the action redirects to
+bare saved detail and emits no unverified banner. Never expose it to client code
+or commit a real value.
 
 For Docker Compose, the `app` service builds its internal database URL from the PostgreSQL variables and connects to `postgres:5432` over `nam-network`.
 
@@ -269,3 +279,17 @@ tests/setup/
 Use `pnpm test:run` before handing off a code change. Use `pnpm build` for the
 current production-build quality gate. Use `pnpm lint` for the current
 TypeScript no-emit gate.
+
+Operational Safety Checklist meter persistence has an explicitly opt-in,
+rollback-only PostgreSQL check. Run it through the private Docker network so no
+database host port is required:
+
+```bash
+docker compose run --rm --no-deps \
+  -v "$PWD:/workspace" -w /workspace app \
+  sh -c 'OPERATIONAL_SAFETY_CHECKLIST_TEST_DATABASE_URL="$DATABASE_URL" ./node_modules/.bin/vitest run tests/integration/operational-safety-checklist-postgres.test.ts'
+```
+
+The test rolls back its fixture transactions and verifies that no checklist
+fixture rows remain. The normal suite skips this file unless
+`OPERATIONAL_SAFETY_CHECKLIST_TEST_DATABASE_URL` is set explicitly.

@@ -320,13 +320,17 @@ Deferred areas:
 - Metronic integration details.
 - External automation or third-party integrations.
 
-Phase 23.4 meter and save-confirmation tests should cover enum/range behavior,
-editable category defaults, mismatch confirmation, Equipment reset, legacy
-`HOURS`, correction, PostgreSQL migration behavior, Post/Redirect/Get result
-markers, accessible success status, create another, and duplicate-submit
-protection. Result-marker coverage should include valid create/correction,
-invalid or expired markers, failed mutations, direct constructed URLs, refresh
-after consumption, and browser back/BFCache restoration.
+Phase 23.4 meter and save-confirmation coverage, including Phase 23.4.2
+acceptance corrections, is implemented across unit, component/route, Server
+Action, persistence, and opt-in rollback-only PostgreSQL tests. It covers
+enum/range behavior, editable category defaults, mismatch confirmation,
+Equipment reset, legacy `HOURS`, correction, migration behavior, monotonic
+`recordVersion`, signed Post/Redirect/Get results, post-commit bare-detail
+fallback, accessible success status, Create Another, invalid/expired markers,
+failed mutations, direct constructed URLs, URL consumption, and BFCache
+`pageshow` handling. Pending-submit disabling and reduced-motion styling are
+implemented. Browser URL/BFCache behavior has component-level coverage; broad
+browser refresh/back-navigation E2E remains deferred.
 
 Phase 23.5 requires unit and integration evidence for file-signature and decode
 validation, HEIC/HEIF primary-image and auxiliary-content handling, sequence

@@ -175,7 +175,7 @@ graph and formally closed Phase 21. Day View participation remains deferred.
 Phase 23.3 completed this architecture. ADR-018 approves private local media
 storage and requires an explicit access gate before real photo use.
 
-### Phase 5: Meter Units And NAM Save Confirmation (Next)
+### Phase 5: Meter Units And NAM Save Confirmation (Complete)
 
 - Add `MILES` to the existing checklist meter enum through one additive
   migration; preserve existing `HOURS` rows unchanged.
@@ -186,6 +186,16 @@ storage and requires an explicit access gate before real photo use.
   Create Another workflow.
 - Keep photo storage, media packages, Docker volume changes, and routes out of
   this slice.
+
+Phase 23.4 completed this slice with one additive enum migration, explicit
+meter-unit validation, editable defaults, transient mismatch confirmation,
+signed NAM-only save results, Create Another, and focused PostgreSQL-backed
+validation.
+
+Phase 23.4.2 completed acceptance corrections with one additive internal
+`recordVersion` migration, atomic correction increments, monotonic result-marker
+supersession, Compose/build-safe secret interpolation, and bare-detail fallback
+after nonessential post-commit presentation failure.
 
 ### Phase 6: Optional Photo Evidence (Access-Gated)
 

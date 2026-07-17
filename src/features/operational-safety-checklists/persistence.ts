@@ -9,6 +9,9 @@ import {
 import { prisma } from "@/lib/prisma";
 
 import {
+  safetyChecklistMeterMismatchMessage,
+} from "./constants";
+import {
   getResponseOption,
   getSafetyChecklistTemplate,
   resolveSafetyChecklistTemplate,
@@ -202,6 +205,22 @@ export async function persistOperationalSafetyChecklist(
     }
 
     const template = resolveTemplate(input, equipment, existing);
+    const meterMismatch = safetyChecklistMeterMismatchMessage(
+      equipment.category,
+      input.meterKind,
+    );
+    const meterIdentityChanged =
+      !existing || equipmentChanged || existing.meterKind !== input.meterKind;
+    if (
+      meterMismatch &&
+      meterIdentityChanged &&
+      !input.meterMismatchConfirmed
+    ) {
+      throw new SafetyChecklistPersistenceError(
+        `${meterMismatch} Select the confirmation before saving.`,
+        "meterKind",
+      );
+    }
     const responses = responseData(input, template);
     const snapshot =
       existing && !equipmentChanged
@@ -216,7 +235,7 @@ export async function persistOperationalSafetyChecklist(
       templateKey: template.key,
       templateVersion: template.version,
       templateName: template.name,
-      meterKind: "HOURS" as const,
+      meterKind: input.meterKind,
       startingMeter: input.startingMeter,
       operatorDisplayName: input.operatorDisplayName,
       supervisorDisplayName: input.supervisorDisplayName,
@@ -229,17 +248,20 @@ export async function persistOperationalSafetyChecklist(
           ...parentData,
           responses: { create: responses },
         },
-        select: { id: true },
+        select: { id: true, recordVersion: true },
       });
     }
 
     const templateChanged =
       existing.templateKey !== template.key || existing.templateVersion !== template.version;
 
-    await transaction.operationalSafetyChecklist.update({
+    const updated = await transaction.operationalSafetyChecklist.update({
       where: { id: existing.id },
-      data: parentData,
-      select: { id: true },
+      data: {
+        ...parentData,
+        recordVersion: { increment: 1 },
+      },
+      select: { id: true, recordVersion: true },
     });
 
     if (templateChanged) {
@@ -285,6 +307,6 @@ export async function persistOperationalSafetyChecklist(
       });
     }
 
-    return { id: existing.id };
+    return updated;
   });
 }

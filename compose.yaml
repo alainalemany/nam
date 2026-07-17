@@ -9,6 +9,7 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      NAM_CHECKLIST_RESULT_SIGNING_SECRET: ${NAM_CHECKLIST_RESULT_SIGNING_SECRET:-}
       NEXT_TELEMETRY_DISABLED: "1"
     depends_on:
       postgres:

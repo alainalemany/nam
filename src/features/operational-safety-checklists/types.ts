@@ -1,4 +1,7 @@
-import type { EquipmentCategory } from "@prisma/client";
+import type {
+  EquipmentCategory,
+  OperationalSafetyChecklistMeterKind,
+} from "@prisma/client";
 
 import type {
   SafetyChecklistResponseCode,
@@ -23,8 +26,9 @@ export type SafetyChecklistFormInitialValues = {
   inspectionDate: string;
   shift: string;
   equipmentId: string;
-  templateKey: SafetyChecklistTemplateKey;
+  templateKey: SafetyChecklistTemplateKey | "";
   templateVersion: number;
+  meterKind: OperationalSafetyChecklistMeterKind | "";
   startingMeter: string;
   operatorDisplayName: string;
   supervisorDisplayName: string;

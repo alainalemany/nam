@@ -2,7 +2,12 @@
 
 import { useActionState, useMemo, useState } from "react";
 
-import { safetyChecklistShiftOptions } from "./constants";
+import {
+  safetyChecklistMeterKindOptions,
+  safetyChecklistMeterKindSuggestion,
+  safetyChecklistMeterMismatchMessage,
+  safetyChecklistShiftOptions,
+} from "./constants";
 import { localSafetyChecklistDateValue } from "./date";
 import {
   getSafetyChecklistTemplate,
@@ -57,7 +62,9 @@ export function OperationalSafetyChecklistForm({
     key: initialValues?.templateKey ?? equipmentOptions[0]?.templateKey,
     version: initialValues?.templateVersion ?? equipmentOptions[0]?.templateVersion ?? 1,
   }));
+  const [meterKind, setMeterKind] = useState(initialValues?.meterKind ?? "");
   const [startingMeter, setStartingMeter] = useState(initialValues?.startingMeter ?? "");
+  const [meterMismatchConfirmed, setMeterMismatchConfirmed] = useState(false);
   const [operatorDisplayName, setOperatorDisplayName] = useState(
     initialValues?.operatorDisplayName ?? "",
   );
@@ -87,12 +94,27 @@ export function OperationalSafetyChecklistForm({
   const answeredCount = template?.fields.filter((field) => responses[field.key]).length ?? 0;
   const needsRepair = Object.values(responses).includes("NEEDS_REPAIR");
   const meterValid = /^\d+$/.test(startingMeter) && Number(startingMeter) <= 999999;
+  const meterMismatch =
+    selectedEquipment && meterKind
+      ? safetyChecklistMeterMismatchMessage(selectedEquipment.category, meterKind)
+      : null;
+  const unchangedHistoricalMismatch = Boolean(
+    meterMismatch &&
+      initialValues?.equipmentId &&
+      equipmentId === initialValues.equipmentId &&
+      meterKind === initialValues.meterKind,
+  );
+  const meterMismatchConfirmationRequired = Boolean(
+    meterMismatch && !unchangedHistoricalMismatch,
+  );
   const complete = Boolean(
     inspectionDate &&
       shift &&
       equipmentId &&
       template &&
+      meterKind &&
       meterValid &&
+      (!meterMismatchConfirmationRequired || meterMismatchConfirmed) &&
       operatorDisplayName.trim() &&
       supervisorDisplayName.trim() &&
       answeredCount === template.fields.length &&
@@ -112,11 +134,18 @@ export function OperationalSafetyChecklistForm({
       setResponses({});
       setProblemDescription("");
       setStartingMeter("");
+      setMeterKind(next ? safetyChecklistMeterKindSuggestion(next.category) ?? "" : "");
+      setMeterMismatchConfirmed(false);
     }
     if (!next) {
       return;
     }
     setTemplateIdentity({ key: next.templateKey, version: next.templateVersion });
+  }
+
+  function selectMeterKind(nextMeterKind: "HOURS" | "MILES") {
+    setMeterKind(nextMeterKind);
+    setMeterMismatchConfirmed(false);
   }
 
   function setResponse(itemKey: string, responseCode: SafetyChecklistResponseCode) {
@@ -223,7 +252,7 @@ export function OperationalSafetyChecklistForm({
             {firstError(state, "equipmentId")}
           </label>
           <label>
-            <span>Hour Meter (Start)</span>
+            <span>Starting Meter Reading</span>
             <input
               inputMode="numeric"
               max="999999"
@@ -236,6 +265,24 @@ export function OperationalSafetyChecklistForm({
             />
             {firstError(state, "startingMeter")}
           </label>
+          <fieldset className="meter-kind-fieldset">
+            <legend>Starting Meter Unit</legend>
+            <div className="meter-kind-options">
+              {safetyChecklistMeterKindOptions.map((option) => (
+                <label className="meter-kind-option" key={option.value}>
+                  <input
+                    checked={meterKind === option.value}
+                    name="meterKind"
+                    onChange={() => selectMeterKind(option.value)}
+                    type="radio"
+                    value={option.value}
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </div>
+            {firstError(state, "meterKind")}
+          </fieldset>
           <label>
             <span>Operator</span>
             <input
@@ -257,6 +304,29 @@ export function OperationalSafetyChecklistForm({
             {firstError(state, "supervisorDisplayName")}
           </label>
         </div>
+
+        {meterMismatchConfirmationRequired ? (
+          <div className="meter-mismatch-warning full-width-field" role="alert">
+            <strong>Confirm meter unit</strong>
+            <p>{meterMismatch}</p>
+            <label className="checkbox-row">
+              <input
+                checked={meterMismatchConfirmed}
+                name="meterMismatchConfirmed"
+                onChange={(event) => setMeterMismatchConfirmed(event.target.checked)}
+                type="checkbox"
+                value="true"
+              />
+              <span>I confirm this meter unit is correct for this inspection.</span>
+            </label>
+          </div>
+        ) : null}
+
+        {initialValues?.meterKind && meterKind !== initialValues.meterKind ? (
+          <p className="meter-unit-change-note full-width-field" role="status">
+            Changing the meter unit changes how the saved reading is interpreted.
+          </p>
+        ) : null}
 
         <div className="checklist-derived-context full-width-field" aria-live="polite">
           <div><span>Template</span><strong>{template?.name ?? "Select Equipment"}</strong></div>

@@ -35,6 +35,32 @@ const equipmentOptions = [
     templateName: "Mobile Inspection",
   },
   {
+    id: "tractor-1",
+    label: "Tractor 1 #TR-1 (Mine A)",
+    displayName: "Tractor 1",
+    equipmentNumber: "TR-1",
+    category: "TRACTOR" as const,
+    mineName: "Mine A",
+    cityName: "City A",
+    cityState: "FL",
+    templateKey: "MOBILE_INSPECTION" as const,
+    templateVersion: 1,
+    templateName: "Mobile Inspection",
+  },
+  {
+    id: "forklift-1",
+    label: "Forklift 1 #FL-1 (Mine A)",
+    displayName: "Forklift 1",
+    equipmentNumber: "FL-1",
+    category: "FORKLIFT" as const,
+    mineName: "Mine A",
+    cityName: "City A",
+    cityState: "FL",
+    templateKey: "MOBILE_INSPECTION" as const,
+    templateVersion: 1,
+    templateName: "Mobile Inspection",
+  },
+  {
     id: "dragline-2",
     label: "Dragline 2 #DL-2 (Mine B)",
     displayName: "Dragline 2",
@@ -70,6 +96,7 @@ describe("OperationalSafetyChecklistForm", () => {
     expect(screen.getByText("Bench Condition")).toBeInTheDocument();
     expect(screen.getByText("Two Life Jackets In Cabin")).toBeInTheDocument();
     expect(screen.queryByText("Planner Review")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Hours" })).toBeChecked();
   });
 
   it("switches to the canonical Mobile template and derives Mine and City", () => {
@@ -81,7 +108,33 @@ describe("OperationalSafetyChecklistForm", () => {
     expect(screen.getByText("Fuel Card")).toBeInTheDocument();
     expect(screen.getByText("Mine A")).toBeInTheDocument();
     expect(screen.getByText("City A, FL")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Miles" })).toBeChecked();
   });
+
+  it.each(["tractor-1", "forklift-1"])("requires explicit meter selection for %s", (equipmentId) => {
+    render(<OperationalSafetyChecklistForm action={action} cancelHref="/" equipmentOptions={equipmentOptions} submitLabel="Submit" />);
+    fireEvent.change(screen.getByLabelText("Equipment"), { target: { value: equipmentId } });
+    expect(screen.getByRole("radio", { name: "Hours" })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: "Miles" })).not.toBeChecked();
+  });
+
+  it.each([
+    ["dragline-1", "Miles", "Draglines normally use Hours. Confirm that Miles is correct for this inspection.", "Hours"],
+    ["truck-1", "Hours", "Work trucks normally use Miles. Confirm that Hours is correct for this inspection.", "Miles"],
+  ])(
+    "warns and requires explicit confirmation for the %s known-category mismatch",
+    (equipmentId, mismatchUnit, message, matchingUnit) => {
+    render(<OperationalSafetyChecklistForm action={action} cancelHref="/" equipmentOptions={equipmentOptions} submitLabel="Submit" />);
+    fireEvent.change(screen.getByLabelText("Equipment"), { target: { value: equipmentId } });
+    fireEvent.click(screen.getByRole("radio", { name: mismatchUnit }));
+    expect(screen.getByRole("alert")).toHaveTextContent(message);
+    expect(screen.getByRole("checkbox", { name: /I confirm/ })).not.toBeChecked();
+    fireEvent.click(screen.getByRole("checkbox", { name: /I confirm/ }));
+    expect(screen.getByRole("checkbox", { name: /I confirm/ })).toBeChecked();
+    fireEvent.click(screen.getByRole("radio", { name: matchingUnit }));
+    expect(screen.queryByRole("checkbox", { name: /I confirm/ })).not.toBeInTheDocument();
+    },
+  );
 
   it("filters the Equipment selector by name, number, or mine", () => {
     render(<OperationalSafetyChecklistForm action={action} cancelHref="/" equipmentOptions={equipmentOptions} submitLabel="Submit" />);
@@ -93,13 +146,13 @@ describe("OperationalSafetyChecklistForm", () => {
   });
 
   it.each([
-    ["dragline-1", "dragline-2", "Bench Condition", "OK", 24],
-    ["truck-1", "truck-2", "Rental", "YES", 23],
-    ["dragline-1", "truck-1", "Bench Condition", "OK", 23],
-    ["truck-1", "dragline-1", "Rental", "YES", 24],
+    ["dragline-1", "dragline-2", "Bench Condition", "OK", 24, "HOURS"],
+    ["truck-1", "truck-2", "Rental", "YES", 23, "MILES"],
+    ["dragline-1", "truck-1", "Bench Condition", "OK", 23, "MILES"],
+    ["truck-1", "dragline-1", "Rental", "YES", 24, "HOURS"],
   ])(
     "clears machine-specific state when Equipment changes from %s to %s",
-    (sourceId, destinationId, responseLabel, responseValue, destinationCount) => {
+    (sourceId, destinationId, responseLabel, responseValue, destinationCount, destinationMeterKind) => {
     render(<OperationalSafetyChecklistForm action={action} cancelHref="/" equipmentOptions={equipmentOptions} submitLabel="Submit" />);
       fireEvent.change(screen.getByLabelText("Inspection date"), {
         target: { value: "2026-07-14" },
@@ -108,7 +161,7 @@ describe("OperationalSafetyChecklistForm", () => {
       fireEvent.change(screen.getByLabelText("Operator"), { target: { value: "Alex" } });
       fireEvent.change(screen.getByLabelText("Supervisor"), { target: { value: "Sam" } });
       fireEvent.change(screen.getByLabelText("Equipment"), { target: { value: sourceId } });
-      fireEvent.change(screen.getByLabelText("Hour Meter (Start)"), {
+      fireEvent.change(screen.getByLabelText("Starting Meter Reading"), {
         target: { value: "456" },
       });
       fireEvent.change(screen.getByRole("textbox", { name: "Problem Description(s)" }), {
@@ -124,7 +177,8 @@ describe("OperationalSafetyChecklistForm", () => {
       });
 
       expect(screen.getByText(`0 of ${destinationCount}`)).toBeInTheDocument();
-      expect(screen.getByLabelText("Hour Meter (Start)")).toHaveValue(null);
+      expect(screen.getByLabelText("Starting Meter Reading")).toHaveValue(null);
+      expect(screen.getByRole("radio", { name: destinationMeterKind === "HOURS" ? "Hours" : "Miles" })).toBeChecked();
       expect(screen.getByRole("textbox", { name: "Problem Description(s)" })).toHaveValue("");
       expect(screen.getByLabelText("Inspection date")).toHaveValue("2026-07-14");
       expect(screen.getByLabelText("Shift")).toHaveValue("NIGHT");
@@ -132,6 +186,16 @@ describe("OperationalSafetyChecklistForm", () => {
       expect(screen.getByLabelText("Supervisor")).toHaveValue("Sam");
     },
   );
+
+  it("clears mismatch confirmation when Equipment changes", () => {
+    render(<OperationalSafetyChecklistForm action={action} cancelHref="/" equipmentOptions={equipmentOptions} submitLabel="Submit" />);
+    fireEvent.change(screen.getByLabelText("Equipment"), { target: { value: "dragline-1" } });
+    fireEvent.click(screen.getByRole("radio", { name: "Miles" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /I confirm/ }));
+    fireEvent.change(screen.getByLabelText("Equipment"), { target: { value: "truck-1" } });
+    expect(screen.queryByRole("checkbox", { name: /I confirm/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Miles" })).toBeChecked();
+  });
 
   it("preserves existing responses when correction Equipment is unchanged", () => {
     render(
@@ -145,6 +209,7 @@ describe("OperationalSafetyChecklistForm", () => {
           equipmentId: "dragline-1",
           templateKey: "DRAGLINE_INSPECTION",
           templateVersion: 1,
+          meterKind: "HOURS",
           startingMeter: "123",
           operatorDisplayName: "Alex",
           supervisorDisplayName: "Sam",
@@ -162,6 +227,68 @@ describe("OperationalSafetyChecklistForm", () => {
     );
   });
 
+  it("communicates a meter-unit correction and re-evaluates mismatch confirmation", () => {
+    render(
+      <OperationalSafetyChecklistForm
+        action={action}
+        cancelHref="/"
+        equipmentOptions={equipmentOptions}
+        initialValues={{
+          inspectionDate: "2026-07-15",
+          shift: "DAY",
+          equipmentId: "dragline-1",
+          templateKey: "DRAGLINE_INSPECTION",
+          templateVersion: 1,
+          meterKind: "HOURS",
+          startingMeter: "123",
+          operatorDisplayName: "Alex",
+          supervisorDisplayName: "Sam",
+          problemDescription: "",
+          responses: {},
+        }}
+        submitLabel="Save Correction"
+      />,
+    );
+    fireEvent.click(screen.getByRole("radio", { name: "Miles" }));
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Changing the meter unit changes how the saved reading is interpreted.",
+    );
+    expect(screen.getByRole("checkbox", { name: /I confirm/ })).toBeInTheDocument();
+  });
+
+  it("uses Create Another context without preserving machine-specific state", () => {
+    render(
+      <OperationalSafetyChecklistForm
+        action={action}
+        cancelHref="/"
+        equipmentOptions={equipmentOptions}
+        initialValues={{
+          inspectionDate: "2026-07-15",
+          shift: "NIGHT",
+          equipmentId: "",
+          templateKey: "DRAGLINE_INSPECTION",
+          templateVersion: 1,
+          meterKind: "",
+          startingMeter: "",
+          operatorDisplayName: "Alex",
+          supervisorDisplayName: "Sam",
+          problemDescription: "",
+          responses: {},
+        }}
+        submitLabel="Submit"
+      />,
+    );
+    expect(screen.getByLabelText("Inspection date")).toHaveValue("2026-07-15");
+    expect(screen.getByLabelText("Shift")).toHaveValue("NIGHT");
+    expect(screen.getByLabelText("Operator")).toHaveValue("Alex");
+    expect(screen.getByLabelText("Supervisor")).toHaveValue("Sam");
+    expect(screen.getByLabelText("Equipment")).toHaveValue("");
+    expect(screen.getByLabelText("Starting Meter Reading")).toHaveValue(null);
+    expect(screen.getByRole("radio", { name: "Hours" })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: "Miles" })).not.toBeChecked();
+    expect(screen.getByRole("textbox", { name: "Problem Description(s)" })).toHaveValue("");
+  });
+
   it("requires intentional replacement when historical Equipment is unavailable", () => {
     render(
       <OperationalSafetyChecklistForm
@@ -174,6 +301,7 @@ describe("OperationalSafetyChecklistForm", () => {
           equipmentId: "",
           templateKey: "DRAGLINE_INSPECTION",
           templateVersion: 1,
+          meterKind: "HOURS",
           startingMeter: "123",
           operatorDisplayName: "Alex",
           supervisorDisplayName: "Sam",
@@ -194,7 +322,7 @@ describe("OperationalSafetyChecklistForm", () => {
       target: { value: "dragline-2" },
     });
     expect(screen.getByText("0 of 24")).toBeInTheDocument();
-    expect(screen.getByLabelText("Hour Meter (Start)")).toHaveValue(null);
+    expect(screen.getByLabelText("Starting Meter Reading")).toHaveValue(null);
     expect(screen.getByRole("textbox", { name: "Problem Description(s)" })).toHaveValue("");
     expect(screen.getByLabelText("Inspection date")).toHaveValue("2026-07-15");
     expect(screen.getByLabelText("Operator")).toHaveValue("Alex");
@@ -219,6 +347,7 @@ describe("OperationalSafetyChecklistForm", () => {
           equipmentId: "dragline-1",
           templateKey: "DRAGLINE_INSPECTION",
           templateVersion: 1,
+          meterKind: "HOURS",
           startingMeter: "100",
           operatorDisplayName: "Alex Operator",
           supervisorDisplayName: "Sam Supervisor",
