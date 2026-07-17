@@ -132,7 +132,8 @@ Mobile V1 catalogs, and Phase 21.3.3 resolved integer-only Hour Meter
 validation. Phase 21.4 implemented the V1 foundation and feature-owned history
 filtering, completed correction review, and received independent acceptance.
 Phase 21.5 integrated the accepted capability into the repository knowledge
-graph and formally closed Phase 21. Day View participation remains deferred.
+graph and formally closed Phase 21. Phase 24.1 implements selected-date Day
+View participation through a feature-owned summary query.
 
 ### Phase 1: Product And Boundary Discovery (Complete)
 
@@ -205,10 +206,17 @@ after nonessential post-commit presentation failure.
 - Keep photo evidence optional and checklist-level; do not create Defects,
   Daily Log records, or a generic attachment platform.
 
-### Phase 7: Future Enhancements
+### Phase 7: Day View Participation (Complete)
 
 - Add Operational Safety Checklist Day View participation only through a
   separately approved feature-owned contribution.
+
+Phase 24.1 implements the bounded selected-date query, historical snapshot
+summary, response-condition counts, source links, and explicit Day View
+section without cross-feature mutation.
+
+### Phase 8: Future Enhancements
+
 - Add explicit operator-controlled Defect links if approved.
 - Add Planner Review only if future identity and multi-user workflows require
   it.
@@ -552,7 +560,7 @@ Approved feature architecture:
 `docs/architecture/features/equipment-fuel-events.md`
 
 Current status: Product decisions, feature architecture, and V1 foundation are
-complete. Day View participation remains deferred.
+complete. Phase 24.1 selected-date Day View participation is implemented.
 
 ### Phase 1: Product And Boundary Discovery (Complete)
 
@@ -591,9 +599,16 @@ complete. Day View participation remains deferred.
   queries, and tests.
 - Validate the schema and event operations against PostgreSQL.
 
-### Phase 4: Future Enhancements
+### Phase 4: Day View Participation (Complete)
 
 - Add Day View participation through a feature-owned display-ready date query.
+
+Phase 24.1 implements the bounded chronological query, historical Equipment and
+Fuel Service Person context, ordered Tank Fill summaries, persisted total, and
+source links without moving fuel interpretation into Day View.
+
+### Phase 5: Future Enhancements
+
 - Evaluate approved operational totals and reporting only after reliable event
   history exists.
 - Evaluate Equipment usage trends only after enough reliable history exists.

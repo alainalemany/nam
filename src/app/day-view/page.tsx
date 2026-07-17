@@ -22,6 +22,8 @@ import {
   parseDayViewDate,
   type DayViewSearchParams,
 } from "@/features/day-view/date";
+import { getEquipmentFuelEventDayViewItems } from "@/features/equipment-fuel-events/data";
+import { getOperationalSafetyChecklistDayViewItems } from "@/features/operational-safety-checklists/data";
 import {
   optionLabel as shiftReportOptionLabel,
   shiftOptions as shiftReportShiftOptions,
@@ -63,18 +65,22 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
     dailyLogs,
     stopCards,
     dailyInspections,
+    safetyChecklists,
     shiftReports,
     workAuthorizations,
     defects,
+    equipmentFuelEvents,
   ] = await Promise.all([
     getWorkScheduleContextsForDate(dateState.selectedDate),
     getTimesheetContextsForDate(dateState.selectedDate),
     getDailyLogsForDate(dateState.selectedDate),
     getStopCardsForDate(dateState.selectedDate),
     getDailyInspectionsForDate(dateState.selectedDate),
+    getOperationalSafetyChecklistDayViewItems(dateState.selectedDate),
     getShiftReportsForDate(dateState.selectedDate),
     getWorkAuthorizationsForDate(dateState.selectedDate),
     getDefectsForDate(dateState.selectedDate),
+    getEquipmentFuelEventDayViewItems(dateState.selectedDate),
   ]);
 
   return (
@@ -471,6 +477,55 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
         )}
       </section>
 
+      <section className="panel table-panel" aria-labelledby="safety-checklists-heading">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Pre-shift Equipment safety</p>
+            <h2 id="safety-checklists-heading">Operational Safety Checklists</h2>
+          </div>
+          <span className="count-pill">{safetyChecklists.length}</span>
+        </div>
+
+        {safetyChecklists.length === 0 ? (
+          <div className="empty-state">
+            <h3>No operational safety checklists for this day</h3>
+            <p>No completed Equipment inspection matches the selected operational date.</p>
+            <div className="button-row">
+              <Link className="button primary" href="/operational-safety-checklists/new">
+                Add Safety Checklist
+              </Link>
+              <Link className="button secondary" href="/operational-safety-checklists">
+                Open Safety Checklists
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="record-list">
+            {safetyChecklists.map((checklist) => (
+              <article className="record-card" key={checklist.id}>
+                <div>
+                  <p className="eyebrow">
+                    {checklist.shift} shift
+                    {" · "}
+                    {checklist.templateIdentity}
+                  </p>
+                  <h3>{checklist.equipmentIdentity}</h3>
+                  <p className="subtle">Starting meter: {checklist.meter}</p>
+                  <p className="subtle">
+                    {checklist.needsRepairCount} Needs Repair
+                    {" · "}
+                    {checklist.previouslyNotedCount} Previously Noted
+                  </p>
+                </div>
+                <Link className="table-action" href={checklist.detailHref}>
+                  View Safety Checklist
+                </Link>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
       <section className="panel table-panel" aria-labelledby="shift-reports-heading">
         <div className="section-heading">
           <div>
@@ -639,6 +694,58 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
                   <p className="subtle">{defect.equipment.displayName} · {defect.equipment.mine.name}</p>
                 </div>
                 <Link className="table-action" href={`/defect-tracking/${defect.id}`}>View Defect</Link>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="panel table-panel" aria-labelledby="equipment-fuel-events-heading">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Equipment service</p>
+            <h2 id="equipment-fuel-events-heading">Equipment Fuel Events</h2>
+          </div>
+          <span className="count-pill">{equipmentFuelEvents.length}</span>
+        </div>
+
+        {equipmentFuelEvents.length === 0 ? (
+          <div className="empty-state">
+            <h3>No equipment fuel events for this day</h3>
+            <p>No completed fueling occurrence matches the selected operational date.</p>
+            <div className="button-row">
+              <Link className="button primary" href="/equipment-fuel-events/new">
+                Add Fuel Event
+              </Link>
+              <Link className="button secondary" href="/equipment-fuel-events">
+                Open Fuel Events
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="record-list">
+            {equipmentFuelEvents.map((event) => (
+              <article className="record-card" key={event.id}>
+                <div>
+                  <p className="eyebrow">
+                    {event.eventTime}
+                    {" · "}
+                    {event.fuelType}
+                  </p>
+                  <h3>{event.equipmentIdentity}</h3>
+                  <p className="subtle">Delivered: {event.totalGallons}</p>
+                  <ol className="compact-list" aria-label="Ordered Tank Fills">
+                    {event.tankFills.map((fill) => (
+                      <li key={`${event.id}-${fill.sequence}`}>{fill.summary}</li>
+                    ))}
+                  </ol>
+                  <p className="subtle">
+                    Fuel Service Person: {event.fuelServicePerson}
+                  </p>
+                </div>
+                <Link className="table-action" href={event.detailHref}>
+                  View Fuel Event
+                </Link>
               </article>
             ))}
           </div>

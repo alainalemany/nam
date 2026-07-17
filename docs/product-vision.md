@@ -209,23 +209,22 @@ The current implemented product capabilities include:
 - Work Schedule and Timesheet weekly workflows with feature-owned Day View
   contributions.
 - Operational Safety Checklist history, create, detail, correction, canonical
-  Dragline and Mobile templates, and feature-owned filtering.
+  Dragline and Mobile templates, `HOURS`/`MILES` meters, NAM save confirmation,
+  Create Another, feature-owned filtering, and Day View participation.
 - Equipment Fuel Event history, create, detail, correction, ordered Tank Fills,
-  optional Fuel Service Person context, and feature-owned filtering.
+  optional Fuel Service Person context, feature-owned filtering, and Day View
+  participation.
 - Day View composition for Work Schedule, Timesheet, Daily Work Logs, STOP
-  Cards, Daily Inspections, Shift Reports, Work Authorizations, and Defect
-  Tracking on a selected date.
+  Cards, Daily Inspections, Operational Safety Checklists, Shift Reports, Work
+  Authorizations, Defect Tracking, and Equipment Fuel Events on a selected
+  date.
 
 ### Planned
 
 Planned Version 1 product scope includes:
 
-- Implemented Operational Safety Checklist meter-unit and NAM save-confirmation
-  enhancements under the approved Phase 23.3 architecture.
 - Optional checklist-level photo evidence after ADR-018's access, processing,
   storage, and backup gates are satisfied.
-- Operational Safety Checklist Day View participation through a separately
-  approved feature-owned contribution.
 - Broader historical lookup through feature-owned views; global cross-module
   search remains deferred.
 - Additional calendar and Day View participation as future modules are

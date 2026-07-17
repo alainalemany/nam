@@ -412,6 +412,16 @@ textarea {
   padding-top: 0;
 }
 
+.record-card > div {
+  min-width: 0;
+}
+
+.record-card h3,
+.record-card p,
+.record-card li {
+  overflow-wrap: anywhere;
+}
+
 .module-grid {
   display: grid;
   gap: 16px;

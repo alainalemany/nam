@@ -135,8 +135,8 @@ Implemented:
 - Day View navigation and selected-workday composition, guided by
   `docs/architecture/features/day-view.md`.
 - Date-aware participation for Shift Reports, Daily Work Logs, STOP Cards,
-  Daily Inspections, Work Authorizations, Defect Tracking, Work Schedule, and
-  Timesheet.
+  Daily Inspections, Operational Safety Checklists, Work Authorizations, Defect
+  Tracking, Work Schedule, Timesheet, and Equipment Fuel Events.
 
 Remaining:
 
@@ -176,17 +176,13 @@ Implemented foundations and current Day View participation:
   participation implemented, including feature-owned list filtering.
 - Operational Safety Checklists, with accepted V1 foundation, canonical
   Dragline and Mobile catalogs, correction workflow, and feature-owned history
-  filtering.
+  filtering, `HOURS`/`MILES` meters, NAM save feedback, Create Another, and Day
+  View participation.
 
 Remaining:
 
-- Operational Safety Checklist `HOURS`/`MILES` meter units, known-mismatch
-  confirmation, NAM save feedback, and Create Another are implemented.
 - Implement optional checklist-level photo evidence only after ADR-018's
   access, processing, storage, and backup gates are satisfied.
-- Add Operational Safety Checklist Day View participation only through a
-  separately approved feature-owned contribution. The V1 foundation and its
-  independent assessment are complete.
 - Add cross-record relationships only where approved workflows require them.
 
 Success criteria:
@@ -333,12 +329,12 @@ The MVP should not require:
 | Daily Work Log foundation | Establishes the first usable workday history. | Operations reference data. Feature architecture: `docs/architecture/features/daily-work-logs.md`. | Implemented |
 | Feature filtering, date navigation, and Day View | Makes historical lookup practical across implemented modules. | Daily records and date-aware modules. | Feature-owned filtering and Day View composition implemented for current operational modules; global cross-module search deferred |
 | STOP Cards | Captures safety observations and corrective actions. | Day View context; feature architecture: `docs/architecture/features/stop-cards.md`. | V1 foundation, filtering, and Day View participation implemented |
-| Daily Inspections | Captures equipment inspection findings and condition context. | Equipment reference data and Day View context; feature architecture: `docs/architecture/features/daily-inspections.md`. | Daily Inspection V1 foundation, filtering, and Day View participation implemented; Operational Safety Checklists accepted V1 foundation and feature-owned history filtering implemented, with Day View deferred |
+| Daily Inspections | Captures equipment inspection findings and condition context. | Equipment reference data and Day View context; feature architecture: `docs/architecture/features/daily-inspections.md`. | Daily Inspection and Operational Safety Checklist foundations, feature-owned filtering, and Day View participation implemented |
 | Shift Reports | Creates the parent structure for shift paperwork. | Daily/date context and equipment references. Feature architecture: `docs/architecture/features/shift-reports.md`. | V1 foundation, filtering, and Day View participation implemented |
 | Work Authorizations | Captures safety and maintenance work records. | Shift Reports. Feature architecture: `docs/architecture/features/work-authorizations.md`. | V1 foundation, filtering, and Day View participation implemented |
 | Defect Tracking | Captures equipment issue history from report through closure. | Equipment reference data and feature architecture: `docs/architecture/features/defect-tracking.md`; stronger value with Day View. | V1 foundation, filtering, and Day View participation implemented |
 | Work Schedule and Timesheet | Supports personal schedule and time reconciliation. | Reference data; stronger value with Day View. Work Schedule feature architecture: `docs/architecture/features/work-schedule.md`; Timesheet feature architecture: `docs/architecture/features/timesheets.md`. | Work Schedule and Timesheet V1 foundations and Day View participation implemented |
-| Equipment Fuel Events | Captures operational fuel delivered to one Equipment subject, including multi-tank occurrences. | Equipment reference data; boundary assessment: `docs/architecture/equipment-operations.md`; feature architecture: `docs/architecture/features/equipment-fuel-events.md`; stronger value with Day View. | V1 foundation and structured history filtering implemented; Day View deferred |
+| Equipment Fuel Events | Captures operational fuel delivered to one Equipment subject, including multi-tank occurrences. | Equipment reference data; boundary assessment: `docs/architecture/equipment-operations.md`; feature architecture: `docs/architecture/features/equipment-fuel-events.md`; stronger value with Day View. | V1 foundation, structured history filtering, and Phase 24.1 Day View participation implemented |
 | Supply Requests | Preserves operator-originated supply requests without inventory ownership. | Remaining product discovery; boundary assessment: `docs/architecture/equipment-operations.md`. | Discovery-stage future feature |
 | Operational Safety Checklist meter and confirmation | Adds explicit `HOURS`/`MILES` meter units and clear NAM save confirmation. | Approved Phase 23.3 architecture. | Phase 23.4 implemented; Phase 23.4.2 monotonic marker supersession and safe presentation fallback complete |
 | Operational Safety Checklist photo evidence | Adds optional checklist-level normalized photos with captions. | ADR-018 access boundary, Docker media processing, private storage, and coordinated backup/restore. | Architecture Approved; Phase 23.5 implementation and real photo use blocked until prerequisites close |

@@ -9,38 +9,65 @@ export type DayViewDateState = {
 
 const dayViewPath = "/day-view";
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+const dayViewOperationalTimeZone = "America/New_York";
+const localDateFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: dayViewOperationalTimeZone,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
 
-function firstValue(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
+function padDateComponent(value: number) {
+  return String(value).padStart(2, "0");
 }
 
-function dateOnly(value: string) {
-  return new Date(`${value}T00:00:00.000Z`);
+function calendarDate(year: number, month: number, day: number) {
+  const date = new Date(0);
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCFullYear(year, month - 1, day);
+  return date;
 }
 
-function dateValue(value: Date) {
-  return value.toISOString().slice(0, 10);
+function utcDateKey(value: Date) {
+  return `${String(value.getUTCFullYear()).padStart(4, "0")}-${padDateComponent(value.getUTCMonth() + 1)}-${padDateComponent(value.getUTCDate())}`;
 }
 
-function cleanDate(value: string | string[] | undefined) {
-  const first = firstValue(value);
+export function parseDayViewDateKey(value: string | string[] | undefined) {
+  if (!value || Array.isArray(value) || !datePattern.test(value)) return undefined;
 
-  if (!first) {
+  const [year, month, day] = value.split("-").map(Number);
+  if (year < 1) return undefined;
+
+  const parsed = calendarDate(year, month, day);
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() + 1 !== month ||
+    parsed.getUTCDate() !== day
+  ) {
     return undefined;
   }
 
-  const trimmed = first.trim();
-  return datePattern.test(trimmed) ? trimmed : undefined;
+  return value;
 }
 
 export function todayDayViewDate(now = new Date()) {
-  return dateValue(now);
+  const parts = localDateFormatter.formatToParts(now);
+  const year = Number(parts.find((part) => part.type === "year")?.value);
+  const month = Number(parts.find((part) => part.type === "month")?.value);
+  const day = Number(parts.find((part) => part.type === "day")?.value);
+  return `${String(year).padStart(4, "0")}-${padDateComponent(month)}-${padDateComponent(day)}`;
 }
 
 export function shiftDayViewDate(value: string, days: number) {
-  const date = dateOnly(value);
+  const canonical = parseDayViewDateKey(value);
+  if (!canonical || !Number.isInteger(days)) {
+    throw new RangeError("Day View navigation requires a valid date and whole-day offset.");
+  }
+
+  const [year, month, day] = canonical.split("-").map(Number);
+  const date = calendarDate(year, month, day);
   date.setUTCDate(date.getUTCDate() + days);
-  return dateValue(date);
+  return utcDateKey(date);
 }
 
 export function dayViewHref(date: string) {
@@ -52,7 +79,7 @@ export function parseDayViewDate(
   now = new Date(),
 ): DayViewDateState {
   const today = todayDayViewDate(now);
-  const selectedDate = cleanDate(searchParams.date) ?? today;
+  const selectedDate = parseDayViewDateKey(searchParams.date) ?? today;
 
   return {
     selectedDate,

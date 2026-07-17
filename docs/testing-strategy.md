@@ -332,6 +332,19 @@ failed mutations, direct constructed URLs, URL consumption, and BFCache
 implemented. Browser URL/BFCache behavior has component-level coverage; broad
 browser refresh/back-navigation E2E remains deferred.
 
+Phase 24.1 adds unit coverage for exact-date, bounded, deterministic
+Operational Safety Checklist and Equipment Fuel Event Day View queries and
+component/route coverage for ten-section ordering, empty states, historical
+snapshot summaries, ordered Tank Fills, durable source links, selected-date
+invocation, and parallel contributor startup. Broad browser E2E remains
+deferred.
+
+Phase 24.1.2 adds focused Day View coverage for America/New_York local-calendar
+defaulting while the runtime environment is UTC, strict Gregorian date keys,
+impossible and duplicate query rejection, calendar-safe navigation, and one
+canonical selected date reaching all ten contributors plus the page heading
+and navigation links.
+
 Phase 23.5 requires unit and integration evidence for file-signature and decode
 validation, HEIC/HEIF primary-image and auxiliary-content handling, sequence
 rejection, normalization and metadata stripping, separate full-image and

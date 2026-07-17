@@ -44,7 +44,7 @@ Related Documents:
 - `docs/architecture/features/timesheets.md`
 - `docs/architecture/features/equipment-fuel-events.md`
 
-Last Reviewed: 2026-07-15
+Last Reviewed: 2026-07-17
 
 ## 1. Purpose
 
@@ -84,8 +84,9 @@ Implemented foundation:
 - `/day-view` selected-workday composition route.
 - Previous-day, next-day, and today navigation using feature-owned date helpers.
 - Parallel composition of Work Schedule, Timesheet, Daily Work Logs, STOP
-  Cards, Daily Inspections, Shift Reports, Work Authorizations, and Defect
-  Tracking through module-owned read helpers.
+  Cards, Daily Inspections, Operational Safety Checklists, Shift Reports, Work
+  Authorizations, Defect Tracking, and Equipment Fuel Events through
+  module-owned read helpers.
 - Module sections that link to owning detail routes and distinguish an
   implemented-empty state from an unimplemented module.
 
@@ -163,7 +164,9 @@ Day View uses server-owned persisted state.
 Expected V1 data flow:
 
 1. The route receives or derives the selected workday date.
-2. Day View validates and normalizes the selected date.
+2. Day View validates the selected date as one canonical Gregorian
+   `YYYY-MM-DD` key, rejecting malformed, duplicate, and impossible values
+   before contributor queries run.
 3. Day View requests date-aware contributions from implemented modules.
 4. Participating modules query their own records and return display-ready
    contribution data or source-record links.
@@ -173,10 +176,13 @@ Day View should not write module records. Mutations should remain inside the
 owning feature modules through their approved Server Actions or future approved
 mutation boundaries.
 
-Date-only behavior should stay consistent with the current Daily Work Logs
-foundation. If future operator-local timezone requirements change date
-semantics, that should be addressed deliberately because it affects multiple
-date-aware modules.
+The missing or invalid selected-date fallback is built from America/New_York
+calendar year, month, and day components. This remains correct when the app
+container runs in UTC and does not derive the operational default from UTC
+serialization. Previous-day and next-day navigation use validated calendar
+components, and every contributor receives the same canonical selected date.
+After selection, each feature still owns the meaning of that date for its
+records, including shift-start and other operational-date semantics.
 
 ## 7. UI Composition
 
@@ -204,8 +210,12 @@ global timeline in V1.
 
 Day View validation is limited to composition inputs:
 
-- Validate the selected date format.
-- Normalize invalid or missing dates to a documented default, such as today.
+- Accept only one canonical, real Gregorian `YYYY-MM-DD` selected date.
+- Reject malformed, whitespace-padded, duplicate, and impossible date values
+  rather than allowing JavaScript date normalization to change their meaning.
+- Normalize invalid or missing dates to the current America/New_York
+  operational calendar date before invoking any contributor.
+- Derive headings and previous/next navigation from that same canonical key.
 - Preserve plain user-facing error states when the composed view cannot load.
 - Let individual module links or sections show absent data without failing the
   entire page when practical.
@@ -223,7 +233,11 @@ number of participating modules.
 
 Appropriate test targets:
 
-- Date parsing and navigation helpers.
+- Local-calendar defaulting, strict Gregorian parsing, duplicate-query
+  rejection, and calendar-safe navigation across month, year, leap-day, and
+  daylight-saving boundaries.
+- One canonical selected date reaching every contributor, heading, and
+  navigation link even when the requested query value is invalid.
 - Composition ordering and empty-state behavior.
 - Daily Work Logs contribution behavior when Day View first integrates it.
 - Route-level rendering for stable Day View sections when component patterns
@@ -258,18 +272,19 @@ Implemented participation:
 - Shift Reports participation as date-aware shift summaries.
 - Work Authorizations participation with Shift Reports as parent context only.
 - Defect Tracking participation as date-aware equipment issue records.
+- Operational Safety Checklist participation as shift-start Equipment
+  inspections with historical identity, meter, and feature-owned response
+  counts.
+- Equipment Fuel Event participation as chronologically ordered fueling
+  occurrences with historical identity, ordered Tank Fill summaries, and
+  persisted totals.
 
 Planned evolution:
 
-- Additional module sections as Operational Safety Checklists, Equipment Fuel
-  Events, Supply Requests, and other date-relevant records
+- Additional module sections as Supply Requests and other date-relevant records
   receive separately approved feature-owned Day View contributions.
-- Operational Safety Checklist meter-unit, save-confirmation, and photo
-  enhancements do not add Day View participation. Any later summary remains a
-  separately approved checklist-owned contribution, and Day View must not
-  query or serve photo evidence directly.
-- Equipment Fuel Events architecture is Approved, but its Day View contribution
-  remains deferred to a separate milestone after the V1 foundation.
+- Operational Safety Checklist photo evidence remains excluded from Day View;
+  Day View does not query or serve media.
 
 Candidate future evolution:
 

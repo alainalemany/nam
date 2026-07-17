@@ -66,16 +66,16 @@ documentation architecture milestone explicitly approves that reorganization.
 | Feature | Document | Status |
 | --- | --- | --- |
 | Daily Work Logs | [Daily Work Logs Architecture](daily-work-logs.md) | Approved; V1 foundation, filtering, date navigation, and Day View participation implemented |
-| Day View | [Day View Architecture](day-view.md) | Approved; V1 composition implemented |
+| Day View | [Day View Architecture](day-view.md) | Approved; selected-date composition implemented with ten feature-owned contributors |
 | STOP Cards | [STOP Cards Architecture](stop-cards.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 | Daily Inspections | [Daily Inspections Architecture](daily-inspections.md) | Approved; V1 foundation, current-schema filtering, and Day View participation implemented |
-| Operational Safety Checklists | [Operational Safety Checklists Architecture](operational-safety-checklists.md) | Approved; V1 foundation accepted; Phase 23.4 meter units, mismatch confirmation, NAM save feedback, and Create Another implemented; Phase 23.4.2 monotonic marker and fallback corrections complete; photo evidence access-gated under ADR-018; Day View deferred |
+| Operational Safety Checklists | [Operational Safety Checklists Architecture](operational-safety-checklists.md) | Approved; V1 foundation accepted; Phase 23.4 meter units, mismatch confirmation, NAM save feedback, and Create Another implemented; Phase 23.4.2 monotonic marker and fallback corrections complete; Phase 24.1 Day View participation implemented; photo evidence access-gated under ADR-018 |
 | Shift Reports | [Shift Reports Architecture](shift-reports.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 | Work Authorizations | [Work Authorizations Architecture](work-authorizations.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 | Defect Tracking | [Defect Tracking Architecture](defect-tracking.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 | Work Schedule | [Work Schedule Architecture](work-schedule.md) | Approved; V1 foundation and Day View participation implemented |
 | Timesheet | [Timesheet Architecture](timesheets.md) | Approved; V1 foundation and Day View participation implemented |
-| Equipment Fuel Events | [Equipment Fuel Events Architecture](equipment-fuel-events.md) | Approved; V1 foundation and feature-owned history filtering implemented; Day View deferred |
+| Equipment Fuel Events | [Equipment Fuel Events Architecture](equipment-fuel-events.md) | Approved; V1 foundation, feature-owned history filtering, and Phase 24.1 Day View participation implemented |
 
 ## Related Domain Assessments
 

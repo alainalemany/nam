@@ -1,5 +1,11 @@
 import { prisma } from "@/lib/prisma";
 
+import {
+  safetyChecklistMeterKindOptions,
+  safetyChecklistOptionLabel,
+  safetyChecklistShiftOptions,
+} from "./constants";
+import { isSafetyChecklistDateOnly } from "./date";
 import { buildSafetyChecklistWhere, type SafetyChecklistFilters } from "./filters";
 import { getSafetyChecklistTemplate, resolveSafetyChecklistTemplate } from "./templates";
 import type {
@@ -38,6 +44,52 @@ export async function getOperationalSafetyChecklistById(id: string) {
       responses: { orderBy: { itemOrder: "asc" } },
     },
   });
+}
+
+export async function getOperationalSafetyChecklistDayViewItems(date: string) {
+  if (!isSafetyChecklistDateOnly(date)) return [];
+
+  const records = await prisma.operationalSafetyChecklist.findMany({
+    where: { inspectionDate: new Date(`${date}T00:00:00.000Z`) },
+    select: {
+      id: true,
+      equipmentDisplayName: true,
+      equipmentNumber: true,
+      templateName: true,
+      templateVersion: true,
+      shift: true,
+      startingMeter: true,
+      meterKind: true,
+      responses: {
+        where: {
+          responseCode: { in: ["NEEDS_REPAIR", "PREVIOUSLY_NOTED"] },
+        },
+        select: { responseCode: true },
+      },
+    },
+    orderBy: [
+      { shift: "asc" },
+      { equipmentDisplayName: "asc" },
+      { equipmentNumber: "asc" },
+      { id: "asc" },
+    ],
+    take: 100,
+  });
+
+  return records.map((record) => ({
+    id: record.id,
+    equipmentIdentity: `${record.equipmentDisplayName}${record.equipmentNumber ? ` #${record.equipmentNumber}` : ""}`,
+    templateIdentity: `${record.templateName} V${record.templateVersion}`,
+    shift: safetyChecklistOptionLabel(safetyChecklistShiftOptions, record.shift),
+    meter: `${record.startingMeter.toLocaleString()} ${safetyChecklistOptionLabel(safetyChecklistMeterKindOptions, record.meterKind)}`,
+    needsRepairCount: record.responses.filter(
+      (response) => response.responseCode === "NEEDS_REPAIR",
+    ).length,
+    previouslyNotedCount: record.responses.filter(
+      (response) => response.responseCode === "PREVIOUSLY_NOTED",
+    ).length,
+    detailHref: `/operational-safety-checklists/${record.id}`,
+  }));
 }
 
 function equipmentOption(

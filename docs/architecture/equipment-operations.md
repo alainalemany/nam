@@ -79,8 +79,8 @@ domain model.
 | Capability | Status | Recommended owner |
 | --- | --- | --- |
 | Manual Daily Inspection summaries | Implemented | Daily Inspections |
-| Operational Safety Checklists | V1 foundation accepted; Phase 23.3 enhancement architecture approved; meter/save slice ready, photo slice access-gated; Day View deferred | Daily Inspections bounded context, as a distinct checklist record type and workflow |
-| Equipment Fuel Events | Approved V1 foundation implemented; Day View deferred | Independent Equipment Fuel Events feature |
+| Operational Safety Checklists | V1 foundation accepted; meter/save enhancement and Phase 24.1 Day View participation implemented; photo slice access-gated | Daily Inspections bounded context, as a distinct checklist record type and workflow |
+| Equipment Fuel Events | Approved V1 foundation and Phase 24.1 Day View participation implemented | Independent Equipment Fuel Events feature |
 | Warehouse pickup performed for someone else's order | Confirmed activity | Daily Work Logs only |
 | Operator-originated Supply Requests | Confirmed future feature; discovery-stage | Independent Supply Requests feature |
 | Fleet purchases, ownership, assignments, cards, receipts, registration, insurance, and replacement lifecycle | Separate deferred domain | Future Fleet capability |
@@ -197,7 +197,7 @@ The approved feature architecture is
 types, whole-US-gallon Tank Fill model, completed-only correction lifecycle,
 active/inactive Fuel Service Person reference, historical snapshots, optional
 one-to-one Fuel Event-owned Daily Work Log activity context, active Equipment
-eligibility, bounded Tank Fill validation, and deferred Day View boundary.
+eligibility, bounded Tank Fill validation, and feature-owned Day View boundary.
 Meter readings are excluded.
 
 ## 8. Supply Requests
@@ -282,9 +282,9 @@ The following confirmed or likely records are date-relevant:
 - Supply Requests when they have a meaningful request or fulfillment date.
 - Fleet records after that domain is defined.
 
-Day View participation is not part of this assessment milestone. When approved,
-each feature must own its selected-date query and display interpretation. Day
-View may only order and render the returned contribution.
+Phase 24.1 implements Operational Safety Checklist and Equipment Fuel Event Day
+View participation. Each feature owns its selected-date query and display
+interpretation; Day View only orders and renders the returned contributions.
 
 ## 12. Equipment Activity Timeline
 
@@ -326,8 +326,8 @@ misrepresented as an Equipment service or condition event.
    Phase 23.4.2 acceptance corrections. (Completed.)
 7. Implement optional photo evidence only after ADR-018's access, processing,
    storage, and backup gates close.
-8. Equipment Fuel Events or Operational Safety Checklist Day View participation
-   only when separately approved.
+8. Add Equipment Fuel Event and Operational Safety Checklist Day View
+   participation through feature-owned queries. (Completed in Phase 24.1.)
 9. Supply Requests product discovery completion and later feature architecture.
 10. Fleet product discovery as a separate future domain.
 11. Equipment Activity Timeline assessment only after enough contributors exist.
@@ -347,8 +347,8 @@ Fills with bounded validation and unique normalized labels, historical
 suggestions with manual override, no meter readings, active-Equipment
 eligibility, an optional active/inactive feature-owned Fuel Service Person
 reference, an optional unique Fuel Event-owned Daily Work Log activity link,
-completed-only correction, structured history filters, and deferred Day View
-implementation.
+completed-only correction, structured history filters, and implemented
+feature-owned Day View participation.
 
 Supply Requests require confirmation of:
 
@@ -366,9 +366,9 @@ retains its own business record and lifecycle.
 
 Operational Safety Checklists are accepted. Equipment Fuel Events architecture
 is Approved, its V1 foundation is implemented and accepted, and the Phase 22.3.1
-scoped lookup and test corrections are complete. Day View participation remains
-deferred. The implementation introduced no Fleet purchase behavior or shared
-Equipment Operations infrastructure. Supply Requests remain a later
+scoped lookup and test corrections are complete. Phase 24.1 Day View
+participation is implemented. The implementation introduced no Fleet purchase
+behavior or shared Equipment Operations infrastructure. Supply Requests remain a later
 discovery-stage feature, Fleet remains a separate future domain, and the
 Equipment Activity Timeline remains derived and deferred.
 

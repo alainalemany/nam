@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
+import { fuelTypeLabel } from "./constants";
 import { buildEquipmentFuelWhere, type EquipmentFuelFilters } from "./filters";
 import type {
   EquipmentFuelEquipmentOption,
@@ -35,6 +36,44 @@ export async function getEquipmentFuelEvents(filters: EquipmentFuelFilters = {})
 
 export async function getEquipmentFuelEventById(id: string) {
   return prisma.equipmentFuelEvent.findUnique({ where: { id }, include: eventDetailInclude });
+}
+
+export async function getEquipmentFuelEventDayViewItems(date: string) {
+  if (!isEquipmentFuelDateOnly(date)) return [];
+
+  const records = await prisma.equipmentFuelEvent.findMany({
+    where: { operationalWorkDate: equipmentFuelDateToUtc(date) },
+    select: {
+      id: true,
+      eventTime: true,
+      equipmentDisplayName: true,
+      equipmentNumber: true,
+      fuelType: true,
+      totalGallons: true,
+      fuelServicePersonDisplayNameSnapshot: true,
+      tankFills: {
+        select: { sequence: true, tankLabel: true, gallons: true },
+        orderBy: [{ sequence: "asc" }, { id: "asc" }],
+      },
+    },
+    orderBy: [{ eventTime: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+    take: 100,
+  });
+
+  return records.map((record) => ({
+    id: record.id,
+    eventTime: `${record.eventTime} local`,
+    equipmentIdentity: `${record.equipmentDisplayName}${record.equipmentNumber ? ` #${record.equipmentNumber}` : ""}`,
+    fuelType: fuelTypeLabel(record.fuelType),
+    totalGallons: `${record.totalGallons.toLocaleString()} gal`,
+    tankFills: record.tankFills.map((fill) => ({
+      sequence: fill.sequence,
+      summary: `${fill.tankLabel}: ${fill.gallons.toLocaleString()} gal`,
+    })),
+    fuelServicePerson:
+      record.fuelServicePersonDisplayNameSnapshot ?? "Not recorded",
+    detailHref: `/equipment-fuel-events/${record.id}`,
+  }));
 }
 
 export async function getEquipmentFuelEquipmentOptions(selectedEquipmentId?: string | null) {

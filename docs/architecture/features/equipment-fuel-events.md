@@ -34,12 +34,13 @@ Related Documents:
 - `docs/decisions/adr-006-fuel-log-structured-operational-module.md`
 - `docs/decisions/adr-017-supersede-standalone-work-truck-log.md`
 
-Last Reviewed: 2026-07-15
+Last Reviewed: 2026-07-17
 
 Implementation Status: V1 Foundation Implemented. Prisma persistence,
 feature-owned validation, queries, Server Actions, history/create/detail/
 correction routes, Fuel Service Person management, and focused tests are
-implemented. Day View participation remains deferred.
+implemented. Phase 24.1 Day View participation is implemented through a
+feature-owned selected-date read helper.
 
 ## 1. Purpose
 
@@ -77,8 +78,8 @@ Equipment Fuel Events own:
   taking ownership of that activity.
 - Completed-record correction behavior.
 - Feature-owned validation, queries, mutations, history filters, UI, and tests.
-- Future display-ready contributions to Day View and a derived Equipment
-  Activity Timeline when separately approved.
+- A display-ready contribution to Day View and a future derived Equipment
+  Activity Timeline contribution when separately approved.
 
 ## 3. Non-Responsibilities
 
@@ -140,7 +141,7 @@ The feature should eventually own its:
 - Constants and types, including approved fuel types.
 - History, create, detail, and correction UI.
 - Feature-specific tests.
-- Future Day View and Equipment-history interpretation helpers.
+- Feature-owned Day View interpretation and future Equipment-history helpers.
 
 App Router pages should compose routes from feature-owned reads and components.
 They should not own fuel validation, total calculation, snapshot derivation, or
@@ -662,9 +663,9 @@ remains the source record; no duplicate timeline event is persisted.
 
 ## 20. Day View And Equipment Timeline Boundaries
 
-Day View implementation is deferred.
+Day View participation is implemented in Phase 24.1.
 
-A future feature-owned date helper may return display-ready summaries containing:
+The feature-owned date helper returns display-ready summaries containing:
 
 - Historical Equipment identity.
 - Local event time.
@@ -804,7 +805,6 @@ The following are explicitly deferred:
 - Generic operational-event framework.
 - Analytics, reporting, forecasting, and exports.
 - Notifications.
-- Day View implementation.
 - Runtime-editable fuel types, tank-label suggestion catalogs, or feature
   configuration.
 - Fuel Service Person management pagination or dedicated management-page search
@@ -851,8 +851,9 @@ established delivery workflow:
    suggestion, route/component, and PostgreSQL test-maturity corrections.
 4. Phase 22.3.2 completed deterministic suggestion ordering and repository
    status cleanup.
-5. Day View participation and the derived Equipment Activity Timeline remain
-   deferred. Fleet remains a separate future domain.
+5. Phase 24.1 implements feature-owned selected-date Day View participation.
+   The derived Equipment Activity Timeline remains deferred, and Fleet remains
+   a separate future domain.
 
 ## 26. Success Criteria
 
@@ -866,7 +867,7 @@ The accepted V1 foundation satisfies these criteria:
 - Equipment changes during correction refresh snapshots and require a complete
   valid fill set.
 - Optional Daily Work Log context preserves independent ownership.
-- No Fleet purchase, meter, price, receipt, reporting, or Day View behavior is
-  introduced.
+- Day View renders only the feature-owned display summary; no Fleet purchase,
+  meter, price, receipt, reporting, or cross-feature mutation is introduced.
 - Server validation, transactions, migrations, tests, and PostgreSQL evidence
   satisfy repository quality gates.

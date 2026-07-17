@@ -97,10 +97,11 @@ Defect Tracking, Work Schedule, and Timesheet V1 have been implemented.
 Equipment Fuel Events also record completed fueling occurrences with ordered
 Tank Fills, Equipment and location snapshots, an optional Fuel Service Person,
 and an optional Daily Work Log activity link. Selected-date Day View composition
-remains limited to its existing participants. Current operational modules
-provide feature-owned list filtering; global cross-module search remains future
-work. Future modules should continue to follow the documentation-first,
-vertical-slice approach.
+now includes ten feature-owned contributors, including Operational Safety
+Checklists and Equipment Fuel Events. Current operational modules provide
+feature-owned list filtering; global cross-module search remains future work.
+Future modules should continue to follow the documentation-first, vertical-slice
+approach.
 
 Phase 23.4 implements Operational Safety Checklist `HOURS`/`MILES` meter units,
 editable category suggestions, explicit known-mismatch confirmation, signed

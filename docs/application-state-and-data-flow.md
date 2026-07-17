@@ -296,9 +296,12 @@ Checklists, and Equipment Fuel Events follow this pattern. Equipment Fuel
 Events use server-rendered reads, feature-owned queries, Server Actions for
 mutations, transactional aggregate persistence, and limited client interaction
 state. Validation, derived totals, and historical snapshots remain
-server-authoritative, and Day View participation remains deferred. Supply
-Requests and other future operational modules should follow
-the established pattern unless their requirements justify a different one.
+server-authoritative. Day View loads Operational Safety Checklist and Equipment
+Fuel Event display summaries through explicit feature-owned selected-date
+queries in the existing parallel server composition; it owns no mutation or
+domain interpretation for either feature. Supply Requests and other future
+operational modules should follow the established pattern unless their
+requirements justify a different one.
 
 The implemented Operational Safety Checklist enhancement preserves this flow.
 Meter defaults are client interaction hints; the submitted `HOURS`/`MILES`

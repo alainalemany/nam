@@ -147,8 +147,9 @@ their starting meter context; Daily Work Logs own mid-shift Equipment
 replacement narrative; Equipment owns asset identity; and Fleet remains a
 separate deferred domain. No standalone Work Truck Log architecture exists.
 
-Phase 23.3 approves explicit checklist-level `HOURS`/`MILES` meter snapshots
-and NAM-only save confirmation as the next implementation slice. ADR-018
+Phase 23.4 implements explicit checklist-level `HOURS`/`MILES` meter snapshots
+and NAM-only save confirmation. Phase 24.1 adds feature-owned Operational
+Safety Checklist and Equipment Fuel Event contributions to Day View. ADR-018
 approves private local photo storage for the current single-node deployment,
 but real checklist-photo upload and serving remain blocked until authentication
 or another explicitly approved deny-by-default access boundary exists. Photo

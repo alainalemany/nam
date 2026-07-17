@@ -597,9 +597,9 @@ not create Defects or Daily Log activities. Real upload and serving remain
 disabled until the access boundary and private storage requirements in ADR-018
 are implemented.
 
-Implemented V1 surfaces include history filtering, create, detail, and explicit
-completed-record correction. Day View participation and Defect traceability
-remain deferred.
+Implemented V1 surfaces include history filtering, create, detail, explicit
+completed-record correction, and selected-date Day View participation through
+a checklist-owned display summary. Defect traceability remains deferred.
 
 ## Historical Record And Search Requirements
 
@@ -688,9 +688,9 @@ car washes, and temporary replacement-truck assignment belong to a separate
 future Fleet domain. Starting meter readings belong to Operational Safety
 Checklists.
 
-Feature-owned structured history filtering is part of the V1 architecture.
-Day View participation, analytics, reporting, prices, and global cross-module
-search remain deferred. Approved implementation architecture is
+Feature-owned structured history filtering and selected-date Day View
+participation are implemented. Analytics, reporting, prices, and global
+cross-module search remain deferred. Approved implementation architecture is
 `docs/architecture/features/equipment-fuel-events.md`.
 
 ## Supply Request Requirements

@@ -38,15 +38,16 @@ Related Documents:
 - `docs/decisions/adr-017-supersede-standalone-work-truck-log.md`
 - `docs/decisions/adr-018-private-operational-safety-checklist-photo-storage.md`
 
-Last Reviewed: 2026-07-16
+Last Reviewed: 2026-07-17
 
 Implementation Status: The V1 foundation is implemented with canonical
 Dragline and Mobile code-owned templates, complete-only submission, explicit
 completed-record correction, feature-owned history filtering, historical
 snapshots, and PostgreSQL-backed persistence. The implementation and its
-corrections have completed independent review with no remaining findings. Day
-View, Equipment Activity Timeline, Defect linkage, Planner Review, and the
-other deferred capabilities remain unimplemented. ADR-017 confirms that this
+corrections have completed independent review with no remaining findings.
+Phase 24.1 implements a feature-owned selected-date Day View contribution.
+Equipment Activity Timeline, Defect linkage, Planner Review, and the other
+deferred capabilities remain unimplemented. ADR-017 confirms that this
 feature owns shift-start Mobile inspections for work trucks, tractors,
 forklifts, and other supported mobile Equipment. Phase 23.4 implements explicit
 `HOURS`/`MILES` meter units, editable category suggestions, server-validated
@@ -94,8 +95,8 @@ Operational Safety Checklists own:
 - Feature-owned validation, queries, mutations, UI, filters, and tests.
 - Historical template, item, response, person-name, and Equipment display
   snapshots.
-- Future display-ready contributions to Day View and an Equipment Activity
-  Timeline when separately approved.
+- A display-ready selected-date contribution to Day View and a future
+  Equipment Activity Timeline contribution when separately approved.
 
 ## 3. Non-Responsibilities
 
@@ -564,9 +565,11 @@ Expected reads:
 - Previous checklist context for the same Equipment and template.
 - Count and summary helpers for Needs Repair and Previously Noted responses.
 
+Implemented reads include a display-ready selected-date contribution for Day
+View.
+
 Future reads:
 
-- Display-ready selected-date contribution for Day View.
 - Equipment-history contribution for a derived timeline.
 - Active Defect context through a Defect Tracking-owned query if a later
   product milestone approves that assistance.
@@ -659,9 +662,10 @@ commands.
 
 ## 23. Day View And Equipment Timeline Boundaries
 
-Day View participation is deferred from the initial checklist foundation.
+Day View participation is implemented in Phase 24.1 through a feature-owned,
+bounded selected-date helper.
 
-A future feature-owned date helper should return a display-ready summary with:
+The feature-owned date helper returns a display-ready summary with:
 
 - Equipment historical identity.
 - Template name.
@@ -861,8 +865,8 @@ Deferred capabilities include:
 - Optional photo evidence remains checklist-owned and does not create a Defect
   or Daily Work Log record.
 - No automatic Defect mutation exists in V1.
-- Day View and Equipment timeline participation remain feature-owned and
-  deferred.
+- Day View participation is feature-owned and implemented; Equipment timeline
+  participation remains feature-owned and deferred.
 
 ### Still Unresolved
 
@@ -889,7 +893,8 @@ Recommended later sequence:
    (Completed.)
 6. Implement photo storage and evidence management as Phase 23.5 only after its
    access and runtime prerequisites are satisfied.
-7. Day View participation only after separate approval.
+7. Add the feature-owned Day View contribution without moving checklist
+   interpretation into Day View. (Completed in Phase 24.1.)
 8. Optional Defect traceability only after separate approval.
 
 ## 30. Success Criteria
@@ -1310,6 +1315,7 @@ storage, cleanup, backup, and security policies are approved, but Phase 23.5
 implementation and real workplace-photo use remain blocked by the explicit
 prerequisites in Section 41.
 
-Day View, Equipment Activity Timeline, explicit Defect linkage, Planner Review,
-external corporate submission, authentication implementation, and a generic
-attachment system remain outside this enhancement.
+Day View participation is implemented separately in Phase 24.1. Equipment
+Activity Timeline, explicit Defect linkage, Planner Review, external corporate
+submission, authentication implementation, and a generic attachment system
+remain outside this enhancement.

@@ -242,7 +242,9 @@ in-place correction, no deletion, Equipment-derived templates, required
 person-name snapshots, feature-owned history filtering, and exact source
 catalogs. Starting meter readings use an explicit `HOURS` or `MILES` snapshot
 and integers from `0` through `999999`; the maximum is an implementation
-validation guard. Day View and explicit Defect traceability remain deferred.
+validation guard. Phase 24.1 implements selected-date Day View participation
+through a checklist-owned display summary; explicit Defect traceability remains
+deferred.
 
 One independent checklist is recorded for each Equipment inspected at shift
 start. Work trucks, tractors, forklifts, and other supported mobile Equipment
@@ -783,8 +785,8 @@ work may also appear narratively as a Daily Work Log `FUEL_SERVICE` activity.
 Meter readings are excluded. Hour Meter remains owned by Operational Safety
 Checklists. Equipment Fuel Events preserve limited Equipment, Mine, and City
 display snapshots for historical readability. Structured feature-owned history
-filters are part of V1; analytics, reports, global search, and Day View
-implementation remain deferred.
+filters and selected-date Day View participation are implemented; analytics,
+reports, and global search remain deferred.
 
 New events and Equipment replacements require active eligible Equipment.
 Unchanged inactive Equipment may remain during correction, while a missing live
@@ -793,8 +795,8 @@ relation requires intentional active eligible replacement.
 Current implementation status: V1 foundation implemented with feature-owned
 history filtering, completed-record creation and correction, ordered Tank Fill
 persistence, Fuel Service Person management and inline creation, optional
-Daily Work Log activity linking, and historical snapshots. Day View remains
-deferred.
+Daily Work Log activity linking, historical snapshots, and a feature-owned Day
+View display summary added in Phase 24.1.
 
 Boundary assessment:
 
