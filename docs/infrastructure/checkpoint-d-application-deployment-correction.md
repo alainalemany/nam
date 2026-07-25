@@ -14,6 +14,9 @@ remains in [Server Identity Disaster Recovery](disaster-recovery.md), and the
 approved deployment and access architectures remain in
 [ADR-008](../decisions/adr-008-docker-compose-deployment-baseline.md) and
 [ADR-019](../decisions/adr-019-managed-private-overlay-operational-pilot.md).
+The one-time path for the already validated candidate built before the identity
+correction is in
+[Checkpoint D Existing-Candidate Recovery](checkpoint-d-existing-candidate-recovery.md).
 
 ## Classification
 
@@ -105,9 +108,9 @@ only identities from the same layer.
 
 | Layer | Meaning | Checkpoint D use |
 | --- | --- | --- |
-| Image index | The tag's top-level multi-platform descriptor. | Proves the immutable candidate or rollback tag target. |
-| Platform manifest | The `linux/amd64` image manifest selected from the index. | Proves the intended host platform was resolved. |
-| Runtime image/config | The selected platform image configuration digest. | Must equal the new container's `.Image` value. |
+| Image index | The normal exact-reference Docker `.Id` or descriptor digest for the tag's top-level multi-platform descriptor. | Proves the immutable candidate or rollback tag target. |
+| Platform manifest | The platform-scoped `linux/amd64` Docker `.Id` or descriptor digest selected from the index. | Proves the intended runnable host-platform manifest was resolved. |
+| Runtime image/config | The selected manifest's `.config.digest`. | Must equal the new container's `.Image` value. |
 | Container ID | The identity of one container instance. | Proves `nam-app` was replaced and PostgreSQL was not. |
 
 An image index, a platform manifest, a runtime config, and a container ID are
@@ -863,8 +866,8 @@ No application replacement is authorized yet.
 
 ### D4.1 Candidate Identity Layers
 
-Capture the top-level image/index identity, resolved platform-manifest identity,
-and resolved runtime config identity:
+Capture the top-level image/index identity and resolved platform-manifest
+identity:
 
 ```bash
 export NAM_D_INDEX_ID="$(docker image inspect "$NAM_D_CANDIDATE" --format '{{.Id}}')"
@@ -875,11 +878,26 @@ export NAM_D_INDEX_MEDIA_TYPE="$(docker image inspect "$NAM_D_CANDIDATE" --forma
 ```
 
 ```bash
-export NAM_D_PLATFORM_MANIFEST_ID="$(docker image inspect --platform linux/amd64 "$NAM_D_CANDIDATE" --format '{{.Descriptor.Digest}}')"
+export NAM_D_PLATFORM_MANIFEST_ID="$(docker image inspect --platform linux/amd64 "$NAM_D_CANDIDATE" --format '{{.Id}}')"
+```
+
+Export the image without changing Docker state, then read the selected
+manifest's configuration descriptor. This is a narrow descriptor read, not a
+second OCI graph verifier:
+
+```bash
+export NAM_D_CANDIDATE_OCI_ARCHIVE="$NAM_D_EXECUTION_ROOT/evidence/d4-candidate-oci.tar"
+test ! -e "$NAM_D_CANDIDATE_OCI_ARCHIVE"
+docker image save "$NAM_D_CANDIDATE" | tee "$NAM_D_CANDIDATE_OCI_ARCHIVE" >/dev/null
+chmod 0600 "$NAM_D_CANDIDATE_OCI_ARCHIVE"
 ```
 
 ```bash
-export NAM_D_CONFIG_ID="$(docker image inspect --platform linux/amd64 "$NAM_D_CANDIDATE" --format '{{.Id}}')"
+export NAM_D_CONFIG_ID="$(
+  tar -xOf "$NAM_D_CANDIDATE_OCI_ARCHIVE" \
+    "blobs/sha256/${NAM_D_PLATFORM_MANIFEST_ID#sha256:}" \
+    | jq -er '.config.digest'
+)"
 ```
 
 Require valid immutable digests:
@@ -902,18 +920,24 @@ Require a multi-platform index media type:
 case "$NAM_D_INDEX_MEDIA_TYPE" in application/vnd.oci.image.index.v1+json|application/vnd.docker.distribution.manifest.list.v2+json) true ;; *) printf 'D4 FAIL: candidate tag does not resolve to an image index: %s\n' "$NAM_D_INDEX_MEDIA_TYPE" >&2; false ;; esac
 ```
 
-Cross-check the same identity layers from the BuildKit metadata:
+Require the BuildKit result digest and cross-check it against the index:
 
 ```bash
 test "$(jq -er '."containerimage.digest"' "$NAM_D_EXECUTION_ROOT/evidence/d3-build-metadata.json")" = "$NAM_D_INDEX_ID"
 ```
 
 ```bash
-test "$(jq -er '."containerimage.config.digest"' "$NAM_D_EXECUTION_ROOT/evidence/d3-build-metadata.json")" = "$NAM_D_CONFIG_ID"
+export NAM_D_BUILDX_CONFIG_ID="$(jq -r '."containerimage.config.digest" // empty' "$NAM_D_EXECUTION_ROOT/evidence/d3-build-metadata.json")"
+if [[ -n "$NAM_D_BUILDX_CONFIG_ID" ]]; then
+  [[ "$NAM_D_BUILDX_CONFIG_ID" =~ ^sha256:[0-9a-f]{64}$ ]]
+  test "$NAM_D_BUILDX_CONFIG_ID" = "$NAM_D_CONFIG_ID"
+fi
 ```
 
-Do not compare the index, platform manifest, and config to each other. Record
-them with explicit layer names:
+`containerimage.config.digest` is optional. When present, it must match the
+manifest-derived configuration digest; its absence does not invalidate a valid
+OCI index result. Do not compare the index, platform manifest, and config to
+each other. Record them with explicit layer names:
 
 ```bash
 printf 'candidate_tag=%s\nimage_index=%s\nindex_media_type=%s\nlinux_amd64_platform_manifest=%s\nlinux_amd64_runtime_config=%s\n' "$NAM_D_CANDIDATE" "$NAM_D_INDEX_ID" "$NAM_D_INDEX_MEDIA_TYPE" "$NAM_D_PLATFORM_MANIFEST_ID" "$NAM_D_CONFIG_ID" | tee "$NAM_D_EXECUTION_ROOT/evidence/d4-candidate-identities.txt"
@@ -1058,7 +1082,18 @@ export NAM_D_ROLLBACK_PLATFORM_MANIFEST_ID="$(docker image inspect --platform li
 ```
 
 ```bash
-export NAM_D_ROLLBACK_CONFIG_ID="$(docker image inspect --platform linux/amd64 "$NAM_D_ROLLBACK" --format '{{.Id}}')"
+export NAM_D_ROLLBACK_OCI_ARCHIVE="$NAM_D_EXECUTION_ROOT/evidence/d4-rollback-oci.tar"
+test ! -e "$NAM_D_ROLLBACK_OCI_ARCHIVE"
+docker image save "$NAM_D_ROLLBACK" | tee "$NAM_D_ROLLBACK_OCI_ARCHIVE" >/dev/null
+chmod 0600 "$NAM_D_ROLLBACK_OCI_ARCHIVE"
+```
+
+```bash
+export NAM_D_ROLLBACK_CONFIG_ID="$(
+  tar -xOf "$NAM_D_ROLLBACK_OCI_ARCHIVE" \
+    "blobs/sha256/${NAM_D_ROLLBACK_PLATFORM_MANIFEST_ID#sha256:}" \
+    | jq -er '.config.digest'
+)"
 ```
 
 ```bash
