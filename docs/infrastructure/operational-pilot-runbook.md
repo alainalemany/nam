@@ -22,13 +22,16 @@ remains governed by [Server Identity Disaster Recovery](disaster-recovery.md).
 
 The Phase 24.2 assessment established this baseline:
 
-- Repository commit `3753168` is clean and synchronized with `origin/main`.
+- Repository commit `76cdba9530e49334e775009a811ae5ae74305c65` is
+  clean and synchronized with `origin/main`. Its application build inputs are
+  equivalent to commit `3753168`; later changes are documentation-only and
+  excluded from the Docker build context.
 - PostgreSQL is healthy, private to the Docker network, and has all 16 current
   migrations applied with matching checksums.
 - The application container is bound to `127.0.0.1:3000`, but host-level Caddy
   exposes `https://dev.alemany.me` publicly without authentication.
-- The running application image predates `3753168` and its Day View shows eight
-  contributors; the repository implementation has ten.
+- The running application image predates the ten-contributor Day View change
+  and shows eight contributors; the repository implementation has ten.
 - City, Mine, Equipment, Timesheet reference, and Fuel Service Person tables
   have no operational reference records.
 - Existing product records are one Phase 3.2 Daily Log smoke record and its one
@@ -48,7 +51,7 @@ signed off. A skipped, unknown, or partially verified gate is a failed gate.
 | Gate | Required evidence | Status before execution |
 | --- | --- | --- |
 | Access | Approved private boundary active; public bypass denied; approved devices work; PostgreSQL remains unpublished. | Blocked |
-| Deployment | Intended clean commit deployed; health and migrations pass; Day View has ten contributors; no temporary containers remain. | Blocked |
+| Deployment | Checkpoint D gates D1 through D8 accepted; intended immutable image deployed; PostgreSQL unchanged; Day View has ten contributors. | Blocked |
 | Reference data | Minimum location, Equipment, Timesheet, fuel, and snapshot-name context reviewed and signed off. | Blocked |
 | Recovery | Current-schema archive validated and restored successfully into a disposable database without touching live data. | Blocked |
 | Pilot scope | First-shift modules, entry order, date rules, and event-driven exclusions understood. | Blocked |
@@ -177,198 +180,26 @@ The durable boundary and rollback rules are recorded in
 
 ### Deployment Gate
 
-Run these steps only in a separately authorized deployment milestone.
+Checkpoint D corrects application-image drift only. It deploys the approved
+commit containing all ten Day View contributors while preserving PostgreSQL,
+the `postgres-data` volume, `nam-network`, loopback-only application
+publishing, and the temporarily retained public and private routes.
 
-Run this complete block from the repository root. Do not execute only selected
-lines. It verifies the repository before any build, binds the recreated
-container to the image produced by that build, and rolls back only the
-application service if a post-recreation assertion fails. It never recreates
-PostgreSQL and never removes `postgres-data`.
+The prior inline Deployment Gate procedure is superseded and has been removed.
+It must not be recovered from Git history or used as an execution procedure.
+It checked migration parity too late, used a mutable implicit image, compared
+different Docker identity layers, and created an unverified rollback tag.
 
-```bash
-set -euo pipefail
-set -E
+The only authoritative executable procedure is the
+[Checkpoint D Application Deployment Correction Runbook](checkpoint-d-application-deployment-correction.md).
+That runbook defines fail-closed gates D1 through D8, the fixed immutable
+candidate, the accepted V17 rollback authority, application-only replacement,
+server validation, the external Darnassus gate, conditional rollback, and
+acceptance evidence.
 
-nam_deployment_fail() {
-  printf 'DEPLOYMENT GATE: FAIL - %s\n' "$1" >&2
-  return 1
-}
-
-NAM_APP_RECREATION_ATTEMPTED=0
-NAM_ROLLBACK_TAG=""
-
-nam_deployment_error() {
-  local exit_code=$?
-  local failed_line=$1
-  local failed_command=$2
-  trap - ERR
-  printf 'DEPLOYMENT GATE: FAIL - line %s: %s\n' \
-    "$failed_line" "$failed_command" >&2
-
-  if [[ "$NAM_APP_RECREATION_ATTEMPTED" -eq 1 && -n "$NAM_ROLLBACK_TAG" ]]; then
-    printf 'Attempting application-only rollback with %s.\n' \
-      "$NAM_ROLLBACK_TAG" >&2
-    if docker image tag "$NAM_ROLLBACK_TAG" nam-app \
-      && docker compose up -d --no-deps --force-recreate app \
-      && curl -fsS http://127.0.0.1:3000/api/health >/dev/null; then
-      printf 'Application rollback completed; Deployment Gate remains failed.\n' >&2
-    else
-      printf 'MANUAL ROLLBACK REQUIRED: preserve PostgreSQL and restore app image %s.\n' \
-        "$NAM_ROLLBACK_TAG" >&2
-    fi
-  fi
-
-  exit "$exit_code"
-}
-
-trap 'nam_deployment_error "$LINENO" "$BASH_COMMAND"' ERR
-
-NAM_EXPECTED_BRANCH=main
-NAM_ACTUAL_BRANCH="$(git symbolic-ref --quiet --short HEAD)"
-[[ "$NAM_ACTUAL_BRANCH" == "$NAM_EXPECTED_BRANCH" ]] \
-  || nam_deployment_fail "current branch is $NAM_ACTUAL_BRANCH, expected main"
-
-git diff --quiet HEAD -- \
-  || nam_deployment_fail "tracked files differ from HEAD"
-git diff --cached --quiet -- \
-  || nam_deployment_fail "staged changes are present"
-git diff --quiet -- \
-  || nam_deployment_fail "unstaged changes are present"
-NAM_UNTRACKED_FILES="$(git ls-files --others --exclude-standard)"
-[[ -z "$NAM_UNTRACKED_FILES" ]] \
-  || nam_deployment_fail "untracked files are present: $NAM_UNTRACKED_FILES"
-
-git fetch --quiet origin main
-NAM_LOCAL_HEAD="$(git rev-parse --verify HEAD)"
-NAM_ORIGIN_MAIN="$(git rev-parse --verify refs/remotes/origin/main)"
-[[ "$NAM_LOCAL_HEAD" == "$NAM_ORIGIN_MAIN" ]] \
-  || nam_deployment_fail "local HEAD $NAM_LOCAL_HEAD does not equal origin/main $NAM_ORIGIN_MAIN"
-NAM_DEPLOY_COMMIT="$NAM_LOCAL_HEAD"
-[[ "$NAM_DEPLOY_COMMIT" =~ ^[0-9a-f]{40}$ ]] \
-  || nam_deployment_fail "intended commit SHA is malformed"
-
-NAM_PREVIOUS_APP_IMAGE="$(docker inspect nam-app --format '{{.Image}}')"
-[[ "$NAM_PREVIOUS_APP_IMAGE" =~ ^sha256:[0-9a-f]{64}$ ]] \
-  || nam_deployment_fail "current application image identity is unavailable"
-NAM_ROLLBACK_TAG="nam-app:pilot-rollback-$(date -u +%Y%m%dT%H%M%S%NZ)-${NAM_DEPLOY_COMMIT:0:12}"
-if docker image inspect "$NAM_ROLLBACK_TAG" >/dev/null 2>&1; then
-  nam_deployment_fail "rollback tag already exists: $NAM_ROLLBACK_TAG"
-fi
-docker image tag "$NAM_PREVIOUS_APP_IMAGE" "$NAM_ROLLBACK_TAG"
-
-NAM_POSTGRES_HEALTH="$(docker inspect nam-postgres --format '{{.State.Health.Status}}')"
-[[ "$NAM_POSTGRES_HEALTH" == "healthy" ]] \
-  || nam_deployment_fail "PostgreSQL is not healthy before deployment"
-
-docker compose build app
-NAM_BUILT_IMAGE="$(docker image inspect nam-app --format '{{.Id}}')"
-[[ "$NAM_BUILT_IMAGE" =~ ^sha256:[0-9a-f]{64}$ ]] \
-  || nam_deployment_fail "built application image identity is unavailable"
-
-NAM_APP_RECREATION_ATTEMPTED=1
-docker compose up -d --no-deps --force-recreate app
-
-NAM_DEPLOYED_IMAGE="$(docker inspect nam-app --format '{{.Image}}')"
-[[ "$NAM_DEPLOYED_IMAGE" == "$NAM_BUILT_IMAGE" ]] \
-  || nam_deployment_fail "deployed image $NAM_DEPLOYED_IMAGE does not match built image $NAM_BUILT_IMAGE"
-[[ "$(docker inspect nam-app --format '{{.State.Status}}')" == "running" ]] \
-  || nam_deployment_fail "application container is not running"
-[[ "$(docker inspect nam-postgres --format '{{.State.Health.Status}}')" == "healthy" ]] \
-  || nam_deployment_fail "PostgreSQL is not healthy after deployment"
-[[ "$(docker inspect nam-postgres --format '{{json .NetworkSettings.Ports}}')" == '{"5432/tcp":null}' ]] \
-  || nam_deployment_fail "PostgreSQL has an unexpected published port"
-[[ "$(docker inspect nam-app --format '{{json .NetworkSettings.Ports}}')" == *'"HostIp":"127.0.0.1"'* ]] \
-  || nam_deployment_fail "application is not bound to host loopback"
-curl -fsS http://127.0.0.1:3000/api/health >/dev/null \
-  || nam_deployment_fail "application health endpoint failed"
-
-NAM_REPOSITORY_MIGRATIONS="$({
-  for migration_file in prisma/migrations/*/migration.sql; do
-    migration_name="$(basename "$(dirname "$migration_file")")"
-    migration_checksum="$(sha256sum "$migration_file" | awk '{print $1}')"
-    printf '%s|%s\n' "$migration_name" "$migration_checksum"
-  done
-} | sort)"
-NAM_DATABASE_MIGRATIONS="$(docker compose exec -T postgres sh -c \
-  'psql -X -At -F "|" -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
-  "SELECT migration_name, checksum FROM \"_prisma_migrations\" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL ORDER BY migration_name;"' \
-  | tr -d '\r')"
-NAM_PROBLEM_MIGRATION_COUNT="$(docker compose exec -T postgres sh -c \
-  'psql -X -At -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
-  "SELECT count(*) FROM \"_prisma_migrations\" WHERE finished_at IS NULL OR rolled_back_at IS NOT NULL;"' \
-  | tr -d '\r')"
-[[ -n "$NAM_REPOSITORY_MIGRATIONS" ]] \
-  || nam_deployment_fail "repository migration inventory is empty"
-[[ "$NAM_DATABASE_MIGRATIONS" == "$NAM_REPOSITORY_MIGRATIONS" ]] \
-  || nam_deployment_fail "database migration names or checksums do not match the repository"
-[[ "$NAM_PROBLEM_MIGRATION_COUNT" == "0" ]] \
-  || nam_deployment_fail "database contains failed, unfinished, or rolled-back migration rows"
-
-NAM_DAY_VIEW_HTML="$(curl -fsS http://127.0.0.1:3000/day-view)"
-NAM_DAY_VIEW_COUNT="$(printf '%s' "$NAM_DAY_VIEW_HTML" | awk '
-  BEGIN { count = 0 }
-  {
-    text = $0
-    while (match(text, /class="panel table-panel"/)) {
-      count++
-      text = substr(text, RSTART + RLENGTH)
-    }
-  }
-  END { print count }
-')"
-[[ "$NAM_DAY_VIEW_COUNT" == "10" ]] \
-  || nam_deployment_fail "Day View has $NAM_DAY_VIEW_COUNT contributors, expected 10"
-
-for label in \
-  "Work Schedule" "Timesheet" "Daily Logs" "STOP Cards" \
-  "Daily Inspections" "Operational Safety Checklists" "Shift Reports" \
-  "Work Authorizations" "Defects" "Equipment Fuel Events"
-do
-  if ! grep -Fq ">$label<" <<< "$NAM_DAY_VIEW_HTML"; then
-    nam_deployment_fail "Day View contributor label is missing: $label"
-  fi
-done
-
-for path in \
-  /day-view /equipment /equipment/new \
-  /work-schedule /work-schedule/new \
-  /operational-safety-checklists /operational-safety-checklists/new \
-  /daily-logs /daily-logs/new /timesheets /timesheets/new \
-  /stop-cards /stop-cards/new \
-  /daily-inspections /daily-inspections/new \
-  /defect-tracking /defect-tracking/new \
-  /equipment-fuel-events /equipment-fuel-events/new \
-  /shift-reports /shift-reports/new \
-  /work-authorizations /work-authorizations/new
-do
-  if ! route_status="$(curl -sS -o /dev/null -w '%{http_code}' \
-    "http://127.0.0.1:3000$path")"; then
-    nam_deployment_fail "route request failed: $path"
-  fi
-  [[ "$route_status" == "200" ]] \
-    || nam_deployment_fail "route $path returned HTTP $route_status, expected 200"
-done
-
-NAM_COMPOSE_CONTAINERS="$(docker ps -a \
-  --filter label=com.docker.compose.project=nam \
-  --format '{{.Names}}')"
-NAM_UNEXPECTED_CONTAINERS="$(printf '%s\n' "$NAM_COMPOSE_CONTAINERS" \
-  | awk '$0 != "" && $0 != "nam-app" && $0 != "nam-postgres"')"
-[[ -z "$NAM_UNEXPECTED_CONTAINERS" ]] \
-  || nam_deployment_fail "unexpected NAM Compose containers remain: $NAM_UNEXPECTED_CONTAINERS"
-
-NAM_DEPLOYED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-trap - ERR
-printf 'DEPLOYMENT GATE: PASS - commit=%s image=%s previous_image=%s rollback_tag=%s deployed_at=%s contributors=10\n' \
-  "$NAM_DEPLOY_COMMIT" "$NAM_DEPLOYED_IMAGE" "$NAM_PREVIOUS_APP_IMAGE" \
-  "$NAM_ROLLBACK_TAG" "$NAM_DEPLOYED_AT"
-```
-
-The PASS line is the machine-visible deployment result. Preserve it with the
-operator, reviewer, route result, migration result, and image identities. Do
-not delete the rollback tag until deployment and pilot preparation are
-accepted. Any rollback leaves the Deployment Gate failed even when the prior
-application is healthy.
+Checkpoint D does not pass the larger pilot Deployment Gate until every
+required D1 through D8 result is independently accepted. A rollback restores
+service but leaves Checkpoint D and this Deployment Gate failed.
 
 ### Reference-Data Gate
 

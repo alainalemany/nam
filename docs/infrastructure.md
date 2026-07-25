@@ -351,13 +351,15 @@ docker compose down -v
 
 Phase 2B deployment workflow should remain development-only.
 
-The exact pilot deployment gate, stale-image replacement checks, route and
-ten-contributor Day View verification, evidence record, and application-only
-rollback are defined in the
-[Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md). The
-pilot remains unauthorized until that procedure is executed after an approved
-private-access boundary is active. ADR-019 approves the boundary architecture;
-it does not make the current public deployment eligible for pilot data.
+The exact Checkpoint D application-image correction, immutable image identity
+checks, PostgreSQL preservation assertions, route validation, evidence record,
+and application-only rollback are defined in the
+[Checkpoint D Application Deployment Correction Runbook](infrastructure/checkpoint-d-application-deployment-correction.md).
+The [Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md)
+keeps Checkpoint D in the larger pilot sequence without duplicating its
+executable procedure. The pilot remains unauthorized until every pilot gate is
+independently accepted. ADR-019 approves the boundary architecture; it does not
+make the temporarily retained public deployment eligible for pilot data.
 
 The expected sequence is:
 
