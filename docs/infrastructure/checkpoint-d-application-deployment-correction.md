@@ -2,9 +2,10 @@
 
 This runbook is the authoritative execution procedure for Checkpoint D. It
 replaces only the stale NAM application container with an application image
-built from the approved repository commit. It must not migrate, seed, reset,
-restore, or otherwise change PostgreSQL, and it must not change any public or
-private access control.
+built from the immutable application-source commit while the repository remains
+at the runbook/control commit. It must not migrate, seed, reset, restore, or
+otherwise change PostgreSQL, and it must not change any public or private access
+control.
 
 The larger pilot sequence remains canonical in the
 [Operational Pilot Runbook](operational-pilot-runbook.md). General operations
@@ -18,7 +19,7 @@ approved deployment and access architectures remain in
 
 | Classification | Meaning |
 | --- | --- |
-| Confirmed | Checkpoint D is an application-image-only correction at commit `76cdba9530e49334e775009a811ae5ae74305c65`. |
+| Confirmed | Checkpoint D is an application-image-only correction controlled by the operator-supplied exact approved commit containing this final runbook and built from immutable application-source commit `76cdba9530e49334e775009a811ae5ae74305c65`. |
 | Confirmed | `MIGRATION_ACTION=NONE`; application-only rollback is safe only while the database remains unchanged. |
 | Confirmed | The independently verified V17 Docker tag is the only Checkpoint D application rollback authority. |
 | Recommended | Create a PostgreSQL backup immediately before Checkpoint D, but do not make backup execution part of this runbook. |
@@ -62,7 +63,8 @@ VPS cannot substitute for that gate.
 | Item | Required identity |
 | --- | --- |
 | Branch | `main` |
-| Commit, local `main`, local `origin/main`, remote `main` | `76cdba9530e49334e775009a811ae5ae74305c65` |
+| Runbook/control commit, local `main`, local `origin/main`, remote `main` | Operator-supplied full SHA of the exact approved commit containing this final runbook; all four repository identities must match it. |
+| Immutable application-source commit | `76cdba9530e49334e775009a811ae5ae74305c65` |
 | Candidate tag | `nam-app:checkpoint-d-git-76cdba9530e49334e775009a811ae5ae74305c65` |
 | Checkpoint label | `io.nam.checkpoint=checkpoint-d-application-deployment-correction` |
 | Old application container | `f500902546bdad63adb180118dab379b630be9618a11f5fe58f0ee63f42495f2` |
@@ -85,12 +87,15 @@ V17 evidence instead.
 
 ## Correction Basis
 
-The approved discovery found application image drift only. Commit `3753168`
-added Operational Safety Checklists and Equipment Fuel Events to Day View
-without adding a migration. All application build inputs at the fixed current
-commit are equivalent to that commit; later changes are documentation-only and
-excluded by `.dockerignore`. All 16 committed migrations already match the
-live database. There is no database migration drift, database-data drift,
+The approved discovery found application image drift only. Application-source
+commit `76cdba9530e49334e775009a811ae5ae74305c65` contains the immutable build
+inputs, including commit `3753168`, which added Operational Safety Checklists
+and Equipment Fuel Events to Day View without adding a migration.
+The final runbook/control commit containing this procedure is documentation-only
+and follows the application-source commit. The application build inputs are
+unchanged across that range, and documentation is excluded from the Docker
+build context by `.dockerignore`. All 16 committed migrations already match
+the live database. There is no database migration drift, database-data drift,
 reference-data drift, or Compose configuration drift to correct.
 
 ## Image Identity Model
@@ -110,31 +115,48 @@ not expected to equal one another. In particular, never compare the top-level
 index returned for a multi-platform tag directly with a running container's
 runtime config identity.
 
-The commit and tag are immutable inputs to this procedure, but the current
-Dockerfile uses mutable base-image and APT inputs. A later rebuild from the same
-Git commit is therefore not guaranteed to be byte-for-byte identical. D3 gives
-the actual candidate an immutable post-build identity and records every
-relevant identity layer. Base-image digest pinning is deferred.
+The application-source commit and candidate tag are immutable inputs to this
+procedure, but the current Dockerfile uses mutable base-image and APT inputs. A
+later rebuild from the same application-source commit is therefore not
+guaranteed to be byte-for-byte identical. D3 gives the actual candidate an
+immutable post-build identity and records every relevant identity layer.
+Base-image digest pinning is deferred.
 
 ## Gate Summary
 
 | Gate | Result required before continuing |
 | --- | --- |
-| D1 | Repository, runtime, PostgreSQL, network, volume, rollback, and tag identities match exactly. |
+| D1 | Repository at the runbook/control commit, runtime, PostgreSQL, network, volume, rollback, and tag identities match exactly. |
 | D2 | All 16 repository and live migrations match; no problem rows exist; `MIGRATION_ACTION=NONE`. |
-| D3 | One isolated exact-commit candidate is built under the fixed tag with required labels. |
+| D3 | One isolated candidate from the exact application-source commit is built under the fixed tag with required labels. |
 | D4 | Candidate identity, runtime properties, Compose rendering, and rollback readiness pass. |
 | D5 | Only `nam-app` is recreated and local health passes within 120 seconds. |
 | D6 | Local, public, and external private validation pass; PostgreSQL and repository remain unchanged. |
 | D7 | Conditional application-only rollback restores the known old application baseline if any trigger occurs. |
 | D8 | Complete evidence receives operator and independent reviewer acceptance. |
 
+## Operator Preparation Before D1
+
+Commit and push the approved final runbook before starting Checkpoint D. Obtain
+the full resulting commit SHA, then set `RUNBOOK_CONTROL_COMMIT` to that exact
+40-character lowercase SHA in the shell that will execute D1 through D8:
+
+```bash
+RUNBOOK_CONTROL_COMMIT='<full resulting commit SHA containing this final runbook>'
+```
+
+Do not reuse a parent commit, the pre-commit SHA, a short SHA, or a value copied
+from an earlier runbook revision. Do not derive or default the value from
+`HEAD`. Stop if the supplied value differs from `HEAD`, local `main`, local
+`origin/main`, or the freshly read remote `main`.
+
 ## D1 — Repository And Runtime Identity
 
 ### D1.1 Server Session And Evidence Root
 
-Use one shell for D1 through D8. These assignments contain every critical
-identity; do not substitute shorter SHAs or mutable tags.
+Continue in the shell prepared above and use it for D1 through D8. The
+operator-supplied control commit and the immutable assignments below contain
+every critical identity; do not substitute shorter SHAs or mutable tags.
 
 ```bash
 cd /home/alain/projects/nam
@@ -148,8 +170,30 @@ set -o pipefail
 umask 077
 ```
 
+Require the operator-supplied control commit without deriving or defaulting it:
+
 ```bash
-export NAM_D_COMMIT='76cdba9530e49334e775009a811ae5ae74305c65'
+: "${RUNBOOK_CONTROL_COMMIT:?Set RUNBOOK_CONTROL_COMMIT to the exact approved committed runbook SHA before D1}"
+```
+
+Validate the full lowercase SHA before exporting and freezing it:
+
+```bash
+nam_d_validate_and_freeze_runbook_control_commit() {
+  if [[ ! "$RUNBOOK_CONTROL_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+    printf '%s\n' \
+      'D1 FAIL: RUNBOOK_CONTROL_COMMIT must be exactly 40 lowercase hexadecimal characters' \
+      >&2
+    return 1
+  fi
+  export RUNBOOK_CONTROL_COMMIT
+  readonly RUNBOOK_CONTROL_COMMIT
+}
+nam_d_validate_and_freeze_runbook_control_commit
+```
+
+```bash
+export APPLICATION_SOURCE_COMMIT='76cdba9530e49334e775009a811ae5ae74305c65'
 ```
 
 ```bash
@@ -249,6 +293,15 @@ date -u +%Y-%m-%dT%H:%M:%SZ \
   | tee "$NAM_D_EXECUTION_ROOT/evidence/d1-started-at-utc.txt"
 ```
 
+Record the operator-supplied control commit, immutable application-source
+commit, and immutable candidate tag together:
+
+```bash
+printf 'RUNBOOK_CONTROL_COMMIT=%s\nAPPLICATION_SOURCE_COMMIT=%s\nNAM_D_CANDIDATE=%s\n' \
+  "$RUNBOOK_CONTROL_COMMIT" "$APPLICATION_SOURCE_COMMIT" "$NAM_D_CANDIDATE" \
+  | tee "$NAM_D_EXECUTION_ROOT/evidence/d1-fixed-identities.txt"
+```
+
 Expected: one newly created path beginning with
 `/home/alain/nam-deployment-evidence/checkpoint-d-76cdba9530e4-`. If creation
 fails, its status is nonzero, its path is empty or non-absolute, its exact
@@ -286,22 +339,19 @@ git symbolic-ref --quiet --short HEAD
 Expected: `main`.
 
 ```bash
-git rev-parse --verify HEAD
+test "$(git rev-parse --verify HEAD)" = "$RUNBOOK_CONTROL_COMMIT"
 ```
 
 ```bash
-git rev-parse --verify refs/heads/main
+test "$(git rev-parse --verify refs/heads/main)" = "$RUNBOOK_CONTROL_COMMIT"
 ```
 
 ```bash
-git rev-parse --verify refs/remotes/origin/main
+test "$(git rev-parse --verify refs/remotes/origin/main)" = "$RUNBOOK_CONTROL_COMMIT"
 ```
 
-Each expected SHA is:
-
-```text
-76cdba9530e49334e775009a811ae5ae74305c65
-```
+Each command must equal the validated and frozen operator-supplied full
+runbook/control SHA.
 
 Read remote `main` without fetching or modifying Git state:
 
@@ -310,7 +360,7 @@ export NAM_D_REMOTE_MAIN="$(git ls-remote --exit-code origin refs/heads/main | a
 ```
 
 ```bash
-test "$NAM_D_REMOTE_MAIN" = "$NAM_D_COMMIT"
+test "$NAM_D_REMOTE_MAIN" = "$RUNBOOK_CONTROL_COMMIT"
 ```
 
 This reads remote `main` without fetching or changing local Git state.
@@ -633,7 +683,7 @@ export NAM_D_BUILD_CONTEXT="$NAM_D_EXECUTION_ROOT/build-context"
 ```
 
 ```bash
-export NAM_D_SOURCE_ARCHIVE="$NAM_D_EXECUTION_ROOT/source-$NAM_D_COMMIT.tar"
+export NAM_D_SOURCE_ARCHIVE="$NAM_D_EXECUTION_ROOT/source-$APPLICATION_SOURCE_COMMIT.tar"
 ```
 
 ```bash
@@ -643,7 +693,7 @@ mkdir -m 0700 "$NAM_D_BUILD_CONTEXT"
 Export the exact Git object, not the changing working directory:
 
 ```bash
-git archive --format=tar --output="$NAM_D_SOURCE_ARCHIVE" "$NAM_D_COMMIT"
+git archive --format=tar --output="$NAM_D_SOURCE_ARCHIVE" "$APPLICATION_SOURCE_COMMIT"
 ```
 
 ```bash
@@ -703,7 +753,7 @@ a false zero-match result:
 nam_d_capture_git_tree() {
   local tree_output=''
   local tree_status=0
-  tree_output="$(git ls-tree -r --name-only "$NAM_D_COMMIT")" \
+  tree_output="$(git ls-tree -r --name-only "$APPLICATION_SOURCE_COMMIT")" \
     || tree_status=$?
   if [[ "$tree_status" -ne 0 ]]; then
     printf 'D3 FAIL: git ls-tree failed with status %s\n' \
@@ -742,8 +792,8 @@ test "$NAM_D_PROHIBITED_SCAN_STATUS" -eq 0 \
   && test ! -s "$NAM_D_EXECUTION_ROOT/evidence/d3-prohibited-build-paths.txt"
 ```
 
-The build context comes only from the pinned commit. Do not copy the live
-`.env`, rollback files, backup payloads, or evidence into it.
+The build context comes only from the pinned application-source commit. Do not
+copy the live `.env`, rollback files, backup payloads, or evidence into it.
 
 ### D3.2 Authorization And Build
 
@@ -793,7 +843,7 @@ creation, and Checkpoint D labels below all use these validated values.
 following one image-build command. It must not be run before authorization.
 
 ```bash
-docker buildx build --platform linux/amd64 --provenance=mode=min --load --progress=plain --metadata-file "$NAM_D_EXECUTION_ROOT/evidence/d3-build-metadata.json" --label "org.opencontainers.image.revision=$NAM_D_COMMIT" --label "org.opencontainers.image.created=$NAM_D_CREATED" --label "io.nam.checkpoint=$NAM_D_CHECKPOINT" --tag "$NAM_D_CANDIDATE" "$NAM_D_BUILD_CONTEXT" 2>&1 | tee "$NAM_D_EXECUTION_ROOT/evidence/d3-build.log"
+docker buildx build --platform linux/amd64 --provenance=mode=min --load --progress=plain --metadata-file "$NAM_D_EXECUTION_ROOT/evidence/d3-build-metadata.json" --label "org.opencontainers.image.revision=$APPLICATION_SOURCE_COMMIT" --label "org.opencontainers.image.created=$NAM_D_CREATED" --label "io.nam.checkpoint=$NAM_D_CHECKPOINT" --tag "$NAM_D_CANDIDATE" "$NAM_D_BUILD_CONTEXT" 2>&1 | tee "$NAM_D_EXECUTION_ROOT/evidence/d3-build.log"
 ```
 
 This command does not use `latest`, the implicit `nam-app` tag, or the rollback
@@ -874,7 +924,7 @@ printf 'candidate_tag=%s\nimage_index=%s\nindex_media_type=%s\nlinux_amd64_platf
 Each command must exit zero:
 
 ```bash
-test "$(docker image inspect --platform linux/amd64 "$NAM_D_CANDIDATE" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$NAM_D_COMMIT"
+test "$(docker image inspect --platform linux/amd64 "$NAM_D_CANDIDATE" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$APPLICATION_SOURCE_COMMIT"
 ```
 
 ```bash
@@ -923,11 +973,11 @@ docker image inspect --platform linux/amd64 "$NAM_D_CANDIDATE" --format '{{range
 diff -u "$NAM_D_EXECUTION_ROOT/evidence/d4-expected-image-env-names.txt" "$NAM_D_EXECUTION_ROOT/evidence/d4-actual-image-env-names.txt"
 ```
 
-Expected: no diff. Do not print environment values. The exact-commit context,
-placeholder-only `.env.example`, absence of build secret arguments, and exact
-environment-name allowlist are the embedded-secret boundary. Any unexpected
-credential, database URL, password, token, private key, or secret name is a
-stop condition.
+Expected: no diff. Do not print environment values. The exact
+application-source context, placeholder-only `.env.example`, absence of build
+secret arguments, and exact environment-name allowlist are the embedded-secret
+boundary. Any unexpected credential, database URL, password, token, private
+key, or secret name is a stop condition.
 
 ### D4.3 Candidate Compose Override
 
@@ -1495,7 +1545,7 @@ test "$(docker image inspect "$NAM_D_CANDIDATE" --format '{{.Id}}')" = "$NAM_D_I
 ```
 
 ```bash
-test "$(git rev-parse HEAD)" = "$NAM_D_COMMIT" && test -z "$(git status --porcelain=v1 --untracked-files=all)"
+test "$(git rev-parse HEAD)" = "$RUNBOOK_CONTROL_COMMIT" && test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 ### D5.2 Authorization And Replacement
@@ -2548,15 +2598,15 @@ substitute a VPS-originated request.
 After the external result, verify that execution did not alter the repository:
 
 ```bash
-test "$(git rev-parse HEAD)" = "$NAM_D_COMMIT"
+test "$(git rev-parse HEAD)" = "$RUNBOOK_CONTROL_COMMIT"
 ```
 
 ```bash
-test "$(git rev-parse refs/heads/main)" = "$NAM_D_COMMIT"
+test "$(git rev-parse refs/heads/main)" = "$RUNBOOK_CONTROL_COMMIT"
 ```
 
 ```bash
-test "$(git rev-parse refs/remotes/origin/main)" = "$NAM_D_COMMIT"
+test "$(git rev-parse refs/remotes/origin/main)" = "$RUNBOOK_CONTROL_COMMIT"
 ```
 
 ```bash
@@ -3110,7 +3160,7 @@ panels. The VPS cannot substitute for either rollback request.
 Finally require repository cleanliness:
 
 ```bash
-test "$(git rev-parse HEAD)" = "$NAM_D_COMMIT" && test "$(git rev-parse refs/heads/main)" = "$NAM_D_COMMIT" && test "$(git rev-parse refs/remotes/origin/main)" = "$NAM_D_COMMIT" && test -z "$(git status --porcelain=v1 --untracked-files=all)"
+test "$(git rev-parse HEAD)" = "$RUNBOOK_CONTROL_COMMIT" && test "$(git rev-parse refs/heads/main)" = "$RUNBOOK_CONTROL_COMMIT" && test "$(git rev-parse refs/remotes/origin/main)" = "$RUNBOOK_CONTROL_COMMIT" && test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ```
 
 Checkpoint D remains **failed** even when rollback restores service. Do not
@@ -3130,8 +3180,9 @@ The evidence record must include:
 | Evidence | Required content |
 | --- | --- |
 | People and time | Operator, independent reviewer, gate-by-gate UTC start and finish times. |
-| Repository | Branch, exact commit, local `main`, local `origin/main`, remote `main`, and final clean state. |
-| Candidate | Exact tag, revision label, creation label, Checkpoint D label, build log, and BuildKit metadata. |
+| Fixed identities | Operator-supplied exact approved runbook/control repository commit recorded in D1, immutable application-source commit `76cdba9530e49334e775009a811ae5ae74305c65`, and immutable candidate tag `nam-app:checkpoint-d-git-76cdba9530e49334e775009a811ae5ae74305c65`. |
+| Repository | Branch, exact runbook/control commit, local `main`, local `origin/main`, remote `main`, and final clean state. |
+| Candidate | Exact immutable tag, application-source revision label, creation label, Checkpoint D label, build log, and BuildKit metadata. |
 | Image identities | Image index, index media type, `linux/amd64` platform manifest, and `linux/amd64` runtime config with layer names. |
 | Application containers | Fixed old container ID/config/start time and new container ID/config/start time. |
 | PostgreSQL | Same ID, start time, restart count, running/healthy state, unpublished port, volume, destination, network, and network ID before and after. |
@@ -3142,6 +3193,26 @@ The evidence record must include:
 | Exposure and project | Rendered project name exactly `nam`, exact app image selection, loopback-only app publication, unchanged/unpublished PostgreSQL service, and exactly the `app` and `postgres` NAM Compose services and containers. |
 | Rollback | Exact accepted V17 tag/index, artifact reference, archive checksum, and `INDEPENDENT_V17_VERIFICATION=PASS`. |
 | Database boundary | Explicit confirmation that no migration, database write, database rollback, or PostgreSQL identity change occurred. |
+
+Require and record the final fixed identities:
+
+```bash
+printf 'runbook_control_repository_commit=%s\nimmutable_application_source_commit=%s\nimmutable_candidate_tag=%s\n' \
+  "$RUNBOOK_CONTROL_COMMIT" "$APPLICATION_SOURCE_COMMIT" "$NAM_D_CANDIDATE" \
+  | tee "$NAM_D_EXECUTION_ROOT/evidence/d8-fixed-identities.txt"
+```
+
+Require the final repository identity and cleanliness against the
+runbook/control commit, including a fresh read of remote `main`:
+
+```bash
+export NAM_D_FINAL_REMOTE_MAIN="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+test "$(git rev-parse HEAD)" = "$RUNBOOK_CONTROL_COMMIT" \
+  && test "$(git rev-parse refs/heads/main)" = "$RUNBOOK_CONTROL_COMMIT" \
+  && test "$(git rev-parse refs/remotes/origin/main)" = "$RUNBOOK_CONTROL_COMMIT" \
+  && test "$NAM_D_FINAL_REMOTE_MAIN" = "$RUNBOOK_CONTROL_COMMIT" \
+  && test -z "$(git status --porcelain=v1 --untracked-files=all)"
+```
 
 Record the final server-side UTC time:
 
