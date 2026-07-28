@@ -28,7 +28,7 @@ compatibility defect.
 
 | Item | Required value |
 | --- | --- |
-| Pre-correction control commit | `58f374a018792f16ab30cfd548000d5b20a6b3da` |
+| Immediate pre-correction parent | `bd6e4f1f9e23aff73795594fbe604b4bed7513b1` |
 | Application-source identity | `76cdba9530e49334e775009a811ae5ae74305c65` |
 | Device | `DARNASSUS` |
 | WSL distribution | `AlmaLinux-9` |
@@ -56,8 +56,10 @@ The procedure has eight fail-closed gates:
 
 1. **R1 — Control and collision gate:** require a new full runbook-control
    commit that is the direct, single-parent, non-merge child of the
-   pre-correction commit, clean synchronized `main`, the exact four-path
-   correction status set, and a new empty sibling continuation root.
+   immediate pre-correction parent, clean synchronized `main`, an exact
+   one-path `M` correction range with no create, delete, rename, copy, type, or
+   mode change, `git diff --check` success, and a new empty sibling
+   continuation root.
 2. **R2 — Sealed evidence gate:** verify the fixed checksum-manifest hash
    before relying on it, strictly parse its exact 13 entries, and require the
    sealed root's exact 14-entry immediate inventory.
@@ -85,6 +87,36 @@ Until R8, no file classifies D6.4 as PASS or permits D6.5. The validator's
 required stdout contains the word `PASS`, but it is structural-result evidence,
 not the D6.4 completion classification.
 
+## Mandatory PowerShell Syntax Preflight
+
+This preflight is mandatory on Darnassus before the committed recovery block is
+executed. It is separate from R1-R8, does not execute the recovery, and must not
+create a recovery evidence root.
+
+The operator must:
+
+1. Extract the exact contents between the approved UTF-8 runbook's
+   `powershell` opening fence and its matching closing fence, excluding only the
+   fences.
+2. Write those exact contents to a temporary `.ps1` file without adding,
+   removing, substituting, or manually editing any character.
+3. Confirm that no recovery evidence root exists or is created and that
+   recovery has not started.
+4. Invoke Windows PowerShell
+   `[System.Management.Automation.Language.Parser]::ParseFile(...)` against the
+   temporary file and require the parse-error collection to contain exactly
+   zero entries.
+5. Begin the committed recovery block only after the parser reports exactly
+   zero errors.
+
+`ParseFile` is a syntax-only operation; the extracted `.ps1` must never be
+dot-sourced, invoked, or otherwise executed during preflight. Any parse error
+blocks recovery execution and requires a committed runbook correction with a
+new approved control commit. An operator must never patch the temporary script
+and continue. The handoff must report the exact parser error count and confirm
+that the recovery evidence-root count remained zero until syntax validation
+succeeded.
+
 ## Darnassus Recovery Command
 
 The following is **one compound PowerShell command/scriptblock**. It contains
@@ -92,17 +124,18 @@ multiple ordered gates inside one `& { ... }` child scope. All variables are
 created and consumed within that single scope; the procedure does not depend on
 a variable created by an earlier child scriptblock remaining available.
 
-Run it from Windows PowerShell on Darnassus only after the correction has been
-reviewed, committed, and pushed. Supply the full new approved runbook-control
-commit and the existing clean repository path when prompted. Do not use the old
-`58f374a018792f16ab30cfd548000d5b20a6b3da` control commit.
+Run it from Windows PowerShell on Darnassus only after the mandatory syntax
+preflight above has passed and the correction has been reviewed, committed, and
+pushed. Supply the full new approved runbook-control commit and the existing
+clean repository path when prompted. The supplied commit must not be the
+immediate pre-correction parent.
 
 ```powershell
 & {
   $ErrorActionPreference = 'Stop'
   Set-StrictMode -Version Latest
 
-  $preCorrectionCommit = '58f374a018792f16ab30cfd548000d5b20a6b3da'
+  $preCorrectionCommit = 'bd6e4f1f9e23aff73795594fbe604b4bed7513b1'
   $runbookControlCommit = (
     Read-Host 'Full new approved runbook-control commit'
   ).Trim()
@@ -133,7 +166,7 @@ commit and the existing clean repository path when prompted. Do not use the old
     $output = @(& git.exe -C $repoRoot @Arguments)
     $exitStatus = $LASTEXITCODE
     if ($exitStatus -ne 0) {
-      throw "D6.4 recovery FAIL: git exit $exitStatus: $($Arguments -join ' ')"
+      throw "D6.4 recovery FAIL: git exit ${exitStatus}: $($Arguments -join ' ')"
     }
     return $output
   }
@@ -432,7 +465,7 @@ commit and the existing clean repository path when prompted. Do not use the old
         Where-Object { $_ -ceq $Expected }
     )
     if ($matches.Count -ne 1) {
-      throw "D6.4 recovery FAIL: expected one exact line in $Path: $Expected"
+      throw "D6.4 recovery FAIL: expected one exact line in ${Path}: $Expected"
     }
   }
 
@@ -623,11 +656,8 @@ commit and the existing clean repository path when prompted. Do not use the old
     throw 'D6.4 recovery FAIL: control commit is not the direct single-parent correction child'
   }
   $expectedCorrectionStatus = @(
-    "A`tdocs/infrastructure/checkpoint-d-private-validator-recovery.md",
-    "M`tdocs/README.md",
-    "M`tdocs/infrastructure/checkpoint-d-application-deployment-correction.md",
-    "M`tdocs/infrastructure/checkpoint-d-existing-candidate-recovery.md"
-  ) | Sort-Object
+    "M`tdocs/infrastructure/checkpoint-d-private-validator-recovery.md"
+  )
   $actualCorrectionStatus = @(
     Invoke-GitText @(
       'diff',
@@ -655,12 +685,8 @@ commit and the existing clean repository path when prompted. Do not use the old
       $runbookControlCommit
     )
   )
-  if (
-    $correctionSummary.Count -ne 1 -or
-    $correctionSummary[0].Trim() -cne
-      'create mode 100644 docs/infrastructure/checkpoint-d-private-validator-recovery.md'
-  ) {
-    throw 'D6.4 recovery FAIL: control range has a mode or type change'
+  if ($correctionSummary.Count -ne 0) {
+    throw 'D6.4 recovery FAIL: control range has a create, delete, rename, copy, mode, or type summary'
   }
   $correctionWhitespace = @(
     Invoke-GitText @(
@@ -756,8 +782,11 @@ commit and the existing clean repository path when prompted. Do not use the old
       'CONTROL_PARENT_QUERY_NATIVE_EXIT_STATUS=0',
       "CONTROL_COMMIT_PARENT=$($parentFields[1])",
       'CONTROL_COMMIT_DIRECT_SINGLE_PARENT_CHILD=YES',
-      'CONTROL_RANGE_STATUS_SET=EXACT',
-      'CONTROL_RANGE_MODE_SET=EXACT',
+      "CONTROL_RANGE_NAME_STATUS=M`tdocs/infrastructure/checkpoint-d-private-validator-recovery.md",
+      'CONTROL_RANGE_PATH_STATUS_SET=EXACT_ONE_MODIFICATION',
+      'CONTROL_RANGE_CREATE_DELETE_RENAME_COPY_TYPE_MODE_CHANGES=NONE',
+      'CONTROL_RANGE_DIFF_SUMMARY_EMPTY=YES',
+      'CONTROL_RANGE_DIFF_CHECK=PASS',
       "CONTINUATION_ROOT=$continuationRootFull",
       'FINAL_CLASSIFICATION=PENDING'
     )
@@ -1232,7 +1261,13 @@ D6.4 is complete only when the fixed
 non-reparse-point file and a later handoff check proves:
 
 - the approved control commit is the direct, single-parent, non-merge child of
-  `58f374a018792f16ab30cfd548000d5b20a6b3da`;
+  `bd6e4f1f9e23aff73795594fbe604b4bed7513b1`;
+- `main`, local `main`, `origin/main`, and remote `main` all resolve to that
+  approved control commit, and the repository is clean;
+- the correction range reports exactly
+  `M	docs/infrastructure/checkpoint-d-private-validator-recovery.md`, reports
+  no other path or status, produces no `git diff --summary` output, and passes
+  `git diff --check`;
 - the original manifest retains its fixed SHA-256, strictly lists 13 unique
   immediate regular non-reparse-point files, every one of those 13 hashes is
   recomputed successfully, and a forced inventory proves the sealed root is
@@ -1253,6 +1288,11 @@ non-reparse-point file and a later handoff check proves:
   continuation manifest, and the final completion record;
 - the final record states `HTTPS_REQUESTS_REPEATED=NO`,
   `ROLLBACK_REQUIRED=NO`, `D6_4=PASS`, and `D6_5=MAY_BEGIN`.
+
+D6.4 handoff must also state that the mandatory syntax-only
+`Parser.ParseFile` preflight used the exact unmodified block extracted from the
+approved UTF-8 runbook, reported exactly zero parse errors, and completed while
+the recovery evidence-root count remained zero and recovery had not started.
 
 D6.5 must run the binding check in the authoritative Checkpoint D runbook
 before its server-side repository commands. Preserve both roots and both
