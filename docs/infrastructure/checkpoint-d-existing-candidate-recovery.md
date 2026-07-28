@@ -178,15 +178,21 @@ Reconfirm the unchanged D1 containers, health, and exposure:
 ```bash
 test ! -e "$NAM_D_RECOVERY_EVIDENCE_DIR/r4-app-runtime.txt"
 docker inspect nam-app --format \
-  '{{.Id}}|{{.Image}}|{{.State.Status}}|{{json .NetworkSettings.Ports}}' \
+  '{{.Id}}|{{.State.Status}}|{{json .NetworkSettings.Ports}}' \
   | tee "$NAM_D_RECOVERY_EVIDENCE_DIR/r4-app-runtime.txt"
 test ! -e "$NAM_D_RECOVERY_EVIDENCE_DIR/r4-postgres-runtime.txt"
 docker inspect nam-postgres --format \
   '{{.Id}}|{{.State.StartedAt}}|{{.RestartCount}}|{{.State.Health.Status}}|{{json .NetworkSettings.Ports}}' \
   | tee "$NAM_D_RECOVERY_EVIDENCE_DIR/r4-postgres-runtime.txt"
-test "$(sed -n '1p' "$NAM_D_RECOVERY_EVIDENCE_DIR/r4-app-runtime.txt")" = 'f500902546bdad63adb180118dab379b630be9618a11f5fe58f0ee63f42495f2|sha256:03d0301ad1ca9bc2060fcb41676e08faa721ea6ef6108a5edc4db742fba211b4|running|{"3000/tcp":[{"HostIp":"127.0.0.1","HostPort":"3000"}]}'
+test "$(sed -n '1p' "$NAM_D_RECOVERY_EVIDENCE_DIR/r4-app-runtime.txt")" = 'f500902546bdad63adb180118dab379b630be9618a11f5fe58f0ee63f42495f2|running|{"3000/tcp":[{"HostIp":"127.0.0.1","HostPort":"3000"}]}'
 test "$(sed -n '1p' "$NAM_D_RECOVERY_EVIDENCE_DIR/r4-postgres-runtime.txt")" = '0d074cabe133c4b05d97705f21199b583b19a3eeecece28b8acc6322f97d2ce1|2026-06-30T18:17:12.705151191Z|0|healthy|{"5432/tcp":null}'
 ```
+
+The original D1 application configuration digest
+`sha256:03d0301ad1ca9bc2060fcb41676e08faa721ea6ef6108a5edc4db742fba211b4`
+remains accepted historical configuration evidence. It was not derived from
+container `.Image`, and this recovery does not invent or infer an old OCI index
+for that container.
 
 Reconfirm the unchanged V17 rollback tag and index:
 

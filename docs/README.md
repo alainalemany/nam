@@ -126,6 +126,7 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Operate infrastructure | [Infrastructure Operations](infrastructure.md) |
 | Prepare and execute a controlled operational pilot | [Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md) |
 | Correct the Checkpoint D stale application deployment | [Checkpoint D Application Deployment Correction](infrastructure/checkpoint-d-application-deployment-correction.md) |
+| Complete the sealed Checkpoint D private Day View validation | [Checkpoint D Private Validator Recovery](infrastructure/checkpoint-d-private-validator-recovery.md) |
 | Understand the controlled-pilot private-access decision | [ADR-019: Managed Private Overlay](decisions/adr-019-managed-private-overlay-operational-pilot.md) |
 | Understand server identity | [Server Environment Identity](infrastructure/server-environment.md) |
 | Understand bootstrap and verification | [Bootstrap And Verification](infrastructure/bootstrap-and-verification.md) |
@@ -166,6 +167,7 @@ to that home but should not restate the same policy in detail.
 | Infrastructure philosophy | `docs/infrastructure.md`, durable decisions in `docs/decisions/` |
 | Operational pilot authorization, preparation, execution, and exit review | `docs/infrastructure/operational-pilot-runbook.md` |
 | Checkpoint D application-image-only deployment correction | `docs/infrastructure/checkpoint-d-application-deployment-correction.md` |
+| Checkpoint D sealed private Day View validator recovery | `docs/infrastructure/checkpoint-d-private-validator-recovery.md` |
 | Controlled-pilot private-access architecture | `docs/decisions/adr-019-managed-private-overlay-operational-pilot.md` |
 | Environment identity | `docs/infrastructure/server-environment.md` |
 | Deployment philosophy | `docs/architecture.md`, deployment operations in `docs/infrastructure.md` |

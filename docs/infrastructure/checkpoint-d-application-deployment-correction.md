@@ -17,6 +17,9 @@ approved deployment and access architectures remain in
 The one-time path for the already validated candidate built before the identity
 correction is in
 [Checkpoint D Existing-Candidate Recovery](checkpoint-d-existing-candidate-recovery.md).
+The incident-specific completion path for the sealed D6.4 private Day View
+response is in
+[Checkpoint D Private Validator Recovery](checkpoint-d-private-validator-recovery.md).
 
 ## Classification
 
@@ -69,6 +72,9 @@ VPS cannot substitute for that gate.
 | Runbook/control commit, local `main`, local `origin/main`, remote `main` | Operator-supplied full SHA of the exact approved commit containing this final runbook; all four repository identities must match it. |
 | Immutable application-source commit | `76cdba9530e49334e775009a811ae5ae74305c65` |
 | Candidate tag | `nam-app:checkpoint-d-git-76cdba9530e49334e775009a811ae5ae74305c65` |
+| Candidate image index | `sha256:c7a00e60735fe8d54e64886226cfeaaec799765efa62028d8b541b3628fa3092` |
+| Candidate `linux/amd64` manifest | `sha256:bd1beb1b164945c74a75c2fe289fb150b2a183d26d92b6e1e46a0df9d1a6a780` |
+| Candidate image config | `sha256:270cea507f6d073cb8ca3e5ee9b252c7545709e77c9ca80e0cbc914314f5a312` |
 | Checkpoint label | `io.nam.checkpoint=checkpoint-d-application-deployment-correction` |
 | Old application container | `f500902546bdad63adb180118dab379b630be9618a11f5fe58f0ee63f42495f2` |
 | Old application runtime config | `sha256:03d0301ad1ca9bc2060fcb41676e08faa721ea6ef6108a5edc4db742fba211b4` |
@@ -79,6 +85,8 @@ VPS cannot substitute for that gate.
 | Docker network and ID | `nam-network`, `e2eddeccb2bae37f48db1fcc69c5c4a7f6166cb32a9bf8fa720a9f79c0514a80` |
 | Rollback tag | `nam-app:rollback-runtime-8cba9cb2122f-d3734e4ceddd4809ce573b5d92f64631628f387a60856409447331d8977d4ac1` |
 | Rollback image index | `sha256:8cba9cb2122f9010ff815d56056866b7fe910d958f70d3a3bb6ca74d3a82ef95` |
+| Rollback `linux/amd64` manifest | `sha256:9245ca496b592eec9fe39011d704e39db76d95e32d95838e685e98de8ae4420b` |
+| Rollback image config | `sha256:d3408873dabab192f3b4e8fcedf6834953b0028f68c385d92e7a539bc5789633` |
 | V17 artifact directory | `/root/nam-app-rollback/runtime-v17-20260723T182836Z-8cba9cb2122f` |
 | V17 archive SHA-256 | `d9fdfce5fc8c9cd3869fb9a75bc91446de9b2102300752c4efa9339426e552f2` |
 | V17 independent result | `INDEPENDENT_V17_VERIFICATION=PASS` |
@@ -108,15 +116,18 @@ only identities from the same layer.
 
 | Layer | Meaning | Checkpoint D use |
 | --- | --- | --- |
-| Image index | The normal exact-reference Docker `.Id` or descriptor digest for the tag's top-level multi-platform descriptor. | Proves the immutable candidate or rollback tag target. |
-| Platform manifest | The platform-scoped `linux/amd64` Docker `.Id` or descriptor digest selected from the index. | Proves the intended runnable host-platform manifest was resolved. |
-| Runtime image/config | The selected manifest's `.config.digest`. | Must equal the new container's `.Image` value. |
+| Configured image reference | The running container's `.Config.Image`. | Must equal the exact immutable candidate or rollback tag. |
+| Image index | The exact-reference Docker image `.Id`; on the accepted Docker Engine 29 containerd-backed store, the running container's `.Image` is this same top-level OCI index digest. | Proves the immutable tag target and running container index. |
+| Platform manifest | The running container's `.ImageManifestDescriptor.digest`, with descriptor platform `linux/amd64`. | Proves the runnable host-platform manifest selected from the index. |
+| Image config | The selected platform manifest's `.config.digest`. | Proves the accepted candidate or rollback configuration without comparing it to container `.Image`. |
 | Container ID | The identity of one container instance. | Proves `nam-app` was replaced and PostgreSQL was not. |
 
-An image index, a platform manifest, a runtime config, and a container ID are
-not expected to equal one another. In particular, never compare the top-level
-index returned for a multi-platform tag directly with a running container's
-runtime config identity.
+An image reference, image index, platform manifest, image config, and container
+ID are distinct identity domains. Never compare container `.Image` directly
+with an image config digest. The complete runtime chain is `.Config.Image` to
+the immutable tag, `.Image` to the OCI index,
+`.ImageManifestDescriptor.digest` to the selected platform manifest, and that
+manifest's `.config.digest` to the image config.
 
 The application-source commit and candidate tag are immutable inputs to this
 procedure, but the current Dockerfile uses mutable base-image and APT inputs. A
@@ -405,9 +416,10 @@ container change.
 test "$(docker inspect nam-app --format '{{.Id}}')" = 'f500902546bdad63adb180118dab379b630be9618a11f5fe58f0ee63f42495f2'
 ```
 
-```bash
-test "$(docker inspect nam-app --format '{{.Image}}')" = 'sha256:03d0301ad1ca9bc2060fcb41676e08faa721ea6ef6108a5edc4db742fba211b4'
-```
+The accepted historical D1 evidence records original application config
+`sha256:03d0301ad1ca9bc2060fcb41676e08faa721ea6ef6108a5edc4db742fba211b4`.
+Do not attempt to reconfirm that config by comparing it with container
+`.Image`; that field is the OCI index domain on the deployed Docker Engine.
 
 ```bash
 test "$(docker inspect nam-app --format '{{.State.StartedAt}}')" = '2026-07-17T00:18:15.904984177Z'
@@ -912,6 +924,26 @@ Require valid immutable digests:
 
 ```bash
 [[ "$NAM_D_CONFIG_ID" =~ ^sha256:[0-9a-f]{64}$ ]]
+```
+
+For this incident-specific candidate, require every observed digest to equal
+its independently accepted fixed value. The exact-reference `.Id` is the OCI
+index, the platform-selected `.Id` is the `linux/amd64` manifest, and the
+selected manifest's `.config.digest` is the runtime configuration:
+
+```bash
+test "$NAM_D_INDEX_ID" = \
+  'sha256:c7a00e60735fe8d54e64886226cfeaaec799765efa62028d8b541b3628fa3092'
+```
+
+```bash
+test "$NAM_D_PLATFORM_MANIFEST_ID" = \
+  'sha256:bd1beb1b164945c74a75c2fe289fb150b2a183d26d92b6e1e46a0df9d1a6a780'
+```
+
+```bash
+test "$NAM_D_CONFIG_ID" = \
+  'sha256:270cea507f6d073cb8ca3e5ee9b252c7545709e77c9ca80e0cbc914314f5a312'
 ```
 
 Require a multi-platform index media type:
@@ -1597,7 +1629,8 @@ docker compose -p nam -f compose.yaml -f "$NAM_D_CANDIDATE_OVERRIDE" \
 Do not use `docker compose down`, `down -v`, an unscoped `up`, `restart`, `rm`,
 or any command naming `postgres`.
 
-Capture the new application instance and verify its selected runtime config:
+Capture the new application instance and verify the complete candidate identity
+chain without crossing identity domains:
 
 ```bash
 export NAM_D_NEW_APP_ID="$(docker inspect nam-app --format '{{.Id}}')"
@@ -1608,7 +1641,44 @@ export NAM_D_NEW_APP_STARTED="$(docker inspect nam-app --format '{{.State.Starte
 ```
 
 ```bash
-printf 'old_container_id=%s\nold_runtime_config=%s\nold_started_at=%s\nnew_container_id=%s\nnew_started_at=%s\nnew_runtime_config=%s\n' 'f500902546bdad63adb180118dab379b630be9618a11f5fe58f0ee63f42495f2' 'sha256:03d0301ad1ca9bc2060fcb41676e08faa721ea6ef6108a5edc4db742fba211b4' '2026-07-17T00:18:15.904984177Z' "$NAM_D_NEW_APP_ID" "$NAM_D_NEW_APP_STARTED" "$NAM_D_CONFIG_ID" | tee "$NAM_D_EXECUTION_ROOT/evidence/d5-application-containers.txt"
+export NAM_D_NEW_APP_CONFIGURED_IMAGE="$(
+  docker inspect nam-app --format '{{.Config.Image}}'
+)"
+export NAM_D_NEW_APP_INDEX_ID="$(
+  docker inspect nam-app --format '{{.Image}}'
+)"
+export NAM_D_NEW_APP_MANIFEST_MEDIA_TYPE="$(
+  docker inspect nam-app --format '{{.ImageManifestDescriptor.MediaType}}'
+)"
+export NAM_D_NEW_APP_MANIFEST_ID="$(
+  docker inspect nam-app --format '{{.ImageManifestDescriptor.Digest}}'
+)"
+export NAM_D_NEW_APP_MANIFEST_OS="$(
+  docker inspect nam-app --format '{{.ImageManifestDescriptor.Platform.OS}}'
+)"
+export NAM_D_NEW_APP_MANIFEST_ARCH="$(
+  docker inspect nam-app \
+    --format '{{.ImageManifestDescriptor.Platform.Architecture}}'
+)"
+export NAM_D_NEW_APP_CONFIG_ID="$(
+  tar -xOf "$NAM_D_CANDIDATE_OCI_ARCHIVE" \
+    "blobs/sha256/${NAM_D_PLATFORM_MANIFEST_ID#sha256:}" \
+    | jq -er '.config.digest'
+)"
+```
+
+```bash
+printf '%s\n' \
+  "old_container_id=f500902546bdad63adb180118dab379b630be9618a11f5fe58f0ee63f42495f2" \
+  "old_runtime_config=sha256:03d0301ad1ca9bc2060fcb41676e08faa721ea6ef6108a5edc4db742fba211b4" \
+  "old_started_at=2026-07-17T00:18:15.904984177Z" \
+  "new_container_id=$NAM_D_NEW_APP_ID" \
+  "new_started_at=$NAM_D_NEW_APP_STARTED" \
+  "new_configured_image=$NAM_D_NEW_APP_CONFIGURED_IMAGE" \
+  "new_image_index=$NAM_D_NEW_APP_INDEX_ID" \
+  "new_platform_manifest=$NAM_D_NEW_APP_MANIFEST_ID" \
+  "new_image_config=$NAM_D_NEW_APP_CONFIG_ID" \
+  | tee "$NAM_D_EXECUTION_ROOT/evidence/d5-application-containers.txt"
 ```
 
 ```bash
@@ -1616,11 +1686,21 @@ test "$NAM_D_NEW_APP_ID" != 'f500902546bdad63adb180118dab379b630be9618a11f5fe58f
 ```
 
 ```bash
-test "$(docker inspect nam-app --format '{{.Image}}')" = "$NAM_D_CONFIG_ID"
+test "$NAM_D_NEW_APP_CONFIGURED_IMAGE" = "$NAM_D_CANDIDATE" \
+  && test "$NAM_D_NEW_APP_INDEX_ID" = "$NAM_D_INDEX_ID" \
+  && test "$NAM_D_NEW_APP_MANIFEST_MEDIA_TYPE" = \
+    'application/vnd.oci.image.manifest.v1+json' \
+  && test "$NAM_D_NEW_APP_MANIFEST_ID" = "$NAM_D_PLATFORM_MANIFEST_ID" \
+  && test "$NAM_D_NEW_APP_MANIFEST_OS" = 'linux' \
+  && test "$NAM_D_NEW_APP_MANIFEST_ARCH" = 'amd64' \
+  && test "$NAM_D_NEW_APP_CONFIG_ID" = "$NAM_D_CONFIG_ID"
 ```
 
-The container's `.Image` value is compared to the candidate's recorded
-`linux/amd64` runtime config, not to the image index or platform manifest.
+The container's `.Config.Image`, `.Image`, and
+`.ImageManifestDescriptor.digest` prove the immutable tag, OCI index, and
+selected `linux/amd64` manifest respectively. The selected manifest in the
+existing D4 OCI archive independently links that manifest to the recorded image
+config.
 
 ### D5.3 Bounded Local Readiness
 
@@ -1848,7 +1928,48 @@ test "$(docker inspect nam-app --format '{{.Id}}')" = "$NAM_D_NEW_APP_ID"
 ```
 
 ```bash
-test "$(docker inspect nam-app --format '{{.Image}}')" = "$NAM_D_CONFIG_ID"
+test "$(docker inspect nam-app --format '{{.Config.Image}}')" = \
+  "$NAM_D_CANDIDATE"
+```
+
+```bash
+test "$(docker inspect nam-app --format '{{.Image}}')" = "$NAM_D_INDEX_ID"
+```
+
+```bash
+test "$(
+  docker inspect nam-app \
+    --format '{{.ImageManifestDescriptor.MediaType}}'
+)" = 'application/vnd.oci.image.manifest.v1+json'
+```
+
+```bash
+test "$(
+  docker inspect nam-app \
+    --format '{{.ImageManifestDescriptor.Digest}}'
+)" = "$NAM_D_PLATFORM_MANIFEST_ID"
+```
+
+```bash
+test "$(
+  docker inspect nam-app \
+    --format '{{.ImageManifestDescriptor.Platform.OS}}'
+)" = 'linux'
+```
+
+```bash
+test "$(
+  docker inspect nam-app \
+    --format '{{.ImageManifestDescriptor.Platform.Architecture}}'
+)" = 'amd64'
+```
+
+```bash
+test "$(
+  tar -xOf "$NAM_D_CANDIDATE_OCI_ARCHIVE" \
+    "blobs/sha256/${NAM_D_PLATFORM_MANIFEST_ID#sha256:}" \
+    | jq -er '.config.digest'
+)" = "$NAM_D_CONFIG_ID"
 ```
 
 ```bash
@@ -1994,8 +2115,21 @@ validation; an HTTP result or global panel count alone is insufficient.
 
 ### D6.4 Darnassus — External Private HTTPS Gate
 
-Run this section in PowerShell on Darnassus, not on the VPS. Create the
-identity-bearing evidence directory and transcript before validation.
+For the current sealed Darnassus evidence root
+`C:\Users\alain\nam-deployment-evidence\checkpoint-d-76cdba9530e4-20260728T015759Z`,
+the health and Day View HTTPS requests already passed and must not be repeated.
+Do not execute the generic request sequence in this section for that root.
+Complete its pending structural gate only through
+[Checkpoint D Private Validator Recovery](checkpoint-d-private-validator-recovery.md).
+That recovery binds the sealed transport evidence to a new collision-checked
+WSL structural-validation continuation root and is the only path that may
+authorize D6.5 for this incident.
+
+The remaining generic sequence is retained for a fresh, separately authorized
+private evidence root and for the D7 helper definitions. It is not the current
+incident procedure. When it is authorized, run it in PowerShell on Darnassus,
+not on the VPS, and create the identity-bearing evidence directory and
+transcript before validation.
 
 ```powershell
 $privateEvidenceParent = Join-Path $env:USERPROFILE 'nam-deployment-evidence'; New-Item -ItemType Directory -Path $privateEvidenceParent -Force | Out-Null
@@ -2134,107 +2268,486 @@ function Confirm-PrivateRequestStderr {
 }
 ```
 
-Define an isolated DOM parser locally on Darnassus. It uses the Windows
-`HTMLFile` parser already available to PowerShell and adds no dependency:
+The Windows COM parser is not structural authority for HTML5 Day View markup.
+Use the exact standard-library-only D4.5 validator through the known
+`AlmaLinux-9` WSL Python runtime. Regular expressions and substring counts are
+not accepted as structural HTML validation.
+
+For the sealed incident identified in
+[Checkpoint D Private Validator Recovery](checkpoint-d-private-validator-recovery.md),
+do not execute the D6.4 requests again and do not use the generic commands
+below. Follow that recovery runbook against the original downloaded HTML.
+
+For a separately authorized future private validation, or for the sealed
+incident's D6.5 handoff, the validator must be derived from the accepted final
+completion record. An arbitrary Python path is not accepted. The following
+PowerShell block is **a script containing one top-level function definition**.
+It strictly parses the final record and continuation manifest, requires the
+exact continuation inventory, rejects reparse points, verifies every manifest
+hash, fully revalidates the sealed original manifest and exact root inventory,
+and binds the validator to both recorded hashes:
 
 ```powershell
-function Test-DomElementVisible {
-  param([Parameter(Mandatory = $true)]$Node)
-  $current = $Node
-  while ($null -ne $current -and $current.nodeType -eq 1) {
-    $classes = @(([string]$current.className -split '\s+') | Where-Object { $_ })
-    $style = [string]$current.getAttribute('style')
-    $normalizedStyle = $style.ToLowerInvariant() -replace '[\t\n\r\f ]+', ''
-    if (
-      $current.hasAttribute('hidden') -or
-      ([string]$current.getAttribute('aria-hidden')).ToLowerInvariant() -eq 'true' -or
-      @($classes | Where-Object { $_ -in @('hidden', 'sr-only', 'visually-hidden') }).Count -gt 0 -or
-      $normalizedStyle.Contains('display:none') -or
-      $normalizedStyle.Contains('visibility:hidden') -or
-      $normalizedStyle.Contains('opacity:0')
-    ) {
-      return $false
-    }
-    $current = $current.parentElement
-  }
-  return $true
-}
-
-function Get-NormalizedVisibleDomText {
-  param([Parameter(Mandatory = $true)]$Node)
-
-  $suppressedTags = @(
-    'SCRIPT', 'STYLE', 'TEMPLATE', 'NOSCRIPT',
-    'HEAD', 'TITLE', 'BASE', 'LINK', 'META', 'METADATA'
-  )
-  $parts = [System.Collections.Generic.List[string]]::new()
-
-  function Add-VisibleDomText {
-    param(
-      [Parameter(Mandatory = $true)]$CurrentNode,
-      [Parameter(Mandatory = $true)]
-      [System.Collections.Generic.List[string]]$Accumulator
-    )
-
-    if ($CurrentNode.nodeType -in @(3, 4)) {
-      $Accumulator.Add([string]$CurrentNode.nodeValue)
-      return
-    }
-    if ($CurrentNode.nodeType -ne 1) {
-      return
-    }
-    $tagName = ([string]$CurrentNode.tagName).ToUpperInvariant()
-    if (
-      $suppressedTags -contains $tagName -or
-      -not (Test-DomElementVisible -Node $CurrentNode)
-    ) {
-      return
-    }
-    $childNodes = $CurrentNode.childNodes
-    for ($childIndex = 0; $childIndex -lt $childNodes.length; $childIndex++) {
-      Add-VisibleDomText -CurrentNode $childNodes.item($childIndex) `
-        -Accumulator $Accumulator
-    }
-  }
-
-  Add-VisibleDomText -CurrentNode $Node -Accumulator $parts
-  return ((($parts -join '') -replace '\s+', ' ').Trim())
-}
-
-function Test-DurableDomRoute {
+function Assert-AcceptedPrivateValidatorBinding {
   param(
-    [Parameter(Mandatory = $true)][string]$Href,
-    [Parameter(Mandatory = $true)][string]$Route
+    [Parameter(Mandatory = $true)][string]$CompletionRecordPath
   )
-  if ([string]::IsNullOrWhiteSpace($Href)) {
-    return $false
-  }
-  try {
-    $approvedPrivateDayViewBaseUri = [System.Uri]::new(
-      'https://ops-console.tailf57e61.ts.net/day-view'
-    )
-    $uri = [System.Uri]::new($approvedPrivateDayViewBaseUri, $Href)
-  } catch {
-    return $false
-  }
-  return (
-    $uri.IsAbsoluteUri -and
-    [string]::Equals(
-      $uri.Scheme,
-      'https',
-      [System.StringComparison]::Ordinal
-    ) -and
-    [string]::Equals(
-      $uri.Host,
-      'ops-console.tailf57e61.ts.net',
-      [System.StringComparison]::OrdinalIgnoreCase
-    ) -and
-    $uri.Port -eq 443 -and
-    [string]::IsNullOrEmpty($uri.UserInfo) -and
-    $uri.AbsolutePath -ceq $Route
-  )
-}
 
+  $expectedParent = 'C:\Users\alain\nam-deployment-evidence'
+  $fixedOriginalRoot = Join-Path $expectedParent `
+    'checkpoint-d-76cdba9530e4-20260728T015759Z'
+  $fixedOriginalManifest = Join-Path $fixedOriginalRoot 'SHA256SUMS.txt'
+  $fixedOriginalHtml = Join-Path $fixedOriginalRoot `
+    'd6-private-day-view.html'
+  $fixedOriginalManifestHash = `
+    '15DF1ED5DC0964E472F41B7D7EE28FA3ADE213DD03254FA255AE448E78FCBBC1'
+  $fixedOriginalHtmlHash = `
+    'D2C27440483C8B6A676009034F95BCDCE52616EC1B96A1EC34FF34C8C7C5ED8C'
+  $fixedValidatorHash = `
+    '4F784C56A4D9F1AB01B04FFB2BA017D0C9EE58A17DF3B1BE712CA30C0F4D4173'
+  $expectedParentFull = [System.IO.Path]::GetFullPath($expectedParent)
+  $fixedOriginalRootFull = [System.IO.Path]::GetFullPath($fixedOriginalRoot)
+  $fixedOriginalManifestFull = [System.IO.Path]::GetFullPath(
+    $fixedOriginalManifest
+  )
+  $fixedOriginalHtmlFull = [System.IO.Path]::GetFullPath($fixedOriginalHtml)
+  $completionFull = [System.IO.Path]::GetFullPath($CompletionRecordPath)
+  $rootFull = [System.IO.Path]::GetDirectoryName($completionFull)
+  $parentFull = [System.IO.Path]::GetDirectoryName($rootFull)
+  if (
+    $CompletionRecordPath -ine $completionFull -or
+    [System.IO.Path]::GetFileName($completionFull) -cne
+      'd6-private-validator-completion-summary.txt' -or
+    $parentFull -ine $expectedParentFull -or
+    [System.IO.Path]::GetDirectoryName($fixedOriginalRootFull) -ine
+      $expectedParentFull -or
+    $fixedOriginalManifestFull -ine
+      (Join-Path $fixedOriginalRootFull 'SHA256SUMS.txt') -or
+    $fixedOriginalHtmlFull -ine
+      (Join-Path $fixedOriginalRootFull 'd6-private-day-view.html')
+  ) {
+    throw 'accepted validator FAIL: completion record is outside the exact evidence parent'
+  }
+
+  foreach ($directoryPath in @(
+    $parentFull,
+    $rootFull,
+    $fixedOriginalRootFull
+  )) {
+    if (-not (Test-Path -LiteralPath $directoryPath -PathType Container)) {
+      throw "accepted validator FAIL: directory is absent: $directoryPath"
+    }
+    $directoryItem = Get-Item -Force -LiteralPath $directoryPath `
+      -ErrorAction Stop
+    if (
+      $directoryItem.FullName -ine $directoryPath -or
+      ($directoryItem.Attributes -band
+        [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+      ($directoryItem.Attributes -band
+        [System.IO.FileAttributes]::Directory) -eq 0
+    ) {
+      throw "accepted validator FAIL: directory is not canonical and regular: $directoryPath"
+    }
+  }
+
+  $recordItem = Get-Item -Force -LiteralPath $completionFull `
+    -ErrorAction Stop
+  if (
+    -not (Test-Path -LiteralPath $completionFull -PathType Leaf) -or
+    ($recordItem.Attributes -band
+      [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+    ($recordItem.Attributes -band
+      [System.IO.FileAttributes]::Directory) -ne 0
+  ) {
+    throw 'accepted validator FAIL: completion record is not a regular file'
+  }
+
+  $record = [System.Collections.Generic.Dictionary[string,string]]::new(
+    [System.StringComparer]::Ordinal
+  )
+  foreach ($line in @(
+    Get-Content -LiteralPath $completionFull -ErrorAction Stop
+  )) {
+    $lineMatch = [regex]::Match($line, '^([A-Z0-9_]+)=(.*)$')
+    if (
+      -not $lineMatch.Success -or
+      $record.ContainsKey($lineMatch.Groups[1].Value)
+    ) {
+      throw "accepted validator FAIL: malformed or duplicate record line: $line"
+    }
+    $record.Add(
+      $lineMatch.Groups[1].Value,
+      $lineMatch.Groups[2].Value
+    )
+  }
+  $requiredRecordKeys = @(
+    'D6_4_PRIVATE_VALIDATOR_RECOVERY',
+    'RUNBOOK_CONTROL_COMMIT',
+    'SEALED_REQUEST_EVIDENCE_ROOT',
+    'SEALED_REQUEST_CHECKSUM_MANIFEST',
+    'SEALED_REQUEST_CHECKSUM_MANIFEST_SHA256',
+    'SEALED_REQUEST_EVIDENCE_FILES_VERIFIED',
+    'ORIGINAL_DAY_VIEW_HTML',
+    'ORIGINAL_DAY_VIEW_SHA256',
+    'ORIGINAL_DAY_VIEW_SIZE',
+    'STRUCTURAL_VALIDATION_CONTINUATION_ROOT',
+    'STRUCTURAL_VALIDATION_CONTINUATION_MANIFEST',
+    'STRUCTURAL_VALIDATION_CONTINUATION_MANIFEST_SHA256',
+    'ACCEPTED_VALIDATOR_PATH',
+    'ACCEPTED_VALIDATOR_SHA256',
+    'VALIDATOR_RESULT',
+    'HTTPS_REQUESTS_REPEATED',
+    'ROLLBACK_REQUIRED',
+    'D6_4',
+    'D6_5'
+  )
+  if ($record.Count -ne $requiredRecordKeys.Count) {
+    throw 'accepted validator FAIL: completion record key set is not exact'
+  }
+  foreach ($requiredRecordKey in $requiredRecordKeys) {
+    if (-not $record.ContainsKey($requiredRecordKey)) {
+      throw "accepted validator FAIL: completion key is absent: $requiredRecordKey"
+    }
+  }
+
+  $manifestFull = [System.IO.Path]::GetFullPath(
+    $record['STRUCTURAL_VALIDATION_CONTINUATION_MANIFEST']
+  )
+  $validatorFull = [System.IO.Path]::GetFullPath(
+    $record['ACCEPTED_VALIDATOR_PATH']
+  )
+  if (
+    $record['D6_4_PRIVATE_VALIDATOR_RECOVERY'] -cne 'PASS' -or
+    $record['D6_4'] -cne 'PASS' -or
+    $record['D6_5'] -cne 'MAY_BEGIN' -or
+    $record['HTTPS_REQUESTS_REPEATED'] -cne 'NO' -or
+    $record['ROLLBACK_REQUIRED'] -cne 'NO' -or
+    $record['RUNBOOK_CONTROL_COMMIT'] -cnotmatch '^[0-9a-f]{40}$' -or
+    $record['RUNBOOK_CONTROL_COMMIT'] -ceq
+      '58f374a018792f16ab30cfd548000d5b20a6b3da' -or
+    $record['SEALED_REQUEST_EVIDENCE_ROOT'] -ine $fixedOriginalRoot -or
+    $record['SEALED_REQUEST_CHECKSUM_MANIFEST'] -ine
+      $fixedOriginalManifest -or
+    $record['SEALED_REQUEST_CHECKSUM_MANIFEST_SHA256'] -cne
+      $fixedOriginalManifestHash -or
+    $record['SEALED_REQUEST_EVIDENCE_FILES_VERIFIED'] -cne '13' -or
+    $record['ORIGINAL_DAY_VIEW_HTML'] -ine $fixedOriginalHtml -or
+    $record['ORIGINAL_DAY_VIEW_SHA256'] -cne $fixedOriginalHtmlHash -or
+    $record['ORIGINAL_DAY_VIEW_SIZE'] -cne '26805' -or
+    $record['STRUCTURAL_VALIDATION_CONTINUATION_ROOT'] -ine $rootFull -or
+    $record['STRUCTURAL_VALIDATION_CONTINUATION_MANIFEST'] -ine
+      $manifestFull -or
+    $record['ACCEPTED_VALIDATOR_PATH'] -ine $validatorFull -or
+    $manifestFull -ine (Join-Path $rootFull 'SHA256SUMS.txt') -or
+    $validatorFull -ine (Join-Path $rootFull 'validate-day-view.py') -or
+    $record['STRUCTURAL_VALIDATION_CONTINUATION_MANIFEST_SHA256'] -cnotmatch
+      '^[0-9A-F]{64}$' -or
+    $record['ACCEPTED_VALIDATOR_SHA256'] -cne $fixedValidatorHash -or
+    $record['VALIDATOR_RESULT'] -cne
+      'DAY_VIEW_STRUCTURE=PASS mode=candidate panels=10'
+  ) {
+    throw 'accepted validator FAIL: completion record values are not exact'
+  }
+
+  $preManifestLeafNames = @(
+    'd6-private-validator-recovery-transcript.txt',
+    'runbook-control-identity.txt',
+    'original-evidence-integrity.txt',
+    'original-private-request-validation.txt',
+    'wsl-python-runtime.txt',
+    'wsl-html-integrity.txt',
+    'validate-day-view.py',
+    'validator-syntax-stdout.txt',
+    'validator-syntax-stderr.txt',
+    'validator-syntax-native-exit-status.txt',
+    'validator-stdout.txt',
+    'validator-stderr.txt',
+    'validator-native-exit-status.txt',
+    'recovery-gates-complete.txt'
+  )
+  $expectedRootLeaves = @(
+    $preManifestLeafNames +
+    'SHA256SUMS.txt' +
+    'd6-private-validator-completion-summary.txt'
+  )
+  $rootEntries = @(
+    Get-ChildItem -Force -LiteralPath $rootFull -ErrorAction Stop
+  )
+  if ($rootEntries.Count -ne $expectedRootLeaves.Count) {
+    throw 'accepted validator FAIL: continuation root inventory count differs'
+  }
+  $observedLeaves = [System.Collections.Generic.HashSet[string]]::new(
+    [System.StringComparer]::OrdinalIgnoreCase
+  )
+  foreach ($rootEntry in $rootEntries) {
+    if (
+      -not $observedLeaves.Add($rootEntry.Name) -or
+      $expectedRootLeaves -inotcontains $rootEntry.Name -or
+      ($rootEntry.Attributes -band
+        [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+      ($rootEntry.Attributes -band
+        [System.IO.FileAttributes]::Directory) -ne 0
+    ) {
+      throw "accepted validator FAIL: unexpected root entry: $($rootEntry.FullName)"
+    }
+  }
+  foreach ($expectedRootLeaf in $expectedRootLeaves) {
+    if (-not $observedLeaves.Contains($expectedRootLeaf)) {
+      throw "accepted validator FAIL: root entry is absent: $expectedRootLeaf"
+    }
+  }
+
+  foreach ($reliedPath in @(
+    $manifestFull,
+    $validatorFull
+  )) {
+    if (-not (Test-Path -LiteralPath $reliedPath -PathType Leaf)) {
+      throw "accepted validator FAIL: relied-upon file is absent: $reliedPath"
+    }
+    $reliedItem = Get-Item -Force -LiteralPath $reliedPath `
+      -ErrorAction Stop
+    if (
+      ($reliedItem.Attributes -band
+        [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+      ($reliedItem.Attributes -band
+        [System.IO.FileAttributes]::Directory) -ne 0
+    ) {
+      throw "accepted validator FAIL: relied-upon file is not regular: $reliedPath"
+    }
+  }
+  $originalManifestItem = Get-Item -Force `
+    -LiteralPath $fixedOriginalManifestFull -ErrorAction Stop
+  if (
+    -not (Test-Path -LiteralPath $fixedOriginalManifestFull -PathType Leaf) -or
+    ($originalManifestItem.Attributes -band
+      [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+    ($originalManifestItem.Attributes -band
+      [System.IO.FileAttributes]::Directory) -ne 0 -or
+    $originalManifestItem.FullName -ine $fixedOriginalManifestFull -or
+    [System.IO.Path]::GetDirectoryName($originalManifestItem.FullName) -ine
+      $fixedOriginalRootFull
+  ) {
+    throw 'accepted validator FAIL: original manifest is not the exact regular child'
+  }
+  $originalManifestHash = (
+    Get-FileHash -LiteralPath $fixedOriginalManifestFull -Algorithm SHA256
+  ).Hash
+  if ($originalManifestHash -cne $fixedOriginalManifestHash) {
+    throw 'accepted validator FAIL: fixed original manifest hash differs'
+  }
+
+  $originalManifestLines = @(
+    Get-Content -LiteralPath $fixedOriginalManifestFull -ErrorAction Stop
+  )
+  if ($originalManifestLines.Count -ne 13) {
+    throw 'accepted validator FAIL: original manifest entry count is not 13'
+  }
+  $originalEntries = `
+    [System.Collections.Generic.Dictionary[string,string]]::new(
+      [System.StringComparer]::OrdinalIgnoreCase
+    )
+  foreach ($originalManifestLine in $originalManifestLines) {
+    $originalMatch = [regex]::Match(
+      $originalManifestLine,
+      '^([0-9A-Fa-f]{64})  (.+)$'
+    )
+    if (-not $originalMatch.Success) {
+      throw "accepted validator FAIL: malformed original manifest line: $originalManifestLine"
+    }
+    $originalPathText = $originalMatch.Groups[2].Value
+    $originalPath = [System.IO.Path]::GetFullPath($originalPathText)
+    $originalHash = $originalMatch.Groups[1].Value.ToUpperInvariant()
+    if (
+      $originalPathText -ine $originalPath -or
+      [System.IO.Path]::GetDirectoryName($originalPath) -ine
+        $fixedOriginalRootFull -or
+      $originalPath -ieq $fixedOriginalManifestFull -or
+      $originalEntries.ContainsKey($originalPath)
+    ) {
+      throw "accepted validator FAIL: duplicate or non-immediate original path: $originalPath"
+    }
+    $originalItem = Get-Item -Force -LiteralPath $originalPath `
+      -ErrorAction Stop
+    if (
+      -not (Test-Path -LiteralPath $originalPath -PathType Leaf) -or
+      ($originalItem.Attributes -band
+        [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+      ($originalItem.Attributes -band
+        [System.IO.FileAttributes]::Directory) -ne 0 -or
+      $originalItem.FullName -ine $originalPath -or
+      (Get-FileHash -LiteralPath $originalPath -Algorithm SHA256).Hash -cne
+        $originalHash
+    ) {
+      throw "accepted validator FAIL: original manifest member does not verify: $originalPath"
+    }
+    $originalEntries.Add($originalPath, $originalHash)
+  }
+  if ($originalEntries.Count -ne 13) {
+    throw 'accepted validator FAIL: original manifest membership is not exact'
+  }
+
+  $expectedOriginalLeaves = @(
+    $originalEntries.Keys |
+      ForEach-Object { [System.IO.Path]::GetFileName($_) }
+  ) + 'SHA256SUMS.txt'
+  $originalRootEntries = @(
+    Get-ChildItem -Force -LiteralPath $fixedOriginalRootFull `
+      -ErrorAction Stop
+  )
+  if ($originalRootEntries.Count -ne 14) {
+    throw 'accepted validator FAIL: original root inventory count is not 14'
+  }
+  $observedOriginalLeaves = `
+    [System.Collections.Generic.HashSet[string]]::new(
+      [System.StringComparer]::OrdinalIgnoreCase
+    )
+  foreach ($originalRootEntry in $originalRootEntries) {
+    if (
+      [System.IO.Path]::GetDirectoryName(
+        [System.IO.Path]::GetFullPath($originalRootEntry.FullName)
+      ) -ine $fixedOriginalRootFull -or
+      -not $observedOriginalLeaves.Add($originalRootEntry.Name) -or
+      $expectedOriginalLeaves -inotcontains $originalRootEntry.Name -or
+      ($originalRootEntry.Attributes -band
+        [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+      ($originalRootEntry.Attributes -band
+        [System.IO.FileAttributes]::Directory) -ne 0
+    ) {
+      throw "accepted validator FAIL: unexpected original root entry: $($originalRootEntry.FullName)"
+    }
+  }
+  foreach ($expectedOriginalLeaf in $expectedOriginalLeaves) {
+    if (-not $observedOriginalLeaves.Contains($expectedOriginalLeaf)) {
+      throw "accepted validator FAIL: original root entry is absent: $expectedOriginalLeaf"
+    }
+  }
+
+  if (-not $originalEntries.ContainsKey($fixedOriginalHtmlFull)) {
+    throw 'accepted validator FAIL: original HTML is absent from original manifest'
+  }
+  $originalHtmlItem = Get-Item -Force -LiteralPath $fixedOriginalHtmlFull `
+    -ErrorAction Stop
+  $originalHtmlHash = (
+    Get-FileHash -LiteralPath $fixedOriginalHtmlFull -Algorithm SHA256
+  ).Hash
+  if (
+    $originalHtmlItem.FullName -ine $fixedOriginalHtmlFull -or
+    $originalHtmlHash -cne $fixedOriginalHtmlHash -or
+    $originalEntries[$fixedOriginalHtmlFull] -cne $originalHtmlHash -or
+    $originalHtmlItem.Length -ne 26805
+  ) {
+    throw 'accepted validator FAIL: original Day View HTML identity differs'
+  }
+
+  $manifestHash = (
+    Get-FileHash -LiteralPath $manifestFull -Algorithm SHA256
+  ).Hash
+  if ($manifestHash -cne
+    $record['STRUCTURAL_VALIDATION_CONTINUATION_MANIFEST_SHA256']) {
+    throw 'accepted validator FAIL: continuation manifest hash differs'
+  }
+  $expectedManifestPaths = [System.Collections.Generic.HashSet[string]]::new(
+    [System.StringComparer]::OrdinalIgnoreCase
+  )
+  foreach ($leafName in $preManifestLeafNames) {
+    $expectedPath = [System.IO.Path]::GetFullPath(
+      (Join-Path $rootFull $leafName)
+    )
+    if (-not $expectedManifestPaths.Add($expectedPath)) {
+      throw 'accepted validator FAIL: duplicate expected manifest path'
+    }
+  }
+  $manifestEntries = [System.Collections.Generic.Dictionary[string,string]]::new(
+    [System.StringComparer]::OrdinalIgnoreCase
+  )
+  foreach ($manifestLine in @(
+    Get-Content -LiteralPath $manifestFull -ErrorAction Stop
+  )) {
+    $manifestMatch = [regex]::Match(
+      $manifestLine,
+      '^([0-9A-F]{64})  (.+)$'
+    )
+    if (-not $manifestMatch.Success) {
+      throw "accepted validator FAIL: malformed manifest line: $manifestLine"
+    }
+    $entryPath = [System.IO.Path]::GetFullPath(
+      $manifestMatch.Groups[2].Value
+    )
+    $entryHash = $manifestMatch.Groups[1].Value
+    if (
+      $manifestMatch.Groups[2].Value -ine $entryPath -or
+      [System.IO.Path]::GetDirectoryName($entryPath) -ine $rootFull -or
+      -not $expectedManifestPaths.Contains($entryPath) -or
+      $manifestEntries.ContainsKey($entryPath)
+    ) {
+      throw "accepted validator FAIL: duplicate or unexpected manifest path: $entryPath"
+    }
+    $manifestEntries.Add($entryPath, $entryHash)
+    $entryItem = Get-Item -Force -LiteralPath $entryPath -ErrorAction Stop
+    if (
+      -not (Test-Path -LiteralPath $entryPath -PathType Leaf) -or
+      ($entryItem.Attributes -band
+        [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+      ($entryItem.Attributes -band
+        [System.IO.FileAttributes]::Directory) -ne 0 -or
+      (Get-FileHash -LiteralPath $entryPath -Algorithm SHA256).Hash -cne
+        $entryHash
+    ) {
+      throw "accepted validator FAIL: manifest entry does not verify: $entryPath"
+    }
+  }
+  if ($manifestEntries.Count -ne $expectedManifestPaths.Count) {
+    throw 'accepted validator FAIL: continuation manifest set is incomplete'
+  }
+  foreach ($expectedManifestPath in $expectedManifestPaths) {
+    if (-not $manifestEntries.ContainsKey($expectedManifestPath)) {
+      throw "accepted validator FAIL: manifest entry is absent: $expectedManifestPath"
+    }
+  }
+
+  $validatorHash = (
+    Get-FileHash -LiteralPath $validatorFull -Algorithm SHA256
+  ).Hash
+  if (
+    -not $manifestEntries.ContainsKey($validatorFull) -or
+    $manifestEntries[$validatorFull] -cne $validatorHash -or
+    $record['ACCEPTED_VALIDATOR_SHA256'] -cne $validatorHash
+  ) {
+    throw 'accepted validator FAIL: validator hash binding differs'
+  }
+  return [pscustomobject]@{
+    CompletionRecord = $completionFull
+    ContinuationRoot = $rootFull
+    ManifestPath = $manifestFull
+    ManifestHash = $manifestHash
+    ValidatorPath = $validatorFull
+    ValidatorHash = $validatorHash
+    RunbookControlCommit = $record['RUNBOOK_CONTROL_COMMIT']
+  }
+}
+```
+
+The following PowerShell block is **one command**:
+
+```powershell
+$privateValidatorCompletionRecordPath = (Read-Host 'Accepted D6.4 final completion-record path').Trim()
+```
+
+The following PowerShell block is **one command**. It performs the first
+binding check and retains only the checked result:
+
+```powershell
+$acceptedPrivateValidator = Assert-AcceptedPrivateValidatorBinding -CompletionRecordPath $privateValidatorCompletionRecordPath
+```
+
+The next PowerShell block is **a script containing one top-level function
+definition**.
+The function invokes `wsl.exe -d AlmaLinux-9`, captures fixed
+collision-checked stdout, stderr, and native-exit evidence beside the response,
+rechecks the accepted validator binding immediately before use, and returns the
+accepted panel count.
+
+```powershell
 function Assert-DayViewStructure {
   param(
     [Parameter(Mandatory = $true)][string]$Path,
@@ -2242,170 +2755,165 @@ function Assert-DayViewStructure {
     [ValidateSet('candidate', 'rollback')][string]$Mode
   )
 
-  $allSpecs = @(
-    [pscustomobject]@{ Id = 'work-schedule-heading'; Label = 'Work Schedule'; Route = '/work-schedule'; Empty = $null },
-    [pscustomobject]@{ Id = 'timesheet-heading'; Label = 'Timesheet'; Route = '/timesheets'; Empty = $null },
-    [pscustomobject]@{ Id = 'daily-logs-heading'; Label = 'Daily Logs'; Route = '/daily-logs'; Empty = $null },
-    [pscustomobject]@{ Id = 'stop-cards-heading'; Label = 'STOP Cards'; Route = '/stop-cards'; Empty = $null },
-    [pscustomobject]@{ Id = 'daily-inspections-heading'; Label = 'Daily Inspections'; Route = '/daily-inspections'; Empty = $null },
-    [pscustomobject]@{ Id = 'safety-checklists-heading'; Label = 'Operational Safety Checklists'; Route = '/operational-safety-checklists'; Empty = 'No operational safety checklists for this day' },
-    [pscustomobject]@{ Id = 'shift-reports-heading'; Label = 'Shift Reports'; Route = '/shift-reports'; Empty = $null },
-    [pscustomobject]@{ Id = 'work-authorizations-heading'; Label = 'Work Authorizations'; Route = '/work-authorizations'; Empty = $null },
-    [pscustomobject]@{ Id = 'defects-heading'; Label = 'Defects'; Route = '/defect-tracking'; Empty = $null },
-    [pscustomobject]@{ Id = 'equipment-fuel-events-heading'; Label = 'Equipment Fuel Events'; Route = '/equipment-fuel-events'; Empty = 'No equipment fuel events for this day' }
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+    throw "$Mode Day View response is absent"
+  }
+  $acceptedBinding = Assert-AcceptedPrivateValidatorBinding `
+    -CompletionRecordPath $privateValidatorCompletionRecordPath
+  $validatorWindowsPath = $acceptedBinding.ValidatorPath
+
+  $evidenceDirectory = Split-Path -Parent (
+    [System.IO.Path]::GetFullPath($Path)
   )
-  $forbiddenRollbackIds = @(
-    'safety-checklists-heading',
-    'equipment-fuel-events-heading'
-  )
-  $expected = if ($Mode -eq 'candidate') {
-    @($allSpecs)
+  $prefix = if ($Mode -eq 'candidate') {
+    'd6-private-day-view-structure'
   } else {
-    @($allSpecs | Where-Object { $forbiddenRollbackIds -notcontains $_.Id })
+    'd7-private-day-view-structure'
+  }
+  $stdoutPath = Join-Path $evidenceDirectory "$prefix.stdout.txt"
+  $stderrPath = Join-Path $evidenceDirectory "$prefix.stderr.txt"
+  $exitPath = Join-Path $evidenceDirectory "$prefix.native-exit-status.txt"
+  foreach ($evidencePath in @($stdoutPath, $stderrPath, $exitPath)) {
+    if (Test-Path -LiteralPath $evidencePath) {
+      throw "refusing to replace structural evidence: $evidencePath"
+    }
   }
 
-  $html = Get-Content -Raw -LiteralPath $Path -ErrorAction Stop
-  if ([string]::IsNullOrWhiteSpace($html)) {
-    throw "$Mode Day View body is empty"
+  $wslValidator = @(
+    & wsl.exe -d AlmaLinux-9 -- /usr/bin/wslpath -a -u `
+      $validatorWindowsPath
+  )
+  $validatorPathExit = $LASTEXITCODE
+  $wslBody = @(
+    & wsl.exe -d AlmaLinux-9 -- /usr/bin/wslpath -a -u `
+      ([System.IO.Path]::GetFullPath($Path))
+  )
+  $bodyPathExit = $LASTEXITCODE
+  if (
+    $validatorPathExit -ne 0 -or
+    $bodyPathExit -ne 0 -or
+    $wslValidator.Count -ne 1 -or
+    $wslBody.Count -ne 1 -or
+    [string]::IsNullOrWhiteSpace($wslValidator[0]) -or
+    [string]::IsNullOrWhiteSpace($wslBody[0])
+  ) {
+    throw "$Mode Day View WSL path conversion failed"
   }
-  $document = New-Object -ComObject 'HTMLFile'
+
+  $immediateBinding = Assert-AcceptedPrivateValidatorBinding `
+    -CompletionRecordPath $privateValidatorCompletionRecordPath
+  if (
+    $immediateBinding.ContinuationRoot -ine
+      $acceptedBinding.ContinuationRoot -or
+    $immediateBinding.ValidatorPath -ine $validatorWindowsPath -or
+    $immediateBinding.ValidatorHash -cne $acceptedBinding.ValidatorHash
+  ) {
+    throw "$Mode Day View validator binding changed before execution"
+  }
+  $nativeArguments = @(
+    '-d',
+    'AlmaLinux-9',
+    '--',
+    '/usr/bin/python3',
+    '-B',
+    $wslValidator[0].Trim(),
+    $Mode,
+    $wslBody[0].Trim()
+  )
+  $quotedNativeArguments = @()
+  foreach ($nativeArgument in $nativeArguments) {
+    if ($nativeArgument -match '["\x00\r\n]') {
+      throw "$Mode Day View native argument cannot be quoted safely"
+    }
+    $quotedNativeArguments += '"' + $nativeArgument + '"'
+  }
+  $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+  $startInfo.FileName = 'wsl.exe'
+  $startInfo.Arguments = $quotedNativeArguments -join ' '
+  $startInfo.UseShellExecute = $false
+  $startInfo.CreateNoWindow = $true
+  $startInfo.RedirectStandardOutput = $true
+  $startInfo.RedirectStandardError = $true
+  $process = [System.Diagnostics.Process]::new()
+  $process.StartInfo = $startInfo
   try {
-    $document.IHTMLDocument2_write($html)
-    $knownIds = @($allSpecs | Select-Object -ExpandProperty Id)
-    $allElements = @($document.getElementsByTagName('*'))
-    $allHeadings = @()
-    foreach ($headingTag in @('h1', 'h2', 'h3', 'h4', 'h5', 'h6')) {
-      $allHeadings += @($document.getElementsByTagName($headingTag))
+    $started = $process.Start()
+    if (-not $started) {
+      throw "$Mode Day View validator process did not start"
     }
-    $duplicateHeadingIds = @(
-      $allHeadings |
-        ForEach-Object { [string]$_.id } |
-        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
-        Group-Object |
-        Where-Object { $_.Count -gt 1 } |
-        Select-Object -ExpandProperty Name
-    )
-    if ($duplicateHeadingIds.Count -gt 0) {
-      throw "$Mode duplicate heading IDs: $($duplicateHeadingIds -join ',')"
-    }
-    $panels = @(
-      $allElements | Where-Object {
-        $classes = @(([string]$_.className -split '\s+') | Where-Object { $_ })
-        $aria = [string]$_.getAttribute('aria-labelledby')
-        $classes -contains 'table-panel' -or $knownIds -contains $aria
-      }
-    )
-    if ($panels.Count -ne $expected.Count) {
-      throw "$Mode contributor count is $($panels.Count), expected $($expected.Count)"
-    }
-
-    for ($index = 0; $index -lt $expected.Count; $index++) {
-      $panel = $panels[$index]
-      $spec = $expected[$index]
-      $classes = @(([string]$panel.className -split '\s+') | Where-Object { $_ })
-      if (
-        ([string]$panel.tagName).ToUpperInvariant() -ne 'SECTION' -or
-        $classes.Count -ne 2 -or
-        $classes[0] -ne 'panel' -or
-        $classes[1] -ne 'table-panel'
-      ) {
-        throw "$($spec.Label) panel element or structural class is invalid"
-      }
-      if (-not (Test-DomElementVisible -Node $panel)) {
-        throw "$($spec.Label) panel is hidden"
-      }
-      if ([string]$panel.getAttribute('aria-labelledby') -ne $spec.Id) {
-        throw "$($spec.Label) aria-labelledby is invalid"
-      }
-
-      $visibleH2s = @(
-        $panel.getElementsByTagName('h2') | Where-Object {
-          Test-DomElementVisible -Node $_
-        }
-      )
-      if ($visibleH2s.Count -ne 1) {
-        throw "$($spec.Label) visible h2 count is $($visibleH2s.Count), expected 1"
-      }
-      $visibleH2 = $visibleH2s[0]
-      $panelAria = [string]$panel.getAttribute('aria-labelledby')
-      if ([string]$visibleH2.id -ne $panelAria) {
-        throw "$($spec.Label) sole visible h2 is not the aria-labelledby element"
-      }
-      if ([string]$visibleH2.id -ne $spec.Id) {
-        throw "$($spec.Label) sole visible h2 ID is not $($spec.Id)"
-      }
-      if ((Get-NormalizedVisibleDomText -Node $visibleH2) -ne $spec.Label) {
-        throw "$($spec.Label) sole visible h2 visible text is not exact"
-      }
-      $globalExpectedIds = @(
-        $allElements | Where-Object { [string]$_.id -eq $spec.Id }
-      )
-      if (
-        $globalExpectedIds.Count -ne 1 -or
-        $globalExpectedIds[0].sourceIndex -ne $visibleH2.sourceIndex
-      ) {
-        throw "$($spec.Label) expected heading ID is missing, duplicated, or outside its panel"
-      }
-
-      $sourceLinks = @(
-        $panel.getElementsByTagName('a') | Where-Object {
-          (Test-DomElementVisible -Node $_) -and
-          (Test-DurableDomRoute -Href ([string]$_.getAttribute('href')) -Route $spec.Route)
-        }
-      )
-      if ($sourceLinks.Count -lt 1) {
-        throw "$($spec.Label) visible durable source link is missing"
-      }
-
-      if ($null -ne $spec.Empty) {
-        $emptyHeadings = @(
-          $panel.getElementsByTagName('h3') | Where-Object {
-            (Test-DomElementVisible -Node $_) -and
-            (Get-NormalizedVisibleDomText -Node $_) -eq $spec.Empty
-          }
-        )
-        if ($emptyHeadings.Count -ne 1) {
-          throw "$($spec.Label) exact in-panel empty state is missing or duplicated"
-        }
-        for ($otherIndex = 0; $otherIndex -lt $panels.Count; $otherIndex++) {
-          if (
-            $otherIndex -ne $index -and
-            (Get-NormalizedVisibleDomText -Node $panels[$otherIndex]).Contains($spec.Empty)
-          ) {
-            throw "$($spec.Label) empty state appears in another panel"
-          }
-        }
-      }
-    }
-
-    if ($Mode -eq 'rollback') {
-      foreach ($forbiddenId in $forbiddenRollbackIds) {
-        if ($null -ne $document.getElementById($forbiddenId)) {
-          throw "rollback contains forbidden new panel heading $forbiddenId"
-        }
-      }
-    }
-    return $panels.Count
-  } finally {
-    [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($document)
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
+    $process.WaitForExit()
+    $nativeExit = $process.ExitCode
+    $stdoutText = $stdoutTask.Result
+    $stderrText = $stderrTask.Result
   }
+  finally {
+    $process.Dispose()
+  }
+
+  $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+  $evidencePublications = @(
+    [pscustomobject]@{
+      Path = $stdoutPath
+      Bytes = $utf8NoBom.GetBytes($stdoutText)
+    },
+    [pscustomobject]@{
+      Path = $stderrPath
+      Bytes = $utf8NoBom.GetBytes($stderrText)
+    },
+    [pscustomobject]@{
+      Path = $exitPath
+      Bytes = [System.Text.Encoding]::ASCII.GetBytes(
+        "$nativeExit$([Environment]::NewLine)"
+      )
+    }
+  )
+  foreach ($evidencePublication in $evidencePublications) {
+    $evidenceStream = [System.IO.FileStream]::new(
+      [System.IO.Path]::GetFullPath($evidencePublication.Path),
+      [System.IO.FileMode]::CreateNew,
+      [System.IO.FileAccess]::Write,
+      [System.IO.FileShare]::None
+    )
+    try {
+      $evidenceStream.Write(
+        $evidencePublication.Bytes,
+        0,
+        $evidencePublication.Bytes.Length
+      )
+      $evidenceStream.Flush($true)
+    }
+    finally {
+      $evidenceStream.Dispose()
+    }
+  }
+
+  $expectedPanels = if ($Mode -eq 'candidate') { 10 } else { 8 }
+  $expectedOutput = `
+    "DAY_VIEW_STRUCTURE=PASS mode=$Mode panels=$expectedPanels"
+  $normalizedStdout = $stdoutText.Replace("`r`n", "`n")
+  if (
+    $nativeExit -ne 0 -or
+    $stderrText.Length -ne 0 -or
+    $normalizedStdout -cne "$expectedOutput`n" -or
+    $normalizedStdout.Contains("`r")
+  ) {
+    throw "$Mode Day View structural validation failed"
+  }
+  return $expectedPanels
 }
 ```
 
-The HTMLFile validator enumerates every descendant `h2` in each accepted
-panel, filters them through the ancestor-aware visibility rules, and requires
-exactly one. That sole visible `h2` must be the unique document element whose
-ID equals both the panel's `aria-labelledby` and the expected contributor ID.
-Its label is computed by a text-node traversal that skips every hidden
-descendant and every script, style, template, noscript, and metadata subtree;
-`innerText` is not heading-text authority. Duplicate heading IDs, an expected
-heading outside the panel, hidden expected headings, additional visible `h2`
-elements, and labels assembled from hidden text are rejected. Inline style
-visibility checks normalize the complete CSS whitespace class: space, tab,
-line feed, carriage return, and form feed. Durable contributor links are
-resolved against `https://ops-console.tailf57e61.ts.net/day-view` and accepted
-only when their scheme, host, effective HTTPS port, user-info boundary, and
-expected route remain on the exact approved private origin.
+The binding recheck immediately before validator process construction narrows
+but does not eliminate concurrent-local-writer TOCTOU risk under Windows
+filesystem semantics. Private validation assumes one trusted operator and
+controlled local access to the evidence parent throughout the check.
+
+The validator is the same structure authority used for local and public
+validation. It proves the ordered panels, exact in-panel headings,
+`aria-labelledby` relationships, visible durable source links, empty states,
+and rollback-only exclusions from parsed element structure.
 
 Use `curl.exe` so TLS verification, redirect behavior, and HTTP status are
 explicit. Do not add `--insecure` or `--location`.
@@ -2630,7 +3138,46 @@ substitute a VPS-originated request.
 
 ### D6.5 Server — Final Repository Preservation
 
-After the external result, verify that execution did not alter the repository:
+For the sealed D6.4 incident, the final completion record is the only
+classification authority. Before any server command in D6.5, return to
+Darnassus, load `Assert-AcceptedPrivateValidatorBinding` exactly as defined in
+D6.4, set `$privateValidatorCompletionRecordPath` to the accepted final record,
+and run the following **one compound PowerShell command/scriptblock**. It
+revalidates the final marker's binding to the exact continuation inventory,
+manifest hash, manifest entries, and accepted validator. It also authenticates
+the fixed original manifest before parsing its exact 13 immediate members,
+recomputes every member hash, rejects every reparse point or directory, and
+uses `Get-ChildItem -Force` to require the exact 14-entry original-root
+inventory before D6.5 may begin:
+
+```powershell
+& {
+  if (
+    $null -eq (
+      Get-Command Assert-AcceptedPrivateValidatorBinding `
+        -CommandType Function -ErrorAction SilentlyContinue
+    ) -or
+    [string]::IsNullOrWhiteSpace($privateValidatorCompletionRecordPath)
+  ) {
+    throw 'D6.5 handoff FAIL: accepted binding function or record path is absent'
+  }
+  $acceptedPrivateValidator = Assert-AcceptedPrivateValidatorBinding `
+    -CompletionRecordPath $privateValidatorCompletionRecordPath
+  Write-Output 'D6_5_PRIVATE_RECOVERY_BINDING=VERIFIED'
+  Write-Output "RUNBOOK_CONTROL_COMMIT=$($acceptedPrivateValidator.RunbookControlCommit)"
+  Write-Output "STRUCTURAL_VALIDATION_CONTINUATION_ROOT=$($acceptedPrivateValidator.ContinuationRoot)"
+  Write-Output "STRUCTURAL_VALIDATION_CONTINUATION_MANIFEST=$($acceptedPrivateValidator.ManifestPath)"
+  Write-Output "STRUCTURAL_VALIDATION_CONTINUATION_MANIFEST_SHA256=$($acceptedPrivateValidator.ManifestHash)"
+  Write-Output "ACCEPTED_VALIDATOR_PATH=$($acceptedPrivateValidator.ValidatorPath)"
+  Write-Output "ACCEPTED_VALIDATOR_SHA256=$($acceptedPrivateValidator.ValidatorHash)"
+}
+```
+
+Stop unless the command exits successfully and its reported control commit is
+the exact approved `$RUNBOOK_CONTROL_COMMIT` used on the server. This read-only
+handoff must show that the final record says `D6_4=PASS` and
+`D6_5=MAY_BEGIN`; a non-final gate file or a temporary publication file is not
+authority. Then verify that execution did not alter the server repository:
 
 ```bash
 test "$(git rev-parse HEAD)" = "$RUNBOOK_CONTROL_COMMIT"
@@ -2694,10 +3241,70 @@ context, logs, metadata, overrides, and all failure evidence.
 
 ### D7.2 Rollback Validation
 
-Require the rollback runtime config and bounded local readiness:
+Require the complete rollback identity chain and bounded local readiness. The
+rollback container must reference the immutable rollback tag, resolve to the
+accepted rollback OCI index, expose the accepted `linux/amd64` manifest
+descriptor, and link that selected manifest to the accepted rollback config:
 
 ```bash
-test "$(docker inspect nam-app --format '{{.Image}}')" = "$NAM_D_ROLLBACK_CONFIG_ID"
+test "$(docker image inspect "$NAM_D_ROLLBACK" --format '{{.Id}}')" = \
+  "$NAM_D_ROLLBACK_INDEX"
+```
+
+```bash
+test "$(docker inspect nam-app --format '{{.Config.Image}}')" = \
+  "$NAM_D_ROLLBACK"
+```
+
+```bash
+test "$(docker inspect nam-app --format '{{.Image}}')" = \
+  "$NAM_D_ROLLBACK_INDEX"
+```
+
+```bash
+test "$(
+  docker inspect nam-app \
+    --format '{{.ImageManifestDescriptor.MediaType}}'
+)" = 'application/vnd.oci.image.manifest.v1+json'
+```
+
+```bash
+test "$(
+  docker inspect nam-app \
+    --format '{{.ImageManifestDescriptor.Digest}}'
+)" = "$NAM_D_ROLLBACK_PLATFORM_MANIFEST_ID"
+```
+
+```bash
+test "$NAM_D_ROLLBACK_PLATFORM_MANIFEST_ID" = \
+  'sha256:9245ca496b592eec9fe39011d704e39db76d95e32d95838e685e98de8ae4420b'
+```
+
+```bash
+test "$(
+  docker inspect nam-app \
+    --format '{{.ImageManifestDescriptor.Platform.OS}}'
+)" = 'linux'
+```
+
+```bash
+test "$(
+  docker inspect nam-app \
+    --format '{{.ImageManifestDescriptor.Platform.Architecture}}'
+)" = 'amd64'
+```
+
+```bash
+test "$(
+  tar -xOf "$NAM_D_ROLLBACK_OCI_ARCHIVE" \
+    "blobs/sha256/${NAM_D_ROLLBACK_PLATFORM_MANIFEST_ID#sha256:}" \
+    | jq -er '.config.digest'
+)" = "$NAM_D_ROLLBACK_CONFIG_ID"
+```
+
+```bash
+test "$NAM_D_ROLLBACK_CONFIG_ID" = \
+  'sha256:d3408873dabab192f3b4e8fcedf6834953b0028f68c385d92e7a539bc5789633'
 ```
 
 ```bash
@@ -2923,19 +3530,25 @@ Run these commands in PowerShell on Darnassus. They deliberately expect the
 known eight-contributor rollback baseline, not the D6 candidate result.
 First define the exact fixed request-evidence leaf-name namespace,
 `Assert-PrivateEvidencePaths`, `Initialize-PrivateRequestStderr`,
-`Confirm-PrivateRequestStderr`, `Test-DomElementVisible`,
-`Get-NormalizedVisibleDomText`, `Test-DurableDomRoute`, and
-`Assert-DayViewStructure` definitions from D6.4 in this PowerShell session.
-This is required even when D7 is invoked before any D6 external request.
+`Confirm-PrivateRequestStderr`, `Assert-AcceptedPrivateValidatorBinding`, and
+the WSL-backed `Assert-DayViewStructure` definition from D6.4 in this
+PowerShell session. Set `$privateValidatorCompletionRecordPath` to the accepted
+D6.4 final completion record; the validator path is derived from that record
+and may not be supplied independently. Require that root, its exact inventory,
+and its checksum manifest to have passed the
+[Checkpoint D Private Validator Recovery](checkpoint-d-private-validator-recovery.md).
+Do not use the retired Windows COM parser. This setup is required even when D7
+is invoked before any new external rollback request.
+
+The following PowerShell block is **a script containing multiple top-level
+statements**:
 
 ```powershell
 $requiredPrivateFunctions = @(
   'Assert-PrivateEvidencePaths',
   'Initialize-PrivateRequestStderr',
   'Confirm-PrivateRequestStderr',
-  'Test-DomElementVisible',
-  'Get-NormalizedVisibleDomText',
-  'Test-DurableDomRoute',
+  'Assert-AcceptedPrivateValidatorBinding',
   'Assert-DayViewStructure'
 )
 foreach ($requiredPrivateFunction in $requiredPrivateFunctions) {
@@ -2946,6 +3559,13 @@ foreach ($requiredPrivateFunction in $requiredPrivateFunctions) {
     throw "D7 private FAIL: required function is not loaded: $requiredPrivateFunction"
   }
 }
+if (
+  [string]::IsNullOrWhiteSpace($privateValidatorCompletionRecordPath)
+) {
+  throw 'D7 private FAIL: accepted D6.4 final completion record is absent'
+}
+$acceptedPrivateValidator = Assert-AcceptedPrivateValidatorBinding `
+  -CompletionRecordPath $privateValidatorCompletionRecordPath
 if (
   @($privateRequestEvidenceLeafNames | Sort-Object -Unique).Count -ne 16
 ) {
@@ -3189,8 +3809,9 @@ body, metadata, stderr, and request-summary paths beneath the approved
 Darnassus rollback evidence root; the rollback summary associates those paths,
 and the checksum manifest must include every one. Empty stderr remains evidence,
 and the transcript is not a substitute. The rollback Day View must pass the
-exact eight-panel DOM validation and explicitly exclude both new contributor
-panels. The VPS cannot substitute for either rollback request.
+exact eight-panel standard-library structural validation through
+`wsl.exe -d AlmaLinux-9` and explicitly exclude both new contributor panels.
+The VPS cannot substitute for either rollback request.
 
 Finally require repository cleanliness:
 
@@ -3224,7 +3845,7 @@ The evidence record must include:
 | Migrations | Two exact 16-row name/checksum inventories, zero problem rows, and `MIGRATION_ACTION=NONE`. |
 | Local | Per-attempt readiness bodies and metadata; exact health HTTP/body; Day View HTTP/body/metadata; and structural validation of the exact ten ordered, linked panels and the two correct in-panel empty states. |
 | Public | Health and Day View bodies and metadata from `https://dev.alemany.me`; exact health body; and the same structural ten-panel validation as local. |
-| Private | Darnassus exact `Running` BackendState, required client IP, exact one-address DNS result, timestamp, device, and operator; for both routes, native `curl.exe` status, HTTP 200, exact effective URL, remote IP `100.98.215.31`, zero redirects, empty redirect URL, TLS result zero, uniquely associated body, metadata, stderr, and request-summary paths included in the Darnassus summary and checksum manifest, exact health body, and structural ten-panel validation. |
+| Private | The sealed original Darnassus request root and its fixed checksum-manifest SHA-256; exact retained transport identities and results for both routes; the separate continuation root and checksum manifest; Windows/WSL agreement on the original Day View hash and size; exact standard-library validator stdout, stderr, and native exit status; structural ten-panel validation; and explicit records that requests were not repeated and rollback was not required. |
 | Exposure and project | Rendered project name exactly `nam`, exact app image selection, loopback-only app publication, unchanged/unpublished PostgreSQL service, and exactly the `app` and `postgres` NAM Compose services and containers. |
 | Rollback | Exact accepted V17 tag/index, artifact reference, archive checksum, and `INDEPENDENT_V17_VERIFICATION=PASS`. |
 | Database boundary | Explicit confirmation that no migration, database write, database rollback, or PostgreSQL identity change occurred. |
