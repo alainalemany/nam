@@ -214,7 +214,11 @@ Business value:
 Capabilities:
 
 - Work Schedule, with V1 foundation and Day View participation implemented.
-- Timesheet, with the V1 foundation and Day View participation implemented.
+- Timesheet, with the V1 foundation, Day View participation, and URL-addressable
+  Weekly Timesheet history filtering implemented. Structured filters support
+  payroll-week overlap, status, Equipment, Work Code, Work Order, Support
+  Personnel, and overtime while retaining inactive historical reference
+  choices and snapshot meaning.
 - Equipment Fuel Events for operational fuel delivered to Equipment.
 - Separate future Fleet context remains deferred.
 - Supply Requests after remaining product discovery is complete.
@@ -222,7 +226,8 @@ Capabilities:
 Success criteria:
 
 - The operator can manually record schedules and changes.
-- Timesheet entries can be tracked by week and date.
+- Historical Weekly Timesheets can be found through structured, URL-addressable
+  filters and recognized through compact snapshot-based daily context.
 - Equipment fueling can be reviewed by date, Equipment, fuel type, tank-fill
   quantity, and service context.
 - Operator-originated supply requests can be retrieved without introducing
@@ -352,7 +357,7 @@ The MVP should not require:
 | Shift Reports | Creates the parent structure for shift paperwork. | Daily/date context and equipment references. Feature architecture: `docs/architecture/features/shift-reports.md`. | V1 foundation, filtering, and Day View participation implemented |
 | Work Authorizations | Captures safety and maintenance work records. | Shift Reports. Feature architecture: `docs/architecture/features/work-authorizations.md`. | V1 foundation, filtering, and Day View participation implemented |
 | Defect Tracking | Captures equipment issue history from report through closure. | Equipment reference data and feature architecture: `docs/architecture/features/defect-tracking.md`; stronger value with Day View. | V1 foundation, filtering, and Day View participation implemented |
-| Work Schedule and Timesheet | Supports personal schedule and time reconciliation. | Reference data; stronger value with Day View. Work Schedule feature architecture: `docs/architecture/features/work-schedule.md`; Timesheet feature architecture: `docs/architecture/features/timesheets.md`. | Work Schedule and Timesheet V1 foundations and Day View participation implemented |
+| Work Schedule and Timesheet | Supports personal schedule and time reconciliation. | Reference data; stronger value with Day View. Work Schedule feature architecture: `docs/architecture/features/work-schedule.md`; Timesheet feature architecture: `docs/architecture/features/timesheets.md`. | Work Schedule and Timesheet V1 foundations and Day View participation implemented; Timesheet structured, URL-addressable Weekly Timesheet history filtering complete |
 | Equipment Fuel Events | Captures operational fuel delivered to one Equipment subject, including multi-tank occurrences. | Equipment reference data; boundary assessment: `docs/architecture/equipment-operations.md`; feature architecture: `docs/architecture/features/equipment-fuel-events.md`; stronger value with Day View. | V1 foundation, structured history filtering, and Phase 24.1 Day View participation implemented |
 | Supply Requests | Preserves operator-originated supply requests without inventory ownership. | Remaining product discovery; boundary assessment: `docs/architecture/equipment-operations.md`. | Discovery-stage future feature |
 | Operational Safety Checklist meter and confirmation | Adds explicit `HOURS`/`MILES` meter units and clear NAM save confirmation. | Approved Phase 23.3 architecture. | Phase 23.4 implemented; Phase 23.4.2 monotonic marker supersession and safe presentation fallback complete |

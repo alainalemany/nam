@@ -398,9 +398,10 @@ Feature implementation architecture:
 
 Current status: Product decisions and feature architecture are approved. The
 V1 data model, weekly entry workflow, reference management, lifecycle,
-proportional tests, and selected-date Day View participation are implemented.
-Submitted and locked lifecycle states, external submission, global search,
-reporting, and Payslip reconciliation remain deferred.
+proportional tests, selected-date Day View participation, and feature-owned
+Timesheet History filtering are implemented. Submitted and locked lifecycle
+states, external submission, global search, reporting, and Payslip
+reconciliation remain deferred.
 
 ### Phase 1: Requirements Definition (Complete)
 
@@ -451,9 +452,28 @@ reporting, and Payslip reconciliation remain deferred.
 - Keep payroll and reconciliation interpretation inside Timesheet.
 - Preserve Day View as a read-only composition surface.
 
+### Phase 25.1: Timesheet History Filtering Discovery (Complete)
+
+- Confirm `/timesheets` as the canonical Timesheet History surface with Weekly
+  Timesheets as the result unit.
+- Approve payroll-week overlap, status, Equipment, Work Code, Work Order,
+  Support Personnel, and overtime filters using existing Timesheet relations
+  and snapshots.
+- Confirm nested same-entry and same-allocation matching, deterministic
+  page-number pagination, and no schema or migration requirement.
+
+### Phase 25.2: Timesheet History Filtering Implementation (Complete)
+
+- Implement URL-addressable Timesheet-owned history filtering on `/timesheets`.
+- Add compact Daily Time Entry summaries using persisted totals and historical
+  snapshots while preserving Weekly Timesheet ownership.
+- Enforce coherent same-entry and same-allocation matching with deterministic
+  50-row page-number pagination.
+- Preserve the existing Timesheet lifecycle, editor, snapshots, and Day View
+  behavior without a schema or migration change.
+
 ### Phase 5: Future Enhancements
 
-- Add feature-owned Timesheet history filtering after foundation acceptance.
 - Add submitted and locked lifecycle states if external workflow requires them.
 - Add richer reports comparing Work Schedule, Daily Log, Timesheet, and Payslip records
 - Add import/export if a reliable source format becomes available

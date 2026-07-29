@@ -558,6 +558,12 @@ Implementation architecture:
 
 The Timesheet module tracks payroll-oriented weekly worked time.
 
+Current implementation status: V1 weekly entry, reference management,
+Draft/Completed lifecycle, selected-date Day View participation, and the
+canonical `/timesheets` read-only history surface are implemented. Timesheet
+History provides URL-filtered Weekly Timesheet lookup, compact snapshot-based
+Daily Time Entry summaries, and deterministic page-number pagination.
+
 ### Purpose
 
 Create a personal, editable record of worked time by employer payroll week,
@@ -601,6 +607,12 @@ V1 foundation.
 - Allow Draft Timesheets to remain temporarily unbalanced.
 - Support Draft and Completed lifecycle states in V1.
 - Keep Completed Timesheets read-only until explicitly reopened to Draft.
+- Provide canonical read-only Weekly Timesheet history at `/timesheets`.
+- Filter history by payroll-week overlap, lifecycle status, Equipment, Work
+  Code, Work Order, Support Personnel, and overtime through URL parameters.
+- Preserve Weekly Timesheet result ownership while showing compact Daily Time
+  Entry summaries from persisted totals and historical snapshots.
+- Use deterministic page-number pagination for history results.
 
 ### Reusable Lists
 
@@ -657,7 +669,9 @@ Version 1 should support manual weekly Timesheets, Daily Time Entries, Work
 Allocations, Timesheet-owned reference lists, calculated integer-minute
 durations, allocation reconciliation, edit/delete behavior, explicit Reopen,
 Draft/Completed lifecycle, and selected-date Day View participation through a
-Timesheet-owned display-context helper.
+Timesheet-owned display-context helper. Timesheet also owns read-only,
+URL-filtered Weekly Timesheet history with compact snapshot-based Daily Time
+Entry summaries and deterministic pagination.
 
 Copy behavior, global cross-module search, Submitted and Locked lifecycle
 states, automatic WFS login, scraping, submission, imports, exports, reports,

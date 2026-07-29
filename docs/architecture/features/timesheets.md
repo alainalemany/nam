@@ -37,14 +37,16 @@ Related Documents:
 - `docs/architecture/features/day-view.md`
 - `docs/architecture/features/work-schedule.md`
 
-Last Reviewed: 2026-07-14
+Last Reviewed: 2026-07-28
 
 Implementation Status: The V1 foundation is implemented with weekly
 Timesheets, Daily Time Entries, Work Allocations, Timesheet-owned reference
 management, Draft/Completed lifecycle, and optional Work Schedule context.
 Selected-date Day View participation is implemented through a Timesheet-owned
-display-context helper. The other capabilities listed under Deferred Scope
-remain deferred.
+display-context helper. `/timesheets` is the canonical feature-owned Timesheet
+History route with structured URL filtering, Weekly Timesheet result ownership,
+compact Daily Time Entry summaries, and page-number pagination. The other
+capabilities listed under Deferred Scope remain deferred.
 
 ## 1. Purpose
 
@@ -89,6 +91,7 @@ Timesheet is responsible for:
 - Historical display snapshots for Timesheet-owned reusable references where
   needed to keep old records readable after reference edits.
 - Draft and Completed lifecycle behavior.
+- Read-only Weekly Timesheet history filtering and pagination.
 - Feature-owned queries, Server Actions, validation, constants, forms, and
   tests.
 
@@ -106,6 +109,8 @@ V1 foundation should include:
 - Separate management surfaces for Timesheet Work Codes, Work Orders, and
   Support Personnel.
 - Feature-owned list or lookup behavior needed by Timesheet screens.
+- Feature-owned history filter parsing, relational predicates, result shaping,
+  pagination links, and filter-option queries.
 - Feature-owned validation and Server Actions.
 
 ## 3. Non-Responsibilities
@@ -509,7 +514,7 @@ Entries.
 
 Expected V1 routes:
 
-- `/timesheets` list, archive, or current-week landing surface.
+- `/timesheets` canonical Weekly Timesheet History surface.
 - `/timesheets/[id]` weekly detail/review surface.
 - `/timesheets/week/[weekStart]` or equivalent payroll-week lookup route if
   useful for automatic creation.
@@ -545,6 +550,97 @@ Expected weekly UI:
 
 The weekly UI should be dense and work-focused. It should not become a
 calendar, payroll report dashboard, or WFS screen clone.
+
+### Timesheet History
+
+`/timesheets` is the canonical Timesheet History route. Do not create a second
+history route or expose Daily Time Entries as independent history results.
+
+Each result represents one Weekly Timesheet and links to
+`/timesheets/[id]`. Draft results retain the existing optional Edit link;
+Completed results remain read-only until the existing explicit Reopen action.
+Each weekly result includes compact recognition-oriented Daily Time Entry
+summaries using persisted worked, regular, and overtime minute totals plus
+persisted Work Allocation minutes and historical Equipment, Work Code, Work
+Order, and Support Personnel snapshots. History display must not replace
+snapshot text with renamed live-reference values.
+
+The supported history filters are exactly:
+
+- payroll-week overlap range
+- Draft or Completed status
+- Equipment
+- Work Code
+- Work Order
+- Support Personnel
+- persisted overtime presence
+
+The URL parameters are:
+
+```text
+dateFrom=YYYY-MM-DD
+dateTo=YYYY-MM-DD
+status=DRAFT|COMPLETED
+equipmentId=<id>
+workCodeId=<id>
+workOrderId=<id>
+supportPersonId=<id>
+hasOvertime=true
+page=<positive integer>
+```
+
+Filter parsing is Timesheet-owned. It trims values, uses the first value when a
+parameter is repeated, accepts only real Gregorian `YYYY-MM-DD` dates, accepts
+only the documented status and overtime values, and defaults invalid, missing,
+zero, negative, or non-integer pages to page 1. Unsupported, malformed,
+unknown, or otherwise ignored values do not throw, do not become active
+filters, and do not appear in generated pagination links. Active-filter
+detection excludes `page`; a page by itself does not show Clear Filters.
+
+Payroll-week filtering uses inclusive overlap semantics:
+
+```text
+payrollWeekEndDate >= dateFrom
+payrollWeekStartDate <= dateTo
+```
+
+The dates are not worked-date, creation-date, or update-date filters. Valid
+reversed ranges are not swapped and return no results.
+
+All active filters combine using logical AND. Equipment and allocation
+reference selections must be satisfiable within one matching Daily Time Entry.
+Work Code, Work Order, and Support Personnel selections must be satisfiable
+within one matching Work Allocation in that entry. Separate entries or
+allocations may not collectively satisfy one filter request.
+
+Equipment filtering uses the nullable live Equipment relation. Historical
+Equipment snapshots remain displayable after SetNull behavior, but a deleted
+Equipment record is not discoverable through its former live ID. Work Code,
+Work Order, and Support Personnel filtering uses their persisted relations and
+includes inactive reference records; history reads never reactivate, replace,
+or create references.
+
+History uses offset page-number pagination with 50 Weekly Timesheets per page.
+Ordering is deterministic:
+
+1. payroll-week start descending
+2. primary employee display name ascending
+3. Weekly Timesheet ID ascending
+
+Previous and Next links preserve only active normalized filters and use positive
+page values. A requested page beyond the available rows remains on that page
+and renders a requested-page-empty state rather than redirecting or clamping.
+
+The route distinguishes:
+
+- no Weekly Timesheets exist
+- active filters match no Weekly Timesheets
+- one or more invalid parameters were ignored
+- a requested page has no rows even though matching records exist on earlier
+  pages
+
+History queries are read-only. They do not create records, recalculate totals,
+rewrite snapshots, or change Draft/Completed lifecycle state.
 
 ## 8. Validation And Error Handling
 
@@ -624,6 +720,9 @@ Work Allocations, and allocation-support links together.
 Feature-owned helpers should provide:
 
 - payroll-week lookup
+- history filter parsing and normalized pagination links
+- paginated Weekly Timesheet history with compact Daily Time Entry summaries
+- history filter options including inactive Timesheet-owned references
 - explicit first-use creation mutation
 - weekly detail query
 - Daily Time Entry lookup by date
@@ -840,6 +939,21 @@ Expected V1 tests:
 - Optional Work Schedule Daily Assignment relationship validation.
 - Server Action transaction behavior.
 - Feature-owned query helpers.
+- Strict Timesheet History query parsing, ignored-parameter reporting,
+  active-filter detection, and normalized pagination URLs.
+- Inclusive payroll-week overlap and reversed-range behavior.
+- Same-entry Equipment/allocation matching and same-allocation Work Code, Work
+  Order, and Support Personnel matching, including negative cross-entry and
+  cross-allocation cases.
+- Inactive historical reference filtering and deleted-Equipment live-ID
+  behavior.
+- Persisted-overtime filtering, deterministic ordering, 50-row pagination, and
+  out-of-range page behavior.
+- History route rendering for snapshot-based compact daily summaries, filter
+  controls, Clear Filters, pagination links, invalid-parameter notice, and
+  distinct empty states.
+- Read-only history behavior and regression coverage for existing lifecycle,
+  snapshot, editor, and Day View behavior.
 - Weekly Timesheet route rendering.
 - Expandable Daily Time Entry UI behavior where practical.
 - Reference-management route rendering.
@@ -859,7 +973,6 @@ tests cover the core behavior.
 
 Future Timesheet evolution may include:
 
-- Feature-owned list filtering and history lookup.
 - Submitted and Locked lifecycle states.
 - External WFS submission support.
 - Timesheet-to-Work Schedule reconciliation views.
@@ -923,5 +1036,9 @@ Timesheet V1 architecture is successful when:
 - Work Schedule remains optional context and does not determine payroll
   correctness.
 - Day View participation uses a Timesheet-owned selected-date context helper.
+- `/timesheets` remains the canonical read-only Weekly Timesheet History route
+  with the approved structured filters, coherent nested relation matching,
+  compact snapshot-based Daily Time Entry summaries, deterministic 50-row
+  pagination, and filter-preserving URLs.
 - Timesheet implementation can proceed without introducing workforce
   management, authentication, global search, or reporting scope creep.

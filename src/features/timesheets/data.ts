@@ -3,10 +3,17 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 import { dateInputValue, formatMinutes, parseDateOnly } from "./calculations";
-import { timesheetStatusLabels } from "./constants";
+import { TIMESHEET_HISTORY_PAGE_SIZE, timesheetStatusLabels } from "./constants";
+import {
+  buildTimesheetHistoryWhere,
+  hasTimesheetHistoryFilters,
+  type TimesheetHistoryFilters,
+} from "./filters";
 import type {
   TimesheetDayViewContext,
   TimesheetFormOptions,
+  TimesheetHistoryFilterOptions,
+  TimesheetHistoryResult,
   TimesheetListItem,
   WeeklyTimesheetInput,
 } from "./types";
@@ -30,12 +37,84 @@ export type WeeklyTimesheetDetail = Prisma.WeeklyTimesheetGetPayload<{
   include: typeof weeklyTimesheetInclude;
 }>;
 
-export async function getWeeklyTimesheets(): Promise<TimesheetListItem[]> {
-  const records = await prisma.weeklyTimesheet.findMany({
-    orderBy: [{ payrollWeekStartDate: "desc" }, { primaryEmployeeDisplayName: "asc" }],
-    include: { _count: { select: { entries: true } } },
-  });
-  return records.map((record) => ({
+const timesheetHistoryInclude = {
+  entries: {
+    orderBy: [{ workDate: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      workDate: true,
+      primaryEquipmentDisplayNameSnapshot: true,
+      primaryEquipmentNumberSnapshot: true,
+      primaryEquipmentCategorySnapshot: true,
+      primaryMineNameSnapshot: true,
+      primaryCityNameSnapshot: true,
+      primaryCityStateSnapshot: true,
+      workedMinutes: true,
+      regularMinutes: true,
+      overtimeMinutes: true,
+      allocations: {
+        orderBy: [{ sequence: "asc" }, { id: "asc" }],
+        select: {
+          workCodeSnapshot: true,
+          workCodeDescriptionSnapshot: true,
+          workOrderSnapshot: true,
+          workOrderDescriptionSnapshot: true,
+          allocatedMinutes: true,
+          supportPersonnel: {
+            orderBy: [
+              { supportPersonDisplayNameSnapshot: "asc" },
+              { id: "asc" },
+            ],
+            select: {
+              supportPersonDisplayNameSnapshot: true,
+              supportPersonTradeOrRoleSnapshot: true,
+              supportPersonCompanySnapshot: true,
+            },
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.WeeklyTimesheetInclude;
+
+type TimesheetHistoryRecord = Prisma.WeeklyTimesheetGetPayload<{
+  include: typeof timesheetHistoryInclude;
+}>;
+
+function allocationSummary(
+  allocation: TimesheetHistoryRecord["entries"][number]["allocations"][number],
+) {
+  const workCode = `${allocation.workCodeSnapshot} - ${allocation.workCodeDescriptionSnapshot}`;
+  const workOrder =
+    allocation.workOrderSnapshot && allocation.workOrderDescriptionSnapshot
+      ? `${allocation.workOrderSnapshot} - ${allocation.workOrderDescriptionSnapshot}`
+      : allocation.workOrderSnapshot;
+  const supportPersonnel = allocation.supportPersonnel
+    .map((person) => {
+      const context = [
+        person.supportPersonTradeOrRoleSnapshot,
+        person.supportPersonCompanySnapshot,
+      ]
+        .filter(Boolean)
+        .join(", ");
+      return context
+        ? `${person.supportPersonDisplayNameSnapshot} (${context})`
+        : person.supportPersonDisplayNameSnapshot;
+    })
+    .join(", ");
+
+  return [
+    workCode,
+    workOrder,
+    supportPersonnel,
+    `${formatMinutes(allocation.allocatedMinutes)} allocated`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function historyListItem(record: TimesheetHistoryRecord): TimesheetListItem {
+  return {
     id: record.id,
     payrollWeekStartDate: record.payrollWeekStartDate,
     payrollWeekEndDate: record.payrollWeekEndDate,
@@ -44,8 +123,108 @@ export async function getWeeklyTimesheets(): Promise<TimesheetListItem[]> {
     workedMinutesTotal: record.workedMinutesTotal,
     regularMinutesTotal: record.regularMinutesTotal,
     overtimeMinutesTotal: record.overtimeMinutesTotal,
-    entryCount: record._count.entries,
-  }));
+    entryCount: record.entries.length,
+    entries: record.entries.map((entry) => ({
+      id: entry.id,
+      workDate: entry.workDate,
+      equipmentCategory: entry.primaryEquipmentCategorySnapshot,
+      equipmentIdentity: snapshotIdentity(
+        entry.primaryEquipmentDisplayNameSnapshot,
+        entry.primaryEquipmentNumberSnapshot,
+        entry.primaryMineNameSnapshot,
+        entry.primaryCityNameSnapshot,
+        entry.primaryCityStateSnapshot,
+      ),
+      workedMinutes: entry.workedMinutes,
+      regularMinutes: entry.regularMinutes,
+      overtimeMinutes: entry.overtimeMinutes,
+      allocationSummaries: entry.allocations.map(allocationSummary),
+    })),
+  };
+}
+
+export async function getTimesheetHistory(
+  filters: TimesheetHistoryFilters,
+): Promise<TimesheetHistoryResult> {
+  const page =
+    Number.isSafeInteger(filters.page) && filters.page > 0 ? filters.page : 1;
+  const where = buildTimesheetHistoryWhere(filters);
+  const pageSize = BigInt(TIMESHEET_HISTORY_PAGE_SIZE);
+  const requestedOffset = BigInt(page - 1) * pageSize;
+  const filtersActive = hasTimesheetHistoryFilters(filters);
+  const totalCountQuery = prisma.weeklyTimesheet.count();
+  const matchingCountQuery = filtersActive
+    ? prisma.weeklyTimesheet.count({ where })
+    : totalCountQuery;
+  const [totalCount, matchingCount] = await Promise.all([
+    totalCountQuery,
+    matchingCountQuery,
+  ]);
+  const records =
+    requestedOffset < BigInt(matchingCount)
+      ? await prisma.weeklyTimesheet.findMany({
+          where,
+          orderBy: [
+            { payrollWeekStartDate: "desc" },
+            { primaryEmployeeDisplayName: "asc" },
+            { id: "asc" },
+          ],
+          skip: Number(requestedOffset),
+          take: TIMESHEET_HISTORY_PAGE_SIZE,
+          include: timesheetHistoryInclude,
+        })
+      : [];
+
+  return {
+    items: records.map(historyListItem),
+    totalCount,
+    matchingCount,
+    page,
+    hasPreviousPage: page > 1,
+    hasNextPage:
+      requestedOffset + pageSize < BigInt(matchingCount),
+  };
+}
+
+export async function getTimesheetHistoryFilterOptions(): Promise<TimesheetHistoryFilterOptions> {
+  const [equipment, workCodes, workOrders, supportPersonnel] = await Promise.all([
+    prisma.equipment.findMany({
+      include: { mine: true },
+      orderBy: { displayName: "asc" },
+    }),
+    prisma.timesheetWorkCode.findMany({
+      orderBy: [{ active: "desc" }, { code: "asc" }],
+    }),
+    prisma.timesheetWorkOrder.findMany({
+      orderBy: [{ active: "desc" }, { workOrderNumber: "asc" }],
+    }),
+    prisma.timesheetSupportPerson.findMany({
+      orderBy: [{ active: "desc" }, { displayName: "asc" }],
+    }),
+  ]);
+
+  return {
+    equipment: equipment.map((item) => ({
+      id: item.id,
+      label: `${item.displayName}${item.equipmentNumber ? ` (#${item.equipmentNumber})` : ""} - ${item.mine.name}`,
+      active: item.status === "ACTIVE",
+    })),
+    workCodes: workCodes.map((item) => ({
+      id: item.id,
+      label: `${item.code} - ${item.description}`,
+      active: item.active,
+    })),
+    workOrders: workOrders.map((item) => ({
+      id: item.id,
+      label: `${item.workOrderNumber} - ${item.description}`,
+      active: item.active,
+    })),
+    supportPersonnel: supportPersonnel.map((item) => ({
+      id: item.id,
+      label: `${item.displayName} - ${item.tradeOrRole}`,
+      active: item.active,
+    })),
+  };
 }
 
 export function getWeeklyTimesheetById(id: string) {

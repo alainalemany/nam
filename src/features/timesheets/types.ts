@@ -70,6 +70,40 @@ export type TimesheetListItem = {
   regularMinutesTotal: number;
   overtimeMinutesTotal: number;
   entryCount: number;
+  entries: TimesheetHistoryEntrySummary[];
+};
+
+export type TimesheetHistoryEntrySummary = {
+  id: string;
+  workDate: Date;
+  equipmentCategory: EquipmentCategory;
+  equipmentIdentity: string;
+  workedMinutes: number;
+  regularMinutes: number;
+  overtimeMinutes: number;
+  allocationSummaries: string[];
+};
+
+export type TimesheetHistoryResult = {
+  items: TimesheetListItem[];
+  totalCount: number;
+  matchingCount: number;
+  page: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+};
+
+export type TimesheetHistoryFilterOption = {
+  id: string;
+  label: string;
+  active: boolean;
+};
+
+export type TimesheetHistoryFilterOptions = {
+  equipment: TimesheetHistoryFilterOption[];
+  workCodes: TimesheetHistoryFilterOption[];
+  workOrders: TimesheetHistoryFilterOption[];
+  supportPersonnel: TimesheetHistoryFilterOption[];
 };
 
 export type TimesheetDayViewAllocation = {
