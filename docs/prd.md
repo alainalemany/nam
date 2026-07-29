@@ -284,9 +284,11 @@ Potential fields:
 
 ### 8A. Supply Requests
 
-Preserve operator-originated requests for supplies without owning warehouse
-inventory, purchasing, vendors, or ERP processing. Detailed fields remain in
-product discovery.
+Preserve the operator's personal record of supply requests already submitted
+through the external corporate system. Each request uses one Equipment context,
+one supervisor, automatic requester snapshots, a permanent NAM Reference, and
+one or more ordered reusable-catalog item lines. NAM does not submit, email,
+approve, purchase, stock, or fulfill the external request.
 
 ## Required Output
 
@@ -695,16 +697,115 @@ cross-module search remain deferred. Approved implementation architecture is
 
 ## Supply Request Requirements
 
-NAM Dashboard should preserve operator-originated Supply Requests as durable
-personal operational records. Supply Requests do not imply warehouse inventory,
-stock management, purchasing, vendor management, or ERP order processing.
+NAM Dashboard must preserve the operator's personal historical record of Supply
+Requests that were successfully submitted through the external corporate
+Supplies Request system. NAM does not submit the request, email a supervisor or
+warehouse, integrate with the corporate system, or claim that saving caused an
+external submission.
+
+The create action must use truthful language such as `Record Submitted Request`
+and explain that NAM records rather than submits the request. Creation requires
+the operator to confirm successful corporate submission. The confirmation is
+create-action validation and does not require redundant persistence.
+
+One Supply Request represents one dated request occurrence for exactly one
+Equipment record and contains one or more ordered Supply Request Item lines.
+New requests may select only active Equipment. Mine and City are derived from
+Equipment, and limited Equipment, Mine, and City display snapshots preserve
+history.
+
+V1 uses a lightweight Supply Item Catalog. Every active/inactive catalog record
+requires unique normalized Item Number, Description, and Unit. New request
+lines select active catalog items, use positive whole-number quantities, and
+cannot repeat one Item Number within a request. Unit comes from the catalog and
+is read-only on the request. Item Number, Description, and Unit snapshots must
+prevent later catalog changes from rewriting history. Inline item creation, if
+offered, is an explicit catalog operation rather than an ad hoc line.
+
+Each request requires one active feature-owned supervisor reference. Supervisor
+records require full name, uniquely normalized email, and active/inactive
+state. Selection fills email automatically. Supervisor name and email snapshots
+remain readable after reference changes or inactivation. The capability is not
+an Employee, User, approval, workforce, or email system.
+
+New requests automatically snapshot `Alain Alemany` and employee number
+`911601`. The operator does not re-enter these values. V1 must not introduce an
+Employee, User, requester account, authentication identity, or workforce
+directory for this purpose.
+
+NAM automatically generates one permanent, unique, searchable, read-only
+reference on first save, such as `SR-2026-0001`. It is explicitly a NAM
+Reference, not a corporate or warehouse confirmation number. Allocation must be
+PostgreSQL-safe under concurrency and must not use `MAX + 1`.
+
+The request stores both required operational work date and actual corporate
+submission local date and time. Operational work date owns history, Day View,
+and Daily Log context. Local wall-clock values remain editable on create and
+explicit correction and must not be shifted through UTC conversion. Overnight
+submission may occur on the calendar day after its operational work date.
+
+Every new request starts `REQUESTED`. Normal lifecycle is
+`REQUESTED -> FULFILLED` or `REQUESTED -> CANCELLED`. There is no Draft,
+Submitted, Partial Fulfillment, Completed, ordinary Reopen, or normal Delete
+Request action.
+
+Fulfillment is explicit and records automatic fulfilled local date and time,
+fulfillment operational work date defaulted to the request operational date,
+and an optional Fulfillment Note. The operator may choose a later fulfillment
+operational date. Fulfilled means all requested supplies were personally
+confirmed received. Partial receipt remains Requested and may be described in
+Notes; V1 does not track received or outstanding quantities.
+
+Cancellation is explicit and records automatic cancelled local date and time
+plus an optional Cancellation Reason. It does not imply corporate-system
+mutation, create a second Supply Request Day View entry, or automatically create
+a Daily Log Activity. Cancelled requests remain permanently searchable.
+
+`Correct Request` is the only normal way to repair accepted request facts,
+including an incorrect status. Correction keeps the same database identity and
+NAM Reference, requires a permanent nonblank reason, records corrected by
+`Alain Alemany` and local correction date and time, and never resubmits or
+reactivates an external request. Full immutable relational versions must
+preserve the original and every later accepted state, including complete parent
+facts and ordered item lines.
+
+Supply Requests include one optional general Notes field. Notes belong to the
+request's structured history, correction versions, and approved Notes lookup.
+They are not Work Orders, warehouse instructions, inventory facts, or a
+procurement comment system.
+
+Supply Request creation never automatically creates a Daily Log. After create
+or fulfillment, the UI may offer explicit submission or fulfillment Daily Log
+Activity linking. The operator must choose or create the intended Daily Log;
+date alone must not infer a unique log. Daily Log narrative must link to the
+authoritative request without duplicating its item list, and neither feature
+automatically rewrites the other.
+
+Supply Requests participate in Day View only on the request operational work
+date. The compact contribution includes NAM Reference, Equipment, item count,
+supervisor, current status, actual submission local date and time, and a detail
+link. Fulfillment and cancellation do not create second structured entries.
+
+`/supply-requests` is the canonical feature history route. V1 supports
+feature-owned URL filters for operational work date range, status, Equipment,
+supervisor, exact normalized NAM Reference, Supply Item Number or Description,
+and Notes. Active filters combine with AND semantics, item matching must occur
+within one request's current item lines, and filtering must use PostgreSQL
+predicates with deterministic pagination.
 
 Warehouse pickup for supplies ordered by someone else remains a Daily Work Log
 activity. Its purpose is to preserve time away from the dragline and narrative
 context, including one or more destination draglines when relevant.
 
-Supply Requests may later reference Equipment, Defects, Daily Work Logs or
-activities, and Work Orders when explicit links provide operational value.
-Request lifecycle, requested-item detail, quantities and units, fulfillment,
-correction behavior, and Version 1 placement require further product discovery
-before feature architecture begins.
+V1 assumes South Warehouse as explanatory display context only. It does not add
+a Warehouse entity, selection, Central Warehouse, location tracking, inventory,
+stock, purchasing, vendors, pricing, procurement, ERP orders, corporate request
+number, Work Order, Work Authorization, Defect, attachments, photos, email,
+approval, authentication, authorization, multi-Equipment request, partial
+fulfillment, analytics, exports, global search, or external integration.
+
+Phase 26.1 product decisions, Phase 26.2 feature architecture, Phase 26.2.1
+independent review, and Phase 26.2.2 formal acceptance are complete. The
+implementation architecture in
+`docs/architecture/features/supply-requests.md` is Approved. Implementation has
+not started, and Phase 26.3A requires separate explicit authorization.

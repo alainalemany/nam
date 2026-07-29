@@ -1597,14 +1597,155 @@ Equipment Fuel Event boundary.
 
 ## Supply Request Concepts
 
-Supply Requests are discovery-stage personal operational records for supplies
-requested by the operator. Final entities and fields are not approved.
+Supply Requests preserve the operator's record of requests already submitted
+through the external corporate system. Phase 26.1 product decisions approve the
+following conceptual model. Exact Prisma names and migration details remain an
+implementation concern governed by the Approved architecture in
+`docs/architecture/features/supply-requests.md`.
 
-The future data design may need to preserve request identity, requested items,
-quantities or units, destination Equipment context, status or fulfillment
-meaning, notes, and explicit related-record links. Those concepts must not be
-finalized until product discovery confirms the workflow.
+### Supply Request
+
+Stable aggregate identity:
+
+- Permanent database identity.
+- Permanent generated NAM Reference.
+- Submission-calendar reference year and annual sequence.
+- Nullable-at-schema-level pointer to the current immutable version; null is
+  valid only inside the initial aggregate transaction.
+- Technical creation and update timestamps.
+- Owned immutable versions and optional role-specific Daily Log Activity links.
+
+NAM Reference and `(reference year, annual sequence)` are independently unique.
+One PostgreSQL-safe annual counter row allocates each sequence atomically; the
+design prohibits `MAX + 1`. The root's `(current version identity, request
+identity)` pair references the version candidate key `(version identity,
+version request identity)`, with a compound unique on the root pair for
+one-to-one Prisma semantics. This prevents a root from pointing to another
+request's version. No successful feature write may commit a null pointer.
+
+### Supply Request Version
+
+Complete immutable accepted state:
+
+- Parent Supply Request and deterministic positive version number.
+- Change kind: Created, Fulfilled, Cancelled, or Corrected.
+- Status: Requested, Fulfilled, or Cancelled.
+- Operational work date.
+- Actual submitted local date and `HH:mm` time.
+- Optional Notes.
+- Equipment reference plus display name, number, category, Mine name, City
+  name, and City state snapshots.
+- Requester name and employee-number snapshots.
+- Supervisor reference plus name and email snapshots.
+- Status-appropriate fulfillment or cancellation facts.
+- Required correction reason, corrected-by snapshot, and local correction date
+  and time for a correction version.
+- One or more owned ordered version-item lines.
+
+Version `1` is the original Requested state. Every accepted fulfillment,
+cancellation, or correction appends a complete next version and atomically
+advances the current pointer. Older versions never change. The pair `(Supply
+Request, version number)` is unique, and the current pointer must reference a
+version owned by the same request.
+
+### Supply Request Version Item
+
+Version-owned ordered line:
+
+- Parent version.
+- Contiguous sequence.
+- Supply Item reference.
+- Positive whole-number requested quantity.
+- Item Number, Description, and Unit snapshots.
+- Server-derived normalized Item Number snapshot for historical lookup.
+
+Sequence and Supply Item are each unique within one version. Owned lines may
+cascade only with their immutable owning version; no reference deletion may
+erase accepted history.
+
+### Supply Item
+
+Feature-owned reusable reference:
+
+- Item Number display value.
+- Unique normalized Item Number.
+- Required Description.
+- Required Unit.
+- Active/inactive state.
+- Technical timestamps.
+
+Normalization Unicode-trims, collapses internal whitespace to one ASCII space,
+and uppercases with locale-independent semantics without removing punctuation.
+The display Item Number preserves letter case separately. Inactivation is the
+normal retirement mechanism. Used records are deletion-protected, and catalog
+edits never rewrite version-line snapshots.
+
+### Supply Request Supervisor
+
+Feature-owned reusable reference:
+
+- Required full name.
+- Required email address.
+- Unique normalized lowercase email.
+- Active/inactive state.
+- Technical timestamps.
+
+Names are not globally unique. Inactivation is the normal retirement mechanism,
+and used records are deletion-protected. Normalized email is the full validated
+and trimmed address lowercased with locale-independent semantics; internal
+whitespace is invalid. The concept is not an Employee, User, approver, or
+workforce-directory model.
+
+### Supply Request Reference Counter
+
+Narrow allocation state:
+
+- Submission calendar year as unique row identity.
+- Last allocated positive annual sequence.
+
+Allocation occurs within the initial aggregate transaction through one
+parameterized PostgreSQL `INSERT ... ON CONFLICT ... DO UPDATE ... RETURNING`
+statement. Counter state is not user-managed and is not decremented or reused.
+Reference year and sequence are permanent after creation even if a correction
+changes submitted local date or year.
+
+### Supply Request Daily Log Activity Link
+
+Explicit bounded relationship:
+
+- Supply Request.
+- Daily Log Activity.
+- Role: Submission or Fulfillment.
+
+`(Supply Request, role)` and Daily Log Activity are unique. One Activity cannot
+serve both roles or more than one request. Deleting an Activity removes only
+the link; it does not delete or rewrite Supply Request identity or versions.
+The link belongs to the stable request rather than a version. Role-specific
+date, status, Activity type, and reasonable Equipment context are validated
+transactionally.
+
+### Relationships And Deletion
+
+- One Supply Request owns one or more immutable versions and exactly one current
+  version pointer.
+- One version owns one or more ordered item lines.
+- Equipment relations may become null while limited snapshots preserve display.
+- Supervisor and Supply Item relations use Restrict-style history protection
+  and active/inactive retirement.
+- Daily Log links are optional and non-owning.
+- No standard Supply Request or immutable-version deletion exists.
+- South Warehouse is a feature-owned display constant, not persisted data.
+- Requester defaults are one immutable Supply Requests-owned server
+  code-configuration constant copied into versions, not environment variables,
+  Employee records, or User relations.
+
+Indexes should support permanent reference lookup, current-version joins,
+operational date, status, Equipment, supervisor, version ordering, line
+ordering, active reference lists, and reference searches. V1 item and Notes
+contains lookup uses feature-owned PostgreSQL predicates without requiring
+full-text search infrastructure.
 
 Supply Requests must not own warehouse inventory, stock, purchasing, vendors,
-or ERP orders. Warehouse pickup performed for an order placed by someone else
-remains a Daily Work Log activity and does not create a Supply Request.
+prices, procurement, Work Orders, workforce identity, approvals, or ERP orders.
+Warehouse pickup performed for an order placed by someone else remains a Daily
+Work Log activity and does not create a Supply Request.

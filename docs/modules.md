@@ -824,28 +824,89 @@ Approved feature architecture:
 
 ## Supply Requests
 
-Supply Requests preserve operator-originated requests as durable personal
-operational records. They do not own warehouse inventory, stock, purchasing,
-vendor management, or ERP order processing.
+Supply Requests preserve the operator's personal record of requests already
+submitted through the external corporate Supplies Request system. NAM records
+the successful external submission fact but does not submit, email, approve,
+purchase, stock, or fulfill the request.
+
+The V1 workflow is:
+
+1. Start `Record Submitted Request`.
+2. Review the fixed South Warehouse context and automatic requester identity.
+3. Select one active Equipment and one active feature-owned supervisor.
+4. Search the active Supply Item Catalog by Item Number or Description.
+5. Add one or more unique ordered items, enter positive whole-number
+   quantities, and optionally add Notes.
+6. Record operational work date and actual submission local date and time.
+7. Confirm that corporate submission succeeded.
+8. Save one atomic Requested record with a permanent generated NAM Reference
+   and immutable original version.
+9. Later mark the request Fulfilled or Cancelled, or use `Correct Request` with
+   a permanent reason to repair NAM history.
+
+Supply Requests own the structured request identity, ordered lines and
+snapshots, Equipment context, requester and supervisor snapshots, submission
+facts, lifecycle, immutable versions, Notes, structured history, and optional
+role-specific Daily Log Activity links.
+
+The Supply Item Catalog and Supply Request Supervisors are narrow feature-owned
+active/inactive references. Explicit management supports list, search, create,
+edit, activate, and inactivate. Reads do not auto-create references. New request
+choices must be active; unchanged inactive references remain historically
+valid. Item, supervisor, requester, and Equipment snapshots prevent later
+reference edits from rewriting accepted request versions.
+
+Every request begins Requested. Fulfillment records actual local fulfillment
+date and time, a same-or-later fulfillment operational work date, and optional
+note. Cancellation records actual local cancellation date and time and an
+optional reason. Partial receipt remains Requested. There is no Draft,
+ordinary Reopen, partial-fulfillment tracking, or normal deletion.
+
+`Correct Request` keeps the same request identity and NAM Reference. Every
+accepted creation, lifecycle action, or correction appends a complete immutable
+relational version with ordered lines. A correction requires a permanent reason
+and records the operator and local correction time. Fulfilled and Cancelled
+requests are otherwise read-only.
+
+After submission or fulfillment, the feature may offer an explicit Daily Log
+Activity workflow. The operator chooses the intended Daily Log; neither feature
+auto-creates, infers, edits, or deletes the other's record. Submission and
+fulfillment use distinct bounded link roles and may belong to different
+operational work dates.
+
+Supply Requests contribute one compact current-state summary to Day View on the
+request operational work date. The canonical `/supply-requests` history route
+owns URL filtering by operational date range, status, Equipment, supervisor,
+NAM Reference, Supply Item text, and Notes, with deterministic pagination.
 
 Warehouse pickup for supplies ordered by someone else remains a Daily Work Log
 activity because its purpose is to explain time away from the dragline and may
 mention one or more destination draglines.
 
-Supply Requests may later relate explicitly and optionally to Equipment,
-Defects, Daily Work Logs or activities, and Work Orders. The request lifecycle,
-item and quantity detail, fulfillment meaning, and V1 scope remain in product
-discovery. Feature architecture has not started.
+The module does not own Warehouse records, inventory, stock, purchasing,
+procurement, vendors, prices, ERP orders, corporate identifiers, Work Orders,
+Work Authorizations, Defects, approvals, email, authentication, attachments,
+partial fulfillment, global search, or analytics.
 
 Boundary assessment:
 
 `docs/architecture/equipment-operations.md`
 
+Approved feature architecture:
+
+`docs/architecture/features/supply-requests.md`
+
+Current status: Phase 26.1 product discovery, Phase 26.2 feature architecture,
+Phase 26.2.1 independent review, and Phase 26.2.2 formal acceptance are
+complete. The architecture is Approved. Implementation has not started, and
+Phase 26.3A requires separate explicit authorization.
+
 ## Equipment Activity Timeline
 
 The Equipment Activity Timeline is a deferred derived capability. It should
 compose feature-owned Equipment history from checklists, Defects, Daily Work
-Logs, Equipment Fuel Events, Supply Requests, and other approved contributors.
+Logs, Equipment Fuel Events, Supply Requests after implementation, and other
+accepted contributors.
 
 It should not store duplicate event records or become a shared business-logic
 owner. Timeline architecture should begin only after several Equipment-centered

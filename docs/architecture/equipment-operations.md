@@ -82,7 +82,7 @@ domain model.
 | Operational Safety Checklists | V1 foundation accepted; meter/save enhancement and Phase 24.1 Day View participation implemented; photo slice access-gated | Daily Inspections bounded context, as a distinct checklist record type and workflow |
 | Equipment Fuel Events | Approved V1 foundation and Phase 24.1 Day View participation implemented | Independent Equipment Fuel Events feature |
 | Warehouse pickup performed for someone else's order | Confirmed activity | Daily Work Logs only |
-| Operator-originated Supply Requests | Confirmed future feature; discovery-stage | Independent Supply Requests feature |
+| Operator-originated Supply Requests | Phase 26.2.2 architecture acceptance complete; architecture Approved; implementation not started | Independent Supply Requests feature |
 | Fleet purchases, ownership, assignments, cards, receipts, registration, insurance, and replacement lifecycle | Separate deferred domain | Future Fleet capability |
 | Equipment Activity Timeline | Deferred derived capability | Future composition surface using feature-owned queries |
 
@@ -202,11 +202,27 @@ Meter readings are excluded.
 
 ## 8. Supply Requests
 
-Supply Requests are a likely standalone feature because an operator-originated
-request needs durable identity and retrieval beyond a workday narrative.
+Supply Requests are a confirmed standalone feature because a request already
+submitted through the external corporate system needs durable identity,
+structured items, lifecycle, correction history, and retrieval beyond workday
+narrative.
 
-The feature would own the operator's record of what was requested and its own
-future status or fulfillment meaning. It would not own:
+The feature owns the operator's NAM record of the external submission:
+
+- One permanent generated NAM Reference.
+- One required Equipment with limited historical snapshots.
+- Automatic requester name and employee-number snapshots.
+- One feature-owned supervisor reference with name and email snapshots.
+- One or more ordered reusable-catalog item lines with quantity and Item Number,
+  Description, and Unit snapshots.
+- Operational work date plus actual submission local date and time.
+- Requested, Fulfilled, and Cancelled lifecycle.
+- Full immutable feature-owned versions and explicit correction.
+- Optional submission and fulfillment Daily Log Activity links.
+- Feature-owned structured history and one operational-date Day View
+  contribution.
+
+It does not own:
 
 - Warehouse inventory.
 - Stock quantities.
@@ -214,19 +230,18 @@ future status or fulfillment meaning. It would not own:
 - Vendor management.
 - ERP order processing.
 - Warehouse activity performed for requests made by other people.
+- Work Orders, Work Authorizations, Defects, workforce identity, approvals,
+  email, attachments, or partial fulfillment.
 
 Warehouse pickup for supplies ordered by someone else remains a Daily Work Log
 activity because its product value is recording time away from the dragline and
 the workday narrative. It may mention one or more destination draglines without
 creating a Supply Request.
 
-Supply Requests may later use optional, explicit relationships to Equipment,
-Defects, Daily Work Logs or activities, and Work Orders. None of these
-relationships should be required before the request workflow is defined.
-
-Supply Requests remain discovery-stage. Request lifecycle, item detail,
-quantity and unit handling, destination Equipment, fulfillment evidence, and
-correction rules must be confirmed before feature architecture begins.
+V1 uses exactly one Equipment and no Work Order or Defect relationship. Daily
+Log narrative remains separately owned and is linked only through explicit
+bounded submission or fulfillment activity roles. The proposed feature
+architecture is `docs/architecture/features/supply-requests.md`.
 
 ## 9. Fleet Separation
 
@@ -269,9 +284,10 @@ These snapshots are historical display facts, not copies of complete Equipment,
 Mine, or City records. Exact relationship and deletion behavior belongs to each
 feature architecture because the operational need may differ by record type.
 
-Operational Safety Checklists and Equipment Fuel Events require historical
-Equipment readability. Supply Requests need snapshots only when an approved
-Equipment relationship becomes part of the request's durable meaning.
+Operational Safety Checklists, Equipment Fuel Events, and Supply Requests
+require historical Equipment readability. Supply Requests use the same limited
+display-name, number, category, Mine, City, and state snapshot convention while
+retaining one live Equipment reference where available.
 
 ## 11. Day View
 
@@ -279,12 +295,15 @@ The following confirmed or likely records are date-relevant:
 
 - Operational Safety Checklists.
 - Equipment Fuel Events.
-- Supply Requests when they have a meaningful request or fulfillment date.
+- Supply Requests on their operational work date only.
 - Fleet records after that domain is defined.
 
 Phase 24.1 implements Operational Safety Checklist and Equipment Fuel Event Day
-View participation. Each feature owns its selected-date query and display
-interpretation; Day View only orders and renders the returned contributions.
+View participation. The Approved Supply Request architecture follows the same
+ownership boundary: Supply Requests own their selected-date interpretation and
+one current-state contribution; fulfillment and cancellation do not create
+second structured entries. Day View only orders and renders returned
+contributions.
 
 ## 12. Equipment Activity Timeline
 
@@ -328,9 +347,12 @@ misrepresented as an Equipment service or condition event.
    storage, and backup gates close.
 8. Add Equipment Fuel Event and Operational Safety Checklist Day View
    participation through feature-owned queries. (Completed in Phase 24.1.)
-9. Supply Requests product discovery completion and later feature architecture.
-10. Fleet product discovery as a separate future domain.
-11. Equipment Activity Timeline assessment only after enough contributors exist.
+9. Supply Requests product discovery. (Completed in Phase 26.1.)
+10. Supply Requests feature architecture, independent review, and formal
+    acceptance. (Completed in Phases 26.2 through 26.2.2; implementation not
+    started.)
+11. Fleet product discovery as a separate future domain.
+12. Equipment Activity Timeline assessment only after enough contributors exist.
 
 ## 14. Remaining Product Decisions
 
@@ -350,13 +372,20 @@ reference, an optional unique Fuel Event-owned Daily Work Log activity link,
 completed-only correction, structured history filters, and implemented
 feature-owned Day View participation.
 
-Supply Requests require confirmation of:
+Supply Requests have no remaining Phase 26.1 product decisions. Confirmed V1
+direction includes NAM-only recording after corporate submission, one
+Equipment, reusable active/inactive Supply Items and supervisors, automatic
+requester snapshots, permanent annual NAM Reference, operational and actual
+submission dates, Requested/Fulfilled/Cancelled lifecycle, no Draft or normal
+delete, no partial fulfillment, explicit correction with full immutable
+history, optional role-specific Daily Log Activity links, structured current
+history filtering, and one operational-date Day View contribution.
 
-- Request lifecycle and retrieval questions.
-- Item, quantity, unit, and free-text requirements.
-- Whether one request can target multiple Equipment records.
-- Fulfillment, cancellation, correction, and deletion meaning.
-- Which optional relationships provide real operational value.
+The Approved Phase 26.2 architecture defines the concrete versioning, annual
+counter, transaction, concurrency, validation, route, query, and deletion
+architecture in `docs/architecture/features/supply-requests.md`. Independent
+review and formal acceptance are complete; separate authorization remains
+required before implementation.
 
 ## 15. Assessment Outcome
 
@@ -368,9 +397,12 @@ Operational Safety Checklists are accepted. Equipment Fuel Events architecture
 is Approved, its V1 foundation is implemented and accepted, and the Phase 22.3.1
 scoped lookup and test corrections are complete. Phase 24.1 Day View
 participation is implemented. The implementation introduced no Fleet purchase
-behavior or shared Equipment Operations infrastructure. Supply Requests remain a later
-discovery-stage feature, Fleet remains a separate future domain, and the
-Equipment Activity Timeline remains derived and deferred.
+behavior or shared Equipment Operations infrastructure. Supply Requests Phase
+26.1 discovery, Phase 26.2 feature architecture, Phase 26.2.1 independent
+review, and Phase 26.2.2 formal acceptance are complete. The architecture is
+Approved; implementation has not started, and Phase 26.3A requires separate
+authorization. Fleet remains a separate future domain, and the Equipment
+Activity Timeline remains derived and deferred.
 
 The Phase 23.3 checklist enhancement architecture is Approved. Phase 23.4 and
 its Phase 23.4.2 acceptance corrections implement meter units and NAM save

@@ -221,7 +221,10 @@ Capabilities:
   choices and snapshot meaning.
 - Equipment Fuel Events for operational fuel delivered to Equipment.
 - Separate future Fleet context remains deferred.
-- Supply Requests after remaining product discovery is complete.
+- Supply Requests, with Phase 26.1 product discovery, Phase 26.2 feature
+  architecture, Phase 26.2.1 independent review, and Phase 26.2.2 formal
+  acceptance complete. The architecture is Approved; implementation has not
+  started.
 
 Success criteria:
 
@@ -255,8 +258,10 @@ pass before the first real shift.
 
 No new product feature is required merely to continue preparation. Phase 23.5
 photo evidence remains blocked by its approved access and media prerequisites.
-Supply Requests discovery remains a likely post-pilot candidate only when pilot
-evidence confirms the workflow; it is not the automatic next milestone.
+The operational pilot remains gated and parked outside the Supply Requests
+feature series. Supply Requests were selected through explicit product
+direction; their architecture and later implementation do not authorize or
+depend on resuming the pilot.
 
 ### Phase 4: Knowledge And Sensitive Records
 
@@ -359,7 +364,7 @@ The MVP should not require:
 | Defect Tracking | Captures equipment issue history from report through closure. | Equipment reference data and feature architecture: `docs/architecture/features/defect-tracking.md`; stronger value with Day View. | V1 foundation, filtering, and Day View participation implemented |
 | Work Schedule and Timesheet | Supports personal schedule and time reconciliation. | Reference data; stronger value with Day View. Work Schedule feature architecture: `docs/architecture/features/work-schedule.md`; Timesheet feature architecture: `docs/architecture/features/timesheets.md`. | Work Schedule and Timesheet V1 foundations and Day View participation implemented; Timesheet structured, URL-addressable Weekly Timesheet history filtering complete |
 | Equipment Fuel Events | Captures operational fuel delivered to one Equipment subject, including multi-tank occurrences. | Equipment reference data; boundary assessment: `docs/architecture/equipment-operations.md`; feature architecture: `docs/architecture/features/equipment-fuel-events.md`; stronger value with Day View. | V1 foundation, structured history filtering, and Phase 24.1 Day View participation implemented |
-| Supply Requests | Preserves operator-originated supply requests without inventory ownership. | Remaining product discovery; boundary assessment: `docs/architecture/equipment-operations.md`. | Discovery-stage future feature |
+| Supply Requests | Preserves records of requests already submitted through the corporate system, with permanent identity, ordered catalog items, lifecycle, immutable history, and bounded Daily Log and Day View context. | Equipment reference data; Phase 26.1 product decisions; boundary assessment: `docs/architecture/equipment-operations.md`; Approved feature architecture: `docs/architecture/features/supply-requests.md`. | Phases 26.1, 26.2, 26.2.1, and 26.2.2 complete; architecture Approved; implementation not started; Phase 26.3A is the next candidate and requires separate authorization |
 | Operational Safety Checklist meter and confirmation | Adds explicit `HOURS`/`MILES` meter units and clear NAM save confirmation. | Approved Phase 23.3 architecture. | Phase 23.4 implemented; Phase 23.4.2 monotonic marker supersession and safe presentation fallback complete |
 | Operational Safety Checklist photo evidence | Adds optional checklist-level normalized photos with captions. | ADR-018 access boundary, Docker media processing, private storage, and coordinated backup/restore. | Architecture Approved; Phase 23.5 implementation and real photo use blocked until prerequisites close |
 | Fleet | May later address purchases, ownership, assignments, cards, receipts, registration, insurance, and replacement lifecycle. | Separate product discovery and architecture. | Deferred; not a prerequisite for Operational Safety Checklists |

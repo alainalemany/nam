@@ -672,8 +672,8 @@ before operational preparation continues.
 
 - Classify blocking, significant, minor, and future findings.
 - Select a next milestone only from observed operational need.
-- Treat Supply Requests discovery as a likely candidate, not an automatic next
-  step.
+- Keep the parked pilot exit review separate from the explicitly selected
+  Supply Requests feature series; it neither gates nor authorizes Phase 26.
 
 ## Supply Requests Roadmap
 
@@ -681,28 +681,105 @@ Boundary assessment:
 
 `docs/architecture/equipment-operations.md`
 
-Current status: Supply Requests are a confirmed discovery-stage feature.
-Feature architecture is blocked by remaining product decisions.
+Approved feature architecture:
 
-### Phase 1: Product Discovery
+`docs/architecture/features/supply-requests.md`
 
-- Confirm request lifecycle and retrieval questions.
-- Confirm item, quantity, unit, destination, fulfillment, correction, and
-  deletion behavior.
-- Confirm whether one request may concern multiple Equipment records.
-- Confirm which optional links to Defects, Daily Work Logs, or Work Orders have
-  real operational value.
-- Keep warehouse pickup for someone else's order in Daily Work Logs.
+Current status: Phase 26.1 product discovery, Phase 26.2 feature architecture,
+Phase 26.2.1 independent review, and Phase 26.2.2 formal architecture
+acceptance are complete. The architecture is Approved. Implementation has not
+started. Phase 26.3A is the next implementation candidate and requires separate
+explicit authorization.
 
-### Phase 2: Feature Architecture
+### Phase 26.1: Product Discovery And Decision Closure
 
-- Begin only after the product workflow is complete.
-- Preserve Supply Request ownership without inventory, purchasing, vendor, or
-  ERP responsibilities.
+Status: Complete
 
-### Phase 3: V1 Foundation
+- Confirmed that NAM records a request already submitted through the external
+  corporate system and does not submit or email it.
+- Confirmed one required Equipment, one required supervisor, automatic
+  requester snapshots, and one or more ordered catalog-item lines.
+- Confirmed active/inactive Supply Item and supervisor references with
+  historical snapshots.
+- Confirmed permanent annual NAM Reference, operational and actual submission
+  dates, Requested/Fulfilled/Cancelled lifecycle, no Draft, no ordinary delete,
+  and no partial fulfillment.
+- Confirmed explicit correction with a permanent reason and full immutable
+  relational history.
+- Confirmed bounded optional submission and fulfillment Daily Log Activity
+  links, one operational-date Day View contribution, and feature-owned
+  structured history filtering.
+- Excluded warehouse administration, inventory, procurement, Work Orders,
+  Defects, integrations, attachments, and generic audit or event frameworks.
 
-- Define only after feature architecture is approved.
+### Phase 26.2: Feature Architecture
+
+Status: Complete
+
+- Synchronize approved decisions into canonical product, module, database, and
+  roadmap documentation.
+- Define the complete feature-owned persistence, versioning, lifecycle,
+  filtering, Daily Log, Day View, validation, transaction, concurrency, and
+  deletion architecture.
+- Produce the Level 2 architecture, complete independent formal review, and
+  record formal acceptance separately.
+- Do not implement production code, Prisma schema, migrations, routes, actions,
+  queries, components, or tests.
+
+### Phase 26.2.1: Formal Architecture Review
+
+Status: Complete
+
+- Adversarially review canonical authority, immutable version ownership,
+  current-pointer integrity, reference allocation, correction concurrency,
+  reference snapshots, local-time semantics, Daily Log links, Day View,
+  filtering, validation, transactions, PostgreSQL feasibility, testing, and
+  delivery slicing.
+- Correct architecture defects without changing approved product meaning.
+- Recommend the corrected architecture for formal acceptance without
+  authorizing implementation.
+
+### Phase 26.2.2: Architecture Acceptance And Repository Synchronization
+
+Status: Complete
+
+- Formally accept the independently reviewed Supply Requests architecture.
+- Mark the feature architecture Approved across canonical documentation.
+- Preserve Phase 26.3A as the next implementation candidate, limited to
+  persistence schema and real-PostgreSQL integrity proof.
+- Preserve Phase 26.3B for transactional initial-create persistence.
+- Keep both implementation checkpoints subject to separate explicit
+  authorization.
+
+### Phase 26.3: Persistence Foundation
+
+Status: Planned; architecture Approved; explicit implementation authorization
+still required
+
+- Phase 26.3A should add the stable request identity, annual reference counter,
+  feature-owned references, ownership-constrained current pointer, immutable
+  versions, ordered version-line persistence, and real-PostgreSQL constraint
+  evidence.
+- Phase 26.3B should add the transactional initial-create persistence boundary
+  and prove snapshot capture, rollback, root locking, and adversarial concurrent
+  reference allocation.
+- Both persistence checkpoints exclude routes, forms, reference-management UI,
+  and lifecycle surfaces. They require architecture acceptance and separate
+  implementation authorization.
+
+### Later Implementation Slices
+
+- Supply Item and supervisor management.
+- Request create, current detail, and immutable original-version history.
+- Fulfillment and cancellation.
+- Explicit correction and full version review.
+- Structured current-version history filtering.
+- Explicit Daily Log Activity linking.
+- Feature-owned Day View participation.
+- Independent adversarial review, acceptance corrections, and roadmap closure.
+
+The operational pilot and Checkpoint D recovery remain parked outside this
+feature series. Supply Requests work does not resume or authorize them.
 
 ## Equipment Activity Timeline
 

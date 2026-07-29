@@ -223,6 +223,9 @@ The current implemented product capabilities include:
 
 Planned Version 1 product scope includes:
 
+- Supply Requests as truthful personal records of requests already submitted
+  through the corporate system, with durable history but no inventory,
+  procurement, warehouse-administration, or external-submission ownership.
 - Optional checklist-level photo evidence after ADR-018's access, processing,
   storage, and backup gates are satisfied.
 - Broader historical lookup through feature-owned views; global cross-module
