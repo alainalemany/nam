@@ -687,9 +687,10 @@ Approved feature architecture:
 
 Current status: Phase 26.1 product discovery, Phase 26.2 feature architecture,
 Phase 26.2.1 independent review, and Phase 26.2.2 formal architecture
-acceptance are complete. The architecture is Approved. Implementation has not
-started. Phase 26.3A is the next implementation candidate and requires separate
-explicit authorization.
+acceptance are complete. The architecture is Approved. Phase 26.3A persistence
+schema and PostgreSQL integrity proof are complete and accepted. The end-user
+feature is not implemented. Phase 26.3B is planned, has not started, and
+requires separate explicit authorization.
 
 ### Phase 26.1: Product Discovery And Decision Closure
 
@@ -753,19 +754,37 @@ Status: Complete
 
 ### Phase 26.3: Persistence Foundation
 
-Status: Planned; architecture Approved; explicit implementation authorization
-still required
+Status: In progress; Phase 26.3A complete and accepted; Phase 26.3B not started
 
-- Phase 26.3A should add the stable request identity, annual reference counter,
-  feature-owned references, ownership-constrained current pointer, immutable
-  versions, ordered version-line persistence, and real-PostgreSQL constraint
-  evidence.
-- Phase 26.3B should add the transactional initial-create persistence boundary
-  and prove snapshot capture, rollback, root locking, and adversarial concurrent
-  reference allocation.
-- Both persistence checkpoints exclude routes, forms, reference-management UI,
-  and lifecycle surfaces. They require architecture acceptance and separate
-  implementation authorization.
+#### Phase 26.3A: Persistence Schema And PostgreSQL Integrity Proof
+
+Status: Complete and accepted
+
+- Added two enums and six persistence models for feature-owned references, the
+  annual counter, stable root, immutable versions, and immutable ordered lines.
+- Added one additive migration with ownership-constrained composite
+  current-version integrity, approved unique constraints and indexes, and
+  Cascade, Restrict, and SetNull referential actions.
+- Proved the atomic annual-counter primitive, rollback, same-year concurrency,
+  cross-request ownership rejection, migration-chain integrity, and deletion
+  behavior in real PostgreSQL.
+- Accepted 11 focused and 8 existing PostgreSQL regression tests with zero
+  skipped tests; the full 437-test suite passed with zero skips.
+
+#### Phase 26.3B: Transactional Initial-Create Persistence
+
+Status: Planned; not started; separate authorization required
+
+- Add feature-owned requester configuration.
+- Add production Item Number and supervisor-email normalization.
+- Add production NAM Reference allocation and bounded transaction retry.
+- Validate input and reload active Equipment, supervisor, and Supply Items.
+- Capture Equipment, requester, supervisor, and Supply Item snapshots.
+- Create the stable root, version `1`, and ordered item lines.
+- Establish the compound current-version pointer before commit.
+- Prove complete rollback and concurrent complete-request creation.
+- Continue to exclude routes, forms, reference-management UI, lifecycle
+  actions, corrections, filtering, Daily Log links, and Day View.
 
 ### Later Implementation Slices
 

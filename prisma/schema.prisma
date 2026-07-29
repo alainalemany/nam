@@ -190,6 +190,19 @@ enum EquipmentFuelType {
   GASOLINE
 }
 
+enum SupplyRequestStatus {
+  REQUESTED
+  FULFILLED
+  CANCELLED
+}
+
+enum SupplyRequestVersionChangeKind {
+  CREATED
+  FULFILLED
+  CANCELLED
+  CORRECTED
+}
+
 enum OperationalSafetyChecklistTemplate {
   DRAGLINE_INSPECTION
   MOBILE_INSPECTION
@@ -279,6 +292,7 @@ model Equipment {
   timesheetWorkOrders     TimesheetWorkOrder[]          @relation("TimesheetWorkOrderEquipment")
   safetyChecklists        OperationalSafetyChecklist[]  @relation("OperationalSafetyChecklistEquipment")
   fuelEvents              EquipmentFuelEvent[]          @relation("EquipmentFuelEventEquipment")
+  supplyRequestVersions   SupplyRequestVersion[]        @relation("SupplyRequestVersionEquipment")
   equipmentNumber         String?
   displayName             String
   category                EquipmentCategory
@@ -829,4 +843,124 @@ model WorkAllocationSupportPerson {
 
   @@unique([workAllocationId, supportPersonId], map: "WorkAllocationSupportPerson_allocation_person_key")
   @@index([supportPersonId])
+}
+
+model SupplyItem {
+  id                   String                     @id @default(cuid())
+  itemNumber           String
+  normalizedItemNumber String                     @unique(map: "SupplyItem_normalizedItemNumber_key")
+  description          String
+  unitOfMeasure        String
+  active               Boolean                    @default(true)
+  versionItems         SupplyRequestVersionItem[]
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+
+  @@index([active], map: "SupplyItem_active_idx")
+  @@index([itemNumber], map: "SupplyItem_itemNumber_idx")
+  @@index([description], map: "SupplyItem_description_idx")
+}
+
+model SupplyRequestSupervisor {
+  id              String                 @id @default(cuid())
+  fullName        String
+  email           String
+  normalizedEmail String                 @unique(map: "SupplyRequestSupervisor_normalizedEmail_key")
+  active          Boolean                @default(true)
+  versions        SupplyRequestVersion[]
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([active], map: "SupplyRequestSupervisor_active_idx")
+  @@index([fullName], map: "SupplyRequestSupervisor_fullName_idx")
+}
+
+model SupplyRequestReferenceCounter {
+  referenceYear Int      @id
+  lastSequence  Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SupplyRequest {
+  id                String                 @id @default(cuid())
+  namReference      String                 @unique(map: "SupplyRequest_namReference_key")
+  referenceYear     Int
+  referenceSequence Int
+  currentVersionId  String?
+  versions          SupplyRequestVersion[] @relation("SupplyRequestOwnedVersions")
+  currentVersion    SupplyRequestVersion?  @relation("SupplyRequestCurrentVersion", fields: [currentVersionId, id], references: [id, supplyRequestId], onDelete: Restrict, map: "SupplyRequest_currentVersion_owner_fkey")
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  @@unique([referenceYear, referenceSequence], map: "SupplyRequest_year_sequence_key")
+  @@unique([currentVersionId, id], map: "SupplyRequest_current_owner_key")
+}
+
+model SupplyRequestVersion {
+  id                              String                         @id @default(cuid())
+  supplyRequestId                 String
+  supplyRequest                   SupplyRequest                  @relation("SupplyRequestOwnedVersions", fields: [supplyRequestId], references: [id], onDelete: Cascade, map: "SupplyRequestVersion_request_fkey")
+  currentForRequest               SupplyRequest?                 @relation("SupplyRequestCurrentVersion")
+  versionNumber                   Int
+  changeKind                      SupplyRequestVersionChangeKind
+  status                          SupplyRequestStatus
+  operationalWorkDate             DateTime                       @db.Date
+  submittedLocalDate              DateTime                       @db.Date
+  submittedLocalTime              String
+  equipmentId                     String?
+  equipment                       Equipment?                     @relation("SupplyRequestVersionEquipment", fields: [equipmentId], references: [id], onDelete: SetNull, map: "SupplyRequestVersion_equipment_fkey")
+  equipmentDisplayNameSnapshot    String
+  equipmentNumberSnapshot         String?
+  equipmentCategorySnapshot       EquipmentCategory
+  mineNameSnapshot                String
+  cityNameSnapshot                String
+  cityStateSnapshot               String?
+  requesterDisplayNameSnapshot    String
+  requesterEmployeeNumberSnapshot String
+  supervisorId                    String
+  supervisor                      SupplyRequestSupervisor        @relation(fields: [supervisorId], references: [id], onDelete: Restrict, map: "SupplyRequestVersion_supervisor_fkey")
+  supervisorNameSnapshot          String
+  supervisorEmailSnapshot         String
+  notes                           String?
+  fulfillmentOperationalWorkDate  DateTime?                      @db.Date
+  fulfilledLocalDate              DateTime?                      @db.Date
+  fulfilledLocalTime              String?
+  fulfillmentNote                 String?
+  cancelledLocalDate              DateTime?                      @db.Date
+  cancelledLocalTime              String?
+  cancellationReason              String?
+  correctionReason                String?
+  correctedByDisplayNameSnapshot  String?
+  correctionLocalDate             DateTime?                      @db.Date
+  correctionLocalTime             String?
+  items                           SupplyRequestVersionItem[]
+  createdAt                       DateTime                       @default(now())
+
+  @@unique([supplyRequestId, versionNumber], map: "SupplyRequestVersion_request_version_key")
+  @@unique([id, supplyRequestId], map: "SupplyRequestVersion_id_request_key")
+  @@index([operationalWorkDate], map: "SupplyRequestVersion_workDate_idx")
+  @@index([status], map: "SupplyRequestVersion_status_idx")
+  @@index([equipmentId], map: "SupplyRequestVersion_equipment_idx")
+  @@index([supervisorId], map: "SupplyRequestVersion_supervisor_idx")
+  @@index([submittedLocalDate, submittedLocalTime], map: "SupplyRequestVersion_submitted_idx")
+}
+
+model SupplyRequestVersionItem {
+  id                           String               @id @default(cuid())
+  versionId                    String
+  version                      SupplyRequestVersion @relation(fields: [versionId], references: [id], onDelete: Cascade, map: "SupplyRequestVersionItem_version_fkey")
+  supplyItemId                 String
+  supplyItem                   SupplyItem           @relation(fields: [supplyItemId], references: [id], onDelete: Restrict, map: "SupplyRequestVersionItem_supplyItem_fkey")
+  sequence                     Int
+  quantity                     Int
+  itemNumberSnapshot           String
+  normalizedItemNumberSnapshot String
+  descriptionSnapshot          String
+  unitOfMeasureSnapshot        String
+  createdAt                    DateTime             @default(now())
+
+  @@unique([versionId, sequence], map: "SupplyRequestVersionItem_version_sequence_key")
+  @@unique([versionId, supplyItemId], map: "SupplyRequestVersionItem_version_item_key")
+  @@index([supplyItemId], map: "SupplyRequestVersionItem_supplyItem_idx")
 }

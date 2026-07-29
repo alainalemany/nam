@@ -40,9 +40,18 @@ Related Documents:
 
 Last Reviewed: 2026-07-29
 
-Implementation Status: Architecture Approved only. No Supply Request
-persistence, migration, route, Server Action, query, component, or test is
-authorized by this document.
+Implementation Status: Phase 26.3A persistence schema and PostgreSQL integrity
+proof are implemented and accepted. The stable root, immutable versions,
+ordered version lines, feature-owned Supply Item and supervisor references,
+annual reference counter, compound current-version ownership, constraints,
+indexes, referential actions, and guarded PostgreSQL integrity tests now exist.
+Phase 26.3B transactional initial-create persistence has not started. No
+request workflow, route, form, lifecycle action, correction, filtering, Daily
+Log link, or Day View implementation exists.
+
+Phase 26.3A acceptance evidence: all 17 migrations applied from empty with no
+schema drift; 11 focused and 8 existing PostgreSQL regression tests passed; the
+full 437-test suite passed with zero skips.
 
 ## Contents
 
@@ -89,8 +98,9 @@ authorized by this document.
 The product decisions represented here are Confirmed. The persistence,
 transaction, route, query, and UI choices in this document are the Approved
 architecture selected to satisfy those requirements. Independent review and
-formal architecture acceptance are complete. Implementation still requires a
-separate explicitly authorized milestone.
+formal architecture acceptance are complete. Phase 26.3A persistence is
+implemented and accepted; every later implementation milestone still requires
+separate explicit authorization.
 
 Implementation guidance uses `should` where a repository-aligned technique may
 be refined without changing the approved behavior. Deferred items are not V1
@@ -1298,11 +1308,12 @@ Architecture acceptance does not authorize these milestones.
 
 Recommended sequence:
 
-1. Persistence schema and migration for references, annual counter, stable
-   root, ownership-constrained current pointer, immutable versions, version
-   lines, and PostgreSQL constraint tests.
-2. Transactional initial-create persistence, including reference allocation,
-   snapshot capture, complete version `1`, rollback, and adversarial concurrent
+1. **Complete and accepted:** persistence schema and migration for references,
+   annual counter, stable root, ownership-constrained current pointer,
+   immutable versions, version lines, and PostgreSQL constraint tests.
+2. **Planned; not started; separate authorization required:** transactional
+   initial-create persistence, including reference allocation, snapshot
+   capture, complete version `1`, rollback, and adversarial concurrent
    allocation tests, without routes or forms.
 3. Supply Item and supervisor management with normalized uniqueness and
    active/inactive behavior.
@@ -1319,14 +1330,14 @@ Recommended sequence:
     evidence, and acceptance corrections.
 11. Canonical roadmap closure only after implementation is accepted.
 
-The smallest safe next implementation milestone is Phase 26.3A: schema,
-migration, and real-PostgreSQL proof of the composite pointer, uniqueness,
-referential actions, and atomic annual-counter primitive. Phase 26.3B then owns
-transactional creation of a stable root with immutable version `1`. Separating
-the database integrity proof from the persistence service keeps failures
-attributable while preserving one architecture milestone. Both must exclude
-routes, forms, reference-management UI, and lifecycle surfaces until the
-persistence and concurrency invariants are proven.
+Phase 26.3A has proven the schema, migration, composite pointer, uniqueness,
+referential actions, and atomic annual-counter primitive. The smallest safe
+next candidate is Phase 26.3B, which owns transactional creation of a stable
+root with immutable version `1`; it has not started and requires separate
+explicit authorization. A committed null current-version pointer remains
+prohibited by that future sole production creation boundary. Phase 26.3B must
+continue to exclude routes, forms, reference-management UI, and lifecycle
+surfaces.
 
 ## 36. Architecture Invariants
 
