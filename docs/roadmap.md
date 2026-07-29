@@ -688,9 +688,11 @@ Approved feature architecture:
 Current status: Phase 26.1 product discovery, Phase 26.2 feature architecture,
 Phase 26.2.1 independent review, and Phase 26.2.2 formal architecture
 acceptance are complete. The architecture is Approved. Phase 26.3A persistence
-schema and PostgreSQL integrity proof are complete and accepted. The end-user
-feature is not implemented. Phase 26.3B is planned, has not started, and
-requires separate explicit authorization.
+schema and PostgreSQL integrity proof and Phase 26.3B transactional
+initial-create persistence are complete and accepted. Initial aggregate
+persistence exists, but the end-user feature is not implemented. Phase 26.4
+reference management is planned, has not started, and requires separate
+explicit authorization.
 
 ### Phase 26.1: Product Discovery And Decision Closure
 
@@ -754,7 +756,7 @@ Status: Complete
 
 ### Phase 26.3: Persistence Foundation
 
-Status: In progress; Phase 26.3A complete and accepted; Phase 26.3B not started
+Status: Complete and accepted
 
 #### Phase 26.3A: Persistence Schema And PostgreSQL Integrity Proof
 
@@ -773,22 +775,46 @@ Status: Complete and accepted
 
 #### Phase 26.3B: Transactional Initial-Create Persistence
 
+Status: Complete and accepted
+
+- Added strict create-input validation, immutable feature-owned requester
+  configuration, and Item Number, supervisor-name, and supervisor-email
+  normalization.
+- Added authoritative active-reference reload and server-owned Equipment,
+  Mine, City, requester, supervisor, and Supply Item snapshot capture.
+- Added atomic annual NAM Reference allocation, stable-root creation, immutable
+  version `1`, ordered immutable lines, and compound current-pointer
+  establishment in one transaction.
+- Added bounded whole-transaction retry and safe feature-owned persistence
+  errors; ambiguous connection outcomes do not retry.
+- Proved complete rollback, same-year and different-year concurrent creation,
+  submitted-year semantics, snapshot stability, and absence of partial
+  aggregates in real PostgreSQL.
+- Accepted 27 focused unit tests, 11 Phase 26.3B PostgreSQL tests, 11 Phase
+  26.3A PostgreSQL tests, and 8 existing PostgreSQL regressions with zero
+  skipped tests; the full 475-test suite passed with zero skips and no schema
+  drift.
+- Routes, forms, reference-management UI, lifecycle actions, corrections,
+  filtering, Daily Log links, and Day View remain unimplemented.
+
+### Phase 26.4: Supply Item And Supervisor Reference Management
+
 Status: Planned; not started; separate authorization required
 
-- Add feature-owned requester configuration.
-- Add production Item Number and supervisor-email normalization.
-- Add production NAM Reference allocation and bounded transaction retry.
-- Validate input and reload active Equipment, supervisor, and Supply Items.
-- Capture Equipment, requester, supervisor, and Supply Item snapshots.
-- Create the stable root, version `1`, and ordered item lines.
-- Establish the compound current-version pointer before commit.
-- Prove complete rollback and concurrent complete-request creation.
-- Continue to exclude routes, forms, reference-management UI, lifecycle
-  actions, corrections, filtering, Daily Log links, and Day View.
+- Add Supply Item list, search, create, edit, activate, and inactivate
+  workflows.
+- Add Supply Request Supervisor list, search, create, edit, activate, and
+  inactivate workflows.
+- Reuse the feature-owned validation and normalization boundaries established
+  by Phase 26.3B.
+- Preserve used-reference deletion protection and active/inactive historical
+  behavior.
+- Add focused Server Actions and management surfaces.
+- Keep the request create form outside this milestone unless separately
+  authorized.
 
 ### Later Implementation Slices
 
-- Supply Item and supervisor management.
 - Request create, current detail, and immutable original-version history.
 - Fulfillment and cancellation.
 - Explicit correction and full version review.
