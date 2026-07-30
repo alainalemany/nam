@@ -693,9 +693,11 @@ initial-create persistence and Phase 26.4 Supply Item and supervisor reference
 management are complete and accepted. Initial aggregate persistence and
 reference-management workflows exist. Phase 26.5 request create and initial
 detail surfaces are also complete and accepted, so the initial operator
-create/detail workflow is available. Fulfillment and cancellation are planned,
-have not started, and require separate explicit authorization. The broader
-feature remains incomplete.
+create/detail workflow is available. Phase 26.6 fulfillment and cancellation
+are complete and accepted, so the initial create, detail, and normal lifecycle
+workflow is available. Correct Request and full immutable version review are
+planned, have not started, and require separate explicit authorization. The
+broader feature remains incomplete.
 
 ### Phase 26.1: Product Discovery And Decision Closure
 
@@ -854,30 +856,62 @@ Status: Complete and accepted
   existing PostgreSQL regressions with zero skips; the full 572-test suite
   passed with zero skips and no schema drift.
 
-### Phase 26.6: Supply Request Fulfillment And Cancellation
+### Phase 26.6 — Supply Request Fulfillment And Cancellation
+
+Status: Complete and accepted
+
+- Added explicit Requested-to-Fulfilled and Requested-to-Cancelled lifecycle
+  routes and transitions.
+- Added automatic America/New_York lifecycle timestamps, required fulfillment
+  operational work date, optional Fulfillment Note, and optional Cancellation
+  Reason.
+- Added parameterized root-row locking with lock-before-read transaction
+  ordering, explicit current-pointer authority, expected-current-version stale
+  protection, and Requested-only transition validation.
+- Added complete parent-snapshot and ordered item-line copying into immutable
+  lifecycle versions with atomic same-owner current-pointer advancement.
+- Added rollback-only bounded transaction retry with one stable lifecycle
+  timestamp, attempt-owned regenerated IDs, and deterministic one-winner
+  concurrency.
+- Added Requested-state lifecycle controls and read-only Fulfilled and
+  Cancelled terminal detail while preserving immutable Requested version `1`.
+- Proved lifecycle transitions with inactive references and Equipment SetNull
+  without refreshing stored snapshots.
+- Made no Daily Log persistence, schema, migration, package, or infrastructure
+  change.
+- Accepted 11 lifecycle unit tests, 8 lifecycle Server Action tests, 8
+  lifecycle query tests, 7 lifecycle route/component tests, 19 accepted surface
+  regressions, 12 Phase 26.6 PostgreSQL tests, 8 Phase 26.5 PostgreSQL tests, 6
+  Phase 26.4 PostgreSQL tests, 11 Phase 26.3B PostgreSQL tests, 11 Phase 26.3A
+  PostgreSQL tests, and 8 existing PostgreSQL regressions with zero skips; the
+  full 618-test suite passed with zero skips and no schema drift.
+
+### Phase 26.7 — Correct Request And Full Immutable Version Review
 
 Status: Planned; not started; separate authorization required
 
-- Add the explicit Requested-to-Fulfilled and Requested-to-Cancelled
-  transitions.
-- Capture automatic America/New_York lifecycle timestamps, fulfillment
-  operational work date, optional Fulfillment Note, and optional Cancellation
-  Reason.
-- Validate the expected current version, lock the root row, append one complete
-  immutable next version, copy all item and snapshot facts, and advance the
-  current pointer atomically.
-- Add stale-action protection, current-detail lifecycle controls, and
-  read-only terminal-state detail.
-- Prove lifecycle concurrency, stale-write rejection, and complete rollback in
-  real PostgreSQL.
-- Keep Correct Request, a general version-history browser, canonical Supply
-  Request filtering, Daily Log relationship persistence, Day View
-  participation, partial fulfillment, Reopen, and request deletion outside
+- Add `/supply-requests/[id]/correct` with an explicit full Correct Request
+  form.
+- Require the expected current version and a bounded Correction Reason.
+- Capture the America/New_York correction timestamp and immutable corrected-by
+  snapshot for Alain Alemany.
+- Lock the stable root, reject stale actions, validate the complete corrected
+  aggregate, append one immutable corrected version, and atomically advance the
+  current pointer.
+- Preserve unchanged references and snapshots while deliberately refreshing
+  only changed references and requiring active replacements.
+- Support explicit status and lifecycle-fact correction.
+- Add general immutable version-detail support, Correction History summaries,
+  and superseded-version presentation.
+- Require real PostgreSQL correction concurrency, rollback, and historical
+  preservation evidence.
+- Keep canonical Supply Request filtering and pagination, Daily Log
+  relationship persistence, Day View participation, partial fulfillment,
+  normal Reopen, request deletion, and generic audit infrastructure outside
   this phase unless separately authorized.
 
 ### Later Implementation Slices
 
-- Explicit correction and full version review.
 - Structured current-version history filtering.
 - Explicit Daily Log Activity linking.
 - Feature-owned Day View participation.

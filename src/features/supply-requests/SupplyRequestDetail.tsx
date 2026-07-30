@@ -184,6 +184,89 @@ export function SupplyRequestDetail({
         <p>{detail.notes ?? "No Notes recorded."}</p>
       </section>
 
+      {!historical && detail.status === "REQUESTED" ? (
+        <section className="panel" aria-labelledby="lifecycle-actions">
+          <h2 id="lifecycle-actions">Update NAM lifecycle</h2>
+          <p>
+            Record fulfillment only after personally confirming complete
+            receipt, or record cancellation in NAM. These actions do not change
+            the external corporate request.
+          </p>
+          <div className="inline-actions">
+            <Link
+              className="button primary"
+              href={`/supply-requests/${encodeURIComponent(
+                detail.supplyRequestId,
+              )}/fulfill`}
+            >
+              Fulfill
+            </Link>
+            <Link
+              className="button secondary"
+              href={`/supply-requests/${encodeURIComponent(
+                detail.supplyRequestId,
+              )}/cancel`}
+            >
+              Cancel
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
+      {!historical && detail.status === "FULFILLED" ? (
+        <section className="panel detail-grid" aria-labelledby="fulfilled-facts">
+          <h2 className="full-width-field" id="fulfilled-facts">
+            Fulfillment facts
+          </h2>
+          <div>
+            <p className="eyebrow">Fulfillment operational work date</p>
+            <p>
+              {formatSupplyRequestDate(
+                detail.fulfillmentOperationalWorkDate ?? "",
+              )}
+            </p>
+          </div>
+          <div>
+            <p className="eyebrow">Fulfilled local date</p>
+            <p>{formatSupplyRequestDate(detail.fulfilledLocalDate ?? "")}</p>
+          </div>
+          <div>
+            <p className="eyebrow">Fulfilled local time</p>
+            <p>{detail.fulfilledLocalTime}</p>
+          </div>
+          <div className="full-width-field">
+            <p className="eyebrow">Fulfillment Note</p>
+            <p>{detail.fulfillmentNote ?? "No Fulfillment Note recorded."}</p>
+          </div>
+        </section>
+      ) : null}
+
+      {!historical && detail.status === "CANCELLED" ? (
+        <section className="panel detail-grid" aria-labelledby="cancelled-facts">
+          <h2 className="full-width-field" id="cancelled-facts">
+            Cancellation facts
+          </h2>
+          <div>
+            <p className="eyebrow">Cancelled local date</p>
+            <p>{formatSupplyRequestDate(detail.cancellationLocalDate ?? "")}</p>
+          </div>
+          <div>
+            <p className="eyebrow">Cancelled local time</p>
+            <p>{detail.cancellationLocalTime}</p>
+          </div>
+          <div className="full-width-field">
+            <p className="eyebrow">Cancellation Reason</p>
+            <p>
+              {detail.cancellationReason ?? "No Cancellation Reason recorded."}
+            </p>
+          </div>
+          <p className="full-width-field">
+            Cancellation is recorded in NAM only. It does not prove or perform
+            cancellation in the corporate system.
+          </p>
+        </section>
+      ) : null}
+
       {!historical ? (
         <>
           <section className="panel" aria-labelledby="history-heading">

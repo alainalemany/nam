@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import {
   getCurrentSupplyRequestDetailWithClient,
   getOriginalSupplyRequestDetailWithClient,
+  getSupplyRequestLifecycleActionContextWithClient,
   getSupplyRequestCreatePageDataWithClient,
   searchActiveSupplyRequestEquipmentWithClient,
   searchActiveSupplyRequestItemsWithClient,
@@ -47,4 +48,8 @@ export async function getOriginalSupplyRequestDetail(
   version: unknown,
 ) {
   return getOriginalSupplyRequestDetailWithClient(prisma, id, version);
+}
+
+export async function getSupplyRequestLifecycleActionContext(id: unknown) {
+  return getSupplyRequestLifecycleActionContextWithClient(prisma, id);
 }

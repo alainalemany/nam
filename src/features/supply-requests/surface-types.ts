@@ -97,7 +97,21 @@ export type SupplyRequestDetailView = Readonly<{
   fulfillmentOperationalWorkDate: string | null;
   fulfilledLocalDate: string | null;
   fulfilledLocalTime: string | null;
+  fulfillmentNote: string | null;
   cancellationLocalDate: string | null;
   cancellationLocalTime: string | null;
+  cancellationReason: string | null;
   correctionReason: string | null;
+}>;
+
+export type SupplyRequestLifecycleActionContext = Readonly<{
+  supplyRequestId: string;
+  namReference: string;
+  versionNumber: number;
+  status: "REQUESTED" | "FULFILLED" | "CANCELLED";
+  operationalWorkDate: string;
+  submittedLocalDate: string;
+  submittedLocalTime: string;
+  equipmentLabel: string;
+  itemCount: number;
 }>;

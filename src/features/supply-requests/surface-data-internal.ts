@@ -10,6 +10,10 @@ import type {
   SupplyRequestDetailView,
 } from "./surface-types";
 import {
+  isCanonicalSupplyRequestDate,
+  isCanonicalSupplyRequestLocalTime,
+} from "./validation";
+import {
   parseSupplyRequestOriginalVersion,
   parseSupplyRequestRouteId,
   parseSupplyRequestSearchQuery,
@@ -41,9 +45,14 @@ const versionSelect = {
   fulfillmentOperationalWorkDate: true,
   fulfilledLocalDate: true,
   fulfilledLocalTime: true,
+  fulfillmentNote: true,
   cancelledLocalDate: true,
   cancelledLocalTime: true,
+  cancellationReason: true,
   correctionReason: true,
+  correctedByDisplayNameSnapshot: true,
+  correctionLocalDate: true,
+  correctionLocalTime: true,
   createdAt: true,
   equipment: { select: { id: true } },
   items: {
@@ -60,7 +69,108 @@ const versionSelect = {
 } satisfies Prisma.SupplyRequestVersionSelect;
 
 function dateKey(value: Date | null) {
-  return value?.toISOString().slice(0, 10) ?? null;
+  if (!value || Number.isNaN(value.getTime())) return null;
+  const key = value.toISOString().slice(0, 10);
+  return isCanonicalSupplyRequestDate(key) ? key : null;
+}
+
+function lifecycleFieldsAreCoherent(
+  version: Prisma.SupplyRequestVersionGetPayload<{
+    select: typeof versionSelect;
+  }>,
+) {
+  const operationalWorkDate = dateKey(version.operationalWorkDate);
+  const submittedLocalDate = dateKey(version.submittedLocalDate);
+  const completeOrderedItems =
+    version.items.length > 0 &&
+    version.items.length <= 50 &&
+    version.items.every(
+      (item, index) =>
+        item.sequence === index + 1 &&
+        Number.isSafeInteger(item.quantity) &&
+        item.quantity >= 1 &&
+        item.quantity <= 999_999,
+    );
+  if (
+    !Number.isSafeInteger(version.versionNumber) ||
+    version.versionNumber < 1 ||
+    version.versionNumber > 2_147_483_647 ||
+    !operationalWorkDate ||
+    !submittedLocalDate ||
+    !isCanonicalSupplyRequestLocalTime(version.submittedLocalTime) ||
+    !completeOrderedItems
+  ) {
+    return false;
+  }
+
+  const fulfillmentOperationalWorkDate = dateKey(
+    version.fulfillmentOperationalWorkDate,
+  );
+  const fulfilledLocalDate = dateKey(version.fulfilledLocalDate);
+  const cancelledLocalDate = dateKey(version.cancelledLocalDate);
+  const hasFulfillment =
+    fulfillmentOperationalWorkDate !== null &&
+    fulfilledLocalDate !== null &&
+    version.fulfilledLocalTime !== null &&
+    isCanonicalSupplyRequestLocalTime(version.fulfilledLocalTime) &&
+    fulfillmentOperationalWorkDate >= operationalWorkDate &&
+    `${fulfilledLocalDate}T${version.fulfilledLocalTime}` >=
+      `${submittedLocalDate}T${version.submittedLocalTime}`;
+  const hasAnyFulfillment =
+    version.fulfillmentOperationalWorkDate !== null ||
+    version.fulfilledLocalDate !== null ||
+    version.fulfilledLocalTime !== null ||
+    version.fulfillmentNote !== null;
+  const hasCancellation =
+    cancelledLocalDate !== null &&
+    version.cancelledLocalTime !== null &&
+    isCanonicalSupplyRequestLocalTime(version.cancelledLocalTime) &&
+    `${cancelledLocalDate}T${version.cancelledLocalTime}` >=
+      `${submittedLocalDate}T${version.submittedLocalTime}`;
+  const hasAnyCancellation =
+    version.cancelledLocalDate !== null ||
+    version.cancelledLocalTime !== null ||
+    version.cancellationReason !== null;
+  const hasAnyCorrection =
+    version.correctionReason !== null ||
+    version.correctedByDisplayNameSnapshot !== null ||
+    version.correctionLocalDate !== null ||
+    version.correctionLocalTime !== null;
+  const hasCompleteCorrection =
+    version.correctionReason !== null &&
+    version.correctedByDisplayNameSnapshot !== null &&
+    version.correctionLocalDate !== null &&
+    version.correctionLocalTime !== null;
+  const correctionIsCoherent =
+    (version.changeKind !== "CORRECTED" && !hasAnyCorrection) ||
+    (version.changeKind === "CORRECTED" && hasCompleteCorrection);
+
+  if (version.status === "REQUESTED") {
+    return (
+      (version.changeKind === "CREATED" ||
+        version.changeKind === "CORRECTED") &&
+      !hasAnyFulfillment &&
+      !hasAnyCancellation &&
+      correctionIsCoherent
+    );
+  }
+  if (version.status === "FULFILLED") {
+    return (
+      (version.changeKind === "FULFILLED" ||
+        version.changeKind === "CORRECTED") &&
+      hasFulfillment &&
+      !hasAnyCancellation &&
+      correctionIsCoherent
+    );
+  }
+  return (
+    version.status === "CANCELLED" &&
+    (version.changeKind === "CANCELLED" ||
+      version.changeKind === "CORRECTED") &&
+    hasCancellation &&
+    !hasAnyFulfillment &&
+    correctionIsCoherent
+  );
 }
 
 function mapVersion(
@@ -69,7 +179,8 @@ function mapVersion(
   version: Prisma.SupplyRequestVersionGetPayload<{
     select: typeof versionSelect;
   }>,
-): SupplyRequestDetailView {
+): SupplyRequestDetailView | null {
+  if (!lifecycleFieldsAreCoherent(version)) return null;
   return {
     supplyRequestId,
     namReference,
@@ -111,8 +222,10 @@ function mapVersion(
     ),
     fulfilledLocalDate: dateKey(version.fulfilledLocalDate),
     fulfilledLocalTime: version.fulfilledLocalTime,
+    fulfillmentNote: version.fulfillmentNote,
     cancellationLocalDate: dateKey(version.cancelledLocalDate),
     cancellationLocalTime: version.cancelledLocalTime,
+    cancellationReason: version.cancellationReason,
     correctionReason: version.correctionReason,
   };
 }
@@ -276,6 +389,25 @@ export async function getCurrentSupplyRequestDetailWithClient(
     return null;
   }
   return mapVersion(root.id, root.namReference, root.currentVersion);
+}
+
+export async function getSupplyRequestLifecycleActionContextWithClient(
+  client: PrismaClient,
+  idInput: unknown,
+) {
+  const detail = await getCurrentSupplyRequestDetailWithClient(client, idInput);
+  if (!detail) return null;
+  return {
+    supplyRequestId: detail.supplyRequestId,
+    namReference: detail.namReference,
+    versionNumber: detail.versionNumber,
+    status: detail.status,
+    operationalWorkDate: detail.operationalWorkDate,
+    submittedLocalDate: detail.submittedLocalDate,
+    submittedLocalTime: detail.submittedLocalTime,
+    equipmentLabel: detail.equipmentLabel,
+    itemCount: detail.items.length,
+  } as const;
 }
 
 export async function getOriginalSupplyRequestDetailWithClient(

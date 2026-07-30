@@ -41,14 +41,14 @@ Related Documents:
 Last Reviewed: 2026-07-30
 
 Implementation Status: Phase 26.3A persistence schema and PostgreSQL integrity
-proof, Phase 26.3B transactional initial-create persistence, and Phase 26.4
-Supply Item and Supply Request Supervisor reference management are implemented
-and accepted. Phase 26.5 create and initial detail surfaces are also implemented
-and accepted. Operators can now record a request that was already submitted
-through the corporate system by using searchable active Equipment, supervisor,
-and Supply Item selection. Selected Supply Items support quantity editing,
-removal, and deterministic ordering, and submitted local date and time default
-from America/New_York.
+proof, Phase 26.3B transactional initial-create persistence, Phase 26.4 Supply
+Item and Supply Request Supervisor reference management, Phase 26.5 create and
+initial detail surfaces, and Phase 26.6 fulfillment and cancellation are
+implemented and accepted. Operators can record a request that was already
+submitted through the corporate system by using searchable active Equipment,
+supervisor, and Supply Item selection. Selected Supply Items support quantity
+editing, removal, and deterministic ordering, and submitted local date and time
+default from America/New_York.
 
 Initial creation continues to use the sole accepted transactional
 `createSupplyRequest(input)` boundary and redirects after commit to permanent
@@ -57,16 +57,31 @@ and immutable original version `1` is available read-only. Both surfaces render
 snapshots first, including after Equipment SetNull. Daily Work Log guidance is
 informational only and creates no relationship or row.
 
-The broader Supply Request workflow remains incomplete. Fulfillment,
-cancellation, correction, canonical request filtering, general immutable
-version history, Daily Log relationships, and Day View participation are not
-implemented.
+Requested Supply Requests now expose explicit Fulfill and Cancel actions.
+Both actions lock the stable root before loading current state, follow the
+explicit current-version pointer, compare the expected current version, append
+one complete immutable lifecycle version and ordered item-line set, and
+atomically advance the same-owner current pointer. Existing versions and item
+lines are never mutated. Parent snapshots and item lines copy exactly, so
+inactive references and Equipment SetNull remain transitionable and original
+Requested version `1` remains readable.
 
-Acceptance evidence: 18 helper and unit tests, 8 Server Action tests, 7 query
-tests, 12 route/component tests, 8 Phase 26.5 PostgreSQL tests, 6 Phase 26.4
-PostgreSQL tests, 11 Phase 26.3B PostgreSQL tests, 11 Phase 26.3A PostgreSQL
-tests, 8 existing PostgreSQL regression tests, and the full 572-test suite
-passed with zero skips and no schema drift.
+Lifecycle timestamps are captured automatically in America/New_York.
+Fulfillment records a fulfillment operational work date and optional
+Fulfillment Note. Cancellation records an optional Cancellation Reason in NAM
+only and does not cancel or contact the corporate system. Fulfilled and
+Cancelled are terminal for normal lifecycle actions.
+
+The broader Supply Request workflow remains incomplete. Correction, general
+immutable version history, canonical request filtering, Daily Log
+relationships, and Day View participation are not implemented.
+
+Acceptance evidence: 11 lifecycle unit tests, 8 lifecycle Server Action tests,
+8 lifecycle query tests, 7 lifecycle route/component tests, 19 accepted surface
+regression tests, 12 Phase 26.6 PostgreSQL tests, 8 Phase 26.5 PostgreSQL tests,
+6 Phase 26.4 PostgreSQL tests, 11 Phase 26.3B PostgreSQL tests, 11 Phase 26.3A
+PostgreSQL tests, 8 existing PostgreSQL regression tests, and the full 618-test
+suite passed with zero skips and no schema drift.
 
 ## Contents
 
@@ -115,9 +130,9 @@ transaction, route, query, and UI choices in this document are the Approved
 architecture selected to satisfy those requirements. Independent review and
 formal architecture acceptance are complete. Phase 26.3A persistence and Phase
 26.3B transactional initial-create persistence and Phase 26.4 reference
-management and Phase 26.5 create and initial detail surfaces are implemented
-and accepted; every later implementation milestone still requires separate
-explicit authorization.
+management, Phase 26.5 create and initial detail surfaces, and Phase 26.6
+fulfillment and cancellation are implemented and accepted; every later
+implementation milestone still requires separate explicit authorization.
 
 Implementation guidance uses `should` where a repository-aligned technique may
 be refined without changing the approved behavior. Deferred items are not V1
@@ -1341,10 +1356,12 @@ Recommended sequence:
    searchable active references, deterministic ordered item entry,
    America/New_York defaults, current-pointer authority, snapshot-first
    rendering, and informational Daily Work Log navigation only.
-5. **Next planned candidate; not started; separate authorization required:**
-   fulfillment and cancellation append-only lifecycle versions.
-6. Explicit full correction workflow, version history, and stale-write
-   protection.
+5. **Complete and accepted:** fulfillment and cancellation append-only
+   lifecycle versions with root locking, expected-version protection, complete
+   snapshot and line copying, terminal detail, and deterministic PostgreSQL
+   concurrency.
+6. **Next planned candidate; not started; separate authorization required:**
+   explicit Correct Request and full immutable version review.
 7. Structured current-version history filtering and pagination.
 8. `SUPPLY_REQUEST` Daily Log classification, bounded role-link persistence,
    and explicit submission and fulfillment Activity linking.
@@ -1361,12 +1378,17 @@ non-null ownership-constrained current pointer commit or roll back together.
 Phase 26.4 now provides the feature-owned Supply Item and supervisor management
 workflows without mutating accepted historical snapshots or creating Supply
 Request aggregates. Phase 26.5 now provides the initial operator create,
-current-detail, and read-only original-version `1` surfaces without adding
-lifecycle or relationship persistence. The smallest safe next candidate is
-fulfillment and cancellation through immutable complete versions. It has not
-started, requires separate explicit authorization, and must not include
-correction, request filtering, Daily Log persistence, or Day View participation
-unless separately authorized.
+current-detail, and read-only original-version `1` surfaces. Phase 26.6 now
+provides Requested-to-Fulfilled and Requested-to-Cancelled immutable lifecycle
+transitions with root locking, stale protection, complete snapshot and line
+copying, atomic pointer advancement, terminal detail, and no corporate-system
+or Daily Log mutation.
+
+The smallest safe next candidate is explicit Correct Request and full immutable
+version review. It has not started, requires separate explicit authorization,
+and must not include canonical history filtering, Daily Log persistence, Day
+View participation, partial fulfillment, Reopen, or request deletion unless
+separately authorized.
 
 ## 36. Architecture Invariants
 

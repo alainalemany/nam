@@ -66,7 +66,12 @@ function versionRecord(overrides: Record<string, unknown> = {}) {
     fulfilledLocalTime: null,
     cancelledLocalDate: null,
     cancelledLocalTime: null,
+    fulfillmentNote: null,
+    cancellationReason: null,
     correctionReason: null,
+    correctedByDisplayNameSnapshot: null,
+    correctionLocalDate: null,
+    correctionLocalTime: null,
     createdAt: new Date("2026-07-29T05:20:00.000Z"),
     items: [
       {

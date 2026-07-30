@@ -154,8 +154,10 @@ const detail: SupplyRequestDetailView = {
   fulfillmentOperationalWorkDate: null,
   fulfilledLocalDate: null,
   fulfilledLocalTime: null,
+  fulfillmentNote: null,
   cancellationLocalDate: null,
   cancellationLocalTime: null,
+  cancellationReason: null,
   correctionReason: null,
 };
 
@@ -464,7 +466,7 @@ describe("Supply Request create and detail surfaces", () => {
     expect(screen.getByText("Filter")).toBeInTheDocument();
   });
 
-  it("renders current detail from snapshots without lifecycle controls", () => {
+  it("renders current Requested detail from snapshots with approved lifecycle controls", () => {
     render(<SupplyRequestDetail detail={detail} />);
     expect(screen.getAllByText("SR-2026-0001").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Requested").length).toBeGreaterThan(0);
@@ -478,7 +480,15 @@ describe("Supply Request create and detail surfaces", () => {
       "href",
       "/daily-logs/new",
     );
-    expect(screen.queryByText(/Fulfill|Cancel|Correct|Delete/)).toBeNull();
+    expect(screen.getByRole("link", { name: "Fulfill" })).toHaveAttribute(
+      "href",
+      "/supply-requests/request-1/fulfill",
+    );
+    expect(screen.getByRole("link", { name: "Cancel" })).toHaveAttribute(
+      "href",
+      "/supply-requests/request-1/cancel",
+    );
+    expect(screen.queryByText(/Reopen|Correct Request|Delete/)).toBeNull();
   });
 
   it("renders immutable original state and missing-live-Equipment guidance", () => {
