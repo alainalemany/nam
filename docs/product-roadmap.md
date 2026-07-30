@@ -225,9 +225,11 @@ Capabilities:
   architecture, Phase 26.2.1 independent review, and Phase 26.2.2 formal
   acceptance complete. The architecture is Approved, and Phase 26.3A
   persistence foundation and Phase 26.3B transactional initial-create
-  persistence are implemented and accepted. Initial aggregate persistence now
-  exists, but the end-user workflow is not available. Supply Item and
-  supervisor reference management is the next candidate and requires separate
+  persistence and Phase 26.4 Supply Item and supervisor reference management
+  are implemented and accepted. Initial aggregate persistence and reusable
+  reference-management workflows now exist, but the end-user Supply Request
+  workflow is not available. Request create, current detail, and read-only
+  original-version history are the next candidate and require separate
   authorization.
 
 Success criteria:
@@ -368,7 +370,7 @@ The MVP should not require:
 | Defect Tracking | Captures equipment issue history from report through closure. | Equipment reference data and feature architecture: `docs/architecture/features/defect-tracking.md`; stronger value with Day View. | V1 foundation, filtering, and Day View participation implemented |
 | Work Schedule and Timesheet | Supports personal schedule and time reconciliation. | Reference data; stronger value with Day View. Work Schedule feature architecture: `docs/architecture/features/work-schedule.md`; Timesheet feature architecture: `docs/architecture/features/timesheets.md`. | Work Schedule and Timesheet V1 foundations and Day View participation implemented; Timesheet structured, URL-addressable Weekly Timesheet history filtering complete |
 | Equipment Fuel Events | Captures operational fuel delivered to one Equipment subject, including multi-tank occurrences. | Equipment reference data; boundary assessment: `docs/architecture/equipment-operations.md`; feature architecture: `docs/architecture/features/equipment-fuel-events.md`; stronger value with Day View. | V1 foundation, structured history filtering, and Phase 24.1 Day View participation implemented |
-| Supply Requests | Preserves records of requests already submitted through the corporate system, with permanent identity, ordered catalog items, lifecycle, immutable history, and bounded Daily Log and Day View context. | Equipment reference data; Phase 26.1 product decisions; boundary assessment: `docs/architecture/equipment-operations.md`; Approved feature architecture: `docs/architecture/features/supply-requests.md`. | Phases 26.1 through 26.3B complete and accepted; initial aggregate persistence exists; end-user feature not implemented; Supply Item and supervisor reference management is the next candidate and requires separate authorization |
+| Supply Requests | Preserves records of requests already submitted through the corporate system, with permanent identity, ordered catalog items, lifecycle, immutable history, and bounded Daily Log and Day View context. | Equipment reference data; Phase 26.1 product decisions; boundary assessment: `docs/architecture/equipment-operations.md`; Approved feature architecture: `docs/architecture/features/supply-requests.md`. | Phases 26.1 through 26.4 complete and accepted; initial aggregate persistence and Supply Item/supervisor management exist; end-user feature not implemented; request create/current-detail/original-version history is the next candidate and requires separate authorization |
 | Operational Safety Checklist meter and confirmation | Adds explicit `HOURS`/`MILES` meter units and clear NAM save confirmation. | Approved Phase 23.3 architecture. | Phase 23.4 implemented; Phase 23.4.2 monotonic marker supersession and safe presentation fallback complete |
 | Operational Safety Checklist photo evidence | Adds optional checklist-level normalized photos with captions. | ADR-018 access boundary, Docker media processing, private storage, and coordinated backup/restore. | Architecture Approved; Phase 23.5 implementation and real photo use blocked until prerequisites close |
 | Fleet | May later address purchases, ownership, assignments, cards, receipts, registration, insurance, and replacement lifecycle. | Separate product discovery and architecture. | Deferred; not a prerequisite for Operational Safety Checklists |

@@ -41,21 +41,27 @@ Related Documents:
 Last Reviewed: 2026-07-29
 
 Implementation Status: Phase 26.3A persistence schema and PostgreSQL integrity
-proof and Phase 26.3B transactional initial-create persistence are implemented
-and accepted. The production create boundary validates operator input, reloads
-active authoritative references, captures historical snapshots, allocates the
-permanent NAM Reference, creates the stable root, immutable version `1`, and
-ordered item lines, and establishes the ownership-constrained current pointer
-atomically. Complete rollback and concurrent same-year creation are proven
-against PostgreSQL.
+proof, Phase 26.3B transactional initial-create persistence, and Phase 26.4
+Supply Item and Supply Request Supervisor reference management are implemented
+and accepted. Supply Items and supervisors now have feature-owned list, search,
+create, edit, activate, and inactivate workflows. Normalized Item Number and
+normalized-email uniqueness are enforced safely, including under concurrent
+creates and edit collisions.
 
-The broader end-user Supply Requests workflow remains incomplete. No route,
-form, Server Action, Supply Item or supervisor management UI, lifecycle action,
-correction, filtering, Daily Log link, or Day View implementation exists.
+Used references remain editable and inactivatable, historical Supply Request
+snapshots remain immutable, and PostgreSQL prohibits hard deletion after use.
+Inactive references remain visible historically and unavailable to the
+accepted initial-create boundary until reactivated.
 
-Acceptance evidence: 27 focused unit tests, 11 Phase 26.3B PostgreSQL tests, 11
-Phase 26.3A PostgreSQL tests, 8 existing PostgreSQL regression tests, and the
-full 475-test suite passed with zero skips and no schema drift.
+The broader end-user Supply Request workflow remains incomplete. Request
+create, current detail, original-version history, lifecycle, correction,
+filtering, Daily Log links, and Day View participation are not implemented.
+
+Acceptance evidence: 14 validation and normalization tests, 9 Server Action
+tests, 6 query tests, 9 route/component tests, 6 Phase 26.4 PostgreSQL tests, 11
+Phase 26.3B PostgreSQL tests, 11 Phase 26.3A PostgreSQL tests, 8 existing
+PostgreSQL regression tests, and the full 519-test suite passed with zero skips
+and no schema drift.
 
 ## Contents
 
@@ -103,9 +109,9 @@ The product decisions represented here are Confirmed. The persistence,
 transaction, route, query, and UI choices in this document are the Approved
 architecture selected to satisfy those requirements. Independent review and
 formal architecture acceptance are complete. Phase 26.3A persistence and Phase
-26.3B transactional initial-create persistence are implemented and accepted;
-every later implementation milestone still requires separate explicit
-authorization.
+26.3B transactional initial-create persistence and Phase 26.4 reference
+management are implemented and accepted; every later implementation milestone
+still requires separate explicit authorization.
 
 Implementation guidance uses `should` where a repository-aligned technique may
 be refined without changing the approved behavior. Deferred items are not V1
@@ -1320,10 +1326,12 @@ Recommended sequence:
    including strict input validation, active-reference reload, reference
    allocation, snapshot capture, complete version `1`, rollback, and
    adversarial concurrent allocation tests, without routes or forms.
-3. **Planned; not started; separate authorization required:** Supply Item and
-   Supply Request Supervisor management with normalized uniqueness and
-   active/inactive behavior.
-4. Request create, current detail, and read-only original-version history
+3. **Complete and accepted:** Supply Item and Supply Request Supervisor list,
+   search, create, edit, activate, and inactivate workflows with normalized
+   uniqueness, bounded URL filtering, deterministic pagination, historical
+   snapshot preservation, and PostgreSQL concurrency and Restrict evidence.
+4. **Next planned candidate; not started; separate authorization required:**
+   request create, current detail, and read-only original-version history
    surfaces over the proven persistence boundary.
 5. Fulfillment and cancellation append-only lifecycle versions.
 6. Explicit full correction workflow, version history, and stale-write
@@ -1341,10 +1349,13 @@ referential actions, and atomic annual-counter primitive. Phase 26.3B now
 provides the sole production initial-create boundary and proves that a stable
 root, immutable version `1`, complete ordered lines, counter allocation, and
 non-null ownership-constrained current pointer commit or roll back together.
-The smallest safe next candidate is Supply Item and Supply Request Supervisor
-management. It has not started, requires separate explicit authorization, and
-must not introduce the request create form or later lifecycle surfaces unless
-separately authorized.
+Phase 26.4 now provides the feature-owned Supply Item and supervisor management
+workflows without mutating accepted historical snapshots or creating Supply
+Request aggregates. The smallest safe next candidate is request create,
+current detail, and read-only original-version history. It has not started,
+requires separate explicit authorization, and must not include fulfillment,
+cancellation, correction, general history filtering, Daily Log persistence, or
+Day View participation unless separately authorized.
 
 ## 36. Architecture Invariants
 

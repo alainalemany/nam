@@ -13,8 +13,12 @@ function collapseWhitespace(value: string) {
   return value.trim().replace(/\s+/gu, " ");
 }
 
-export function normalizeSupplyItemNumberDisplay(value: string) {
+export function normalizeSupplyRequestDisplayText(value: string) {
   return collapseWhitespace(value);
+}
+
+export function normalizeSupplyItemNumberDisplay(value: string) {
+  return normalizeSupplyRequestDisplayText(value);
 }
 
 export function normalizeSupplyItemNumberKey(value: string) {
@@ -24,7 +28,7 @@ export function normalizeSupplyItemNumberKey(value: string) {
 }
 
 export function normalizeSupervisorFullName(value: string) {
-  return collapseWhitespace(value);
+  return normalizeSupplyRequestDisplayText(value);
 }
 
 export function normalizeSupervisorEmail(value: string) {

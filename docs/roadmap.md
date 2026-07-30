@@ -689,10 +689,11 @@ Current status: Phase 26.1 product discovery, Phase 26.2 feature architecture,
 Phase 26.2.1 independent review, and Phase 26.2.2 formal architecture
 acceptance are complete. The architecture is Approved. Phase 26.3A persistence
 schema and PostgreSQL integrity proof and Phase 26.3B transactional
-initial-create persistence are complete and accepted. Initial aggregate
-persistence exists, but the end-user feature is not implemented. Phase 26.4
-reference management is planned, has not started, and requires separate
-explicit authorization.
+initial-create persistence and Phase 26.4 Supply Item and supervisor reference
+management are complete and accepted. Initial aggregate persistence and
+reference-management workflows exist, but the end-user feature is not
+implemented. Phase 26.5 request create and initial detail surfaces are planned,
+have not started, and require separate explicit authorization.
 
 ### Phase 26.1: Product Discovery And Decision Closure
 
@@ -799,23 +800,49 @@ Status: Complete and accepted
 
 ### Phase 26.4: Supply Item And Supervisor Reference Management
 
+Status: Complete and accepted
+
+- Added six management routes for Supply Item and Supply Request Supervisor
+  list, create, and edit surfaces.
+- Added database-owned search, active/inactive filtering, deterministic
+  pagination, create and edit workflows, and explicit activate and inactivate
+  actions.
+- Reused feature-owned normalization and added strict validation and Server
+  Action ownership, including rejection of unknown and duplicate submitted
+  fields.
+- Mapped only exact normalized Item Number and normalized-email uniqueness
+  conflicts, including concurrent create and edit-collision behavior.
+- Preserved historical Supply Request snapshots while used references remain
+  editable and inactivatable and PostgreSQL continues to Restrict hard
+  deletion.
+- Proved inactive-reference request rejection, reactivation eligibility,
+  aggregate isolation, concurrency, snapshot preservation, and cleanup in real
+  PostgreSQL.
+- Accepted 14 validation and normalization tests, 9 Server Action tests, 6
+  query tests, 9 route/component tests, 6 Phase 26.4 PostgreSQL tests, 11 Phase
+  26.3B PostgreSQL tests, 11 Phase 26.3A PostgreSQL tests, and 8 existing
+  PostgreSQL regressions with zero skips; the full 519-test suite passed with
+  zero skips and no schema drift.
+
+### Phase 26.5: Supply Request Create And Initial Detail Surfaces
+
 Status: Planned; not started; separate authorization required
 
-- Add Supply Item list, search, create, edit, activate, and inactivate
-  workflows.
-- Add Supply Request Supervisor list, search, create, edit, activate, and
-  inactivate workflows.
-- Reuse the feature-owned validation and normalization boundaries established
-  by Phase 26.3B.
-- Preserve used-reference deletion protection and active/inactive historical
-  behavior.
-- Add focused Server Actions and management surfaces.
-- Keep the request create form outside this milestone unless separately
-  authorized.
+- Add `/supply-requests/new` with searchable active Equipment, supervisor, and
+  Supply Item selection.
+- Add positive whole-number quantity entry and an ordered selected-item list.
+- Require successful corporate-submission confirmation and call the accepted
+  `createSupplyRequest` production boundary through a focused Server Action.
+- Redirect successful creation to a current Supply Request detail page.
+- Add a read-only original version `1` history view.
+- Offer explicit post-create Daily Log submission-narrative context, but do not
+  add Daily Log persistence without separate authorization.
+- Keep fulfillment, cancellation, correction, general history filtering, Daily
+  Log link persistence, and Day View participation outside this milestone
+  unless separately authorized.
 
 ### Later Implementation Slices
 
-- Request create, current detail, and immutable original-version history.
 - Fulfillment and cancellation.
 - Explicit correction and full version review.
 - Structured current-version history filtering.
