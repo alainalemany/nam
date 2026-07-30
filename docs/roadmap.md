@@ -691,9 +691,11 @@ acceptance are complete. The architecture is Approved. Phase 26.3A persistence
 schema and PostgreSQL integrity proof and Phase 26.3B transactional
 initial-create persistence and Phase 26.4 Supply Item and supervisor reference
 management are complete and accepted. Initial aggregate persistence and
-reference-management workflows exist, but the end-user feature is not
-implemented. Phase 26.5 request create and initial detail surfaces are planned,
-have not started, and require separate explicit authorization.
+reference-management workflows exist. Phase 26.5 request create and initial
+detail surfaces are also complete and accepted, so the initial operator
+create/detail workflow is available. Fulfillment and cancellation are planned,
+have not started, and require separate explicit authorization. The broader
+feature remains incomplete.
 
 ### Phase 26.1: Product Discovery And Decision Closure
 
@@ -826,24 +828,55 @@ Status: Complete and accepted
 
 ### Phase 26.5: Supply Request Create And Initial Detail Surfaces
 
+Status: Complete and accepted
+
+- Added three operator-facing routes for create, current detail, and immutable
+  original version `1`.
+- Added America/New_York submission defaults and searchable active Equipment,
+  supervisor, and Supply Item selection.
+- Added explicit item Add behavior, quantity editing, removal, deterministic
+  accessible ordering, and strict serialized nested-item validation.
+- Required the exact corporate-submission confirmation and reused the accepted
+  transactional `createSupplyRequest` boundary through one focused Server
+  Action.
+- Added safe commit-before-redirect behavior, field and aggregate errors, and
+  submitted-state recovery without action-level retry.
+- Made the explicit current-version pointer authoritative for current detail
+  and rendered current and original detail from immutable snapshots.
+- Preserved readability after live Equipment SetNull and provided
+  informational Daily Work Log navigation without relationship persistence.
+- Proved current-pointer authority, retirement races, rollback, Equipment
+  SetNull, snapshot preservation, later-slice absence, and bounded cleanup in
+  real PostgreSQL.
+- Accepted 18 helper and unit tests, 8 Server Action tests, 7 query tests, 12
+  route/component tests, 8 Phase 26.5 PostgreSQL tests, 6 Phase 26.4 PostgreSQL
+  tests, 11 Phase 26.3B PostgreSQL tests, 11 Phase 26.3A PostgreSQL tests, and 8
+  existing PostgreSQL regressions with zero skips; the full 572-test suite
+  passed with zero skips and no schema drift.
+
+### Phase 26.6: Supply Request Fulfillment And Cancellation
+
 Status: Planned; not started; separate authorization required
 
-- Add `/supply-requests/new` with searchable active Equipment, supervisor, and
-  Supply Item selection.
-- Add positive whole-number quantity entry and an ordered selected-item list.
-- Require successful corporate-submission confirmation and call the accepted
-  `createSupplyRequest` production boundary through a focused Server Action.
-- Redirect successful creation to a current Supply Request detail page.
-- Add a read-only original version `1` history view.
-- Offer explicit post-create Daily Log submission-narrative context, but do not
-  add Daily Log persistence without separate authorization.
-- Keep fulfillment, cancellation, correction, general history filtering, Daily
-  Log link persistence, and Day View participation outside this milestone
-  unless separately authorized.
+- Add the explicit Requested-to-Fulfilled and Requested-to-Cancelled
+  transitions.
+- Capture automatic America/New_York lifecycle timestamps, fulfillment
+  operational work date, optional Fulfillment Note, and optional Cancellation
+  Reason.
+- Validate the expected current version, lock the root row, append one complete
+  immutable next version, copy all item and snapshot facts, and advance the
+  current pointer atomically.
+- Add stale-action protection, current-detail lifecycle controls, and
+  read-only terminal-state detail.
+- Prove lifecycle concurrency, stale-write rejection, and complete rollback in
+  real PostgreSQL.
+- Keep Correct Request, a general version-history browser, canonical Supply
+  Request filtering, Daily Log relationship persistence, Day View
+  participation, partial fulfillment, Reopen, and request deletion outside
+  this phase unless separately authorized.
 
 ### Later Implementation Slices
 
-- Fulfillment and cancellation.
 - Explicit correction and full version review.
 - Structured current-version history filtering.
 - Explicit Daily Log Activity linking.

@@ -38,30 +38,35 @@ Related Documents:
 - `docs/architecture/features/equipment-fuel-events.md`
 - `docs/architecture/features/timesheets.md`
 
-Last Reviewed: 2026-07-29
+Last Reviewed: 2026-07-30
 
 Implementation Status: Phase 26.3A persistence schema and PostgreSQL integrity
 proof, Phase 26.3B transactional initial-create persistence, and Phase 26.4
 Supply Item and Supply Request Supervisor reference management are implemented
-and accepted. Supply Items and supervisors now have feature-owned list, search,
-create, edit, activate, and inactivate workflows. Normalized Item Number and
-normalized-email uniqueness are enforced safely, including under concurrent
-creates and edit collisions.
+and accepted. Phase 26.5 create and initial detail surfaces are also implemented
+and accepted. Operators can now record a request that was already submitted
+through the corporate system by using searchable active Equipment, supervisor,
+and Supply Item selection. Selected Supply Items support quantity editing,
+removal, and deterministic ordering, and submitted local date and time default
+from America/New_York.
 
-Used references remain editable and inactivatable, historical Supply Request
-snapshots remain immutable, and PostgreSQL prohibits hard deletion after use.
-Inactive references remain visible historically and unavailable to the
-accepted initial-create boundary until reactivated.
+Initial creation continues to use the sole accepted transactional
+`createSupplyRequest(input)` boundary and redirects after commit to permanent
+current detail. Current detail follows the explicit current-version pointer,
+and immutable original version `1` is available read-only. Both surfaces render
+snapshots first, including after Equipment SetNull. Daily Work Log guidance is
+informational only and creates no relationship or row.
 
-The broader end-user Supply Request workflow remains incomplete. Request
-create, current detail, original-version history, lifecycle, correction,
-filtering, Daily Log links, and Day View participation are not implemented.
+The broader Supply Request workflow remains incomplete. Fulfillment,
+cancellation, correction, canonical request filtering, general immutable
+version history, Daily Log relationships, and Day View participation are not
+implemented.
 
-Acceptance evidence: 14 validation and normalization tests, 9 Server Action
-tests, 6 query tests, 9 route/component tests, 6 Phase 26.4 PostgreSQL tests, 11
-Phase 26.3B PostgreSQL tests, 11 Phase 26.3A PostgreSQL tests, 8 existing
-PostgreSQL regression tests, and the full 519-test suite passed with zero skips
-and no schema drift.
+Acceptance evidence: 18 helper and unit tests, 8 Server Action tests, 7 query
+tests, 12 route/component tests, 8 Phase 26.5 PostgreSQL tests, 6 Phase 26.4
+PostgreSQL tests, 11 Phase 26.3B PostgreSQL tests, 11 Phase 26.3A PostgreSQL
+tests, 8 existing PostgreSQL regression tests, and the full 572-test suite
+passed with zero skips and no schema drift.
 
 ## Contents
 
@@ -110,8 +115,9 @@ transaction, route, query, and UI choices in this document are the Approved
 architecture selected to satisfy those requirements. Independent review and
 formal architecture acceptance are complete. Phase 26.3A persistence and Phase
 26.3B transactional initial-create persistence and Phase 26.4 reference
-management are implemented and accepted; every later implementation milestone
-still requires separate explicit authorization.
+management and Phase 26.5 create and initial detail surfaces are implemented
+and accepted; every later implementation milestone still requires separate
+explicit authorization.
 
 Implementation guidance uses `should` where a repository-aligned technique may
 be refined without changing the approved behavior. Deferred items are not V1
@@ -1330,10 +1336,13 @@ Recommended sequence:
    search, create, edit, activate, and inactivate workflows with normalized
    uniqueness, bounded URL filtering, deterministic pagination, historical
    snapshot preservation, and PostgreSQL concurrency and Restrict evidence.
-4. **Next planned candidate; not started; separate authorization required:**
-   request create, current detail, and read-only original-version history
-   surfaces over the proven persistence boundary.
-5. Fulfillment and cancellation append-only lifecycle versions.
+4. **Complete and accepted:** request create, current detail, and read-only
+   original-version `1` surfaces over the proven persistence boundary, with
+   searchable active references, deterministic ordered item entry,
+   America/New_York defaults, current-pointer authority, snapshot-first
+   rendering, and informational Daily Work Log navigation only.
+5. **Next planned candidate; not started; separate authorization required:**
+   fulfillment and cancellation append-only lifecycle versions.
 6. Explicit full correction workflow, version history, and stale-write
    protection.
 7. Structured current-version history filtering and pagination.
@@ -1351,11 +1360,13 @@ root, immutable version `1`, complete ordered lines, counter allocation, and
 non-null ownership-constrained current pointer commit or roll back together.
 Phase 26.4 now provides the feature-owned Supply Item and supervisor management
 workflows without mutating accepted historical snapshots or creating Supply
-Request aggregates. The smallest safe next candidate is request create,
-current detail, and read-only original-version history. It has not started,
-requires separate explicit authorization, and must not include fulfillment,
-cancellation, correction, general history filtering, Daily Log persistence, or
-Day View participation unless separately authorized.
+Request aggregates. Phase 26.5 now provides the initial operator create,
+current-detail, and read-only original-version `1` surfaces without adding
+lifecycle or relationship persistence. The smallest safe next candidate is
+fulfillment and cancellation through immutable complete versions. It has not
+started, requires separate explicit authorization, and must not include
+correction, request filtering, Daily Log persistence, or Day View participation
+unless separately authorized.
 
 ## 36. Architecture Invariants
 
