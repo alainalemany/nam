@@ -223,37 +223,27 @@ Capabilities:
 - Separate future Fleet context remains deferred.
 - Supply Requests, with Phase 26.1 product discovery, Phase 26.2 feature
   architecture, Phase 26.2.1 independent review, and Phase 26.2.2 formal
-  acceptance complete. The architecture is Approved, and Phase 26.3A
-  persistence foundation and Phase 26.3B transactional initial-create
-  persistence and Phase 26.4 Supply Item and supervisor reference management
-  and Phase 26.5 create and initial detail surfaces, Phase 26.6 fulfillment and
-  cancellation, Phase 26.7 Correct Request and full immutable version review,
-  Phase 26.8 canonical history and filtering, and Phase 26.9 explicit Daily Log
-  Activity linking are implemented and accepted.
-  Operators can record an already submitted Supply Request in NAM, manage
-  Supply Items and supervisors, review
-  current detail, mark a Requested record Fulfilled or Cancelled in NAM, and
-  explicitly correct NAM's historical record. Corrections append complete
-  immutable versions and may result in Requested, Fulfilled, or Cancelled
-  status. Terminal-to-Requested correction is historical repair, not Reopen.
-  Current detail exposes Correction History, and every immutable version is
-  available read-only with Original, Current, or Superseded presentation.
-  Operators can browse pointer-owned current requests through
-  `/supply-requests` with structured URL-addressable filters, used inactive
-  reference options, snapshot-first rows, and fifty-row normalized
-  filter-preserving pagination. Superseded versions remain inside each
-  request's immutable history. Operators can explicitly link existing Daily
-  Log Activities to Submission and Fulfillment roles. Daily Logs retain
-  Activity ownership; Supply Requests create no Daily Log or Activity
-  automatically, and replacement and removal remain explicit. Linked
-  Activities expose a source link to current Supply Request detail.
-  Corrections and Daily Log edits preserve link compatibility, including
-  existing Equipment Fuel Event compatibility, while Activity and Daily Log
-  deletion retain owner boundaries through cascades. Cancellation and
-  correction do not modify the corporate request. Day View participation
-  remains unavailable. Supply Request Day View participation is the next
-  candidate and requires separate authorization. Infrastructure and the
-  operational pilot remain outside this feature series.
+  acceptance complete. The architecture is Approved, Phases 26.3A through
+  26.10 are implemented and accepted, and Supply Requests V1 is complete and
+  accepted. The approved V1 operator workflow includes recording a request
+  already submitted through the corporate system, Supply Item and supervisor
+  management, permanent NAM References, current detail, fulfillment and
+  cancellation, explicit correction, complete immutable history, canonical
+  current-version history and filtering, explicit Submission and Fulfillment
+  Daily Log Activity links, and Day View participation. NAM never performs the
+  corporate submission and Supply Requests create no Daily Log or Activity
+  automatically.
+
+  Day View presents one structured current request per stable root on its
+  pointer-owned current operational work date. Resulting status, Equipment and
+  supervisor snapshots, current item count, and submitted local date/time come
+  from the feature-owned display-ready contract. Fulfillment Daily Log
+  narrative remains separate, and correction or Daily Log link state does not
+  create duplicate structured entries. Phase 26.10 required no schema or
+  migration change. No new Supply Requests implementation phase is planned;
+  deferred enhancements remain outside V1 and require separate product and
+  architecture authorization. Infrastructure recovery and the operational
+  pilot remain parked outside this feature series.
 
 Success criteria:
 
@@ -393,7 +383,7 @@ The MVP should not require:
 | Defect Tracking | Captures equipment issue history from report through closure. | Equipment reference data and feature architecture: `docs/architecture/features/defect-tracking.md`; stronger value with Day View. | V1 foundation, filtering, and Day View participation implemented |
 | Work Schedule and Timesheet | Supports personal schedule and time reconciliation. | Reference data; stronger value with Day View. Work Schedule feature architecture: `docs/architecture/features/work-schedule.md`; Timesheet feature architecture: `docs/architecture/features/timesheets.md`. | Work Schedule and Timesheet V1 foundations and Day View participation implemented; Timesheet structured, URL-addressable Weekly Timesheet history filtering complete |
 | Equipment Fuel Events | Captures operational fuel delivered to one Equipment subject, including multi-tank occurrences. | Equipment reference data; boundary assessment: `docs/architecture/equipment-operations.md`; feature architecture: `docs/architecture/features/equipment-fuel-events.md`; stronger value with Day View. | V1 foundation, structured history filtering, and Phase 24.1 Day View participation implemented |
-| Supply Requests | Preserves records of requests already submitted through the corporate system, with permanent identity, ordered catalog items, lifecycle, immutable history, and bounded Daily Log and Day View context. | Equipment reference data; Phase 26.1 product decisions; boundary assessment: `docs/architecture/equipment-operations.md`; Approved feature architecture: `docs/architecture/features/supply-requests.md`. | Phases 26.1 through 26.9 complete and accepted; create, current detail, reference management, lifecycle, Correct Request, immutable history, canonical current-version history/filtering, and explicit Submission/Fulfillment Daily Log Activity linking exist; Supply Request Day View participation is the next candidate and requires separate authorization; Day View remains unavailable; broader workflow incomplete |
+| Supply Requests | Preserves records of requests already submitted through the corporate system, with permanent identity, ordered catalog items, lifecycle, immutable history, and bounded Daily Log and Day View context. | Equipment reference data; Phase 26.1 product decisions; boundary assessment: `docs/architecture/equipment-operations.md`; Approved feature architecture: `docs/architecture/features/supply-requests.md`. | Supply Requests V1 complete and accepted; Phases 26.1 through 26.10 complete as applicable; create, current detail, reference management, lifecycle, Correct Request, immutable history, canonical current-version history/filtering, explicit Submission/Fulfillment Daily Log Activity linking, and Day View participation available; deferred enhancements remain outside V1 and require separate authorization |
 | Operational Safety Checklist meter and confirmation | Adds explicit `HOURS`/`MILES` meter units and clear NAM save confirmation. | Approved Phase 23.3 architecture. | Phase 23.4 implemented; Phase 23.4.2 monotonic marker supersession and safe presentation fallback complete |
 | Operational Safety Checklist photo evidence | Adds optional checklist-level normalized photos with captions. | ADR-018 access boundary, Docker media processing, private storage, and coordinated backup/restore. | Architecture Approved; Phase 23.5 implementation and real photo use blocked until prerequisites close |
 | Fleet | May later address purchases, ownership, assignments, cards, receipts, registration, insurance, and replacement lifecycle. | Separate product discovery and architecture. | Deferred; not a prerequisite for Operational Safety Checklists |

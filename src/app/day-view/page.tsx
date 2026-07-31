@@ -38,6 +38,10 @@ import {
 } from "@/features/stop-cards/constants";
 import { getStopCardsForDate } from "@/features/stop-cards/data";
 import { stopCardFilterHref } from "@/features/stop-cards/filters";
+import {
+  getSupplyRequestDayViewItems,
+  supplyRequestDayViewHistoryHref,
+} from "@/features/supply-requests/day-view-data";
 import { getTimesheetContextsForDate } from "@/features/timesheets/data";
 import {
   optionLabel as workAuthorizationOptionLabel,
@@ -70,6 +74,7 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
     workAuthorizations,
     defects,
     equipmentFuelEvents,
+    supplyRequests,
   ] = await Promise.all([
     getWorkScheduleContextsForDate(dateState.selectedDate),
     getTimesheetContextsForDate(dateState.selectedDate),
@@ -81,6 +86,7 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
     getWorkAuthorizationsForDate(dateState.selectedDate),
     getDefectsForDate(dateState.selectedDate),
     getEquipmentFuelEventDayViewItems(dateState.selectedDate),
+    getSupplyRequestDayViewItems(dateState.selectedDate),
   ]);
 
   return (
@@ -745,6 +751,67 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
                 </div>
                 <Link className="table-action" href={event.detailHref}>
                   View Fuel Event
+                </Link>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section
+        className="panel table-panel"
+        aria-labelledby="supply-requests-heading"
+      >
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Operational materials</p>
+            <h2 id="supply-requests-heading">Supply Requests</h2>
+          </div>
+          <span className="count-pill">{supplyRequests.length}</span>
+        </div>
+
+        {supplyRequests.length === 0 ? (
+          <div className="empty-state">
+            <h3>No Supply Requests for this day</h3>
+            <p>
+              NAM records Supply Requests only after they were submitted through
+              the corporate system. No current Supply Request has the selected
+              operational work date.
+            </p>
+            <div className="button-row">
+              <Link className="button primary" href="/supply-requests/new">
+                Record Submitted Request
+              </Link>
+              <Link
+                className="button secondary"
+                href={supplyRequestDayViewHistoryHref(dateState.selectedDate)}
+              >
+                Open Supply Requests
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="record-list">
+            {supplyRequests.map((request) => (
+              <article className="record-card" key={request.supplyRequestId}>
+                <div>
+                  <p className="eyebrow">{request.statusLabel}</p>
+                  <h3>{request.namReference}</h3>
+                  <p>{request.equipmentLabel}</p>
+                  <dl className="meta-list">
+                    <dt>Supervisor</dt>
+                    <dd>{request.supervisorName}</dd>
+                    <dt>Items</dt>
+                    <dd>{request.itemCount}</dd>
+                    <dt>Submitted</dt>
+                    <dd>
+                      {request.submittedLocalDate} at {request.submittedLocalTime}{" "}
+                      local
+                    </dd>
+                  </dl>
+                </div>
+                <Link className="table-action" href={request.detailHref}>
+                  View Supply Request
                 </Link>
               </article>
             ))}

@@ -66,7 +66,7 @@ documentation architecture milestone explicitly approves that reorganization.
 | Feature | Document | Status |
 | --- | --- | --- |
 | Daily Work Logs | [Daily Work Logs Architecture](daily-work-logs.md) | Approved; V1 foundation, filtering, date navigation, and Day View participation implemented |
-| Day View | [Day View Architecture](day-view.md) | Approved; selected-date composition implemented with ten feature-owned contributors |
+| Day View | [Day View Architecture](day-view.md) | Approved; selected-date composition implemented with eleven feature-owned contributors, including Supply Requests |
 | STOP Cards | [STOP Cards Architecture](stop-cards.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 | Daily Inspections | [Daily Inspections Architecture](daily-inspections.md) | Approved; V1 foundation, current-schema filtering, and Day View participation implemented |
 | Operational Safety Checklists | [Operational Safety Checklists Architecture](operational-safety-checklists.md) | Approved; V1 foundation accepted; Phase 23.4 meter units, mismatch confirmation, NAM save feedback, and Create Another implemented; Phase 23.4.2 monotonic marker and fallback corrections complete; Phase 24.1 Day View participation implemented; photo evidence access-gated under ADR-018 |
@@ -76,7 +76,7 @@ documentation architecture milestone explicitly approves that reorganization.
 | Work Schedule | [Work Schedule Architecture](work-schedule.md) | Approved; V1 foundation and Day View participation implemented |
 | Timesheet | [Timesheet Architecture](timesheets.md) | Approved; V1 foundation and Day View participation implemented |
 | Equipment Fuel Events | [Equipment Fuel Events Architecture](equipment-fuel-events.md) | Approved; V1 foundation, feature-owned history filtering, and Phase 24.1 Day View participation implemented |
-| Supply Requests | [Supply Requests Architecture](supply-requests.md) | Architecture Approved; Phases 26.3A through 26.9 implemented and accepted; create, detail, reference management, lifecycle, correction, immutable history, canonical history/filtering, and explicit Daily Log Activity linking available; Day View participation not started; broader feature implementation incomplete |
+| Supply Requests | [Supply Requests Architecture](supply-requests.md) | Architecture Approved; Phases 26.3A through 26.10 accepted; Supply Requests V1 complete and accepted with create, detail, reference management, lifecycle, correction, immutable history, canonical history/filtering, explicit Daily Log Activity linking, and Day View participation available; deferred enhancements remain outside V1 and require separate authorization |
 
 ## Related Domain Assessments
 

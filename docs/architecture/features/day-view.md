@@ -43,8 +43,12 @@ Related Documents:
 - `docs/architecture/features/work-schedule.md`
 - `docs/architecture/features/timesheets.md`
 - `docs/architecture/features/equipment-fuel-events.md`
+- `docs/architecture/features/supply-requests.md`
 
-Last Reviewed: 2026-07-17
+Last Reviewed: 2026-07-31
+
+Implementation Status: Selected-date composition is implemented with eleven
+feature-owned contributors, including Supply Requests.
 
 ## 1. Purpose
 
@@ -83,10 +87,10 @@ Implemented foundation:
 
 - `/day-view` selected-workday composition route.
 - Previous-day, next-day, and today navigation using feature-owned date helpers.
-- Parallel composition of Work Schedule, Timesheet, Daily Work Logs, STOP
-  Cards, Daily Inspections, Operational Safety Checklists, Shift Reports, Work
-  Authorizations, Defect Tracking, and Equipment Fuel Events through
-  module-owned read helpers.
+- Explicit parallel composition of eleven feature-owned contributors: Work
+  Schedule, Timesheet, Daily Work Logs, STOP Cards, Daily Inspections,
+  Operational Safety Checklists, Shift Reports, Work Authorizations, Defect
+  Tracking, Equipment Fuel Events, and Supply Requests.
 - Module sections that link to owning detail routes and distinguish an
   implemented-empty state from an unimplemented module.
 
@@ -184,6 +188,24 @@ components, and every contributor receives the same canonical selected date.
 After selection, each feature still owns the meaning of that date for its
 records, including shift-start and other operational-date semantics.
 
+Supply Requests receive that same canonical selected date and return one
+display-ready current request per stable root whose pointer-owned operational
+work date matches. Their contract contains NAM Reference, resulting-status
+label, immutable Equipment label, immutable supervisor-name snapshot, current
+item count, submitted local date and time, and a stable current-detail link. It
+does not contain complete item lines. Day View does not query Supply Request
+tables, select current versions, interpret status, count items, format Equipment
+snapshots, inspect immutable history, or infer Daily Log links.
+
+Fulfillment or cancellation creates no second structured Supply Request entry.
+A fulfillment Daily Log Activity may independently remain visible through the
+Daily Work Logs contributor. Supply Request query and integrity failures follow
+the existing Day View failure boundary and are not rendered as an empty Supply
+Requests section. The selected-date empty state links to Record Submitted
+Request and to canonical Supply Request history filtered to the selected date.
+Day View remains read-only, and the explicit parallel composition introduces no
+generic contributor registry.
+
 ## 7. UI Composition
 
 Day View should be work-focused and scannable.
@@ -278,11 +300,14 @@ Implemented participation:
 - Equipment Fuel Event participation as chronologically ordered fueling
   occurrences with historical identity, ordered Tank Fill summaries, and
   persisted totals.
+- Supply Request participation as one stable-root-owned current structured
+  request on its pointer-owned operational work date, using a display-ready
+  feature contract and snapshot-first identity.
 
 Planned evolution:
 
-- Additional module sections as Supply Requests and other date-relevant records
-  receive separately approved feature-owned Day View contributions.
+- Additional module sections as other date-relevant records receive separately
+  approved feature-owned Day View contributions.
 - Operational Safety Checklist photo evidence remains excluded from Day View;
   Day View does not query or serve media.
 

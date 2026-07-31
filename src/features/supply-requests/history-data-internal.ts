@@ -20,7 +20,7 @@ import {
   isCanonicalSupplyRequestLocalTime,
 } from "./validation";
 
-const currentVersionRowSelect = {
+export const currentVersionRowSelect = {
   id: true,
   supplyRequestId: true,
   versionNumber: true,
@@ -54,7 +54,7 @@ const currentVersionRowSelect = {
   _count: { select: { items: true } },
 } satisfies Prisma.SupplyRequestVersionSelect;
 
-type CurrentVersionRow = Prisma.SupplyRequestVersionGetPayload<{
+export type CurrentVersionRow = Prisma.SupplyRequestVersionGetPayload<{
   select: typeof currentVersionRowSelect;
 }>;
 
@@ -166,7 +166,7 @@ function currentRowIsCoherent(version: CurrentVersionRow) {
   );
 }
 
-function mapRow(root: {
+export function mapRow(root: {
   id: string;
   namReference: string;
   currentVersionId: string | null;

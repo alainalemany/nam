@@ -687,21 +687,13 @@ Approved feature architecture:
 
 Current status: Phase 26.1 product discovery, Phase 26.2 feature architecture,
 Phase 26.2.1 independent review, and Phase 26.2.2 formal architecture
-acceptance are complete. The architecture is Approved. Phase 26.3A persistence
-schema and PostgreSQL integrity proof and Phase 26.3B transactional
-initial-create persistence and Phase 26.4 Supply Item and supervisor reference
-management are complete and accepted. Initial aggregate persistence and
-reference-management workflows exist. Phase 26.5 request create and initial
-detail surfaces are also complete and accepted, so the initial operator
-create/detail workflow is available. Phase 26.6 fulfillment and cancellation
-are complete and accepted. Phase 26.7 Correct Request and full immutable
-version review, Phase 26.8 canonical history and filtering, and Phase 26.9
-Supply Request Daily Log Activity linking are complete and accepted, so create,
-detail, normal lifecycle, historical correction, Correction History, read-only
-immutable version review, canonical current-version history/filtering, and
-explicit Submission/Fulfillment Activity linking are available. Phase 26.10
-Supply Request Day View participation is planned, has not started, and requires
-separate explicit authorization. The broader feature remains incomplete.
+acceptance are complete. The architecture is Approved. Phases 26.3A through
+26.10 are implemented and accepted. Supply Requests V1 and its approved
+delivery sequence are complete and accepted, including reference management,
+create and current detail, lifecycle, correction, immutable history, canonical
+history/filtering, explicit Submission/Fulfillment Daily Log Activity links,
+and Day View participation. Deferred enhancements remain outside V1 and
+require new product review, architecture review, and explicit authorization.
 
 ### Phase 26.1: Product Discovery And Decision Closure
 
@@ -1007,33 +999,48 @@ Status: Complete and accepted
 
 ### Phase 26.10 — Supply Request Day View Participation
 
-Status: Planned; not started; separate authorization required
+Status: Complete and accepted
 
-- Add one feature-owned selected-date query over explicit pointer-owned current
-  versions whose operational work date equals the selected date.
-- Return exactly one display-ready entry per stable Supply Request with NAM
-  Reference, immutable Equipment label, current item count, supervisor-name
-  snapshot, resulting-status label, actual submitted local date/time, and a
-  stable current-detail link.
-- Keep complete item arrays outside the Day View payload.
-- Order by submitted local date, submitted local time, NAM Reference, and
-  stable database identity, all ascending.
-- Keep Supply Request table access, status interpretation, item counting, and
-  Equipment snapshot formatting inside the feature-owned query boundary.
-- Do not create a second structured entry for fulfillment or cancellation;
-  independently dated Fulfillment Daily Log narrative may still appear through
-  the Daily Log contributor.
-- Require real PostgreSQL current-pointer, correction-date movement, snapshot,
-  deterministic-ordering, and no-duplicate evidence.
-- Keep partial fulfillment, received or outstanding quantity, normal Reopen,
-  request deletion, generic audit infrastructure, analytics, reports, exports,
-  deployment, and operational pilot work outside this phase unless separately
-  authorized.
+- Added one feature-owned selected-date query owned by stable Supply Request
+  roots and their explicit current-version relation.
+- Uses exact current operational-work-date equality, returns one structured
+  entry per stable root, excludes superseded versions, and moves that entry
+  when correction changes the current operational date.
+- Returns resulting-status presentation, immutable Equipment and supervisor
+  snapshots, Equipment SetNull readability, pointer-owned item count, submitted
+  local date/time, NAM Reference, and a stable current-detail link without
+  complete item arrays.
+- Orders in PostgreSQL by submitted local date, submitted local time, NAM
+  Reference, and stable root ID, all ascending, with no application-memory sort,
+  deduplication, or silent limit.
+- Preserves the existing explicit Day View parallel composition and every
+  existing contributor while adding the Supply Requests section, count,
+  selected-date empty state, and canonical filtered-history link.
+- Keeps fulfillment Daily Log narrative and Supply Request Daily Log link state
+  independent from structured Supply Request cardinality.
+- Fails safely for invalid dates, malformed selected-current state, unexpected
+  query failures, and unrelated null-pointer roots without converting failures
+  into empty results.
+- Is read-only and adds no schema change, migration, mutation, generic
+  contributor registry, event, or audit persistence.
+- Real PostgreSQL evidence proves pointer and decoy authority, correction date
+  movement, lifecycle cardinality, snapshots, SetNull, current item count,
+  deterministic ordering, link-state independence, read-only behavior, and
+  cleanup with zero skipped tests and no drift.
 
-### Later Implementation Slices
+### Supply Requests V1 Closure
 
-- Feature-owned Day View participation.
-- Independent adversarial review, acceptance corrections, and roadmap closure.
+Status: Complete and accepted
+
+- Supply Requests V1 complete and accepted.
+- Approved V1 delivery sequence complete.
+- Phases 26.3A through 26.10 are implemented and accepted.
+- No additional Supply Requests V1 implementation phase is planned.
+- Deferred enhancements remain outside V1 and are not incomplete V1 work.
+- Any future Supply Request enhancement requires new product review,
+  architecture review, and separate explicit authorization.
+- Checkpoint D recovery, deployment, and the operational pilot remain parked
+  and are not resumed by this closure.
 
 The operational pilot and Checkpoint D recovery remain parked outside this
 feature series. Supply Requests work does not resume or authorize them.

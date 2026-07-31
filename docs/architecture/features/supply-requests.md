@@ -40,7 +40,9 @@ Related Documents:
 
 Last Reviewed: 2026-07-31
 
-Implementation Status: Phases 26.3A through 26.9 are implemented and accepted.
+Implementation Status: Phases 26.3A through 26.10 are implemented and
+accepted. Supply Requests V1 complete and accepted. Approved V1 delivery
+sequence complete.
 Operators can record a request that was already submitted through the corporate
 system by using searchable active Equipment, supervisor, and Supply Item
 selection. Selected Supply Items support quantity editing, removal, and
@@ -162,18 +164,40 @@ Daily Log edits that would invalidate a link are rejected without silent
 unlinking, automatic repair, or narrative rewriting. Daily Log Activity edits
 also preserve existing Equipment Fuel Event compatibility.
 
-The broader Supply Request workflow remains incomplete. Day View participation
-is not implemented.
+Supply Requests now participate in Day View through one feature-owned
+selected-date query. Day View supplies one canonical date, and Supply Requests
+own its operational meaning. A stable root contributes at most one structured
+entry when its explicit pointer-owned current version has that operational work
+date. Original, lifecycle, corrected, superseded, and decoy versions are not
+separate entries. Fulfillment and cancellation create no second entry, while a
+correction moves the single entry when the current operational work date
+changes. Fulfillment Daily Log narrative remains independently visible through
+the Daily Log contributor, and Daily Log link state does not change structured
+Supply Request cardinality.
 
-Acceptance evidence: 4 Phase 26.9 schema/migration tests, 14 Phase 26.9
-validation/persistence unit tests, 7 Phase 26.9 Server Action tests, 5 Phase
-26.9 query tests, 10 Phase 26.9 route/component tests, 12 Phase 26.9 PostgreSQL
-tests, 8 Phase 26.8 PostgreSQL tests, 10 Phase 26.7 PostgreSQL tests, 12 Phase
-26.6 PostgreSQL tests, 8 Phase 26.5 PostgreSQL tests, 6 Phase 26.4 PostgreSQL
-tests, 11 Phase 26.3B PostgreSQL tests, 11 Phase 26.3A PostgreSQL tests, 8
-existing PostgreSQL regression tests, 14 existing Daily Log tests, and the
-full 746-test suite passed with zero skips, 18 disposable migrations, and no
-schema drift.
+The Day View query validates pointer and owner identity through the accepted
+persisted-current summary integrity boundary. It returns database-owned current
+item count, immutable Equipment and supervisor snapshots, resulting-status
+label, actual submitted local date and time, NAM Reference, and a stable
+current-detail link. Equipment SetNull remains readable. It loads no complete
+item arrays, live display references, or Daily Log links. Ordering is submitted
+local date, submitted local time, NAM Reference, and stable Supply Request ID,
+all ascending in PostgreSQL, with no application filtering, sorting,
+deduplication, or silent limit. Invalid direct dates, malformed selected
+current state, and unexpected query failures fail safely without becoming
+empty arrays. Unrelated null-pointer roots do not disable every selected date.
+The contribution is read-only and creates or modifies no request, version,
+item, link, Daily Log, Activity, counter, event, or audit row.
+
+Acceptance evidence: 33 Phase 26.10 unit tests, 5 Phase 26.10 query tests, 8
+Phase 26.10 route/component tests, 7 Phase 26.10 PostgreSQL tests, 12 Phase 26.9
+PostgreSQL tests, 8 Phase 26.8 PostgreSQL tests, 10 Phase 26.7 PostgreSQL tests,
+12 Phase 26.6 PostgreSQL tests, 8 Phase 26.5 PostgreSQL tests, 6 Phase 26.4
+PostgreSQL tests, 11 Phase 26.3B PostgreSQL tests, 11 Phase 26.3A PostgreSQL
+tests, and 8 existing PostgreSQL regression tests passed as 93 combined
+PostgreSQL tests. Fourteen existing Daily Log tests, 52 existing Day View
+tests, and the full 799-test suite passed with zero skips, 18 disposable
+migrations, and no schema drift.
 
 ## Contents
 
@@ -923,12 +947,17 @@ mutate or unlink narrative history.
 
 ## 22. Day View Participation
 
-Supply Requests contribute only the current version whose operational work date
-equals the selected Day View date.
+Day View supplies one canonical selected operational date. Supply Requests own
+the meaning of that date and contribute only a stable root whose explicit
+pointer-owned current version has an equal operational work date.
 
-Fulfillment and cancellation do not create additional structured Supply Request
-entries. A fulfillment Daily Log Activity may independently appear as Daily Log
-narrative on its own date.
+Every stable root contributes at most one structured entry. Original,
+lifecycle, corrected, superseded, and divergent decoy versions are not separate
+entries. Fulfillment and cancellation do not create additional structured
+Supply Request entries. Correction moves the one entry when the pointer-owned
+operational work date changes. A fulfillment Daily Log Activity may
+independently appear as Daily Log narrative on its own date, and Daily Log link
+state does not affect the structured entry.
 
 The feature-owned selected-date helper returns:
 
@@ -940,17 +969,28 @@ The feature-owned selected-date helper returns:
 - Actual submission local date and time.
 - Stable detail link.
 
-It does not return the complete item list.
+The query validates current pointer and owner identity and reuses the accepted
+persisted-current summary integrity boundary. It uses database-owned current
+item count, immutable Equipment and supervisor snapshots, and resulting status.
+Equipment SetNull remains readable. It returns neither the complete item list
+nor Daily Log link state and does not substitute live Equipment or supervisor
+display values.
 
 Ordering is deterministic and chronological:
 
 1. Submitted local date ascending.
 2. Submitted local time ascending.
 3. NAM Reference ascending.
-4. Database identity ascending.
+4. Stable Supply Request ID ascending.
 
 Day View composes and renders this display-ready result. It does not query
-Supply Request tables directly, infer status, count items, or format Equipment.
+Supply Request tables directly, infer status, count items, format Equipment,
+inspect immutable history, or infer Daily Log links. The database owns
+filtering and ordering; there is no application-memory filtering, sorting,
+deduplication, or silent `take` limit. Invalid direct dates, selected-current
+integrity failures, and query failures fail safely instead of becoming an empty
+result. Unrelated null-pointer roots do not poison every selected date. The
+contribution is read-only.
 
 ## 23. History Route And Filtering
 
@@ -1426,9 +1466,7 @@ Deferred pending separate product review:
 
 ## 35. Delivery Sequence
 
-Architecture acceptance does not authorize these milestones.
-
-Recommended sequence:
+The approved Supply Requests V1 delivery sequence is complete:
 
 1. **Phase 26.3A — Complete and accepted:** persistence schema and migration for references,
    annual counter, stable root, ownership-constrained current pointer,
@@ -1462,8 +1500,10 @@ Recommended sequence:
    stable-root role-link persistence, explicit Submission and Fulfillment
    Activity linking, replacement, removal, correction and Daily Log edit
    compatibility, source presentation, cascades, and concurrency proof.
-9. **Phase 26.10 — Next planned candidate; not started; separate authorization required:**
-   feature-owned Supply Request Day View participation.
+9. **Phase 26.10 — Complete and accepted:** feature-owned selected-date Day
+   View participation with explicit current-pointer authority, one structured
+   entry per stable root, snapshot-first display, deterministic database
+   ordering, and real PostgreSQL evidence.
 
 Phase 26.3A has proven the schema, migration, composite pointer, uniqueness,
 referential actions, and atomic annual-counter primitive. Phase 26.3B now
@@ -1491,11 +1531,15 @@ Phase 26.9 now provides explicit, stable-root-owned Submission and Fulfillment
 Daily Log Activity links while preserving Daily Log ownership and link
 compatibility across corrections and Activity edits.
 
-The smallest safe next candidate is feature-owned Supply Request Day View
-participation. It has not started, requires separate explicit authorization,
-and must not include partial fulfillment, normal Reopen, request deletion,
-generic audit infrastructure, analytics, reports, exports, deployment, or
-operational pilot work unless separately authorized.
+Phase 26.10 now provides the feature-owned Supply Request Day View contribution
+through one selected-date current-root query while preserving existing Day View
+composition and read-only ownership boundaries.
+
+The approved Supply Requests V1 delivery sequence is complete, and no further
+V1 implementation phase is planned. Deferred enhancements in Section 34 remain
+outside V1 and require new product review and explicit architecture
+authorization. Infrastructure recovery, deployment, and operational pilot work
+remain outside this feature sequence.
 
 ## 36. Architecture Invariants
 

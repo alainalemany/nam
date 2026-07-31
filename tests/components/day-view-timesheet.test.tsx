@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   safetyChecklists: vi.fn(),
   shiftReports: vi.fn(),
   stopCards: vi.fn(),
+  supplyRequests: vi.fn(),
   timesheets: vi.fn(),
   workAuthorizations: vi.fn(),
   workSchedules: vi.fn(),
@@ -27,6 +28,11 @@ vi.mock("@/features/equipment-fuel-events/data", () => ({ getEquipmentFuelEventD
 vi.mock("@/features/operational-safety-checklists/data", () => ({ getOperationalSafetyChecklistDayViewItems: mocks.safetyChecklists }));
 vi.mock("@/features/shift-reports/data", () => ({ getShiftReportsForDate: mocks.shiftReports }));
 vi.mock("@/features/stop-cards/data", () => ({ getStopCardsForDate: mocks.stopCards }));
+vi.mock("@/features/supply-requests/day-view-data", () => ({
+  getSupplyRequestDayViewItems: mocks.supplyRequests,
+  supplyRequestDayViewHistoryHref: (date: string) =>
+    `/supply-requests?dateFrom=${date}&dateTo=${date}&page=1`,
+}));
 vi.mock("@/features/work-authorizations/data", () => ({ getWorkAuthorizationsForDate: mocks.workAuthorizations }));
 vi.mock("@/features/work-schedule/data", () => ({ getWorkScheduleContextsForDate: mocks.workSchedules }));
 vi.mock("@/features/timesheets/data", () => ({ getTimesheetContextsForDate: mocks.timesheets }));
@@ -46,7 +52,7 @@ afterEach(() => {
 });
 
 describe("Day View composition", () => {
-  it("preserves all eight contributors and adds the two explicit operational sections", async () => {
+  it("preserves every contributor and adds the explicit operational sections", async () => {
     render(await DayViewPage({ searchParams: Promise.resolve({ date: "2026-07-13" }) }));
 
     const headings = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
@@ -62,10 +68,12 @@ describe("Day View composition", () => {
       "Work Authorizations",
       "Defects",
       "Equipment Fuel Events",
+      "Supply Requests",
     ]);
     expect(screen.getByRole("heading", { name: "No Timesheet entry for this day" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "No operational safety checklists for this day" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "No equipment fuel events for this day" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "No Supply Requests for this day" })).toBeInTheDocument();
     for (const query of Object.values(mocks)) {
       expect(query).toHaveBeenCalledWith("2026-07-13");
     }
