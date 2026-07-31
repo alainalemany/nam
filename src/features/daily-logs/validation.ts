@@ -22,6 +22,7 @@ const requiredText = (label: string, max = 200) =>
   );
 
 export const dailyLogActivitySchema = z.object({
+  activityId: optionalText(100),
   activityType: z.enum(dailyLogActivityTypeValues),
   title: requiredText("Activity title"),
   startTime: optionalText(20),

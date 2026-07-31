@@ -12,6 +12,7 @@ const versionFindUnique = vi.fn();
 const equipmentFindMany = vi.fn();
 const supervisorFindMany = vi.fn();
 const itemFindMany = vi.fn();
+const dailyLogLinkFindMany = vi.fn();
 const transaction = vi.fn();
 const client = {
   $transaction: transaction,
@@ -20,6 +21,7 @@ const client = {
   equipment: { findMany: equipmentFindMany },
   supplyRequestSupervisor: { findMany: supervisorFindMany },
   supplyItem: { findMany: itemFindMany },
+  supplyRequestDailyLogLink: { findMany: dailyLogLinkFindMany },
 } as never;
 
 function version(overrides: Record<string, unknown> = {}) {
@@ -84,6 +86,7 @@ describe("Supply Request correction queries", () => {
     equipmentFindMany.mockResolvedValue([]);
     supervisorFindMany.mockResolvedValue([]);
     itemFindMany.mockResolvedValue([]);
+    dailyLogLinkFindMany.mockResolvedValue([]);
   });
 
   it("returns a complete correction context through the explicit pointer", async () => {

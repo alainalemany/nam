@@ -494,10 +494,17 @@ describe("Supply Request create and detail surfaces", () => {
     expect(
       screen.getByRole("link", { name: "View original version 1" }),
     ).toHaveAttribute("href", "/supply-requests/request-1/history/1");
-    expect(screen.getByRole("link", { name: "Open Daily Work Log" })).toHaveAttribute(
+    expect(
+      screen.getByRole("link", { name: "Add Submission to Daily Log" }),
+    ).toHaveAttribute(
       "href",
-      "/daily-logs/new",
+      "/supply-requests/request-1/daily-log/submission",
     );
+    expect(
+      screen.getByText(
+        "Fulfillment linking is available only while the current Supply Request is Fulfilled.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Fulfill" })).toHaveAttribute(
       "href",
       "/supply-requests/request-1/fulfill",

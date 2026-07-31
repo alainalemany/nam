@@ -70,6 +70,7 @@ enum DailyLogActivityType {
   DELAY
   PRODUCTION_NOTE
   SAFETY_OBSERVATION
+  SUPPLY_REQUEST
   GENERAL_NOTE
 }
 
@@ -201,6 +202,11 @@ enum SupplyRequestVersionChangeKind {
   FULFILLED
   CANCELLED
   CORRECTED
+}
+
+enum SupplyRequestDailyLogRole {
+  SUBMISSION
+  FULFILLMENT
 }
 
 enum OperationalSafetyChecklistTemplate {
@@ -533,10 +539,10 @@ model DailyLog {
 }
 
 model DailyLogActivity {
-  id                 String               @id @default(cuid())
+  id                 String                     @id @default(cuid())
   dailyLogId         String
-  dailyLog           DailyLog             @relation(fields: [dailyLogId], references: [id], onDelete: Cascade)
-  activityDate       DateTime             @db.Date
+  dailyLog           DailyLog                   @relation(fields: [dailyLogId], references: [id], onDelete: Cascade)
+  activityDate       DateTime                   @db.Date
   startTime          String?
   endTime            String?
   sequence           Int
@@ -544,14 +550,15 @@ model DailyLogActivity {
   title              String
   description        String?
   equipmentId        String?
-  equipment          Equipment?           @relation("DailyLogActivityEquipment", fields: [equipmentId], references: [id], onDelete: SetNull)
-  equipmentFuelEvent EquipmentFuelEvent?  @relation("EquipmentFuelEventDailyLogActivity")
+  equipment          Equipment?                 @relation("DailyLogActivityEquipment", fields: [equipmentId], references: [id], onDelete: SetNull)
+  equipmentFuelEvent EquipmentFuelEvent?        @relation("EquipmentFuelEventDailyLogActivity")
+  supplyRequestLink  SupplyRequestDailyLogLink? @relation("SupplyRequestDailyLogActivity")
   location           String?
   contractorCompany  String?
   personName         String?
   notes              String?
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
 
   @@index([dailyLogId])
   @@index([activityDate])
@@ -883,18 +890,31 @@ model SupplyRequestReferenceCounter {
 }
 
 model SupplyRequest {
-  id                String                 @id @default(cuid())
-  namReference      String                 @unique(map: "SupplyRequest_namReference_key")
+  id                String                      @id @default(cuid())
+  namReference      String                      @unique(map: "SupplyRequest_namReference_key")
   referenceYear     Int
   referenceSequence Int
   currentVersionId  String?
-  versions          SupplyRequestVersion[] @relation("SupplyRequestOwnedVersions")
-  currentVersion    SupplyRequestVersion?  @relation("SupplyRequestCurrentVersion", fields: [currentVersionId, id], references: [id, supplyRequestId], onDelete: Restrict, map: "SupplyRequest_currentVersion_owner_fkey")
-  createdAt         DateTime               @default(now())
-  updatedAt         DateTime               @updatedAt
+  versions          SupplyRequestVersion[]      @relation("SupplyRequestOwnedVersions")
+  currentVersion    SupplyRequestVersion?       @relation("SupplyRequestCurrentVersion", fields: [currentVersionId, id], references: [id, supplyRequestId], onDelete: Restrict, map: "SupplyRequest_currentVersion_owner_fkey")
+  dailyLogLinks     SupplyRequestDailyLogLink[] @relation("SupplyRequestDailyLogLinks")
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
 
   @@unique([referenceYear, referenceSequence], map: "SupplyRequest_year_sequence_key")
   @@unique([currentVersionId, id], map: "SupplyRequest_current_owner_key")
+}
+
+model SupplyRequestDailyLogLink {
+  id                 String                    @id @default(cuid())
+  supplyRequestId    String
+  supplyRequest      SupplyRequest             @relation("SupplyRequestDailyLogLinks", fields: [supplyRequestId], references: [id], onDelete: Cascade, map: "SupplyRequestDailyLogLink_request_fkey")
+  dailyLogActivityId String                    @unique(map: "SupplyRequestDailyLogLink_activity_key")
+  dailyLogActivity   DailyLogActivity          @relation("SupplyRequestDailyLogActivity", fields: [dailyLogActivityId], references: [id], onDelete: Cascade, map: "SupplyRequestDailyLogLink_activity_fkey")
+  role               SupplyRequestDailyLogRole
+  createdAt          DateTime                  @default(now())
+
+  @@unique([supplyRequestId, role], map: "SupplyRequestDailyLogLink_request_role_key")
 }
 
 model SupplyRequestVersion {

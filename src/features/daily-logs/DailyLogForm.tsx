@@ -43,6 +43,7 @@ function fieldError(state: DailyLogFormState, field: DailyLogFormField) {
 function makeActivityRow(activity?: DailyLogFormActivity): ActivityRow {
   return {
     key: crypto.randomUUID(),
+    activityId: activity?.activityId ?? "",
     activityType: activity?.activityType ?? "GENERAL_NOTE",
     title: activity?.title ?? "",
     startTime: activity?.startTime ?? "",
@@ -191,6 +192,12 @@ export function DailyLogForm({
           {activities.map((activity, index) => (
             <fieldset className="activity-card" key={activity.key}>
               <legend>Activity {index + 1}</legend>
+
+              <input
+                type="hidden"
+                name="activityId"
+                value={activity.activityId ?? ""}
+              />
 
               <div className="form-grid">
                 <label>

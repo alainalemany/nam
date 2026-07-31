@@ -695,12 +695,13 @@ reference-management workflows exist. Phase 26.5 request create and initial
 detail surfaces are also complete and accepted, so the initial operator
 create/detail workflow is available. Phase 26.6 fulfillment and cancellation
 are complete and accepted. Phase 26.7 Correct Request and full immutable
-version review and Phase 26.8 canonical history and filtering are complete and
-accepted, so create, detail, normal lifecycle, historical correction,
-Correction History, read-only immutable version review, and canonical
-current-version history/filtering are available. Phase 26.9 Supply Request
-Daily Log Activity linking is planned, has not started, and requires separate
-explicit authorization. The broader feature remains incomplete.
+version review, Phase 26.8 canonical history and filtering, and Phase 26.9
+Supply Request Daily Log Activity linking are complete and accepted, so create,
+detail, normal lifecycle, historical correction, Correction History, read-only
+immutable version review, canonical current-version history/filtering, and
+explicit Submission/Fulfillment Activity linking are available. Phase 26.10
+Supply Request Day View participation is planned, has not started, and requires
+separate explicit authorization. The broader feature remains incomplete.
 
 ### Phase 26.1: Product Discovery And Decision Closure
 
@@ -972,28 +973,65 @@ Status: Complete and accepted
 
 ### Phase 26.9 — Supply Request Daily Log Activity Linking
 
+Status: Complete and accepted
+
+- Added the `SUPPLY_REQUEST` Activity classification and Submission and
+  Fulfillment link roles through one isolated migration.
+- Added a stable-root-owned link model with one role link per Supply Request
+  and global Activity uniqueness.
+- Added explicit, bounded candidate Daily Log and Activity selection while
+  preserving multiple same-date Daily Logs as separate choices.
+- Added exact role dates and canonical titles, Fulfilled-status validation,
+  corrected-to-Fulfilled eligibility, Activity and Daily Log date validation,
+  and Equipment and Equipment SetNull compatibility.
+- Added parameterized stable-root locking, target Activity protection,
+  expected-link stale protection, idempotent same-target behavior, atomic
+  replacement, and link-only removal.
+- Added current-detail Submission and Fulfillment summaries and explicit Daily
+  Log source presentation through the stable Supply Request identity.
+- Added correction, Daily Log Activity edit, Daily Log date, and Equipment Fuel
+  Event compatibility validation without silent unlinking or narrative
+  rewriting.
+- Preserved Activity, Daily Log, and exceptional Supply Request cascade owner
+  boundaries.
+- Proved link/correction, link/Activity-edit, and link/Activity-deletion
+  concurrency, uniqueness, replacement rollback, compatibility, cascades, and
+  cleanup in real PostgreSQL.
+- Accepted 4 schema/migration tests, 14 validation/persistence unit tests, 7
+  Server Action tests, 5 query tests, 10 route/component tests, 12 Phase 26.9
+  PostgreSQL tests, 74 earlier PostgreSQL regressions, and 14 existing Daily
+  Log tests with zero skips; the full 746-test suite passed with 18 disposable
+  migrations and no schema drift.
+- Added no automatic Daily Log or Activity creation, no silent unlinking, and
+  no Supply Request-owned Activity narrative persistence.
+
+### Phase 26.10 — Supply Request Day View Participation
+
 Status: Planned; not started; separate authorization required
 
-- Add `SUPPLY_REQUEST` Daily Log Activity classification.
-- Add explicit submission-role and fulfillment-role linking.
-- Add feature-owned request-to-Activity link persistence with unique role
-  ownership per Supply Request and global Activity-link uniqueness.
-- Add candidate Daily Log and Activity queries.
-- Add explicit link creation, replacement, and removal.
-- Validate submission-date and fulfillment-date compatibility.
-- Require Fulfilled status for fulfillment linking.
-- Validate Equipment compatibility, including Equipment SetNull behavior.
-- Add source links from Daily Log Activities to current Supply Request detail.
-- Do not automatically create a Daily Log or Activity.
-- Require real PostgreSQL link uniqueness, replacement, cascade,
-  compatibility, and cleanup evidence.
-- Keep Day View participation, partial fulfillment, normal Reopen, request
-  deletion, generic audit infrastructure, analytics, reports, and exports
-  outside this phase unless separately authorized.
+- Add one feature-owned selected-date query over explicit pointer-owned current
+  versions whose operational work date equals the selected date.
+- Return exactly one display-ready entry per stable Supply Request with NAM
+  Reference, immutable Equipment label, current item count, supervisor-name
+  snapshot, resulting-status label, actual submitted local date/time, and a
+  stable current-detail link.
+- Keep complete item arrays outside the Day View payload.
+- Order by submitted local date, submitted local time, NAM Reference, and
+  stable database identity, all ascending.
+- Keep Supply Request table access, status interpretation, item counting, and
+  Equipment snapshot formatting inside the feature-owned query boundary.
+- Do not create a second structured entry for fulfillment or cancellation;
+  independently dated Fulfillment Daily Log narrative may still appear through
+  the Daily Log contributor.
+- Require real PostgreSQL current-pointer, correction-date movement, snapshot,
+  deterministic-ordering, and no-duplicate evidence.
+- Keep partial fulfillment, received or outstanding quantity, normal Reopen,
+  request deletion, generic audit infrastructure, analytics, reports, exports,
+  deployment, and operational pilot work outside this phase unless separately
+  authorized.
 
 ### Later Implementation Slices
 
-- Explicit Daily Log Activity linking.
 - Feature-owned Day View participation.
 - Independent adversarial review, acceptance corrections, and roadmap closure.
 

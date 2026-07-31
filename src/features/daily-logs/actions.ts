@@ -6,6 +6,11 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 
 import {
+  LinkedDailyLogActivityEditError,
+  updateDailyLogWithClient,
+} from "./update-persistence-internal";
+
+import {
   dailyLogActivitySchema,
   dailyLogFormSchema,
   emptyDailyLogFormState,
@@ -37,6 +42,7 @@ function parseActivities(formData: FormData):
   | { ok: true; activities: DailyLogFormInput["activities"] }
   | { ok: false; errors: string[] } {
   const activityTypes = getAll(formData, "activityType");
+  const activityIds = getAll(formData, "activityId");
   const titles = getAll(formData, "activityTitle");
   const startTimes = getAll(formData, "activityStartTime");
   const endTimes = getAll(formData, "activityEndTime");
@@ -47,8 +53,30 @@ function parseActivities(formData: FormData):
   const personNames = getAll(formData, "activityPersonName");
   const notes = getAll(formData, "activityNotes");
 
+  const activityColumns = [
+    activityIds,
+    titles,
+    startTimes,
+    endTimes,
+    descriptions,
+    equipmentIds,
+    locations,
+    contractorCompanies,
+    personNames,
+    notes,
+  ];
+  if (activityColumns.some((column) => column.length !== activityTypes.length)) {
+    return {
+      ok: false,
+      errors: [
+        "The Activity row identities or fields were incomplete. Reload before editing.",
+      ],
+    };
+  }
+
   const rows = activityTypes
     .map((activityType, index) => ({
+      activityId: activityIds[index] ?? "",
       activityType,
       title: titles[index] ?? "",
       startTime: startTimes[index] ?? "",
@@ -175,6 +203,12 @@ export async function createDailyLogAction(
     return input.state;
   }
 
+  if (input.data.activities.some((activity) => activity.activityId)) {
+    return errorState(
+      "New Daily Log Activities cannot reuse existing Activity identities.",
+    );
+  }
+
   let dailyLogId: string;
 
   try {
@@ -215,31 +249,13 @@ export async function updateDailyLogAction(
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
-      await tx.dailyLogActivity.deleteMany({
-        where: {
-          dailyLogId,
-        },
-      });
-
-      await tx.dailyLog.update({
-        where: { id: dailyLogId },
-        data: {
-          logDate: toDateOnly(input.data.logDate),
-          shift: input.data.shift,
-          mineId: asNullable(input.data.mineId),
-          primaryEquipmentId: asNullable(input.data.primaryEquipmentId),
-          summary: input.data.summary,
-          weatherConditions: asNullable(input.data.weatherConditions),
-          generalNotes: asNullable(input.data.generalNotes),
-          activities: {
-            create: activityCreateData(input.data),
-          },
-        },
-      });
-    });
-  } catch {
-    return errorState("Daily Log could not be updated. Review the fields and try again.");
+    await updateDailyLogWithClient(prisma, dailyLogId, input.data);
+  } catch (error) {
+    return errorState(
+      error instanceof LinkedDailyLogActivityEditError
+        ? error.message
+        : "Daily Log could not be updated. Review the fields and try again.",
+    );
   }
 
   revalidatePath("/");

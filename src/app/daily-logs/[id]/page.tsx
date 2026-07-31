@@ -25,6 +25,14 @@ export default async function DailyLogDetailPage({ params }: DailyLogDetailPageP
       activities: {
         include: {
           equipment: true,
+          supplyRequestLink: {
+            select: {
+              role: true,
+              supplyRequest: {
+                select: { id: true, namReference: true },
+              },
+            },
+          },
         },
         orderBy: {
           sequence: "asc",
@@ -129,6 +137,14 @@ export default async function DailyLogDetailPage({ params }: DailyLogDetailPageP
                   ) : null}
                 </dl>
                 {activity.notes ? <p className="subtle">{activity.notes}</p> : null}
+                {activity.supplyRequestLink ? (
+                  <p className="subtle">
+                    Supply Request {activity.supplyRequestLink.role === "SUBMISSION" ? "Submission" : "Fulfillment"}: {" "}
+                    <Link href={`/supply-requests/${encodeURIComponent(activity.supplyRequestLink.supplyRequest.id)}`}>
+                      {activity.supplyRequestLink.supplyRequest.namReference}
+                    </Link>
+                  </p>
+                ) : null}
               </div>
             </article>
           ))}

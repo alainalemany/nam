@@ -19,6 +19,9 @@ import {
   supplyRequestDateToUtc,
 } from "./validation";
 import { supplyRequestNewYorkWallClock } from "./wall-clock";
+import {
+  validateSupplyRequestDailyLogCompatibility,
+} from "./daily-log-link-validation";
 
 export type CorrectSupplyRequestResult = Readonly<{
   supplyRequestId: string;
@@ -476,6 +479,69 @@ function lifecycleData(input: ValidatedCorrectSupplyRequestInput) {
   };
 }
 
+async function assertExistingDailyLogLinksRemainCompatible(
+  transaction: Prisma.TransactionClient,
+  root: { id: string; namReference: string },
+  input: ValidatedCorrectSupplyRequestInput,
+  equipment: {
+    equipmentId: string | null;
+    equipmentDisplayNameSnapshot: string;
+    equipmentNumberSnapshot: string | null;
+  },
+) {
+  const links = await transaction.supplyRequestDailyLogLink.findMany({
+    where: { supplyRequestId: root.id },
+    select: {
+      role: true,
+      dailyLogActivity: {
+        select: {
+          activityType: true,
+          title: true,
+          activityDate: true,
+          equipmentId: true,
+          dailyLog: { select: { logDate: true } },
+        },
+      },
+    },
+    orderBy: [{ role: "asc" }],
+  });
+  for (const link of links) {
+    const issue = validateSupplyRequestDailyLogCompatibility(
+      link.role,
+      {
+        namReference: root.namReference,
+        status: input.resultingStatus,
+        operationalWorkDate: input.operationalWorkDate,
+        fulfillmentOperationalWorkDate:
+          input.resultingStatus === "FULFILLED"
+            ? input.fulfillmentOperationalWorkDate ?? null
+            : null,
+        equipmentId: equipment.equipmentId,
+        equipmentDisplayNameSnapshot:
+          equipment.equipmentDisplayNameSnapshot,
+        equipmentNumberSnapshot: equipment.equipmentNumberSnapshot,
+      },
+      {
+        activityType: link.dailyLogActivity.activityType,
+        title: link.dailyLogActivity.title,
+        activityDate: dateKey(link.dailyLogActivity.activityDate) ?? "",
+        dailyLogDate: dateKey(link.dailyLogActivity.dailyLog.logDate) ?? "",
+        equipmentId: link.dailyLogActivity.equipmentId,
+      },
+    );
+    if (issue) {
+      const roleLabel =
+        link.role === "SUBMISSION" ? "Submission" : "Fulfillment";
+      throw new SupplyRequestCorrectionError(
+        link.role === "SUBMISSION"
+          ? "SUBMISSION_LINK_CONFLICT"
+          : "FULFILLMENT_LINK_CONFLICT",
+        `The corrected request would invalidate the existing ${roleLabel} Daily Log link. Remove or replace that link first.`,
+      );
+    }
+  }
+}
+
 async function correctionAttempt(
   client: PrismaClient,
   input: ValidatedCorrectSupplyRequestInput,
@@ -521,6 +587,12 @@ async function correctionAttempt(
         input,
         versionId,
         generateId,
+      );
+      await assertExistingDailyLogLinksRemainCompatible(
+        transaction,
+        root,
+        input,
+        equipment,
       );
       const version = await transaction.supplyRequestVersion.create({
         data: {

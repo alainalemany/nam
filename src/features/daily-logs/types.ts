@@ -4,6 +4,7 @@ export type DailyLogSelectOption = {
 };
 
 export type DailyLogFormActivity = {
+  activityId?: string;
   activityType?: string;
   title?: string;
   startTime?: string;

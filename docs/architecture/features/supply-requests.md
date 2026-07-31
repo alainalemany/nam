@@ -40,7 +40,7 @@ Related Documents:
 
 Last Reviewed: 2026-07-31
 
-Implementation Status: Phases 26.3A through 26.8 are implemented and accepted.
+Implementation Status: Phases 26.3A through 26.9 are implemented and accepted.
 Operators can record a request that was already submitted through the corporate
 system by using searchable active Equipment, supervisor, and Supply Item
 selection. Selected Supply Items support quantity editing, removal, and
@@ -51,8 +51,8 @@ Initial creation continues to use the sole accepted transactional
 `createSupplyRequest(input)` boundary and redirects after commit to permanent
 current detail. Current detail follows the explicit current-version pointer,
 and immutable original version `1` is available read-only. Both surfaces render
-snapshots first, including after Equipment SetNull. Daily Work Log guidance is
-informational only and creates no relationship or row.
+snapshots first, including after Equipment SetNull. Initial creation never
+creates a Daily Log, Activity, or link automatically.
 
 Requested Supply Requests now expose explicit Fulfill and Cancel actions.
 Both actions lock the stable root before loading current state, follow the
@@ -130,15 +130,50 @@ Reference, and stable root ID, all descending. Previous and Next URLs preserve
 normalized filters. Count, rows, Equipment options, and supervisor options load
 from one Repeatable Read snapshot. Canonical history is read-only.
 
-The broader Supply Request workflow remains incomplete. Daily Log relationships
-and Day View participation are not implemented.
+Supply Requests can now explicitly link existing Daily Log Activities for
+Submission and Fulfillment. Daily Logs continue to own Daily Logs, Activities,
+their narrative, and deliberate Activity deletion. Supply Requests own only
+the stable-root link rows and explicit link, replacement, and removal
+workflows. Daily Log Activities use the shared `SUPPLY_REQUEST`
+classification; the role and exact server-derived canonical title distinguish
+Submission from Fulfillment. A title alone never implies a link.
 
-Acceptance evidence: 11 Phase 26.8 parser/unit tests, 9 Phase 26.8 query tests,
-8 Phase 26.8 route/component tests, 8 Phase 26.8 PostgreSQL tests, 10 Phase
-26.7 PostgreSQL tests, 12 Phase 26.6 PostgreSQL tests, 8 Phase 26.5 PostgreSQL
-tests, 6 Phase 26.4 PostgreSQL tests, 11 Phase 26.3B PostgreSQL tests, 11 Phase
-26.3A PostgreSQL tests, 8 existing PostgreSQL regression tests, and the full
-694-test suite passed with zero skips and no schema drift.
+The database enforces one link per Supply Request role and one global Supply
+Request link per Activity. Submission uses the pointer-owned current
+operational work date. Fulfillment requires current resulting status
+`FULFILLED`, including a corrected-to-Fulfilled current version, and uses the
+fulfillment operational work date. The Activity and its parent Daily Log must
+use the role date and the Activity must use the exact classification and
+canonical title. Activity Equipment may be null or match current request
+Equipment; Equipment SetNull requires an Equipment-null Activity.
+
+Link create, replacement, and removal lock the stable root. Target Activity
+facts are protected during compatibility validation, and expected-current-link
+state prevents stale overwrites. Replacement validates completely before the
+old link is deleted, and deletion plus creation are atomic. Removal deletes
+only the link. Activity deletion cascades only its link; Daily Log deletion
+cascades through owned Activities; exceptional Supply Request deletion removes
+owned links while preserving Daily Logs and Activities.
+
+Current detail loads both role summaries coherently with the current version
+and Correction History. Linked Daily Log Activities display role, NAM
+Reference, and a stable link to current Supply Request detail. Corrections and
+Daily Log edits that would invalidate a link are rejected without silent
+unlinking, automatic repair, or narrative rewriting. Daily Log Activity edits
+also preserve existing Equipment Fuel Event compatibility.
+
+The broader Supply Request workflow remains incomplete. Day View participation
+is not implemented.
+
+Acceptance evidence: 4 Phase 26.9 schema/migration tests, 14 Phase 26.9
+validation/persistence unit tests, 7 Phase 26.9 Server Action tests, 5 Phase
+26.9 query tests, 10 Phase 26.9 route/component tests, 12 Phase 26.9 PostgreSQL
+tests, 8 Phase 26.8 PostgreSQL tests, 10 Phase 26.7 PostgreSQL tests, 12 Phase
+26.6 PostgreSQL tests, 8 Phase 26.5 PostgreSQL tests, 6 Phase 26.4 PostgreSQL
+tests, 11 Phase 26.3B PostgreSQL tests, 11 Phase 26.3A PostgreSQL tests, 8
+existing PostgreSQL regression tests, 14 existing Daily Log tests, and the
+full 746-test suite passed with zero skips, 18 disposable migrations, and no
+schema drift.
 
 ## Contents
 
@@ -1395,41 +1430,40 @@ Architecture acceptance does not authorize these milestones.
 
 Recommended sequence:
 
-1. **Complete and accepted:** persistence schema and migration for references,
+1. **Phase 26.3A — Complete and accepted:** persistence schema and migration for references,
    annual counter, stable root, ownership-constrained current pointer,
    immutable versions, version lines, and PostgreSQL constraint tests.
-2. **Complete and accepted:** transactional initial-create persistence,
+2. **Phase 26.3B — Complete and accepted:** transactional initial-create persistence,
    including strict input validation, active-reference reload, reference
    allocation, snapshot capture, complete version `1`, rollback, and
    adversarial concurrent allocation tests, without routes or forms.
-3. **Complete and accepted:** Supply Item and Supply Request Supervisor list,
+3. **Phase 26.4 — Complete and accepted:** Supply Item and Supply Request Supervisor list,
    search, create, edit, activate, and inactivate workflows with normalized
    uniqueness, bounded URL filtering, deterministic pagination, historical
    snapshot preservation, and PostgreSQL concurrency and Restrict evidence.
-4. **Complete and accepted:** request create, current detail, and read-only
+4. **Phase 26.5 — Complete and accepted:** request create, current detail, and read-only
    original-version `1` surfaces over the proven persistence boundary, with
    searchable active references, deterministic ordered item entry,
    America/New_York defaults, current-pointer authority, snapshot-first
    rendering, and informational Daily Work Log navigation only.
-5. **Complete and accepted:** fulfillment and cancellation append-only
+5. **Phase 26.6 — Complete and accepted:** fulfillment and cancellation append-only
    lifecycle versions with root locking, expected-version protection, complete
    snapshot and line copying, terminal detail, and deterministic PostgreSQL
    concurrency.
-6. **Complete and accepted:** explicit Correct Request and full immutable
+6. **Phase 26.7 — Complete and accepted:** explicit Correct Request and full immutable
    version review, including complete immutable corrected versions, reference
    reconciliation, status repair, Correction History, and read-only review of
    every existing immutable version.
-7. **Complete and accepted:** canonical current-version history filtering and
+7. **Phase 26.8 — Complete and accepted:** canonical current-version history filtering and
    pagination with pointer-owned rows, structured URL filters, inactive-used
    reference options, deterministic ordering, overflow-safe pagination, and
    one Repeatable Read page snapshot.
-8. **Next planned candidate; not started; separate authorization required:**
-   `SUPPLY_REQUEST` Daily Log classification, bounded role-link persistence,
-   and explicit submission and fulfillment Activity linking.
-9. Feature-owned Day View contribution.
-10. Independent adversarial implementation review, PostgreSQL concurrency
-    evidence, and acceptance corrections.
-11. Canonical roadmap closure only after implementation is accepted.
+8. **Phase 26.9 — Complete and accepted:** `SUPPLY_REQUEST` Daily Log classification,
+   stable-root role-link persistence, explicit Submission and Fulfillment
+   Activity linking, replacement, removal, correction and Daily Log edit
+   compatibility, source presentation, cascades, and concurrency proof.
+9. **Phase 26.10 — Next planned candidate; not started; separate authorization required:**
+   feature-owned Supply Request Day View participation.
 
 Phase 26.3A has proven the schema, migration, composite pointer, uniqueness,
 referential actions, and atomic annual-counter primitive. Phase 26.3B now
@@ -1453,11 +1487,15 @@ explicit pointer-owned current versions, with structured URL state,
 database-owned predicates, deterministic fifty-row pagination, inactive-used
 reference options, snapshot-first rows, and coherent Repeatable Read page data.
 
-The smallest safe next candidate is explicit Supply Request Daily Log Activity
-linking. It has not started, requires separate explicit authorization, and must
-not include Day View participation, partial fulfillment, normal Reopen, request
-deletion, generic audit infrastructure, analytics, reports, or exports unless
-separately authorized.
+Phase 26.9 now provides explicit, stable-root-owned Submission and Fulfillment
+Daily Log Activity links while preserving Daily Log ownership and link
+compatibility across corrections and Activity edits.
+
+The smallest safe next candidate is feature-owned Supply Request Day View
+participation. It has not started, requires separate explicit authorization,
+and must not include partial fulfillment, normal Reopen, request deletion,
+generic audit infrastructure, analytics, reports, exports, deployment, or
+operational pilot work unless separately authorized.
 
 ## 36. Architecture Invariants
 

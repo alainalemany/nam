@@ -11,7 +11,31 @@ export default async function SupplyRequestDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const data = await getSupplyRequestCurrentPageData(id);
+  let data: Awaited<ReturnType<typeof getSupplyRequestCurrentPageData>>;
+  try {
+    data = await getSupplyRequestCurrentPageData(id);
+  } catch {
+    return (
+      <main className="page-stack">
+        <section className="panel" role="alert">
+          <h1>Supply Request detail unavailable</h1>
+          <p>
+            Current detail or Daily Log link information could not be loaded
+            safely. Reload and try again.
+          </p>
+          <a className="button secondary" href="/supply-requests">
+            Supply Request History
+          </a>
+        </section>
+      </main>
+    );
+  }
   if (!data) notFound();
-  return <SupplyRequestDetail detail={data.detail} history={data.history} />;
+  return (
+    <SupplyRequestDetail
+      detail={data.detail}
+      history={data.history}
+      dailyLogLinks={data.dailyLogLinks}
+    />
+  );
 }

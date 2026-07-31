@@ -57,6 +57,7 @@ export default async function EditDailyLogPage({ params }: EditDailyLogPageProps
             weatherConditions: dailyLog.weatherConditions ?? "",
             generalNotes: dailyLog.generalNotes ?? "",
             activities: dailyLog.activities.map((activity) => ({
+              activityId: activity.id,
               activityType: activity.activityType,
               title: activity.title,
               startTime: activity.startTime ?? "",

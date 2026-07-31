@@ -135,7 +135,15 @@ describe("Supply Request lifecycle routes and components", () => {
       screen.getByRole("link", { name: "Correct Request" }),
     ).toHaveAttribute("href", "/supply-requests/request-1/correct");
     expect(screen.queryByText(/delete/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/No Daily Work Log entry/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Add Submission to Daily Log" }),
+    ).toHaveAttribute(
+      "href",
+      "/supply-requests/request-1/daily-log/submission",
+    );
+    expect(
+      screen.getByText(/Fulfillment linking is available only while/i),
+    ).toBeInTheDocument();
   });
 
   it("renders the fulfillment form with authoritative context and guidance", () => {

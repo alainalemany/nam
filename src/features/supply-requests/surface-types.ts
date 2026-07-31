@@ -118,6 +118,11 @@ export type SupplyRequestVersionSummary = Readonly<{
   correctionReason: string | null;
 }>;
 
+export type SupplyRequestDailyLogLinksView = Readonly<{
+  submission: import("./daily-log-link-types").SupplyRequestDailyLogLinkSummary | null;
+  fulfillment: import("./daily-log-link-types").SupplyRequestDailyLogLinkSummary | null;
+}>;
+
 export type SupplyRequestImmutableVersionView = Readonly<{
   detail: SupplyRequestDetailView;
   role: "original" | "current" | "superseded";

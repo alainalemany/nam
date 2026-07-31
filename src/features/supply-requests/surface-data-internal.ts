@@ -1,6 +1,9 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 
 import { normalizeSupplyItemNumberKey } from "./normalization";
+import { SupplyRequestDailyLogLinkQueryError } from "./daily-log-link-errors";
+import type { SupplyRequestDailyLogLinkSummary } from "./daily-log-link-types";
+import { validateSupplyRequestDailyLogCompatibility } from "./daily-log-link-validation";
 import {
   formatSupplyRequestRecordedAt,
   supplyRequestEquipmentSnapshotLabel,
@@ -705,7 +708,74 @@ export async function getSupplyRequestCurrentPageDataWithClient(
         transaction,
         idInput,
       );
-      return history ? { detail, history } : null;
+      if (!history) return null;
+      const links = await transaction.supplyRequestDailyLogLink.findMany({
+        where: { supplyRequestId: detail.supplyRequestId },
+        select: {
+          role: true,
+          dailyLogActivity: {
+            select: {
+              id: true,
+              activityType: true,
+              title: true,
+              activityDate: true,
+              sequence: true,
+              startTime: true,
+              endTime: true,
+              equipmentId: true,
+              dailyLog: { select: { id: true, logDate: true } },
+            },
+          },
+        },
+        orderBy: [{ role: "asc" }],
+      });
+      const summaries: Partial<Record<"SUBMISSION" | "FULFILLMENT", SupplyRequestDailyLogLinkSummary>> = {};
+      for (const link of links) {
+        const issue = validateSupplyRequestDailyLogCompatibility(
+          link.role,
+          {
+            namReference: detail.namReference,
+            status: detail.status,
+            operationalWorkDate: detail.operationalWorkDate,
+            fulfillmentOperationalWorkDate: detail.fulfillmentOperationalWorkDate,
+            equipmentId: detail.equipmentId,
+            equipmentDisplayNameSnapshot: detail.equipmentDisplayName,
+            equipmentNumberSnapshot: detail.equipmentNumber,
+          },
+          {
+            activityType: link.dailyLogActivity.activityType,
+            title: link.dailyLogActivity.title,
+            activityDate: dateKey(link.dailyLogActivity.activityDate) ?? "",
+            dailyLogDate: dateKey(link.dailyLogActivity.dailyLog.logDate) ?? "",
+            equipmentId: link.dailyLogActivity.equipmentId,
+          },
+        );
+        if (issue || summaries[link.role]) {
+          throw new SupplyRequestDailyLogLinkQueryError(
+            "LINK_INTEGRITY_INVALID",
+            "Daily Log link information is incompatible with the current Supply Request. Remove or repair the affected link first.",
+          );
+        }
+        summaries[link.role] = {
+          role: link.role,
+          activityId: link.dailyLogActivity.id,
+          activityTitle: link.dailyLogActivity.title,
+          activitySequence: link.dailyLogActivity.sequence,
+          activityStartTime: link.dailyLogActivity.startTime,
+          activityEndTime: link.dailyLogActivity.endTime,
+          dailyLogId: link.dailyLogActivity.dailyLog.id,
+          dailyLogDate: dateKey(link.dailyLogActivity.dailyLog.logDate) ?? "",
+          dailyLogHref: `/daily-logs/${encodeURIComponent(link.dailyLogActivity.dailyLog.id)}`,
+        };
+      }
+      return {
+        detail,
+        history,
+        dailyLogLinks: {
+          submission: summaries.SUBMISSION ?? null,
+          fulfillment: summaries.FULFILLMENT ?? null,
+        },
+      };
     },
     { isolationLevel: "RepeatableRead" },
   );

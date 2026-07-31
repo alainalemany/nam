@@ -32,6 +32,7 @@ export const dailyLogActivityTypeValues = [
   "DELAY",
   "PRODUCTION_NOTE",
   "SAFETY_OBSERVATION",
+  "SUPPLY_REQUEST",
   "GENERAL_NOTE",
 ] as const;
 
@@ -56,6 +57,7 @@ export const dailyLogActivityTypeOptions = [
   { value: "DELAY", label: "Delay" },
   { value: "PRODUCTION_NOTE", label: "Production note" },
   { value: "SAFETY_OBSERVATION", label: "Safety observation" },
+  { value: "SUPPLY_REQUEST", label: "Supply Request" },
   { value: "GENERAL_NOTE", label: "General note" },
 ] as const satisfies ReadonlyArray<{
   value: (typeof dailyLogActivityTypeValues)[number];

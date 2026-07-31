@@ -8,6 +8,7 @@ import {
   supplyRequestStatusLabel,
 } from "./surface-display";
 import type {
+  SupplyRequestDailyLogLinksView,
   SupplyRequestDetailView,
   SupplyRequestVersionSummary,
 } from "./surface-types";
@@ -17,11 +18,13 @@ export function SupplyRequestDetail({
   historical = false,
   historicalRole,
   history = [],
+  dailyLogLinks,
 }: {
   detail: SupplyRequestDetailView;
   historical?: boolean;
   historicalRole?: "original" | "current" | "superseded";
   history?: readonly SupplyRequestVersionSummary[];
+  dailyLogLinks?: SupplyRequestDailyLogLinksView;
 }) {
   const historicalView = historical || historicalRole !== undefined;
   const versionHeading =
@@ -388,15 +391,50 @@ export function SupplyRequestDetail({
             ) : null}
           </section>
           <section className="panel" aria-labelledby="daily-log-guidance">
-            <h2 id="daily-log-guidance">Daily Work Log narrative</h2>
+            <h2 id="daily-log-guidance">Daily Log Links</h2>
             <p>
-              If useful, manually record the corporate submission context in
-              the Daily Work Log. No Daily Work Log entry or link has been
-              created automatically.
+              Links associate this stable NAM record with existing Daily Log
+              Activities. Supply Requests never create or rewrite Daily Log
+              narrative automatically.
             </p>
-            <Link className="button secondary" href="/daily-logs/new">
-              Open Daily Work Log
-            </Link>
+            <div className="detail-grid">
+              <div>
+                <h3>Submission</h3>
+                {dailyLogLinks?.submission ? (
+                  <>
+                    <p>{dailyLogLinks.submission.activityTitle}</p>
+                    <p className="subtle">
+                      Daily Log {formatSupplyRequestDate(dailyLogLinks.submission.dailyLogDate)} · Activity {dailyLogLinks.submission.activitySequence}
+                    </p>
+                    <div className="inline-actions">
+                      <Link className="button secondary" href={dailyLogLinks.submission.dailyLogHref}>Open Daily Log</Link>
+                      <Link className="button secondary" href={`/supply-requests/${encodeURIComponent(detail.supplyRequestId)}/daily-log/submission`}>Replace or Remove Link</Link>
+                    </div>
+                  </>
+                ) : (
+                  <Link className="button secondary" href={`/supply-requests/${encodeURIComponent(detail.supplyRequestId)}/daily-log/submission`}>Add Submission to Daily Log</Link>
+                )}
+              </div>
+              <div>
+                <h3>Fulfillment</h3>
+                {dailyLogLinks?.fulfillment ? (
+                  <>
+                    <p>{dailyLogLinks.fulfillment.activityTitle}</p>
+                    <p className="subtle">
+                      Daily Log {formatSupplyRequestDate(dailyLogLinks.fulfillment.dailyLogDate)} · Activity {dailyLogLinks.fulfillment.activitySequence}
+                    </p>
+                    <div className="inline-actions">
+                      <Link className="button secondary" href={dailyLogLinks.fulfillment.dailyLogHref}>Open Daily Log</Link>
+                      <Link className="button secondary" href={`/supply-requests/${encodeURIComponent(detail.supplyRequestId)}/daily-log/fulfillment`}>Replace or Remove Link</Link>
+                    </div>
+                  </>
+                ) : detail.status === "FULFILLED" ? (
+                  <Link className="button secondary" href={`/supply-requests/${encodeURIComponent(detail.supplyRequestId)}/daily-log/fulfillment`}>Add Fulfillment to Daily Log</Link>
+                ) : (
+                  <p>Fulfillment linking is available only while the current Supply Request is Fulfilled.</p>
+                )}
+              </div>
+            </div>
           </section>
         </>
       ) : null}

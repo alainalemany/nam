@@ -105,6 +105,7 @@ describe("dailyLogFormSchema", () => {
 describe("dailyLogActivitySchema", () => {
   it("uses the feature-owned activity type values", () => {
     expect(dailyLogActivityTypeValues).toContain("GENERAL_NOTE");
+    expect(dailyLogActivityTypeValues).toContain("SUPPLY_REQUEST");
     expect(shiftValues).toContain("UNKNOWN");
 
     const parsed = dailyLogActivitySchema.safeParse({
