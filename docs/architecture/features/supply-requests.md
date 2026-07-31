@@ -40,7 +40,7 @@ Related Documents:
 
 Last Reviewed: 2026-07-31
 
-Implementation Status: Phases 26.3A through 26.7 are implemented and accepted.
+Implementation Status: Phases 26.3A through 26.8 are implemented and accepted.
 Operators can record a request that was already submitted through the corporate
 system by using searchable active Equipment, supervisor, and Supply Item
 selection. Selected Supply Items support quantity editing, removal, and
@@ -95,17 +95,50 @@ Original, Current, and Superseded versions while preserving status and change
 kind as independent facts. Current detail and Correction History load from one
 Repeatable Read snapshot.
 
-The broader Supply Request workflow remains incomplete. Canonical request
-history and filtering, Daily Log relationships, and Day View participation are
-not implemented.
+`/supply-requests` is now the canonical Supply Request history route. It lists
+each stable root exactly once by following the explicit current-version
+pointer; superseded versions remain available through Correction History and
+immutable version detail but are not separate canonical rows. Current rows
+render immutable snapshots first. Null current pointers and malformed selected
+current aggregates fail safely instead of appearing as empty results.
 
-Acceptance evidence: 9 Phase 26.7 unit tests, 6 Phase 26.7 Server Action tests,
-8 Phase 26.7 query tests, 7 Phase 26.7 route/component tests, 18 accepted
-surface parser regression tests, 10 Phase 26.7 PostgreSQL tests, 12 Phase 26.6
-PostgreSQL tests, 8 Phase 26.5 PostgreSQL tests, 6 Phase 26.4 PostgreSQL tests,
-11 Phase 26.3B PostgreSQL tests, 11 Phase 26.3A PostgreSQL tests, 8 existing
-PostgreSQL regression tests, and the full 658-test suite passed with zero skips
-and no schema drift.
+The supported URL parameters are exactly `dateFrom`, `dateTo`, `status`,
+`equipmentId`, `supervisorId`, `reference`, `item`, `notes`, and `page`.
+Repeated parameters use only the first value. Runtime values are narrowed
+before string operations, and invalid values are ignored with bounded
+nonfatal notices. Valid reversed date ranges remain preserved and intentionally
+return no matches. Bounded unknown Equipment and supervisor IDs remain valid
+filters, while NAM Reference matching is normalized and exact.
+
+All independent filters use database-owned AND predicates against the same
+pointer-owned current version. Item Number and Description search uses stored
+current-version snapshots through one relational `some` predicate with one
+line-local OR. Notes search uses current-version Notes only. Superseded item,
+Notes, and reference facts do not match canonical history.
+
+Equipment and supervisor options include active references plus inactive
+references used by current versions; unused and superseded-only inactive
+references are excluded. Equipment SetNull remains readable through snapshots
+but creates no Equipment ID option. Unknown selected bounded IDs remain safely
+representable without exposing the unknown ID as a label.
+
+Canonical history uses fifty-row pages. Matching count occurs before row
+retrieval, offset arithmetic is overflow-safe and server-only, and out-of-range
+or huge safe pages do not issue unsafe Prisma row queries. Database ordering is
+operational work date, submitted local date, submitted local time, NAM
+Reference, and stable root ID, all descending. Previous and Next URLs preserve
+normalized filters. Count, rows, Equipment options, and supervisor options load
+from one Repeatable Read snapshot. Canonical history is read-only.
+
+The broader Supply Request workflow remains incomplete. Daily Log relationships
+and Day View participation are not implemented.
+
+Acceptance evidence: 11 Phase 26.8 parser/unit tests, 9 Phase 26.8 query tests,
+8 Phase 26.8 route/component tests, 8 Phase 26.8 PostgreSQL tests, 10 Phase
+26.7 PostgreSQL tests, 12 Phase 26.6 PostgreSQL tests, 8 Phase 26.5 PostgreSQL
+tests, 6 Phase 26.4 PostgreSQL tests, 11 Phase 26.3B PostgreSQL tests, 11 Phase
+26.3A PostgreSQL tests, 8 existing PostgreSQL regression tests, and the full
+694-test suite passed with zero skips and no schema drift.
 
 ## Contents
 
@@ -152,7 +185,7 @@ and no schema drift.
 The product decisions represented here are Confirmed. The persistence,
 transaction, route, query, and UI choices in this document are the Approved
 architecture selected to satisfy those requirements. Independent review and
-formal architecture acceptance are complete. Phases 26.3A through 26.7 are
+formal architecture acceptance are complete. Phases 26.3A through 26.8 are
 implemented and accepted; every later implementation milestone still requires
 separate explicit authorization.
 
@@ -1386,9 +1419,12 @@ Recommended sequence:
    version review, including complete immutable corrected versions, reference
    reconciliation, status repair, Correction History, and read-only review of
    every existing immutable version.
-7. **Next planned candidate; not started; separate authorization required:**
-   canonical current-version history filtering and pagination.
-8. `SUPPLY_REQUEST` Daily Log classification, bounded role-link persistence,
+7. **Complete and accepted:** canonical current-version history filtering and
+   pagination with pointer-owned rows, structured URL filters, inactive-used
+   reference options, deterministic ordering, overflow-safe pagination, and
+   one Repeatable Read page snapshot.
+8. **Next planned candidate; not started; separate authorization required:**
+   `SUPPLY_REQUEST` Daily Log classification, bounded role-link persistence,
    and explicit submission and fulfillment Activity linking.
 9. Feature-owned Day View contribution.
 10. Independent adversarial implementation review, PostgreSQL concurrency
@@ -1412,11 +1448,16 @@ immutable corrected versions, status repair, Correction History summaries, and
 general read-only immutable version detail while preserving pointer authority
 and historical snapshots.
 
-The smallest safe next candidate is canonical Supply Request history and
-filtering. It has not started, requires separate explicit authorization, and
-must not include Daily Log relationship persistence, Day View participation,
-partial fulfillment, normal Reopen, request deletion, or generic audit
-infrastructure unless separately authorized.
+Phase 26.8 now provides canonical Supply Request history and filtering over
+explicit pointer-owned current versions, with structured URL state,
+database-owned predicates, deterministic fifty-row pagination, inactive-used
+reference options, snapshot-first rows, and coherent Repeatable Read page data.
+
+The smallest safe next candidate is explicit Supply Request Daily Log Activity
+linking. It has not started, requires separate explicit authorization, and must
+not include Day View participation, partial fulfillment, normal Reopen, request
+deletion, generic audit infrastructure, analytics, reports, or exports unless
+separately authorized.
 
 ## 36. Architecture Invariants
 

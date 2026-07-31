@@ -695,11 +695,12 @@ reference-management workflows exist. Phase 26.5 request create and initial
 detail surfaces are also complete and accepted, so the initial operator
 create/detail workflow is available. Phase 26.6 fulfillment and cancellation
 are complete and accepted. Phase 26.7 Correct Request and full immutable
-version review are complete and accepted, so create, detail, normal lifecycle,
-historical correction, Correction History, and read-only immutable version
-review are available. Canonical Supply Request history and filtering are
-planned, have not started, and require separate explicit authorization. The
-broader feature remains incomplete.
+version review and Phase 26.8 canonical history and filtering are complete and
+accepted, so create, detail, normal lifecycle, historical correction,
+Correction History, read-only immutable version review, and canonical
+current-version history/filtering are available. Phase 26.9 Supply Request
+Daily Log Activity linking is planned, has not started, and requires separate
+explicit authorization. The broader feature remains incomplete.
 
 ### Phase 26.1: Product Discovery And Decision Closure
 
@@ -929,30 +930,69 @@ Status: Complete and accepted
 
 ### Phase 26.8 — Canonical Supply Request History And Filtering
 
+Status: Complete and accepted
+
+- Added canonical `/supply-requests` with stable roots represented only by
+  their explicit pointer-owned current versions; superseded versions remain in
+  immutable request history.
+- Added inclusive operational date, exact resulting status, Equipment,
+  supervisor, normalized exact NAM Reference, current Item Number or
+  Description snapshot, and current Notes filters.
+- Added strict URL parsing with first repeated parameter behavior, runtime
+  non-string safety, bounded nonfatal invalid notices, and preserved valid
+  reversed ranges.
+- Added database-owned AND predicates and one line-local relational item
+  predicate over current immutable snapshots.
+- Added active and currently used inactive Equipment and supervisor options,
+  safe unavailable selected-reference state, and Equipment SetNull snapshot
+  behavior.
+- Added fifty-row pages, matching-count-first flow, server-only BigInt offset
+  safety, safe out-of-range and huge pages, and exact deterministic database
+  ordering.
+- Added filter-preserving Previous and Next URLs using normalized URL encoding.
+- Loaded count, current rows, Equipment options, and supervisor options through
+  one Repeatable Read snapshot.
+- Added explicit null-current-pointer and malformed-current-state integrity
+  failure rather than misleading empty results.
+- Added snapshot-first result rows and distinct no-request, filtered-empty,
+  out-of-range, and query-failure states.
+- Proved decoy-pointer authority, current-version filtering, inactive options,
+  deterministic pagination, Repeatable Read consistency, Equipment SetNull,
+  persisted-integrity rejection, read-only behavior, and bounded cleanup in
+  real PostgreSQL.
+- Accepted 11 parser/unit tests, 9 query tests, 8 route/component tests, 8 Phase
+  26.8 PostgreSQL tests, 10 Phase 26.7 PostgreSQL tests, 12 Phase 26.6
+  PostgreSQL tests, 8 Phase 26.5 PostgreSQL tests, 6 Phase 26.4 PostgreSQL
+  tests, 11 Phase 26.3B PostgreSQL tests, 11 Phase 26.3A PostgreSQL tests, and
+  8 existing PostgreSQL regressions with zero skipped tests; the full 694-test
+  suite passed with zero skips and no schema drift.
+- Made no schema change and added no Daily Log persistence, Day View
+  participation, partial fulfillment, normal Reopen, deletion, generic audit,
+  analytics, report, or export infrastructure.
+
+### Phase 26.9 — Supply Request Daily Log Activity Linking
+
 Status: Planned; not started; separate authorization required
 
-- Add `/supply-requests` for current versions only.
-- Add inclusive operational date range, exact status, Equipment, supervisor,
-  exact normalized NAM Reference, Item Number or Description snapshot, and
-  Notes filters.
-- Normalize URL-addressable filters, use the first repeated parameter value,
-  and show nonfatal notices for invalid filters.
-- Build deterministic database-side predicates, including relational
-  historical item snapshot search.
-- Include used inactive Equipment and supervisor filter options.
-- Add deterministic newest-first ordering and fifty-row pagination.
-- Preserve normalized filters in Previous and Next links and render an
-  out-of-range filtered empty state.
-- Link every result to stable current detail.
-- Require real PostgreSQL relational item-filter and pagination evidence.
-- Keep Daily Log relationship persistence, Day View participation, partial
-  fulfillment, normal Reopen, request deletion, generic audit infrastructure,
-  and analytics or export infrastructure outside this phase unless separately
-  authorized.
+- Add `SUPPLY_REQUEST` Daily Log Activity classification.
+- Add explicit submission-role and fulfillment-role linking.
+- Add feature-owned request-to-Activity link persistence with unique role
+  ownership per Supply Request and global Activity-link uniqueness.
+- Add candidate Daily Log and Activity queries.
+- Add explicit link creation, replacement, and removal.
+- Validate submission-date and fulfillment-date compatibility.
+- Require Fulfilled status for fulfillment linking.
+- Validate Equipment compatibility, including Equipment SetNull behavior.
+- Add source links from Daily Log Activities to current Supply Request detail.
+- Do not automatically create a Daily Log or Activity.
+- Require real PostgreSQL link uniqueness, replacement, cascade,
+  compatibility, and cleanup evidence.
+- Keep Day View participation, partial fulfillment, normal Reopen, request
+  deletion, generic audit infrastructure, analytics, reports, and exports
+  outside this phase unless separately authorized.
 
 ### Later Implementation Slices
 
-- Structured current-version history filtering.
 - Explicit Daily Log Activity linking.
 - Feature-owned Day View participation.
 - Independent adversarial review, acceptance corrections, and roadmap closure.

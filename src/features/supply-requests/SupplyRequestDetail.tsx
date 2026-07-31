@@ -53,9 +53,16 @@ export function SupplyRequestDetail({
             )}
           </p>
         </div>
-        <span className="count-pill">
-          {supplyRequestStatusLabel(detail.status)}
-        </span>
+        <div className="inline-actions">
+          {!historicalView ? (
+            <Link className="button secondary" href="/supply-requests">
+              Supply Request History
+            </Link>
+          ) : null}
+          <span className="count-pill">
+            {supplyRequestStatusLabel(detail.status)}
+          </span>
+        </div>
       </section>
 
       {historicalView ? (
