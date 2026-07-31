@@ -5,3 +5,4 @@ export const supplyRequestMaximumIdentifierLength = 100;
 export const supplyRequestCreateMaximumAttempts = 3;
 export const supplyRequestMaximumLifecycleNarrativeLength = 1_000;
 export const supplyRequestLifecycleMaximumAttempts = 3;
+export const supplyRequestCorrectionMaximumAttempts = 3;

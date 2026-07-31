@@ -246,11 +246,13 @@ describe("Supply Request create and detail surface helpers", () => {
     expect(parseSupplyRequestSearchQuery("x".repeat(201))).toBeNull();
   });
 
-  it("strictly parses route identity and only original version 1", () => {
+  it("strictly parses route identity and canonical positive immutable versions", () => {
     expect(parseSupplyRequestRouteId(" request-1 ")).toBe("request-1");
     expect(parseSupplyRequestRouteId("")).toBeNull();
     expect(parseSupplyRequestRouteId("x".repeat(101))).toBeNull();
     expect(parseSupplyRequestOriginalVersion("1")).toBe(1);
+    expect(parseSupplyRequestOriginalVersion("2")).toBe(2);
+    expect(parseSupplyRequestOriginalVersion("2147483647")).toBe(2_147_483_647);
     for (const value of [
       "0",
       "-1",
@@ -260,7 +262,7 @@ describe("Supply Request create and detail surface helpers", () => {
       "1e0",
       " 1",
       "1 ",
-      "2",
+      "2147483648",
       "9007199254740992",
       "NaN",
       "Infinity",

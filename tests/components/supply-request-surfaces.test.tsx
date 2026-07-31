@@ -22,7 +22,10 @@ const mocks = vi.hoisted(() => ({
   supervisorSearch: vi.fn(),
   itemSearch: vi.fn(),
   currentDetail: vi.fn(),
+  currentPageData: vi.fn(),
   originalDetail: vi.fn(),
+  immutableDetail: vi.fn(),
+  correctionHistory: vi.fn(),
   pageData: vi.fn(),
   notFound: vi.fn(() => {
     throw new Error("not-found");
@@ -55,7 +58,10 @@ vi.mock("@/features/supply-requests/surface-actions", () => ({
 vi.mock("@/features/supply-requests/surface-data", () => ({
   getSupplyRequestCreatePageData: mocks.pageData,
   getCurrentSupplyRequestDetail: mocks.currentDetail,
+  getSupplyRequestCurrentPageData: mocks.currentPageData,
   getOriginalSupplyRequestDetail: mocks.originalDetail,
+  getImmutableSupplyRequestVersion: mocks.immutableDetail,
+  getSupplyRequestCorrectionHistory: mocks.correctionHistory,
 }));
 vi.mock("next/navigation", () => ({ notFound: mocks.notFound }));
 
@@ -137,12 +143,14 @@ const detail: SupplyRequestDetailView = {
   cityState: "WY",
   requesterDisplayName: "Alain Alemany",
   requesterEmployeeNumber: "911601",
+  supervisorId: "supervisor-1",
   supervisorName: "Pablo Gonzalez",
   supervisorEmail: "p@example.com",
   notes: null,
   items: [
     {
       id: "line-1",
+      supplyItemId: "item-1",
       sequence: 1,
       itemNumber: "A-1",
       description: "Filter",
@@ -159,6 +167,9 @@ const detail: SupplyRequestDetailView = {
   cancellationLocalTime: null,
   cancellationReason: null,
   correctionReason: null,
+  correctedByDisplayName: null,
+  correctionLocalDate: null,
+  correctionLocalTime: null,
 };
 
 afterEach(cleanup);
@@ -169,7 +180,14 @@ describe("Supply Request create and detail surfaces", () => {
     mocks.actionState = undefined;
     mocks.pageData.mockResolvedValue(pageData);
     mocks.currentDetail.mockResolvedValue(detail);
+    mocks.currentPageData.mockResolvedValue({ detail, history: [] });
     mocks.originalDetail.mockResolvedValue(detail);
+    mocks.immutableDetail.mockResolvedValue({
+      detail,
+      role: "original",
+      currentVersionNumber: 1,
+    });
+    mocks.correctionHistory.mockResolvedValue([]);
     mocks.equipmentSearch.mockResolvedValue({ options: [], error: null });
     mocks.supervisorSearch.mockResolvedValue({ options: [], error: null });
     mocks.itemSearch.mockResolvedValue({ options: [], error: null });
@@ -488,7 +506,10 @@ describe("Supply Request create and detail surfaces", () => {
       "href",
       "/supply-requests/request-1/cancel",
     );
-    expect(screen.queryByText(/Reopen|Correct Request|Delete/)).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Correct Request" }),
+    ).toHaveAttribute("href", "/supply-requests/request-1/correct");
+    expect(screen.queryByText(/Reopen|Delete/)).toBeNull();
   });
 
   it("renders immutable original state and missing-live-Equipment guidance", () => {
@@ -531,14 +552,14 @@ describe("Supply Request create and detail surfaces", () => {
     expect(screen.getByText("Read-only historical record")).toBeInTheDocument();
     cleanup();
 
-    mocks.currentDetail.mockResolvedValue(null);
+    mocks.currentPageData.mockResolvedValue(null);
     await expect(
       SupplyRequestDetailPage({
         params: Promise.resolve({ id: "missing" }),
       }),
     ).rejects.toThrow("not-found");
 
-    mocks.originalDetail.mockResolvedValue(null);
+    mocks.immutableDetail.mockResolvedValue(null);
     await expect(
       SupplyRequestOriginalVersionPage({
         params: Promise.resolve({ id: "request-1", version: "2" }),

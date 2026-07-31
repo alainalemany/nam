@@ -80,12 +80,14 @@ function detail(
     cityState: "WY",
     requesterDisplayName: "Alain Alemany",
     requesterEmployeeNumber: "911601",
+    supervisorId: "supervisor-1",
     supervisorName: "Pablo Gonzalez",
     supervisorEmail: "p@example.com",
     notes: null,
     items: [
       {
         id: "line-1",
+        supplyItemId: "item-1",
         sequence: 1,
         itemNumber: "A-1",
         description: "Filter",
@@ -102,6 +104,9 @@ function detail(
     cancellationLocalTime: null,
     cancellationReason: null,
     correctionReason: null,
+    correctedByDisplayName: null,
+    correctionLocalDate: null,
+    correctionLocalTime: null,
     ...overrides,
   };
 }
@@ -126,7 +131,9 @@ describe("Supply Request lifecycle routes and components", () => {
       "/supply-requests/request-1/cancel",
     );
     expect(screen.queryByText(/reopen/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/correct request/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Correct Request" }),
+    ).toHaveAttribute("href", "/supply-requests/request-1/correct");
     expect(screen.queryByText(/delete/i)).not.toBeInTheDocument();
     expect(screen.getByText(/No Daily Work Log entry/i)).toBeInTheDocument();
   });

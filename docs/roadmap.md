@@ -694,8 +694,10 @@ management are complete and accepted. Initial aggregate persistence and
 reference-management workflows exist. Phase 26.5 request create and initial
 detail surfaces are also complete and accepted, so the initial operator
 create/detail workflow is available. Phase 26.6 fulfillment and cancellation
-are complete and accepted, so the initial create, detail, and normal lifecycle
-workflow is available. Correct Request and full immutable version review are
+are complete and accepted. Phase 26.7 Correct Request and full immutable
+version review are complete and accepted, so create, detail, normal lifecycle,
+historical correction, Correction History, and read-only immutable version
+review are available. Canonical Supply Request history and filtering are
 planned, have not started, and require separate explicit authorization. The
 broader feature remains incomplete.
 
@@ -888,27 +890,65 @@ Status: Complete and accepted
 
 ### Phase 26.7 — Correct Request And Full Immutable Version Review
 
+Status: Complete and accepted
+
+- Added `/supply-requests/[id]/correct` with a complete aggregate correction
+  form, required Correction Reason, and automatic America/New_York correction
+  metadata with corrected-by Alain Alemany snapshot.
+- Added parameterized root locking, lock-before-read ordering, explicit
+  current-pointer authority, expected-version stale protection, and stale
+  comparison before replacement resolution.
+- Added complete persisted-state integrity validation, exact preservation of
+  unchanged reference snapshots, active authoritative changed-reference
+  replacement, and active authoritative snapshots for newly added Supply
+  Items.
+- Added retained-item quantity and order changes, additions, removals, and
+  Equipment SetNull active replacement without mutating older versions.
+- Added one complete immutable `CORRECTED` version, complete ordered lines, and
+  atomic same-owner current-pointer advancement.
+- Added correction to Requested, Fulfilled, and Cancelled, including
+  Fulfilled-to-Requested and Cancelled-to-Requested historical repair without
+  normal Reopen semantics.
+- Added Correction History summaries, general immutable version detail, and
+  Original, Current, and Superseded classification.
+- Loaded current detail and Correction History through one Repeatable Read
+  snapshot.
+- Proved correction concurrency, lifecycle races, rollback, retry, Equipment
+  SetNull, decoy-pointer authority, historical preservation, and cleanup in
+  real PostgreSQL.
+- Accepted 9 Phase 26.7 unit tests, 6 Server Action tests, 8 query tests, 7
+  route/component tests, 18 surface parser regressions, 10 Phase 26.7
+  PostgreSQL tests, 12 Phase 26.6 PostgreSQL tests, 8 Phase 26.5 PostgreSQL
+  tests, 6 Phase 26.4 PostgreSQL tests, 11 Phase 26.3B PostgreSQL tests, 11
+  Phase 26.3A PostgreSQL tests, and 8 existing PostgreSQL regressions with zero
+  skipped tests; the full 658-test suite passed with zero skips and no schema
+  drift.
+- Made no schema change and added no Daily Log persistence, Day View
+  participation, partial fulfillment, normal Reopen, deletion, or generic
+  audit infrastructure.
+
+### Phase 26.8 — Canonical Supply Request History And Filtering
+
 Status: Planned; not started; separate authorization required
 
-- Add `/supply-requests/[id]/correct` with an explicit full Correct Request
-  form.
-- Require the expected current version and a bounded Correction Reason.
-- Capture the America/New_York correction timestamp and immutable corrected-by
-  snapshot for Alain Alemany.
-- Lock the stable root, reject stale actions, validate the complete corrected
-  aggregate, append one immutable corrected version, and atomically advance the
-  current pointer.
-- Preserve unchanged references and snapshots while deliberately refreshing
-  only changed references and requiring active replacements.
-- Support explicit status and lifecycle-fact correction.
-- Add general immutable version-detail support, Correction History summaries,
-  and superseded-version presentation.
-- Require real PostgreSQL correction concurrency, rollback, and historical
-  preservation evidence.
-- Keep canonical Supply Request filtering and pagination, Daily Log
-  relationship persistence, Day View participation, partial fulfillment,
-  normal Reopen, request deletion, and generic audit infrastructure outside
-  this phase unless separately authorized.
+- Add `/supply-requests` for current versions only.
+- Add inclusive operational date range, exact status, Equipment, supervisor,
+  exact normalized NAM Reference, Item Number or Description snapshot, and
+  Notes filters.
+- Normalize URL-addressable filters, use the first repeated parameter value,
+  and show nonfatal notices for invalid filters.
+- Build deterministic database-side predicates, including relational
+  historical item snapshot search.
+- Include used inactive Equipment and supervisor filter options.
+- Add deterministic newest-first ordering and fifty-row pagination.
+- Preserve normalized filters in Previous and Next links and render an
+  out-of-range filtered empty state.
+- Link every result to stable current detail.
+- Require real PostgreSQL relational item-filter and pagination evidence.
+- Keep Daily Log relationship persistence, Day View participation, partial
+  fulfillment, normal Reopen, request deletion, generic audit infrastructure,
+  and analytics or export infrastructure outside this phase unless separately
+  authorized.
 
 ### Later Implementation Slices
 

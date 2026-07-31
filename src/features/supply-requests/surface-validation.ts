@@ -17,7 +17,7 @@ const routeIdSchema = z
   .min(1)
   .max(supplyRequestMaximumIdentifierLength);
 const searchQuerySchema = z.string().trim().max(200);
-const originalVersionPattern = /^1$/;
+const immutableVersionPattern = /^[1-9]\d*$/;
 const maximumSerializedItemsLength = 50_000;
 const permittedCreateFields = new Set([
   "operationalWorkDate",
@@ -94,9 +94,14 @@ export function parseSupplyRequestRouteId(input: unknown) {
 
 export function parseSupplyRequestOriginalVersion(input: unknown) {
   const first = Array.isArray(input) ? input[0] : input;
-  return typeof first === "string" && originalVersionPattern.test(first)
-    ? 1
-    : null;
+  if (
+    typeof first !== "string" ||
+    !immutableVersionPattern.test(first)
+  ) {
+    return null;
+  }
+  const value = Number(first);
+  return Number.isSafeInteger(value) && value <= 2_147_483_647 ? value : null;
 }
 
 export function parseSupplyRequestSelectedItemsPayload(

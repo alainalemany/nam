@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { SupplyRequestDetail } from "@/features/supply-requests/SupplyRequestDetail";
-import { getOriginalSupplyRequestDetail } from "@/features/supply-requests/surface-data";
+import { getImmutableSupplyRequestVersion } from "@/features/supply-requests/surface-data";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,12 @@ export default async function SupplyRequestOriginalVersionPage({
   params: Promise<{ id: string; version: string }>;
 }) {
   const { id, version } = await params;
-  const detail = await getOriginalSupplyRequestDetail(id, version);
-  if (!detail) notFound();
-  return <SupplyRequestDetail detail={detail} historical />;
+  const result = await getImmutableSupplyRequestVersion(id, version);
+  if (!result) notFound();
+  return (
+    <SupplyRequestDetail
+      detail={result.detail}
+      historicalRole={result.role}
+    />
+  );
 }

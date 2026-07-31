@@ -8,6 +8,8 @@ import {
 import type {
   SupplyRequestCreatePageData,
   SupplyRequestDetailView,
+  SupplyRequestImmutableVersionView,
+  SupplyRequestVersionSummary,
 } from "./surface-types";
 import {
   isCanonicalSupplyRequestDate,
@@ -20,6 +22,7 @@ import {
 } from "./surface-validation";
 
 export const supplyRequestOptionLimit = 20;
+type SupplyRequestSurfaceClient = PrismaClient | Prisma.TransactionClient;
 
 const versionSelect = {
   id: true,
@@ -41,6 +44,7 @@ const versionSelect = {
   requesterEmployeeNumberSnapshot: true,
   supervisorNameSnapshot: true,
   supervisorEmailSnapshot: true,
+  supervisorId: true,
   notes: true,
   fulfillmentOperationalWorkDate: true,
   fulfilledLocalDate: true,
@@ -58,8 +62,10 @@ const versionSelect = {
   items: {
     select: {
       id: true,
+      supplyItemId: true,
       sequence: true,
       itemNumberSnapshot: true,
+      normalizedItemNumberSnapshot: true,
       descriptionSnapshot: true,
       quantity: true,
       unitOfMeasureSnapshot: true,
@@ -74,6 +80,14 @@ function dateKey(value: Date | null) {
   return isCanonicalSupplyRequestDate(key) ? key : null;
 }
 
+function usableText(value: unknown, maximum?: number) {
+  return (
+    typeof value === "string" &&
+    value.trim().length > 0 &&
+    (maximum === undefined || value.trim().length <= maximum)
+  );
+}
+
 function lifecycleFieldsAreCoherent(
   version: Prisma.SupplyRequestVersionGetPayload<{
     select: typeof versionSelect;
@@ -81,15 +95,28 @@ function lifecycleFieldsAreCoherent(
 ) {
   const operationalWorkDate = dateKey(version.operationalWorkDate);
   const submittedLocalDate = dateKey(version.submittedLocalDate);
+  const itemIds = new Set<string>();
   const completeOrderedItems =
     version.items.length > 0 &&
     version.items.length <= 50 &&
     version.items.every(
-      (item, index) =>
-        item.sequence === index + 1 &&
-        Number.isSafeInteger(item.quantity) &&
-        item.quantity >= 1 &&
-        item.quantity <= 999_999,
+      (item, index) => {
+        const valid =
+          item.sequence === index + 1 &&
+          Number.isSafeInteger(item.quantity) &&
+          item.quantity >= 1 &&
+          item.quantity <= 999_999 &&
+          (item.supplyItemId === undefined ||
+            (usableText(item.supplyItemId) &&
+              !itemIds.has(item.supplyItemId))) &&
+          usableText(item.itemNumberSnapshot) &&
+          (item.normalizedItemNumberSnapshot === undefined ||
+            usableText(item.normalizedItemNumberSnapshot)) &&
+          usableText(item.descriptionSnapshot) &&
+          usableText(item.unitOfMeasureSnapshot);
+        itemIds.add(item.supplyItemId);
+        return valid;
+      },
     );
   if (
     !Number.isSafeInteger(version.versionNumber) ||
@@ -98,6 +125,16 @@ function lifecycleFieldsAreCoherent(
     !operationalWorkDate ||
     !submittedLocalDate ||
     !isCanonicalSupplyRequestLocalTime(version.submittedLocalTime) ||
+    !usableText(version.equipmentDisplayNameSnapshot) ||
+    !usableText(version.mineNameSnapshot) ||
+    !usableText(version.cityNameSnapshot) ||
+    !usableText(version.requesterDisplayNameSnapshot) ||
+    !usableText(version.requesterEmployeeNumberSnapshot) ||
+    (version.supervisorId !== undefined &&
+      !usableText(version.supervisorId)) ||
+    !usableText(version.supervisorNameSnapshot) ||
+    !usableText(version.supervisorEmailSnapshot) ||
+    (version.notes !== null && !usableText(version.notes, 2_000)) ||
     !completeOrderedItems
   ) {
     return false;
@@ -113,6 +150,8 @@ function lifecycleFieldsAreCoherent(
     fulfilledLocalDate !== null &&
     version.fulfilledLocalTime !== null &&
     isCanonicalSupplyRequestLocalTime(version.fulfilledLocalTime) &&
+    (version.fulfillmentNote === null ||
+      usableText(version.fulfillmentNote, 1_000)) &&
     fulfillmentOperationalWorkDate >= operationalWorkDate &&
     `${fulfilledLocalDate}T${version.fulfilledLocalTime}` >=
       `${submittedLocalDate}T${version.submittedLocalTime}`;
@@ -125,6 +164,8 @@ function lifecycleFieldsAreCoherent(
     cancelledLocalDate !== null &&
     version.cancelledLocalTime !== null &&
     isCanonicalSupplyRequestLocalTime(version.cancelledLocalTime) &&
+    (version.cancellationReason === null ||
+      usableText(version.cancellationReason, 1_000)) &&
     `${cancelledLocalDate}T${version.cancelledLocalTime}` >=
       `${submittedLocalDate}T${version.submittedLocalTime}`;
   const hasAnyCancellation =
@@ -137,10 +178,11 @@ function lifecycleFieldsAreCoherent(
     version.correctionLocalDate !== null ||
     version.correctionLocalTime !== null;
   const hasCompleteCorrection =
-    version.correctionReason !== null &&
-    version.correctedByDisplayNameSnapshot !== null &&
-    version.correctionLocalDate !== null &&
-    version.correctionLocalTime !== null;
+    usableText(version.correctionReason, 1_000) &&
+    usableText(version.correctedByDisplayNameSnapshot) &&
+    dateKey(version.correctionLocalDate) !== null &&
+    version.correctionLocalTime !== null &&
+    isCanonicalSupplyRequestLocalTime(version.correctionLocalTime);
   const correctionIsCoherent =
     (version.changeKind !== "CORRECTED" && !hasAnyCorrection) ||
     (version.changeKind === "CORRECTED" && hasCompleteCorrection);
@@ -207,9 +249,11 @@ function mapVersion(
     requesterEmployeeNumber: version.requesterEmployeeNumberSnapshot,
     supervisorName: version.supervisorNameSnapshot,
     supervisorEmail: version.supervisorEmailSnapshot,
+    supervisorId: version.supervisorId,
     notes: version.notes,
     items: version.items.map((item) => ({
       id: item.id,
+      supplyItemId: item.supplyItemId,
       sequence: item.sequence,
       itemNumber: item.itemNumberSnapshot,
       description: item.descriptionSnapshot,
@@ -227,11 +271,14 @@ function mapVersion(
     cancellationLocalTime: version.cancelledLocalTime,
     cancellationReason: version.cancellationReason,
     correctionReason: version.correctionReason,
+    correctedByDisplayName: version.correctedByDisplayNameSnapshot,
+    correctionLocalDate: dateKey(version.correctionLocalDate),
+    correctionLocalTime: version.correctionLocalTime,
   };
 }
 
 export async function searchActiveSupplyRequestEquipmentWithClient(
-  client: PrismaClient,
+  client: SupplyRequestSurfaceClient,
   queryInput: unknown,
 ) {
   const query = parseSupplyRequestSearchQuery(queryInput);
@@ -278,7 +325,7 @@ export async function searchActiveSupplyRequestEquipmentWithClient(
 }
 
 export async function searchActiveSupplyRequestSupervisorsWithClient(
-  client: PrismaClient,
+  client: SupplyRequestSurfaceClient,
   queryInput: unknown,
 ) {
   const query = parseSupplyRequestSearchQuery(queryInput);
@@ -303,7 +350,7 @@ export async function searchActiveSupplyRequestSupervisorsWithClient(
 }
 
 export async function searchActiveSupplyRequestItemsWithClient(
-  client: PrismaClient,
+  client: SupplyRequestSurfaceClient,
   queryInput: unknown,
 ) {
   const query = parseSupplyRequestSearchQuery(queryInput);
@@ -343,7 +390,7 @@ export async function searchActiveSupplyRequestItemsWithClient(
 }
 
 export async function getSupplyRequestCreatePageDataWithClient(
-  client: PrismaClient,
+  client: SupplyRequestSurfaceClient,
 ): Promise<SupplyRequestCreatePageData> {
   const [equipment, supervisors, items, equipmentCount, supervisorCount, itemCount] =
     await Promise.all([
@@ -366,7 +413,7 @@ export async function getSupplyRequestCreatePageDataWithClient(
 }
 
 export async function getCurrentSupplyRequestDetailWithClient(
-  client: PrismaClient,
+  client: SupplyRequestSurfaceClient,
   idInput: unknown,
 ) {
   const id = parseSupplyRequestRouteId(idInput);
@@ -392,7 +439,7 @@ export async function getCurrentSupplyRequestDetailWithClient(
 }
 
 export async function getSupplyRequestLifecycleActionContextWithClient(
-  client: PrismaClient,
+  client: SupplyRequestSurfaceClient,
   idInput: unknown,
 ) {
   const detail = await getCurrentSupplyRequestDetailWithClient(client, idInput);
@@ -410,8 +457,63 @@ export async function getSupplyRequestLifecycleActionContextWithClient(
   } as const;
 }
 
+export async function getImmutableSupplyRequestVersionWithClient(
+  client: SupplyRequestSurfaceClient,
+  idInput: unknown,
+  versionInput: unknown,
+): Promise<SupplyRequestImmutableVersionView | null> {
+  const id = parseSupplyRequestRouteId(idInput);
+  const versionNumber = parseSupplyRequestOriginalVersion(versionInput);
+  if (!id || !versionNumber) return null;
+  const version = await client.supplyRequestVersion.findUnique({
+    where: {
+      supplyRequestId_versionNumber: {
+        supplyRequestId: id,
+        versionNumber,
+      },
+    },
+    select: {
+      ...versionSelect,
+      supplyRequest: {
+        select: {
+          id: true,
+          namReference: true,
+          currentVersionId: true,
+          currentVersion: {
+            select: { id: true, supplyRequestId: true, versionNumber: true },
+          },
+        },
+      },
+    },
+  });
+  if (
+    !version ||
+    version.supplyRequest.id !== id ||
+    !version.supplyRequest.currentVersionId ||
+    !version.supplyRequest.currentVersion ||
+    version.supplyRequest.currentVersion.id !==
+      version.supplyRequest.currentVersionId ||
+    version.supplyRequest.currentVersion.supplyRequestId !== id
+  ) {
+    return null;
+  }
+  const detail = mapVersion(id, version.supplyRequest.namReference, version);
+  if (!detail) return null;
+  return {
+    detail,
+    role:
+      version.versionNumber === 1
+        ? "original"
+        : version.id === version.supplyRequest.currentVersionId
+          ? "current"
+          : "superseded",
+    currentVersionNumber:
+      version.supplyRequest.currentVersion.versionNumber,
+  };
+}
+
 export async function getOriginalSupplyRequestDetailWithClient(
-  client: PrismaClient,
+  client: SupplyRequestSurfaceClient,
   idInput: unknown,
   versionInput: unknown,
 ) {
@@ -432,4 +534,237 @@ export async function getOriginalSupplyRequestDetailWithClient(
   });
   if (!version || version.supplyRequest.id !== id) return null;
   return mapVersion(id, version.supplyRequest.namReference, version);
+}
+
+function summaryChangeTime(
+  version: {
+    changeKind: "CREATED" | "FULFILLED" | "CANCELLED" | "CORRECTED";
+    submittedLocalDate: Date;
+    submittedLocalTime: string;
+    fulfilledLocalDate: Date | null;
+    fulfilledLocalTime: string | null;
+    cancelledLocalDate: Date | null;
+    cancelledLocalTime: string | null;
+    correctionLocalDate: Date | null;
+    correctionLocalTime: string | null;
+  },
+) {
+  if (version.changeKind === "FULFILLED") {
+    return {
+      date: dateKey(version.fulfilledLocalDate),
+      time: version.fulfilledLocalTime,
+    };
+  }
+  if (version.changeKind === "CANCELLED") {
+    return {
+      date: dateKey(version.cancelledLocalDate),
+      time: version.cancelledLocalTime,
+    };
+  }
+  if (version.changeKind === "CORRECTED") {
+    return {
+      date: dateKey(version.correctionLocalDate),
+      time: version.correctionLocalTime,
+    };
+  }
+  return {
+    date: dateKey(version.submittedLocalDate),
+    time: version.submittedLocalTime,
+  };
+}
+
+function historySummaryIsCoherent(
+  version: {
+    versionNumber: number;
+    changeKind: "CREATED" | "FULFILLED" | "CANCELLED" | "CORRECTED";
+    status: "REQUESTED" | "FULFILLED" | "CANCELLED";
+    fulfilledLocalDate: Date | null;
+    fulfilledLocalTime: string | null;
+    cancelledLocalDate: Date | null;
+    cancelledLocalTime: string | null;
+    correctionLocalDate: Date | null;
+    correctionLocalTime: string | null;
+    correctionReason: string | null;
+  },
+) {
+  if (
+    !Number.isSafeInteger(version.versionNumber) ||
+    version.versionNumber < 1 ||
+    version.versionNumber > 2_147_483_647
+  ) {
+    return false;
+  }
+  const hasCorrectionSummary =
+    version.correctionLocalDate !== null ||
+    version.correctionLocalTime !== null ||
+    version.correctionReason !== null;
+  if (version.changeKind === "CORRECTED") {
+    return (
+      usableText(version.correctionReason, 1_000) &&
+      dateKey(version.correctionLocalDate) !== null &&
+      version.correctionLocalTime !== null &&
+      isCanonicalSupplyRequestLocalTime(version.correctionLocalTime)
+    );
+  }
+  if (hasCorrectionSummary) return false;
+  if (version.changeKind === "CREATED") {
+    return version.status === "REQUESTED";
+  }
+  if (version.changeKind === "FULFILLED") {
+    return (
+      version.status === "FULFILLED" &&
+      dateKey(version.fulfilledLocalDate) !== null &&
+      version.fulfilledLocalTime !== null &&
+      isCanonicalSupplyRequestLocalTime(version.fulfilledLocalTime)
+    );
+  }
+  return (
+    version.changeKind === "CANCELLED" &&
+    version.status === "CANCELLED" &&
+    dateKey(version.cancelledLocalDate) !== null &&
+    version.cancelledLocalTime !== null &&
+    isCanonicalSupplyRequestLocalTime(version.cancelledLocalTime)
+  );
+}
+
+export async function getSupplyRequestCorrectionHistoryWithClient(
+  client: SupplyRequestSurfaceClient,
+  idInput: unknown,
+): Promise<readonly SupplyRequestVersionSummary[] | null> {
+  const id = parseSupplyRequestRouteId(idInput);
+  if (!id) return null;
+  const root = await client.supplyRequest.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      currentVersionId: true,
+      currentVersion: { select: { id: true, supplyRequestId: true } },
+      versions: {
+        where: { NOT: { currentForRequest: { is: { id } } } },
+        select: {
+          versionNumber: true,
+          changeKind: true,
+          status: true,
+          submittedLocalDate: true,
+          submittedLocalTime: true,
+          fulfilledLocalDate: true,
+          fulfilledLocalTime: true,
+          cancelledLocalDate: true,
+          cancelledLocalTime: true,
+          correctionLocalDate: true,
+          correctionLocalTime: true,
+          correctionReason: true,
+        },
+        orderBy: { versionNumber: "desc" },
+      },
+    },
+  });
+  if (
+    !root?.currentVersionId ||
+    !root.currentVersion ||
+    root.currentVersion.id !== root.currentVersionId ||
+    root.currentVersion.supplyRequestId !== root.id
+  ) {
+    return null;
+  }
+  const summaries: SupplyRequestVersionSummary[] = [];
+  for (const version of root.versions) {
+    const change = summaryChangeTime(version);
+    if (
+      !historySummaryIsCoherent(version) ||
+      !change.date ||
+      !change.time ||
+      !isCanonicalSupplyRequestLocalTime(change.time)
+    ) {
+      return null;
+    }
+    summaries.push({
+      versionNumber: version.versionNumber,
+      changeKind: version.changeKind,
+      status: version.status,
+      changeLocalDate: change.date,
+      changeLocalTime: change.time,
+      correctionReason: version.correctionReason,
+    });
+  }
+  return summaries;
+}
+
+export async function getSupplyRequestCurrentPageDataWithClient(
+  client: PrismaClient,
+  idInput: unknown,
+) {
+  return client.$transaction(
+    async (transaction) => {
+      const detail = await getCurrentSupplyRequestDetailWithClient(
+        transaction,
+        idInput,
+      );
+      if (!detail) return null;
+      const history = await getSupplyRequestCorrectionHistoryWithClient(
+        transaction,
+        idInput,
+      );
+      return history ? { detail, history } : null;
+    },
+    { isolationLevel: "RepeatableRead" },
+  );
+}
+
+export async function getSupplyRequestCorrectionContextWithClient(
+  client: SupplyRequestSurfaceClient,
+  idInput: unknown,
+) {
+  const detail = await getCurrentSupplyRequestDetailWithClient(client, idInput);
+  if (!detail) return null;
+  const [activeEquipment, activeSupervisors, activeItems] = await Promise.all([
+    searchActiveSupplyRequestEquipmentWithClient(client, ""),
+    searchActiveSupplyRequestSupervisorsWithClient(client, ""),
+    searchActiveSupplyRequestItemsWithClient(client, ""),
+  ]);
+  const equipment =
+    detail.equipmentId &&
+    !activeEquipment.some((option) => option.id === detail.equipmentId)
+      ? [
+          {
+            id: detail.equipmentId,
+            label: detail.equipmentLabel,
+            displayName: detail.equipmentDisplayName,
+            equipmentNumber: detail.equipmentNumber,
+            mineName: detail.mineName,
+            cityName: detail.cityName,
+            cityState: detail.cityState,
+          },
+          ...activeEquipment,
+        ]
+      : activeEquipment;
+  const supervisors = activeSupervisors.some(
+    (option) => option.id === detail.supervisorId,
+  )
+    ? activeSupervisors
+    : [
+        {
+          id: detail.supervisorId,
+          fullName: detail.supervisorName,
+          email: detail.supervisorEmail,
+        },
+        ...activeSupervisors,
+      ];
+  const existingItemOptions = detail.items.map((item) => ({
+    id: item.supplyItemId,
+    itemNumber: item.itemNumber,
+    description: item.description,
+    unit: item.unit,
+  }));
+  const existingIds = new Set(existingItemOptions.map((item) => item.id));
+  return {
+    detail,
+    equipment,
+    supervisors,
+    items: [
+      ...existingItemOptions,
+      ...activeItems.filter((item) => !existingIds.has(item.id)),
+    ],
+    requiresEquipmentReplacement: detail.equipmentId === null,
+  } as const;
 }

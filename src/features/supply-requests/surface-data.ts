@@ -2,7 +2,11 @@ import { prisma } from "@/lib/prisma";
 
 import {
   getCurrentSupplyRequestDetailWithClient,
+  getImmutableSupplyRequestVersionWithClient,
   getOriginalSupplyRequestDetailWithClient,
+  getSupplyRequestCorrectionContextWithClient,
+  getSupplyRequestCorrectionHistoryWithClient,
+  getSupplyRequestCurrentPageDataWithClient,
   getSupplyRequestLifecycleActionContextWithClient,
   getSupplyRequestCreatePageDataWithClient,
   searchActiveSupplyRequestEquipmentWithClient,
@@ -43,11 +47,30 @@ export async function getCurrentSupplyRequestDetail(id: unknown) {
   return getCurrentSupplyRequestDetailWithClient(prisma, id);
 }
 
+export async function getSupplyRequestCurrentPageData(id: unknown) {
+  return getSupplyRequestCurrentPageDataWithClient(prisma, id);
+}
+
 export async function getOriginalSupplyRequestDetail(
   id: unknown,
   version: unknown,
 ) {
   return getOriginalSupplyRequestDetailWithClient(prisma, id, version);
+}
+
+export async function getImmutableSupplyRequestVersion(
+  id: unknown,
+  version: unknown,
+) {
+  return getImmutableSupplyRequestVersionWithClient(prisma, id, version);
+}
+
+export async function getSupplyRequestCorrectionHistory(id: unknown) {
+  return getSupplyRequestCorrectionHistoryWithClient(prisma, id);
+}
+
+export async function getSupplyRequestCorrectionContext(id: unknown) {
+  return getSupplyRequestCorrectionContextWithClient(prisma, id);
 }
 
 export async function getSupplyRequestLifecycleActionContext(id: unknown) {

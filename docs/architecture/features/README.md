@@ -76,7 +76,7 @@ documentation architecture milestone explicitly approves that reorganization.
 | Work Schedule | [Work Schedule Architecture](work-schedule.md) | Approved; V1 foundation and Day View participation implemented |
 | Timesheet | [Timesheet Architecture](timesheets.md) | Approved; V1 foundation and Day View participation implemented |
 | Equipment Fuel Events | [Equipment Fuel Events Architecture](equipment-fuel-events.md) | Approved; V1 foundation, feature-owned history filtering, and Phase 24.1 Day View participation implemented |
-| Supply Requests | [Supply Requests Architecture](supply-requests.md) | Architecture Approved; Phases 26.3A, 26.3B, 26.4, 26.5, and 26.6 implemented and accepted; initial create, detail, fulfillment, and cancellation workflow available; Correct Request not started; broader feature implementation incomplete |
+| Supply Requests | [Supply Requests Architecture](supply-requests.md) | Architecture Approved; Phases 26.3A through 26.7 implemented and accepted; create, detail, reference management, fulfillment, cancellation, correction, Correction History, and immutable version review available; canonical Supply Request history and filtering not started; Daily Log links and Day View unavailable; broader feature implementation incomplete |
 
 ## Related Domain Assessments
 

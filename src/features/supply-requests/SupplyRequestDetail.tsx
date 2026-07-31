@@ -7,15 +7,29 @@ import {
   supplyRequestEquipmentCategoryLabel,
   supplyRequestStatusLabel,
 } from "./surface-display";
-import type { SupplyRequestDetailView } from "./surface-types";
+import type {
+  SupplyRequestDetailView,
+  SupplyRequestVersionSummary,
+} from "./surface-types";
 
 export function SupplyRequestDetail({
   detail,
   historical = false,
+  historicalRole,
+  history = [],
 }: {
   detail: SupplyRequestDetailView;
   historical?: boolean;
+  historicalRole?: "original" | "current" | "superseded";
+  history?: readonly SupplyRequestVersionSummary[];
 }) {
+  const historicalView = historical || historicalRole !== undefined;
+  const versionHeading =
+    historicalRole === "current"
+      ? "Current Immutable Version"
+      : historicalRole === "superseded"
+        ? "Superseded Version"
+        : "Original Requested Version";
   const location = `${detail.mineName} · ${detail.cityName}${
     detail.cityState ? `, ${detail.cityState}` : ""
   }`;
@@ -25,11 +39,11 @@ export function SupplyRequestDetail({
       <section className="page-header with-actions">
         <div>
           <p className="eyebrow">
-            {historical ? "Original Requested Version" : "Supply Request"}
+            {historicalView ? versionHeading : "Supply Request"}
           </p>
           <h1>
-            {historical
-              ? `${detail.namReference} — Version 1`
+            {historicalView
+              ? `${detail.namReference} — Version ${detail.versionNumber}`
               : detail.namReference}
           </h1>
           <p className="summary">
@@ -44,12 +58,15 @@ export function SupplyRequestDetail({
         </span>
       </section>
 
-      {historical ? (
+      {historicalView ? (
         <section className="panel">
           <h2>Read-only historical record</h2>
           <p>
-            This immutable original version preserves the accepted request
-            facts exactly as they were recorded.
+            {historicalRole === "current"
+              ? "This immutable version is authoritative through the request’s explicit current-version pointer."
+              : historicalRole === "superseded"
+                ? "This immutable version is historical and no longer authoritative."
+                : "This immutable original version preserves the accepted request facts exactly as they were recorded."}
           </p>
           <Link
             className="button secondary"
@@ -184,7 +201,7 @@ export function SupplyRequestDetail({
         <p>{detail.notes ?? "No Notes recorded."}</p>
       </section>
 
-      {!historical && detail.status === "REQUESTED" ? (
+      {!historicalView && detail.status === "REQUESTED" ? (
         <section className="panel" aria-labelledby="lifecycle-actions">
           <h2 id="lifecycle-actions">Update NAM lifecycle</h2>
           <p>
@@ -213,7 +230,7 @@ export function SupplyRequestDetail({
         </section>
       ) : null}
 
-      {!historical && detail.status === "FULFILLED" ? (
+      {detail.status === "FULFILLED" ? (
         <section className="panel detail-grid" aria-labelledby="fulfilled-facts">
           <h2 className="full-width-field" id="fulfilled-facts">
             Fulfillment facts
@@ -241,7 +258,7 @@ export function SupplyRequestDetail({
         </section>
       ) : null}
 
-      {!historical && detail.status === "CANCELLED" ? (
+      {detail.status === "CANCELLED" ? (
         <section className="panel detail-grid" aria-labelledby="cancelled-facts">
           <h2 className="full-width-field" id="cancelled-facts">
             Cancellation facts
@@ -267,19 +284,101 @@ export function SupplyRequestDetail({
         </section>
       ) : null}
 
-      {!historical ? (
+      {detail.changeKind === "CORRECTED" ? (
+        <section className="panel detail-grid" aria-labelledby="correction-metadata">
+          <h2 className="full-width-field" id="correction-metadata">
+            Correction metadata
+          </h2>
+          <div className="full-width-field">
+            <p className="eyebrow">Correction Reason</p>
+            <p>{detail.correctionReason}</p>
+          </div>
+          <div>
+            <p className="eyebrow">Corrected by</p>
+            <p>{detail.correctedByDisplayName}</p>
+          </div>
+          <div>
+            <p className="eyebrow">Correction local date</p>
+            <p>{formatSupplyRequestDate(detail.correctionLocalDate ?? "")}</p>
+          </div>
+          <div>
+            <p className="eyebrow">Correction local time</p>
+            <p>{detail.correctionLocalTime}</p>
+          </div>
+        </section>
+      ) : null}
+
+      {!historicalView ? (
         <>
-          <section className="panel" aria-labelledby="history-heading">
-            <h2 id="history-heading">History</h2>
-            <p>No corrections recorded</p>
+          <section className="panel" aria-labelledby="correction-action">
+            <h2 id="correction-action">Historical repair</h2>
+            <p>
+              Correct Request appends a complete immutable version in NAM. It
+              does not contact or modify the corporate system.
+            </p>
             <Link
               className="button secondary"
               href={`/supply-requests/${encodeURIComponent(
                 detail.supplyRequestId,
-              )}/history/1`}
+              )}/correct`}
             >
-              View original version 1
+              Correct Request
             </Link>
+          </section>
+          <section className="panel table-panel" aria-labelledby="history-heading">
+            <h2 id="history-heading">Correction History</h2>
+            {history.length === 0 && detail.versionNumber === 1 ? (
+              <p>No corrections recorded</p>
+            ) : (
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th scope="col">Version</th>
+                      <th scope="col">Change kind</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Local change time</th>
+                      <th scope="col">Correction Reason</th>
+                      <th scope="col">Review</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.map((entry) => (
+                      <tr key={entry.versionNumber}>
+                        <td>{entry.versionNumber}</td>
+                        <td>{supplyRequestChangeKindLabel(entry.changeKind)}</td>
+                        <td>{supplyRequestStatusLabel(entry.status)}</td>
+                        <td>
+                          {formatSupplyRequestDate(entry.changeLocalDate)} at{" "}
+                          {entry.changeLocalTime}
+                        </td>
+                        <td>{entry.correctionReason ?? "—"}</td>
+                        <td>
+                          <Link
+                            className="table-action"
+                            href={`/supply-requests/${encodeURIComponent(
+                              detail.supplyRequestId,
+                            )}/history/${entry.versionNumber}`}
+                          >
+                            View version {entry.versionNumber}
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {!history.some((entry) => entry.versionNumber === 1) ? (
+              <Link
+                className="button secondary"
+                href={`/supply-requests/${encodeURIComponent(
+                  detail.supplyRequestId,
+                )}/history/1`}
+              >
+                View original version 1
+              </Link>
+            ) : null}
           </section>
           <section className="panel" aria-labelledby="daily-log-guidance">
             <h2 id="daily-log-guidance">Daily Work Log narrative</h2>

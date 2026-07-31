@@ -38,17 +38,14 @@ Related Documents:
 - `docs/architecture/features/equipment-fuel-events.md`
 - `docs/architecture/features/timesheets.md`
 
-Last Reviewed: 2026-07-30
+Last Reviewed: 2026-07-31
 
-Implementation Status: Phase 26.3A persistence schema and PostgreSQL integrity
-proof, Phase 26.3B transactional initial-create persistence, Phase 26.4 Supply
-Item and Supply Request Supervisor reference management, Phase 26.5 create and
-initial detail surfaces, and Phase 26.6 fulfillment and cancellation are
-implemented and accepted. Operators can record a request that was already
-submitted through the corporate system by using searchable active Equipment,
-supervisor, and Supply Item selection. Selected Supply Items support quantity
-editing, removal, and deterministic ordering, and submitted local date and time
-default from America/New_York.
+Implementation Status: Phases 26.3A through 26.7 are implemented and accepted.
+Operators can record a request that was already submitted through the corporate
+system by using searchable active Equipment, supervisor, and Supply Item
+selection. Selected Supply Items support quantity editing, removal, and
+deterministic ordering, and submitted local date and time default from
+America/New_York.
 
 Initial creation continues to use the sole accepted transactional
 `createSupplyRequest(input)` boundary and redirects after commit to permanent
@@ -72,16 +69,43 @@ Fulfillment Note. Cancellation records an optional Cancellation Reason in NAM
 only and does not cancel or contact the corporate system. Fulfilled and
 Cancelled are terminal for normal lifecycle actions.
 
-The broader Supply Request workflow remains incomplete. Correction, general
-immutable version history, canonical request filtering, Daily Log
-relationships, and Day View participation are not implemented.
+Correct Request is available from Requested, Fulfilled, and Cancelled current
+states. It edits NAM's historical record only and does not contact or modify
+the corporate system. Correction requires an expected current version and a
+permanent Correction Reason; corrected-by and correction local date/time are
+server-owned. The transaction locks the stable root before authoritative
+current-state reads and compares the expected version before resolving
+replacement references. Every correction appends one complete immutable
+`CORRECTED` version and complete ordered lines, then atomically advances the
+same-owner current pointer. Existing versions and lines are never mutated.
 
-Acceptance evidence: 11 lifecycle unit tests, 8 lifecycle Server Action tests,
-8 lifecycle query tests, 7 lifecycle route/component tests, 19 accepted surface
-regression tests, 12 Phase 26.6 PostgreSQL tests, 8 Phase 26.5 PostgreSQL tests,
-6 Phase 26.4 PostgreSQL tests, 11 Phase 26.3B PostgreSQL tests, 11 Phase 26.3A
-PostgreSQL tests, 8 existing PostgreSQL regression tests, and the full 618-test
-suite passed with zero skips and no schema drift.
+Permanent NAM Reference, reference year, sequence, and requester identity never
+change. Unchanged references, including inactive references, preserve their
+snapshots. Deliberately changed references and newly added items require active
+authoritative records. Equipment SetNull requires deliberate active Equipment
+replacement. Retained items preserve snapshots while quantity and order may
+change; removed items remain visible in older versions.
+
+Correct Request may repair the resulting state to Requested, Fulfilled, or
+Cancelled. Fulfilled-to-Requested and Cancelled-to-Requested are historical
+corrections, not normal Reopen actions. Correction History lists every older
+immutable version newest first, and general immutable version detail supports
+every existing canonical positive version number. Presentation distinguishes
+Original, Current, and Superseded versions while preserving status and change
+kind as independent facts. Current detail and Correction History load from one
+Repeatable Read snapshot.
+
+The broader Supply Request workflow remains incomplete. Canonical request
+history and filtering, Daily Log relationships, and Day View participation are
+not implemented.
+
+Acceptance evidence: 9 Phase 26.7 unit tests, 6 Phase 26.7 Server Action tests,
+8 Phase 26.7 query tests, 7 Phase 26.7 route/component tests, 18 accepted
+surface parser regression tests, 10 Phase 26.7 PostgreSQL tests, 12 Phase 26.6
+PostgreSQL tests, 8 Phase 26.5 PostgreSQL tests, 6 Phase 26.4 PostgreSQL tests,
+11 Phase 26.3B PostgreSQL tests, 11 Phase 26.3A PostgreSQL tests, 8 existing
+PostgreSQL regression tests, and the full 658-test suite passed with zero skips
+and no schema drift.
 
 ## Contents
 
@@ -128,11 +152,9 @@ suite passed with zero skips and no schema drift.
 The product decisions represented here are Confirmed. The persistence,
 transaction, route, query, and UI choices in this document are the Approved
 architecture selected to satisfy those requirements. Independent review and
-formal architecture acceptance are complete. Phase 26.3A persistence and Phase
-26.3B transactional initial-create persistence and Phase 26.4 reference
-management, Phase 26.5 create and initial detail surfaces, and Phase 26.6
-fulfillment and cancellation are implemented and accepted; every later
-implementation milestone still requires separate explicit authorization.
+formal architecture acceptance are complete. Phases 26.3A through 26.7 are
+implemented and accepted; every later implementation milestone still requires
+separate explicit authorization.
 
 Implementation guidance uses `should` where a repository-aligned technique may
 be refined without changing the approved behavior. Deferred items are not V1
@@ -1360,9 +1382,12 @@ Recommended sequence:
    lifecycle versions with root locking, expected-version protection, complete
    snapshot and line copying, terminal detail, and deterministic PostgreSQL
    concurrency.
-6. **Next planned candidate; not started; separate authorization required:**
-   explicit Correct Request and full immutable version review.
-7. Structured current-version history filtering and pagination.
+6. **Complete and accepted:** explicit Correct Request and full immutable
+   version review, including complete immutable corrected versions, reference
+   reconciliation, status repair, Correction History, and read-only review of
+   every existing immutable version.
+7. **Next planned candidate; not started; separate authorization required:**
+   canonical current-version history filtering and pagination.
 8. `SUPPLY_REQUEST` Daily Log classification, bounded role-link persistence,
    and explicit submission and fulfillment Activity linking.
 9. Feature-owned Day View contribution.
@@ -1382,13 +1407,16 @@ current-detail, and read-only original-version `1` surfaces. Phase 26.6 now
 provides Requested-to-Fulfilled and Requested-to-Cancelled immutable lifecycle
 transitions with root locking, stale protection, complete snapshot and line
 copying, atomic pointer advancement, terminal detail, and no corporate-system
-or Daily Log mutation.
+or Daily Log mutation. Phase 26.7 now provides explicit Correct Request,
+immutable corrected versions, status repair, Correction History summaries, and
+general read-only immutable version detail while preserving pointer authority
+and historical snapshots.
 
-The smallest safe next candidate is explicit Correct Request and full immutable
-version review. It has not started, requires separate explicit authorization,
-and must not include canonical history filtering, Daily Log persistence, Day
-View participation, partial fulfillment, Reopen, or request deletion unless
-separately authorized.
+The smallest safe next candidate is canonical Supply Request history and
+filtering. It has not started, requires separate explicit authorization, and
+must not include Daily Log relationship persistence, Day View participation,
+partial fulfillment, normal Reopen, request deletion, or generic audit
+infrastructure unless separately authorized.
 
 ## 36. Architecture Invariants
 

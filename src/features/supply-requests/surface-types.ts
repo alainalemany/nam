@@ -61,6 +61,7 @@ export type SupplyRequestCreateActionState = Readonly<{
 
 export type SupplyRequestDetailItem = Readonly<{
   id: string;
+  supplyItemId: string;
   sequence: number;
   itemNumber: string;
   description: string;
@@ -89,6 +90,7 @@ export type SupplyRequestDetailView = Readonly<{
   cityState: string | null;
   requesterDisplayName: string;
   requesterEmployeeNumber: string;
+  supervisorId: string;
   supervisorName: string;
   supervisorEmail: string;
   notes: string | null;
@@ -102,6 +104,24 @@ export type SupplyRequestDetailView = Readonly<{
   cancellationLocalTime: string | null;
   cancellationReason: string | null;
   correctionReason: string | null;
+  correctedByDisplayName: string | null;
+  correctionLocalDate: string | null;
+  correctionLocalTime: string | null;
+}>;
+
+export type SupplyRequestVersionSummary = Readonly<{
+  versionNumber: number;
+  changeKind: "CREATED" | "FULFILLED" | "CANCELLED" | "CORRECTED";
+  status: "REQUESTED" | "FULFILLED" | "CANCELLED";
+  changeLocalDate: string;
+  changeLocalTime: string;
+  correctionReason: string | null;
+}>;
+
+export type SupplyRequestImmutableVersionView = Readonly<{
+  detail: SupplyRequestDetailView;
+  role: "original" | "current" | "superseded";
+  currentVersionNumber: number;
 }>;
 
 export type SupplyRequestLifecycleActionContext = Readonly<{
@@ -114,4 +134,39 @@ export type SupplyRequestLifecycleActionContext = Readonly<{
   submittedLocalTime: string;
   equipmentLabel: string;
   itemCount: number;
+}>;
+
+export type SupplyRequestCorrectionContext = Readonly<{
+  detail: SupplyRequestDetailView;
+  equipment: readonly SupplyRequestEquipmentOption[];
+  supervisors: readonly SupplyRequestSupervisorOption[];
+  items: readonly SupplyRequestItemOption[];
+  requiresEquipmentReplacement: boolean;
+}>;
+
+export type SupplyRequestCorrectionFormValues = Readonly<{
+  expectedCurrentVersionNumber: string;
+  correctionReason: string;
+  operationalWorkDate: string;
+  submittedLocalDate: string;
+  submittedLocalTime: string;
+  equipmentId: string;
+  supervisorId: string;
+  notes: string;
+  resultingStatus: "REQUESTED" | "FULFILLED" | "CANCELLED";
+  fulfillmentOperationalWorkDate: string;
+  fulfilledLocalDate: string;
+  fulfilledLocalTime: string;
+  fulfillmentNote: string;
+  cancelledLocalDate: string;
+  cancelledLocalTime: string;
+  cancellationReason: string;
+}>;
+
+export type SupplyRequestCorrectionActionState = Readonly<{
+  status: "idle" | "error";
+  message: string;
+  fieldErrors: Readonly<Record<string, readonly string[]>>;
+  values: SupplyRequestCorrectionFormValues;
+  items: readonly SupplyRequestSelectedItemInput[];
 }>;
