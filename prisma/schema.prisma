@@ -209,6 +209,36 @@ enum SupplyRequestDailyLogRole {
   FULFILLMENT
 }
 
+enum KnowledgeRecordLifecycle {
+  ACTIVE
+  ARCHIVED
+}
+
+enum KnowledgeContentKind {
+  FIELD_NOTE
+  TROUBLESHOOTING
+  PROCEDURE
+  SAFETY_REMINDER
+  REFERENCE
+}
+
+enum KnowledgeTrust {
+  UNVERIFIED
+  PERSONALLY_REVIEWED
+}
+
+enum KnowledgeRevisionOrigin {
+  INITIAL
+  REVISED
+  RESTORED
+}
+
+enum KnowledgeContextKind {
+  GENERAL
+  MINE
+  EQUIPMENT
+}
+
 enum OperationalSafetyChecklistTemplate {
   DRAGLINE_INSPECTION
   MOBILE_INSPECTION
@@ -257,12 +287,12 @@ model City {
 }
 
 model Mine {
-  id                 String              @id @default(cuid())
+  id                 String                    @id @default(cuid())
   cityId             String
-  city               City                @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  city               City                      @relation(fields: [cityId], references: [id], onDelete: Restrict)
   name               String
   type               String?
-  status             RecordStatus        @default(ACTIVE)
+  status             RecordStatus              @default(ACTIVE)
   notes              String?
   equipment          Equipment[]
   dailyLogs          DailyLog[]
@@ -270,8 +300,9 @@ model Mine {
   dailyInspections   DailyInspection[]
   shiftReports       ShiftReport[]
   workAuthorizations WorkAuthorization[]
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  knowledgeRevisions KnowledgeRecordRevision[] @relation("KnowledgeRevisionMine")
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
 
   @@unique([cityId, name])
   @@index([status])
@@ -299,6 +330,7 @@ model Equipment {
   safetyChecklists        OperationalSafetyChecklist[]  @relation("OperationalSafetyChecklistEquipment")
   fuelEvents              EquipmentFuelEvent[]          @relation("EquipmentFuelEventEquipment")
   supplyRequestVersions   SupplyRequestVersion[]        @relation("SupplyRequestVersionEquipment")
+  knowledgeRevisions      KnowledgeRecordRevision[]     @relation("KnowledgeRevisionEquipment")
   equipmentNumber         String?
   displayName             String
   category                EquipmentCategory
@@ -983,4 +1015,72 @@ model SupplyRequestVersionItem {
   @@unique([versionId, sequence], map: "SupplyRequestVersionItem_version_sequence_key")
   @@unique([versionId, supplyItemId], map: "SupplyRequestVersionItem_version_item_key")
   @@index([supplyItemId], map: "SupplyRequestVersionItem_supplyItem_idx")
+}
+
+model KnowledgeRecord {
+  id                          String                    @id @default(uuid()) @db.Uuid
+  currentRevisionId           String?                   @db.Uuid
+  currentRevision             KnowledgeRecordRevision?  @relation("KnowledgeRecordCurrentRevision", fields: [currentRevisionId, id], references: [id, knowledgeRecordId], onDelete: Restrict, map: "KnowledgeRecord_currentRevision_owner_fkey")
+  revisions                   KnowledgeRecordRevision[] @relation("KnowledgeRecordOwnedRevisions")
+  lifecycle                   KnowledgeRecordLifecycle  @default(ACTIVE)
+  stateVersion                Int                       @default(1)
+  createSubmissionKey         String                    @unique(map: "KnowledgeRecord_submissionKey_key") @db.Uuid
+  createSubmissionFingerprint String                    @db.Char(64)
+  archivedAt                  DateTime?
+  createdAt                   DateTime                  @default(now())
+  updatedAt                   DateTime                  @updatedAt
+
+  @@unique([currentRevisionId, id], map: "KnowledgeRecord_current_owner_key")
+  @@index([lifecycle, updatedAt, id], map: "KnowledgeRecord_lifecycle_updated_idx")
+}
+
+model KnowledgeRecordRevision {
+  id                           String                               @id @default(uuid()) @db.Uuid
+  knowledgeRecordId            String                               @db.Uuid
+  knowledgeRecord              KnowledgeRecord                      @relation("KnowledgeRecordOwnedRevisions", fields: [knowledgeRecordId], references: [id], onDelete: Cascade, map: "KnowledgeRecordRevision_record_fkey")
+  currentForRecord             KnowledgeRecord?                     @relation("KnowledgeRecordCurrentRevision")
+  revisionNumber               Int
+  origin                       KnowledgeRevisionOrigin
+  contentKind                  KnowledgeContentKind
+  trust                        KnowledgeTrust                       @default(UNVERIFIED)
+  title                        String
+  normalizedTitle              String
+  bodyMarkdown                 String
+  safetyCaution                String?
+  contextKind                  KnowledgeContextKind                 @default(GENERAL)
+  mineId                       String?
+  mine                         Mine?                                @relation("KnowledgeRevisionMine", fields: [mineId], references: [id], onDelete: SetNull, map: "KnowledgeRecordRevision_mine_fkey")
+  equipmentId                  String?
+  equipment                    Equipment?                           @relation("KnowledgeRevisionEquipment", fields: [equipmentId], references: [id], onDelete: SetNull, map: "KnowledgeRecordRevision_equipment_fkey")
+  equipmentDisplayNameSnapshot String?
+  equipmentNumberSnapshot      String?
+  equipmentCategorySnapshot    EquipmentCategory?
+  mineNameSnapshot             String?
+  cityNameSnapshot             String?
+  cityStateSnapshot            String?
+  changeSummary                String?
+  reviewedAt                   DateTime?
+  externalReferences           KnowledgeRevisionExternalReference[]
+  createdAt                    DateTime                             @default(now())
+  updatedAt                    DateTime                             @updatedAt
+
+  @@unique([knowledgeRecordId, revisionNumber], map: "KnowledgeRevision_record_number_key")
+  @@unique([id, knowledgeRecordId], map: "KnowledgeRevision_id_record_key")
+  @@index([normalizedTitle], map: "KnowledgeRevision_normalizedTitle_idx")
+  @@index([mineId], map: "KnowledgeRevision_mine_idx")
+  @@index([equipmentId], map: "KnowledgeRevision_equipment_idx")
+}
+
+model KnowledgeRevisionExternalReference {
+  id                        String                  @id @default(uuid()) @db.Uuid
+  knowledgeRecordRevisionId String                  @db.Uuid
+  revision                  KnowledgeRecordRevision @relation(fields: [knowledgeRecordRevisionId], references: [id], onDelete: Cascade, map: "KnowledgeExternalReference_revision_fkey")
+  sequence                  Int
+  label                     String
+  url                       String
+  normalizedUrl             String
+  createdAt                 DateTime                @default(now())
+
+  @@unique([knowledgeRecordRevisionId, sequence], map: "KnowledgeExternalReference_revision_sequence_key")
+  @@unique([knowledgeRecordRevisionId, normalizedUrl], map: "KnowledgeExternalReference_revision_url_key")
 }
