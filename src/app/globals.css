@@ -752,6 +752,94 @@ textarea {
   outline-offset: 2px;
 }
 
+.knowledge-list-page .notice-stack {
+  display: grid;
+  gap: 12px;
+  border-left: 4px solid #8a4b12;
+  background: #fff9f1;
+  padding: 16px;
+}
+
+.knowledge-list-page .knowledge-list-filters fieldset {
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.knowledge-list-page .knowledge-list-filters legend {
+  margin-bottom: 12px;
+  font-weight: 800;
+}
+
+.knowledge-list-page .knowledge-result-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.knowledge-list-page .knowledge-result-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #d7dee4;
+  border-radius: 10px;
+  padding: 18px;
+}
+
+.knowledge-list-page .knowledge-result-card h3 {
+  margin: 0;
+}
+
+.knowledge-list-page .knowledge-result-card h3,
+.knowledge-list-page .knowledge-result-card p,
+.knowledge-list-page .knowledge-result-card dd {
+  overflow-wrap: anywhere;
+}
+
+.knowledge-list-page .badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.knowledge-list-page .status-badge {
+  border-radius: 999px;
+  background: #eef2f5;
+  padding: 6px 10px;
+  color: #34424d;
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+
+.knowledge-list-page .knowledge-result-facts {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.knowledge-list-page .knowledge-result-facts div {
+  display: grid;
+  grid-template-columns: minmax(80px, auto) 1fr;
+  gap: 12px;
+}
+
+.knowledge-list-page .knowledge-result-facts dt {
+  font-weight: 800;
+}
+
+.knowledge-list-page .knowledge-result-facts dd {
+  margin: 0;
+}
+
+.knowledge-list-page .pagination > * {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.knowledge-list-page :focus-visible {
+  outline: 3px solid #1f6feb;
+  outline-offset: 2px;
+}
+
 .reference-picker {
   display: grid;
   gap: 8px;
