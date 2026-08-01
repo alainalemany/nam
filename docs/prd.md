@@ -199,55 +199,64 @@ Potential fields:
 
 ### 6. Knowledge Base (KB)
 
-Store operational knowledge, field notes, procedures, training material, troubleshooting guides, safety notes, and attachments.
+Product decisions are Confirmed. Phase 28.2 Level 2 architecture is Approved
+after independent review and formal acceptance. Implementation has not started,
+and implementation authorization is not granted.
 
-The KB should be organized around the real operating hierarchy:
+Knowledge Base V1 preserves reusable personal operational knowledge that should
+outlive one shift, Defect, inspection, Supply Request, or dated event. It does
+not own operational-event, issue, inspection, request, Equipment, Mine, or
+corporate-procedure lifecycle.
 
-- City
-- Mine
-- Equipment
-- KB category
-- Article or field note
+V1 content kinds are exactly:
 
-Example hierarchy:
-
-```text
-Miami
-└── Krome Quarry
-    ├── Dragline 119 (Manitowoc 4600)
-    ├── Dragline 142 (Manitowoc 6400)
-    └── Dragline 102 (P&H 2355 electric dragline)
-```
-
-Electric draglines may have related support equipment, such as cable tractors, forklifts, cable poles, cable handling tools, and power cable systems. Support equipment should belong to the same mine and may be linked under the dragline it supports.
-
-Potential KB content types:
-
-- Procedure
-- Safety
-- Troubleshooting
-- Inspection
-- Training
 - Field Note
-- General Article
+- Troubleshooting
+- Procedure
+- Safety Reminder
+- Reference
 
-Potential fields:
+Each stable Knowledge Record has separate:
 
-- City
-- Mine
-- Primary equipment
-- Related equipment
-- Title
-- Content
-- Step-by-step procedure blocks
-- Attachments, including photos, videos, documents, and notes
-- Tags
-- Status: Field Note, Draft, Reviewed, Official
-- Author
-- Created date
-- Last updated date
-- Reviewed by
-- Version
+- Trust: Unverified or Personally Reviewed
+- Lifecycle: Active or Archived
+- Context: General, one Mine, or one Equipment with Mine and City derived
+
+Required content:
+
+- Title, maximum 160 characters
+- Restricted-Markdown body, maximum 50,000 characters
+
+Optional content:
+
+- Safety caution, maximum 2,000 characters
+- Up to ten ordered labeled HTTPS external references
+- Zero or one source Daily Work Log
+- Zero or one related Defect
+
+New records are Active and Unverified. Unverified content edits in place.
+Personal review retains that revision as read-only. A later material change
+requires a short change summary, creates a new current Unverified revision on
+the same stable record, and preserves the reviewed revision. Content-kind
+change follows the same trust-reset rule.
+
+Archived records are read-only, excluded from default active results, and
+remain historically readable. Restore returns the current state to Unverified.
+Explicit permanent deletion removes only Knowledge Base-owned data.
+
+V1 retrieval requires case-insensitive title/body search; kind, trust,
+lifecycle, Equipment, and Mine filters; updated-descending default order; and
+title-ascending alternative order.
+
+Personally Reviewed means only that the single user reread the content. It does
+not mean corporate, manufacturer, engineering, MSHA, site, or another person's
+approval. The product must show the required personal-knowledge disclaimer and
+an explicit warning on Unverified content.
+
+V1 excludes direct City input, user-managed tags/categories, structured steps,
+multi-Equipment applicability, media, attachments, documents, rich text,
+authors/reviewers, approvals, collaboration, authentication, AI, global search,
+offline use, and Day View participation.
 
 ### 7. Work Schedule
 

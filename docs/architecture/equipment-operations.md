@@ -291,6 +291,18 @@ require historical Equipment readability. Supply Requests use the same limited
 display-name, number, category, Mine, City, and state snapshot convention while
 retaining one live Equipment reference where available.
 
+Knowledge Base V1 product discovery is complete and its Phase 28.2 Approved
+architecture follows this bounded pattern for optional Equipment context. A
+Knowledge Record may instead be General or Mine-contextual. Equipment context
+derives Mine and City display snapshots, retains one live Equipment reference
+and its derived live Mine reference where available, and does not add
+multi-Equipment, model/category, Fleet, or generic Equipment relationships.
+Knowledge Base does not own Equipment, Mine, or City lifecycle.
+
+Independent architecture review and formal acceptance are complete.
+Implementation has not started, and implementation authorization is not
+granted.
+
 ## 11. Day View
 
 The following confirmed or likely records are date-relevant:
@@ -316,6 +328,12 @@ Log, fuel, supply, schedule, or time records.
 The existing architecture can support this direction because implemented
 features already own bounded queries and display-ready Day View contributions.
 No generic contribution registry or stored timeline table is justified now.
+
+Knowledge Base V1 is not an Equipment Activity Timeline contributor and is
+explicitly excluded from Day View. Its optional Equipment context does not make
+reusable guidance an operational event. Any future timeline participation
+requires demonstrated demand, separate product discovery, and feature-owned
+architecture.
 
 Revisit timeline architecture only after:
 

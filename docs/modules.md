@@ -303,7 +303,9 @@ Potential Daily Log activities:
 - Create one Daily Log for a workday or shift
 - Add multiple activity entries to the Daily Log
 - Record activity time or approximate sequence
-- Link activities to equipment, work authorizations, future work orders, defects, inspections, KB notes, and attachments
+- Link activities only through explicitly approved feature relationships.
+  Knowledge Base V1 owns its optional outbound source Daily Log reference;
+  Daily Log activities do not create or own Knowledge Records.
 - Record equipment-specific details when an activity comes from a dragline screen, alarm list, sensor display, physical gauge, or operator observation
 - Record contractors, visitors, companies, or people involved when relevant
 - Search Daily Logs by date, date range, equipment, activity type, text, linked records, contractor, or company
@@ -318,9 +320,15 @@ A mid-shift work truck or other Equipment replacement is part of that narrative
 and timing context. Recording it does not create or mutate an Operational
 Safety Checklist, a standalone truck record, or future Fleet assignment data.
 
-Structured modules such as Work Authorizations, future Work Orders, Defects, Inspections, and Knowledge Base records should be linkable from Daily Log activities instead of being duplicated as plain text only.
+Structured modules such as Work Authorizations, future Work Orders, Defects,
+and Inspections should use explicitly approved relationships rather than
+duplicating owner records as plain text.
 
-Equipment-specific observations should usually start in the Daily Log because they happened on a specific date during a specific shift. If the observation becomes reusable knowledge, such as what a code means or how a dragline reports problems, it should also be linked to a Knowledge Base article or equipment profile.
+Equipment-specific observations should usually start in the Daily Log because
+they happened on a specific date during a specific shift. If an observation
+becomes reusable knowledge, Knowledge Base V1 may later store one manually
+selected outbound source link to the Daily Log. Daily Logs do not create or
+mutate Knowledge Records.
 
 ### Day View / Calendar Behavior
 
@@ -344,144 +352,94 @@ Future phases may add richer timelines, templates, analytics, or work order inte
 
 ## Knowledge Base (KB)
 
-The Knowledge Base module stores operational knowledge by location, mine, equipment, and topic.
+The Knowledge Base module preserves reusable personal operational knowledge
+that should outlive one workday, Defect, inspection, Supply Request, or dated
+event.
 
-Current status: Conceptually planned. Broad requirements exist, but focused V1
-product discovery, decision closure, an accepted Level 2 feature architecture,
-and explicit implementation authorization are still required.
+Current status: Phase 28.1 product discovery and V1 decision closure are
+complete, and the module product contract is confirmed. Phase 28.2 Level 2
+feature architecture is Approved after independent review and formal
+acceptance. Implementation has not started, implementation authorization is not
+granted, and no Knowledge Base schema, route, feature module, or test exists.
 
 ### Purpose
 
-Capture and organize field knowledge that would otherwise live in personal notes, photos, videos, verbal training, or operator memory.
+Capture, personally review, revise, archive, and retrieve text-first operational
+knowledge without taking ownership of the operational records that prompted it.
 
-The KB should support both raw field notes and reviewed official articles.
+Knowledge Base is not an official procedure system. Personally Reviewed means
+only that the single operator reread the content; it never means corporate,
+manufacturer, engineering, MSHA, site, or another person's approval.
 
-### Navigation Hierarchy
+### Content Kinds
 
-The primary navigation hierarchy should be:
+V1 has exactly:
 
-```text
-City -> Mine -> Equipment -> KB Category -> Article / Field Note
-```
-
-Example:
-
-```text
-Miami
-└── Krome Quarry
-    ├── Dragline 119
-    │   ├── Equipment Info
-    │   │   ├── Make: Manitowoc
-    │   │   └── Model: 4600
-    │   └── KB
-    │       ├── Procedures
-    │       ├── Safety
-    │       ├── Troubleshooting
-    │       ├── Inspections
-    │       ├── Training
-    │       └── Field Notes
-    ├── Dragline 142
-    │   ├── Equipment Info
-    │   │   ├── Make: Manitowoc
-    │   │   └── Model: 6400
-    │   └── KB
-    └── Dragline 102
-        ├── Equipment Info
-        │   ├── Make: P&H
-        │   ├── Model: 2355
-        │   └── Power: Electric
-        ├── Support Equipment
-        │   ├── Cable Tractor
-        │   ├── Forklift
-        │   ├── Cable Poles
-        │   ├── Cable Handling Tools
-        │   └── Power Cable System
-        └── KB
-            ├── Procedures
-            ├── Safety
-            ├── Troubleshooting
-            ├── Inspections
-            ├── Training
-            └── Field Notes
-```
-
-### Parent Relationship
-
-Every KB article should belong to a City and Mine.
-
-Most KB articles should also belong to a primary Equipment record. Articles may also reference related equipment, especially support equipment used with electric draglines.
-
-### Equipment Profile Rule
-
-Each dragline should have an equipment profile describing what kind of operational information it can provide.
-
-Example:
-
-```text
-Dragline 102
-- Electric dragline
-- Has digital screen with sensor data and alarm history
-- Alarm records may include code, description, date, and time
-
-Draglines 119, 137, and 142
-- Diesel draglines
-- Do not have the same digital sensor/alarm screen
-- May require different operator-observed condition notes
-```
-
-The equipment profile should guide which Daily Log activity fields or templates are most useful for that dragline.
-
-### Support Equipment Rule
-
-Support equipment, such as forklifts, cable tractors, cable poles, and power cable systems, should be modeled as equipment records.
-
-Support equipment can belong to the same mine and optionally have a parent equipment relationship to the dragline it supports.
-
-Example:
-
-```text
-Equipment: Forklift 102 Support
-Mine: Krome Quarry
-City: Miami
-Category: Forklift
-Parent Equipment: Dragline 102
-```
-
-### Article Types
-
-Potential article types:
-
-- Procedure
-- Safety
+- Field Note
 - Troubleshooting
-- Inspection
-- Training
-- Field Note
-- General Article
+- Procedure
+- Safety Reminder
+- Reference
 
-### Article Status
+### Trust And Lifecycle
 
-Potential statuses:
+Trust and lifecycle are independent:
 
-- Field Note
-- Draft
-- Reviewed
-- Official
+- Trust: Unverified or Personally Reviewed
+- Lifecycle: Active or Archived
+
+New records are Active and Unverified. Unverified content edits in place.
+Personal review freezes that revision. A later material change creates a new
+current Unverified revision and retains the prior reviewed revision.
+
+Archive is the normal read-only removal workflow. Restore returns the current
+state to Unverified. Explicit permanent deletion removes only Knowledge
+Base-owned data.
+
+### Content And Context
+
+Title and restricted-Markdown body are required. Safety caution, up to ten
+ordered labeled HTTPS external references, and context are optional.
+
+Context is exactly:
+
+- General
+- One Mine
+- One Equipment, with Mine and City derived from Equipment
+
+City is display-only derived context. Multi-Equipment, model/category
+applicability, user-managed categories, and tags are outside V1.
+
+### Relationships
+
+Knowledge Base may own:
+
+- Zero or one outbound source Daily Work Log reference
+- Zero or one outbound related Defect reference
+
+Both are manually selected, navigation-only relationships. Daily Logs and
+Defects retain their lifecycle and mutation ownership. Deletion of a target
+must preserve limited Knowledge Base display snapshots without blocking or
+cascading into the owner record.
 
 ### Required Capabilities
 
-- Create articles and field notes under a specific city, mine, and equipment item
-- Attach photos, videos, documents, and notes
-- Support step-by-step procedure content
-- Tag articles for search and filtering
-- Link one article to primary equipment and related equipment
-- Search across city, mine, equipment, article type, status, and tags
+- Create and view stable Knowledge Records
+- Edit Unverified current content in place
+- Personally review current content
+- Revise reviewed content while retaining reviewed history
+- Change content kind on the same stable record
+- Archive, restore, and permanently delete
+- Search current title and body
+- Filter by kind, trust, lifecycle, Equipment, and Mine
+- Order by most recently updated or title
+- Render restricted Markdown safely
+- Support responsive, accessible mobile and desktop use
 
-### Future Capability
-
-Field Notes may eventually be promoted into official KB Articles through a review workflow.
-
-The module may eventually support QR codes on equipment, offline/mobile field capture, article version history, comments, and cross-equipment article reuse.
+Day View participation, photos, attachments, PDFs, structured steps, rich text,
+authentication, multi-user review, AI, global search, offline use, analytics,
+reports, exports, automation, and generic relationship infrastructure are
+outside V1.
 
 ## Work Schedule
 

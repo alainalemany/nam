@@ -502,7 +502,9 @@ planned or deferred as described below.
 
 - Define Daily Log activity categories
 - Define required fields for a daily activity entry
-- Define how Daily Log entries link to equipment, Work Authorizations, future Work Orders, defects, inspections, KB notes, and attachments
+- Define feature-specific Daily Log relationships without a generic relation
+  model. Knowledge Base V1 later owns an optional outbound source Daily Log
+  reference rather than a Daily Log-owned Knowledge Base link.
 - Define calendar view requirements
 - Define Day View result groups for exact-date records and containing-period records
 - Define global search filters and result types
@@ -533,10 +535,62 @@ planned or deferred as described below.
 
 ## Knowledge Base Roadmap
 
-Current status: Conceptually planned. Broad product and entity ideas exist, but
-focused V1 product discovery, decision closure, an accepted Level 2 feature
-architecture, and explicit implementation authorization are still required.
-No Knowledge Base implementation milestone is active.
+Current status: Phase 28.1 product discovery and V1 decision closure are
+complete. The confirmed product is **Knowledge Base V1 — Personal Operational
+Knowledge Records**. Phase 28.2 Level 2 architecture in
+docs/architecture/features/knowledge-base.md is Approved.
+
+Phase 28.2.1 independent architecture review and Phase 28.2.2 formal acceptance
+bookkeeping are complete. No Knowledge Base implementation has started, and no
+implementation milestone is active or authorized. Phase 28.3A remains the
+proposed first implementation phase and requires separate explicit
+authorization.
+
+### Phase 28.1 — Knowledge Base Product Discovery And V1 Decision Closure
+
+Status: Complete and accepted
+
+Closed the reusable-knowledge problem, single-user boundary, five fixed content
+kinds, separate trust and lifecycle states, restricted Markdown, General/Mine/
+Equipment context, reviewed-history behavior, search/filter scope, optional
+Daily Log and Defect navigation, archive/delete behavior, Day View exclusion,
+safety boundary, and deferred scope.
+
+### Phase 28.2 — Knowledge Base V1 Feature Architecture
+
+Status: Complete and accepted
+
+Defines stable-root ownership, explicit current-revision authority, selective
+reviewed revision retention, context snapshots, external references, optional
+relationships, create/edit/review/revise/archive/restore/delete transactions,
+restricted-Markdown safety, search/filter routes, concurrency, migrations,
+tests, and a dedicated disposable PostgreSQL evidence plan.
+
+Phase 28.2.1 independently reviewed and corrected the architecture. Phase
+28.2.2 records formal architecture acceptance. Product decisions remain
+Confirmed, architecture is Approved, and implementation remains not started.
+
+### Proposed Delivery Sequence After Architecture Acceptance
+
+The following sequence is architectural planning, not implementation
+authorization:
+
+1. Phase 28.3A — Knowledge Base Persistence Foundation
+2. Phase 28.3B — Transactional Create And Current Detail
+3. Phase 28.4 — Canonical Knowledge Base Search And Filtering
+4. Phase 28.5 — Unverified Editing And Personal Review
+5. Phase 28.6 — Reviewed Revision History And Content-Kind Change
+6. Phase 28.7 — Archive, Restore, And Permanent Delete
+7. Phase 28.8 — Daily Log And Defect Relationships
+8. Phase 28.9 — Knowledge Base V1 Acceptance And Canonical Closure
+
+Every phase requires separate explicit authorization, independent review, and
+formal acceptance. Photos, attachments, documents, authentication, multi-user
+collaboration, AI, global search, offline use, Day View participation,
+Equipment Activity Timeline integration, analytics, reports, exports, and
+generic platform infrastructure remain outside V1.
+
+Phase 28.3A is proposed but is not authorized by Phase 28.2 acceptance.
 
 ## Payslip Repository Roadmap
 

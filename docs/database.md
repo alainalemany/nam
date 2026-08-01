@@ -421,183 +421,135 @@ Relationships:
 
 ## Knowledge Base Entities
 
-Current status: Conceptual only. The existing `City`, `Mine`, and `Equipment`
-models provide potential organizational context, but Knowledge Base entities
-have no accepted Level 2 feature architecture, implementation authorization, or
-current Prisma schema. The potential fields below do not authorize a migration.
+Current status: Phase 28.1 product decisions are confirmed and Phase 28.2
+persistence architecture is Approved after independent review and formal
+acceptance. No current Knowledge Base Prisma model or migration exists. Exact
+implementation awaits separate authorization, and the concepts below do not
+authorize schema work.
 
-### City
+### KnowledgeRecord
 
-Represents a city or operating region that contains one or more mines.
+Accepted architectural stable aggregate root; not a current Prisma model.
 
-Potential fields:
+Conceptual fields:
 
 - id
-- name
-- state
-- status
-- notes
+- currentRevisionId
+- lifecycle: Active or Archived
+- stateVersion
+- createSubmissionKey
+- createSubmissionFingerprint
+- archivedAt
 - createdAt
 - updatedAt
 
-Relationships:
+Responsibilities and relationships:
 
-- Has many Mine records
+- Owns every KnowledgeRecordRevision.
+- Selects exactly one same-owner current revision in valid committed state.
+- Owns lifecycle, stable detail identity, optimistic mutation state, and
+  aggregate deletion.
+- Cascades only to Knowledge Base-owned revisions and external references.
 
-### Mine
+### KnowledgeRecordRevision
 
-Represents a mine, quarry, pit, plant, or yard within a city.
+Accepted architectural current or retained reviewed content; not a current
+Prisma model.
 
-Potential fields:
-
-- id
-- cityId
-- name
-- type
-- status
-- notes
-- createdAt
-- updatedAt
-
-Relationships:
-
-- Belongs to one City
-- Has many Equipment records
-- Has many KnowledgeBaseArticle records
-
-### Equipment
-
-Represents draglines and support equipment used at a mine.
-
-Potential fields:
+Conceptual fields:
 
 - id
-- mineId
-- parentEquipmentId
-- equipmentNumber
-- displayName
-- category
-- make
-- model
-- powerType
-- instrumentationType
-- hasDigitalAlarmScreen
-- status
-- notes
-- createdAt
-- updatedAt
-
-Potential categories:
-
-- Dragline
-- Tractor
-- Forklift
-- Work Truck
-- Cable System
-- Cable Pole
-- Cable Handling Tool
-- Support Tool
-
-Relationships:
-
-- Belongs to one Mine
-- May belong to one parent Equipment record
-- May have many child Equipment records
-- Has many KnowledgeBaseArticle records as primary equipment
-- Has many related KnowledgeBaseArticle records through KnowledgeBaseArticleEquipment
-
-### KnowledgeBaseArticle
-
-Represents a KB article, procedure, safety note, troubleshooting guide, training item, or field note.
-
-Potential fields:
-
-- id
-- cityId
-- mineId
-- primaryEquipmentId
+- knowledgeRecordId
+- revisionNumber
+- origin: Initial, Revised, or Restored
+- contentKind: Field Note, Troubleshooting, Procedure, Safety Reminder, or
+  Reference
+- trust: Unverified or Personally Reviewed
 - title
-- articleType
-- status
-- content
-- tags
-- authorId
-- reviewedById
+- normalizedTitle
+- bodyMarkdown
+- safetyCaution
+- contextKind: General, Mine, or Equipment
+- optional live mineId
+- optional live equipmentId
+- limited Mine, City, and Equipment display snapshots
+- optional live sourceDailyLogId with date and shift snapshots
+- optional live relatedDefectId with title and reported-date snapshots
+- changeSummary
 - reviewedAt
-- version
 - createdAt
 - updatedAt
 
-Potential article types:
+Responsibilities and relationships:
 
-- Procedure
-- Safety
-- Troubleshooting
-- Inspection
-- Training
-- Field Note
-- General Article
+- Belongs to one KnowledgeRecord.
+- Has a unique positive revision number within that stable record.
+- May be the explicit current revision for its same owning record.
+- Owns zero through ten ordered KnowledgeRevisionExternalReference rows.
+- Uses live Mine, Equipment, Daily Log, and Defect references only for
+  navigation and filtering.
+- Retains limited snapshots for display after reference deactivation or
+  exceptional deletion.
 
-Potential statuses:
+Unverified current revisions are mutable in place. Personally Reviewed
+revisions are retained and read-only for Knowledge Base-owned material fields.
+A later material change creates a complete new Unverified revision and advances
+the stable root's explicit pointer.
 
-- Field Note
-- Draft
-- Reviewed
-- Official
+### KnowledgeRevisionExternalReference
 
-Relationships:
+Accepted architectural ordered external link owned by one revision; not a
+current Prisma model.
 
-- Belongs to one City
-- Belongs to one Mine
-- May belong to one primary Equipment record
-- May reference many related Equipment records through KnowledgeBaseArticleEquipment
-- Has many KnowledgeBaseStep records
-- Has many Attachments
-
-### KnowledgeBaseStep
-
-Represents one step in a step-by-step KB procedure.
-
-Potential fields:
+Conceptual fields:
 
 - id
-- knowledgeBaseArticleId
-- stepNumber
-- title
-- instructions
-- warning
-- notes
+- knowledgeRecordRevisionId
+- sequence
+- label
+- url
+- normalizedUrl
 - createdAt
-- updatedAt
 
-Relationships:
+Rules:
 
-- Belongs to one KnowledgeBaseArticle
-- Has many Attachments
+- Maximum ten per revision.
+- Sequence is contiguous and unique per revision.
+- Normalized URL is unique per revision.
+- URLs are absolute HTTPS with no embedded credentials.
+- Rows cascade only with their owning Knowledge Base revision.
 
-### KnowledgeBaseArticleEquipment
+### Proposed Enum Responsibilities
 
-Represents related equipment connected to a KB article.
+- Knowledge content kind: exactly five fixed V1 values.
+- Knowledge trust: Unverified or Personally Reviewed.
+- Knowledge lifecycle: Active or Archived.
+- Knowledge context: General, Mine, or Equipment.
+- Knowledge revision origin: Initial, Revised, or Restored.
 
-Potential fields:
+Kind, trust, lifecycle, and context remain separate concepts.
 
-- id
-- knowledgeBaseArticleId
-- equipmentId
-- relationshipType
-- notes
+### Proposed Integrity Boundary
 
-Potential relationship types:
+- Same-owner composite foreign key for the current-revision pointer.
+- Unique revision number per stable root.
+- Positive aggregate state version and revision number.
+- Coherent lifecycle/archivedAt and trust/reviewedAt pairs.
+- Database and application validation for title, body, caution, change summary,
+  context snapshots, and external-reference ordering. SetNull-compatible
+  context checks permit missing live IDs only alongside complete retained
+  snapshots; user-selected context still requires a live active owner through
+  the feature mutation boundary.
+- SetNull live reference behavior with retained snapshots.
+- No direct City input, many-to-many Equipment relationship, structured-step
+  entity, attachment entity, tag entity, author/reviewer identity, or generic
+  revision/relationship entity.
 
-- Primary
-- Related
-- Support
-- Safety Critical
-
-Relationships:
-
-- Belongs to one KnowledgeBaseArticle
-- Belongs to one Equipment
+The Approved architecture expects one foundation migration and a later
+independently reviewed additive migration for optional Daily Log and Defect
+relationship fields. Exact Prisma syntax and SQL remain implementation-phase
+work after separate authorization. No schema change or migration is authorized
+by architecture acceptance.
 
 ## Daily Log Entities
 
@@ -626,6 +578,8 @@ Relationships:
 - May reference one Mine record
 - Has many DailyLogActivity records
 - Has many Attachments
+- May be referenced by Knowledge Base revisions as optional source context; the
+  Knowledge Base owns each outbound reference
 
 ### DailyLogActivity
 
@@ -682,7 +636,6 @@ Relationships:
 - May reference one DailyInspection record
 - May be referenced by zero or one Equipment Fuel Event for explicit narrative
   context; the Fuel Event owns the optional link
-- May reference one KnowledgeBaseArticle or field note
 - Has many Attachments
 
 ### EquipmentObservationDetail
@@ -733,7 +686,10 @@ Potential design options:
 - Support date-containment queries for period records, such as WeeklySchedule
   where the selected date falls between weekStartDate and weekEndDate
 
-All operational records should include stable dates, timestamps, and module relationships so a selected date can show schedules, daily logs, inspections, defects, work authorizations, future work orders, KB notes, and attachments together.
+Operational records should include stable dates, timestamps, and bounded module
+relationships so a selected date can show approved date-relevant contributors.
+Knowledge Base V1 is reusable reference material and is explicitly excluded
+from Day View.
 
 Day View queries should return both records dated on the selected day and contextual records whose date range contains the selected day.
 

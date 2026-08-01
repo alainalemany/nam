@@ -41,7 +41,7 @@ scope, architecture, infrastructure, and future implementation direction.
 | Daily Inspections | Manual equipment and work-area inspection summaries. |
 | Operational Safety Checklists | Implemented Dragline and Mobile pre-shift Equipment inspections, one per inspected Equipment, with explicit Hours/Miles readings, canonical responses, permanent history, and NAM-only save confirmation; private photo evidence remains access-gated. |
 | Defect Tracking | Equipment issue tracking from report through closure. |
-| Knowledge Base | Planned operational knowledge capability; focused product discovery and feature architecture are still required. |
+| Knowledge Base | Product decisions confirmed for text-first Personal Operational Knowledge Records; Phase 28.2 architecture Approved; implementation not started and requires separate authorization. |
 | Work Schedule | Manual weekly schedule entry, edits, assignment history, and schedule context. |
 | Timesheet | Personal record of weekly time entries, pay codes, equipment, work codes, and totals. |
 | Equipment Fuel Events | Operational fuel delivered to Equipment, including occurrences with multiple tank fills. |
@@ -116,10 +116,12 @@ selected-date contributions from owning features. Current operational modules
 provide feature-owned list filtering; global cross-module search remains future
 work.
 
-Knowledge Base still requires focused product discovery, Payslip Repository is
-blocked from implementation by unresolved sensitive-data decisions, and Fleet
-and the Equipment Activity Timeline remain deferred. Future work must continue
-to follow the documentation-first, vertical-slice approach.
+Knowledge Base V1 product decisions are confirmed and its Phase 28.2 feature
+architecture is Approved, but implementation has not started and requires
+separate authorization. Payslip Repository is blocked from implementation by
+unresolved sensitive-data decisions, while Fleet and the Equipment Activity
+Timeline remain deferred. Future work must continue to follow the
+documentation-first, vertical-slice approach.
 
 Phase 23.4 implements Operational Safety Checklist `HOURS`/`MILES` meter units,
 editable category suggestions, explicit known-mismatch confirmation, signed

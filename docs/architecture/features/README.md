@@ -77,6 +77,7 @@ documentation architecture milestone explicitly approves that reorganization.
 | Timesheet | [Timesheet Architecture](timesheets.md) | Approved; V1 foundation and Day View participation implemented |
 | Equipment Fuel Events | [Equipment Fuel Events Architecture](equipment-fuel-events.md) | Approved; V1 foundation, feature-owned history filtering, and Phase 24.1 Day View participation implemented |
 | Supply Requests | [Supply Requests Architecture](supply-requests.md) | Architecture Approved; Phases 26.3A through 26.10 accepted; Supply Requests V1 complete and accepted with create, detail, reference management, lifecycle, correction, immutable history, canonical history/filtering, explicit Daily Log Activity linking, and Day View participation available; deferred enhancements remain outside V1 and require separate authorization |
+| Knowledge Base | [Knowledge Base V1 Architecture](knowledge-base.md) | Approved; Phase 28.1 product discovery complete; Phase 28.2 independent review and formal acceptance complete; implementation not started and implementation authorization not granted |
 
 ## Related Domain Assessments
 
