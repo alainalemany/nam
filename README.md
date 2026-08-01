@@ -2,7 +2,10 @@
 
 A personal mining operations dashboard for centralizing daily work records, safety activity, equipment notes, schedules, timesheets, fuel tracking, and long-term operational history.
 
-NAM Dashboard is being built as a professional, modular web application for personal use by a dragline operator. The project is now in active foundation development, with documentation remaining the source of truth for requirements, architecture, infrastructure, and implementation direction.
+NAM Dashboard is a professional, modular web application for personal use by a
+dragline operator. Its accepted operational foundations are implemented, while
+documentation remains the source of truth for current capability, deferred
+scope, architecture, infrastructure, and future implementation direction.
 
 ## Project Goals
 
@@ -38,12 +41,12 @@ NAM Dashboard is being built as a professional, modular web application for pers
 | Daily Inspections | Manual equipment and work-area inspection summaries. |
 | Operational Safety Checklists | Implemented Dragline and Mobile pre-shift Equipment inspections, one per inspected Equipment, with explicit Hours/Miles readings, canonical responses, permanent history, and NAM-only save confirmation; private photo evidence remains access-gated. |
 | Defect Tracking | Equipment issue tracking from report through closure. |
-| Knowledge Base | Field notes, procedures, safety notes, troubleshooting guides, and equipment-specific knowledge. |
+| Knowledge Base | Planned operational knowledge capability; focused product discovery and feature architecture are still required. |
 | Work Schedule | Manual weekly schedule entry, edits, assignment history, and schedule context. |
 | Timesheet | Personal record of weekly time entries, pay codes, equipment, work codes, and totals. |
 | Equipment Fuel Events | Operational fuel delivered to Equipment, including occurrences with multiple tank fills. |
-| Supply Requests | Planned personal records for operator-originated supply requests without inventory ownership. |
-| Payslip Repository | Secure archive of payslip PDFs with extracted payroll fields and date-range analytics. |
+| Supply Requests | Implemented and accepted V1 records for requests already submitted through the corporate system, including reference management, lifecycle, immutable correction history, Daily Log Activity links, and Day View participation without inventory ownership. |
+| Payslip Repository | Conceptually planned sensitive financial capability; privacy, access, storage, extraction, redaction, export, and feature-architecture decisions remain unresolved. |
 
 ## Documentation
 
@@ -87,21 +90,36 @@ Source forms and reference images are stored under:
 
 ## Current Status
 
-This project is in active feature development.
+This project has implemented its accepted operational-record foundations and
+remains open to separately authorized future discovery and feature work.
 
 The repository includes a Next.js, TypeScript, Prisma, PostgreSQL, Docker
 Compose, host-level Caddy development baseline, and executable Vitest testing
 foundation. Operations reference data, Daily Work Logs, STOP Cards, Daily
 Inspections, Operational Safety Checklists, Shift Reports, Work Authorizations,
-Defect Tracking, Work Schedule, and Timesheet V1 have been implemented.
+Defect Tracking, Work Schedule, Timesheet, and Supply Requests V1 have been
+implemented and accepted.
+
 Equipment Fuel Events also record completed fueling occurrences with ordered
 Tank Fills, Equipment and location snapshots, an optional Fuel Service Person,
-and an optional Daily Work Log activity link. Selected-date Day View composition
-now includes ten feature-owned contributors, including Operational Safety
-Checklists and Equipment Fuel Events. Current operational modules provide
-feature-owned list filtering; global cross-module search remains future work.
-Future modules should continue to follow the documentation-first, vertical-slice
-approach.
+and an optional Daily Work Log activity link. Supply Requests preserve records
+already submitted through the corporate system; NAM does not submit them.
+Their accepted V1 includes Supply Item and supervisor references, current
+detail, fulfillment and cancellation, immutable correction history, canonical
+history filtering, explicit Submission and Fulfillment Daily Log Activity
+links, and Day View participation. No Phase 26.11 is planned.
+
+Selected-date Day View composition now includes eleven feature-owned
+contributors, with Supply Requests as the eleventh. Day View remains read-only,
+uses explicit parallel server composition, and receives display-ready
+selected-date contributions from owning features. Current operational modules
+provide feature-owned list filtering; global cross-module search remains future
+work.
+
+Knowledge Base still requires focused product discovery, Payslip Repository is
+blocked from implementation by unresolved sensitive-data decisions, and Fleet
+and the Equipment Activity Timeline remain deferred. Future work must continue
+to follow the documentation-first, vertical-slice approach.
 
 Phase 23.4 implements Operational Safety Checklist `HOURS`/`MILES` meter units,
 editable category suggestions, explicit known-mismatch confirmation, signed
@@ -123,6 +141,7 @@ Version 1 should prioritize:
 - Work Schedule
 - Timesheet
 - Equipment Fuel Events
+- Supply Requests
 - Searchable historical records
 - Calendar / Day View navigation
 - Clean, modular database design

@@ -270,7 +270,6 @@ or local component state.
 
 Examples that might justify future evaluation:
 
-- Cross-module Day View coordination.
 - Global search interaction state.
 - Auth/session UI after authentication is introduced.
 - Complex notification or background job state.
@@ -292,16 +291,19 @@ Future modules should follow the same state/data-flow pattern:
 8. Verify the workflow according to `docs/testing-strategy.md`.
 
 Implemented modules including Work Schedule, Timesheet, Operational Safety
-Checklists, and Equipment Fuel Events follow this pattern. Equipment Fuel
-Events use server-rendered reads, feature-owned queries, Server Actions for
-mutations, transactional aggregate persistence, and limited client interaction
-state. Validation, derived totals, and historical snapshots remain
-server-authoritative. Day View loads Operational Safety Checklist and Equipment
-Fuel Event display summaries through explicit feature-owned selected-date
-queries in the existing parallel server composition; it owns no mutation or
-domain interpretation for either feature. Supply Requests and other future
-operational modules should follow the established pattern unless their
-requirements justify a different one.
+Checklists, Equipment Fuel Events, and Supply Requests follow this pattern.
+They use server-rendered reads, feature-owned queries, Server Actions for
+mutations, transactional persistence where required, and limited local client
+interaction state. Validation, derived values, current-pointer authority, and
+historical snapshots remain server-authoritative.
+
+Day View uses an established read-only composition pattern. Its server route
+passes one normalized selected date to eleven explicit feature-owned queries in
+parallel. Each feature owns date semantics and returns display-ready data; Day
+View owns no feature mutation or domain interpretation. Supply Requests use
+their explicit current-version relation and current operational work date,
+while Daily Log narrative remains independently owned. No client-side global
+store, generic contributor registry, or shared event model is involved.
 
 The implemented Operational Safety Checklist enhancement preserves this flow.
 Meter defaults are client interaction hints; the submitted `HOURS`/`MILES`
@@ -333,14 +335,13 @@ Do not standardize these areas until requirements justify them:
 - Real-time subscriptions.
 - Auth/session state patterns.
 - Global search state.
-- Day View cross-module state coordination.
+- A generic Day View contributor registry or client-side cross-feature cache.
 
 These may become necessary later, but they should not be introduced before the
 workflow requires them.
 
 ## Open Questions
 
-- What state pattern should Day View use when it combines multiple modules?
 - Should global search state live in routes, local state, or a future shared
   state layer?
 - What API route conventions will be needed when integrations or exports are

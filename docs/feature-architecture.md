@@ -115,6 +115,7 @@ Current examples:
 ```text
 src/features/equipment/
 src/features/daily-logs/
+src/features/supply-requests/
 ```
 
 Feature folders may own:
@@ -229,6 +230,14 @@ Feature implementation should:
 Feature-specific data loading helpers may live in the feature folder when they
 serve that feature's pages or forms. Broad shared data access should be created
 only when a real cross-feature need exists.
+
+Day View is an established read-only composition example. Its route passes one
+normalized selected date to explicit feature-owned queries in parallel. Each
+feature owns its date semantics, validation, interpretation, display-ready
+contract, and stable source link. Day View renders those contracts without
+querying feature tables or introducing a generic contributor registry. Supply
+Requests implement this pattern through their current-pointer-owned
+selected-operational-date query.
 
 ## Forms And UI Components
 
@@ -371,7 +380,7 @@ Do not standardize these areas until real requirements justify them:
 - API routes as the default mutation boundary.
 - Authentication-aware feature boundaries.
 - Attachment handling.
-- Day View architecture.
+- A generic Day View contributor registry or shared event model.
 - Global search indexing.
 - Analytics infrastructure.
 - Metronic component import conventions beyond ADR-014.

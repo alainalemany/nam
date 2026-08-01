@@ -46,6 +46,20 @@ strategy.
 
 The current executable testing foundation is recorded in ADR-016.
 
+ADR-016 records the deliberately small foundation selected at that historical
+milestone. Current maturity has advanced: the repository now includes extensive
+feature-specific guarded PostgreSQL integration suites for major persistence,
+constraint, rollback, concurrency, cascade, migration, and drift boundaries.
+They are explicitly opt-in through feature-specific database URL variables and
+must be run only against approved disposable databases. The newer Supply
+Request suites additionally validate the exact disposable database identity;
+older rollback-only suites do not enforce a database name internally, so safe
+execution depends on the caller supplying an approved disposable URL while the
+suites contain their fixtures through rollback and cleanup.
+This does not create standardized CI database orchestration, broad browser E2E
+infrastructure, production acceptance testing, or operational pilot
+verification.
+
 Engineering quality process, Definition of Done, and required verification flow
 are defined in `docs/engineering-quality-standards.md`.
 
@@ -91,6 +105,7 @@ Current top-level test directories:
 tests/unit/
 tests/components/
 tests/api/
+tests/integration/
 tests/fixtures/
 tests/setup/
 ```
@@ -101,6 +116,10 @@ Use these directories as follows:
 - `tests/components/` for stable React component behavior.
 - `tests/api/` for API route behavior that can be tested without production
   data.
+- `tests/integration/` for explicitly opt-in feature-specific PostgreSQL suites
+  that must use approved disposable databases and bounded rollback or fixture
+  cleanup. Suites should validate the exact disposable identity when they own a
+  dedicated database contract.
 - `tests/fixtures/` for small shared deterministic test data.
 - `tests/setup/` for Vitest and Testing Library setup.
 
@@ -301,12 +320,13 @@ for the current phase.
 
 Daily Work Logs, Day View, STOP Cards, Daily Inspections, Operational Safety
 Checklists, Shift Reports, Work Authorizations, Defect Tracking, Work Schedule,
-Timesheet, and Equipment Fuel Events are implemented and are eligible for
-proportional tests. Equipment Fuel Events include unit validation,
-component/route, Server Action, persistence, and explicitly opt-in rollback-only
-PostgreSQL integration coverage. The normal suite does not run the PostgreSQL
-tests. Broad browser end-to-end coverage remains deferred until a concrete risk
-justifies that infrastructure.
+Timesheet, Equipment Fuel Events, and Supply Requests are implemented and are
+eligible for proportional tests. Major persistence features include explicitly
+opt-in PostgreSQL integration coverage intended only for disposable database
+identities and using bounded rollback or cleanup; newer suites also enforce the
+exact test-database identity. The ordinary unit/component suite does not
+implicitly acquire or mutate a PostgreSQL database. Broad browser end-to-end
+coverage remains deferred until a concrete risk justifies that infrastructure.
 
 Deferred areas:
 
@@ -343,8 +363,13 @@ deferred.
 Phase 24.1.2 adds focused Day View coverage for America/New_York local-calendar
 defaulting while the runtime environment is UTC, strict Gregorian date keys,
 impossible and duplicate query rejection, calendar-safe navigation, and one
-canonical selected date reaching all ten contributors plus the page heading
-and navigation links.
+canonical selected date reaching the ten contributors implemented at that
+milestone plus the page heading and navigation links.
+
+Phase 26.10 adds Supply Requests as the eleventh current contributor and
+extends route, query, integrity, ordering, and real-PostgreSQL coverage without
+changing Day View's explicit parallel composition. Current Day View tests prove
+one canonical selected date reaches all eleven feature-owned contributors.
 
 Phase 23.5 requires unit and integration evidence for file-signature and decode
 validation, HEIC/HEIF primary-image and auxiliary-content handling, sequence
@@ -364,13 +389,13 @@ implementation exist.
 Recommended future locations when those layers are approved:
 
 ```text
-tests/integration/
 tests/e2e/
 tests/smoke/
 ```
 
-Cross-feature integration, E2E, and smoke tests should live under top-level
-`tests/` directories once those test layers are implemented.
+Feature-specific PostgreSQL integration tests already live under
+`tests/integration/`. Cross-feature browser E2E and smoke tests should use the
+remaining top-level directories once those layers are approved.
 
 Feature module structure and ownership rules live in
 `docs/feature-architecture.md`.
@@ -385,12 +410,13 @@ Future AI assistants should:
 - Avoid broad snapshots, production database dependencies, and large mocking
   frameworks.
 - Add test helpers only when repeated setup makes them necessary.
-- Keep E2E, integration database setup, and CI expansion as separate approved
-  milestones.
+- Keep broad browser E2E, standardized CI database orchestration, production
+  acceptance testing, and CI expansion as separate approved milestones.
 
 ## Open Questions
 
 - Should Playwright run in local development, CI, or both?
-- How should test databases be created, migrated, seeded, and reset?
+- How should disposable test databases be standardized and orchestrated in CI
+  without weakening current feature-specific identity guards?
 - What CI provider and branch protection rules should be used?
 - What minimum quality gate is required before production deployment?

@@ -244,9 +244,11 @@ migrations, and no schema drift.
 The product decisions represented here are Confirmed. The persistence,
 transaction, route, query, and UI choices in this document are the Approved
 architecture selected to satisfy those requirements. Independent review and
-formal architecture acceptance are complete. Phases 26.3A through 26.8 are
-implemented and accepted; every later implementation milestone still requires
-separate explicit authorization.
+formal architecture acceptance are complete. Phases 26.3A through 26.10 are
+implemented and accepted, Supply Requests V1 is complete and accepted, and the
+approved V1 delivery sequence is closed. No Phase 26.11 is planned. Any future
+enhancement requires new product review, architecture review, and separate
+explicit authorization.
 
 Implementation guidance uses `should` where a repository-aligned technique may
 be refined without changing the approved behavior. Deferred items are not V1
@@ -571,7 +573,7 @@ Repository inspection found no canonical primary-employee configuration that
 contains both the approved display name and employee number.
 
 V1 therefore uses one explicit feature-owned server code-configuration module
-within the future Supply Requests vertical slice:
+within the implemented Supply Requests vertical slice:
 
 - Requested by: `Alain Alemany`
 - Employee number: `911601`
@@ -1569,7 +1571,7 @@ remain outside this feature sequence.
 
 ## 37. Acceptance Criteria
 
-This Approved architecture remains implementation-ready while:
+This Approved architecture remains the accepted implementation authority while:
 
 - Every approved product decision is represented in canonical documentation.
 - No canonical document still claims Supply Request product discovery is
@@ -1582,5 +1584,6 @@ This Approved architecture remains implementation-ready while:
   and Day View boundaries are deterministic.
 - The design introduces no inventory, procurement, workforce, Work Order,
   generic audit, generic activity-link, or infrastructure scope.
-- Delivery remains sliced and implementation begins only through a separately
+- The completed V1 delivery sequence remains closed; future enhancement work
+  begins only after new product review, architecture review, and a separately
   authorized milestone.

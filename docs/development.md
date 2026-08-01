@@ -35,9 +35,10 @@ The current development platform includes:
 - Operations reference data
 - Daily Work Logs, STOP Cards, Daily Inspections, Operational Safety Checklists,
   Shift Reports, Work Authorizations, Defect Tracking, Work Schedule, and
-  Timesheet feature foundations
-- Selected-date Day View composition across ten participating operational
-  modules, including Operational Safety Checklists and Equipment Fuel Events
+  Timesheet feature foundations, plus Supply Requests V1
+- Selected-date Day View composition across eleven participating operational
+  modules, including Operational Safety Checklists, Equipment Fuel Events, and
+  Supply Requests
 - Feature-owned list filtering for implemented modules that expose filterable
   operational history
 

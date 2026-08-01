@@ -421,6 +421,11 @@ Relationships:
 
 ## Knowledge Base Entities
 
+Current status: Conceptual only. The existing `City`, `Mine`, and `Equipment`
+models provide potential organizational context, but Knowledge Base entities
+have no accepted Level 2 feature architecture, implementation authorization, or
+current Prisma schema. The potential fields below do not authorize a migration.
+
 ### City
 
 Represents a city or operating region that contains one or more mines.
@@ -1210,6 +1215,12 @@ Equipment and should not be selected independently on Timesheet entries.
 
 ## Payslip Repository Entities
 
+Current status: Conceptual only under ADR-005's financial bounded-context
+guidance. No Payslip entity below exists in the current Prisma schema.
+Implementation remains blocked by unresolved privacy, access, file-storage,
+extraction, redaction, and export decisions and by the absence of an accepted
+Level 2 feature architecture.
+
 ### PayslipDocument
 
 Represents the original uploaded payslip PDF and its extraction status.
@@ -1598,10 +1609,13 @@ Equipment Fuel Event boundary.
 ## Supply Request Concepts
 
 Supply Requests preserve the operator's record of requests already submitted
-through the external corporate system. Phase 26.1 product decisions approve the
-following conceptual model. Exact Prisma names and migration details remain an
-implementation concern governed by the Approved architecture in
-`docs/architecture/features/supply-requests.md`.
+through the external corporate system. The persistence described below is
+implemented in the current Prisma schema and the isolated Supply Request
+foundation and Daily Log link migrations. Its exact ownership, current-pointer,
+versioning, transaction, and compatibility rules are governed by the Approved
+architecture in `docs/architecture/features/supply-requests.md`. Phases 26.3A
+through 26.10 are implemented and accepted; this section describes current
+persistence unless a concept is explicitly labeled future.
 
 ### Supply Request
 

@@ -21,6 +21,7 @@ future phases.
 - [Work Schedule Roadmap](#work-schedule-roadmap)
 - [Timesheet Roadmap](#timesheet-roadmap)
 - [Daily Log And Historical Search Roadmap](#daily-log-and-historical-search-roadmap)
+- [Knowledge Base Roadmap](#knowledge-base-roadmap)
 - [Payslip Repository Roadmap](#payslip-repository-roadmap)
 - [Equipment Fuel Events Roadmap](#equipment-fuel-events-roadmap)
 - [Operational Pilot Readiness Roadmap](#operational-pilot-readiness-roadmap)
@@ -76,7 +77,7 @@ Feature implementation architecture:
 
 Current status: Requirements, data model, V1 CRUD, current-schema
 feature-owned filtering, and Day View participation are implemented. Inspector
-filtering requires an approved inspector field before implementation.
+filtering is blocked until an inspector field or identity source is approved.
 
 ### Phase 1: Requirements Definition
 
@@ -201,9 +202,12 @@ after nonessential post-commit presentation failure.
 
 ### Phase 6: Optional Photo Evidence (Access-Gated)
 
+Status: Blocked; no implementation milestone is active.
+
 - Add checklist-owned photo metadata, private normalized media storage,
   upload/manage/serve actions, cleanup, backup, and verification only after the
-  ADR-018 access and runtime prerequisites close.
+  ADR-018 access and runtime prerequisites close and a separate implementation
+  milestone is authorized.
 - Keep photo evidence optional and checklist-level; do not create Defects,
   Daily Log records, or a generic attachment platform.
 
@@ -527,7 +531,20 @@ planned or deferred as described below.
 - Add Work Order module integration
 - Add advanced analytics from Daily Log activities
 
+## Knowledge Base Roadmap
+
+Current status: Conceptually planned. Broad product and entity ideas exist, but
+focused V1 product discovery, decision closure, an accepted Level 2 feature
+architecture, and explicit implementation authorization are still required.
+No Knowledge Base implementation milestone is active.
+
 ## Payslip Repository Roadmap
+
+Current status: Conceptually planned under ADR-005, but implementation is
+blocked by unresolved privacy, application-access, file-storage, extraction,
+redaction, and export decisions. No accepted Level 2 feature architecture or
+implementation authorization exists. The phases below are conceptual planning
+inputs, not an active delivery sequence.
 
 ### Phase 1: Requirements Definition
 
@@ -646,15 +663,16 @@ runbook preparation is complete. Phase 24.2.2 selected a managed private
 overlay, and ADR-019 records the approved architecture with Tailscale as the
 implementation reference. Phase 24.2.2.1 records the controlled implementation
 and verification plan. The boundary is not implemented, the real-data pilot has
-not started, and the pilot is not authorized. No new product feature is required
-before operational preparation continues.
+not started, and the pilot is not authorized. Checkpoint D recovery,
+deployment correction, access implementation, infrastructure recovery, and the
+entire operational pilot sequence remain parked until separately authorized.
 
 ### Phase 1: Close Pilot Gates
 
 - Implement and independently verify the ADR-019 managed private-overlay
   boundary; the current public unauthenticated endpoint still does not qualify.
-- Deploy and verify the intended current commit, including ten Day View
-  contributors.
+- Deploy and verify the intended current commit, including eleven Day View
+  contributors with Supply Requests as the eleventh.
 - Prepare and review minimum operational reference data without fabricating
   unknown facts.
 - Create a current-schema baseline backup and prove it through a guarded
@@ -1054,7 +1072,10 @@ Revisit only after several Equipment-centered features are implemented and
 users demonstrate a recurring need to review one Equipment record across
 modules and dates. The timeline should compose feature-owned queries rather
 than store duplicate event records or introduce a generic contribution
-registry.
+registry. Potential contributors now include implemented Daily Inspections,
+Operational Safety Checklists, Defect Tracking, Daily Work Logs, Equipment Fuel
+Events, and Supply Requests, but technical availability does not satisfy the
+demonstrated-demand prerequisite.
 
 ## Infrastructure Roadmap
 
@@ -1122,7 +1143,7 @@ Status: Implemented for external development access through `dev.alemany.me`
 
 ### Phase 4: Production Operations
 
-Status: Planned; production deployment is not implemented
+Status: Parked; production deployment is not implemented or authorized
 
 - Define the production deployment location, possibly /opt/nam
 - Automate PostgreSQL backups

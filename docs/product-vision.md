@@ -154,26 +154,38 @@ into confirmed requirements.
 - Add multiple Daily Log activity entries.
 - Link Daily Logs and activities to existing mine and equipment records.
 - View a Daily Log summary and activity timeline.
-
-### Planned
-
 - Record shift reports that connect work activity, inspections, and related
   paperwork.
 - Record Work Authorizations tied to shift reports.
 - Record daily inspections and equipment findings.
 - Track defects from report through closure.
-- Maintain a location, mine, equipment, and topic-based Knowledge Base.
 - Enter and revise work schedules manually.
 - Track timesheet entries and weekly totals.
 - Record operational Equipment fueling history separately from future Fleet
   purchase history.
-- Implement approved Operational Safety Checklist `HOURS`/`MILES` meter units
-  and clear NAM save confirmation. Optional checklist-level photo evidence
-  remains separately access-gated under ADR-018.
-- Archive payslip PDFs and extracted payroll data.
+- Use implemented Operational Safety Checklist `HOURS`/`MILES` meter units,
+  mismatch confirmation, NAM save feedback, filtering, correction, and Day View
+  participation.
+- Preserve already submitted corporate Supply Requests with reference
+  management, lifecycle, immutable correction history, canonical filtering,
+  explicit Daily Log Activity links, and Day View participation. NAM does not
+  submit the corporate request.
 - Search and navigate historical records by date, date range, equipment, mine,
   and module.
-- Provide calendar and Day View navigation for operational history.
+- Compose eleven feature-owned operational contributors in the read-only Day
+  View.
+
+### Product Discovery Required
+
+- Complete focused Knowledge Base product discovery and feature architecture
+  before implementation.
+
+### Blocked
+
+- Resolve Payslip Repository privacy, access, storage, extraction, redaction,
+  and export decisions before feature architecture or implementation.
+- Keep optional checklist-level photo evidence blocked until ADR-018's access,
+  processing, private-storage, cleanup, recovery, and security gates close.
 
 ### Candidate Future
 
@@ -214,24 +226,31 @@ The current implemented product capabilities include:
 - Equipment Fuel Event history, create, detail, correction, ordered Tank Fills,
   optional Fuel Service Person context, feature-owned filtering, and Day View
   participation.
+- Supply Request reference management, create, current detail, fulfillment,
+  cancellation, immutable correction history, canonical current-version
+  filtering, explicit Submission and Fulfillment Daily Log Activity linking,
+  and Day View participation. Supply Requests V1 is complete and accepted
+  through Phase 26.10; no Phase 26.11 is planned.
 - Day View composition for Work Schedule, Timesheet, Daily Work Logs, STOP
   Cards, Daily Inspections, Operational Safety Checklists, Shift Reports, Work
-  Authorizations, Defect Tracking, and Equipment Fuel Events on a selected
-  date.
+  Authorizations, Defect Tracking, Equipment Fuel Events, and Supply Requests
+  on a selected date. These eleven contributors remain feature-owned and the
+  Day View remains read-only.
 
-### Planned
+### Future Product Work
 
-Planned Version 1 product scope includes:
-
-- Supply Requests as truthful personal records of requests already submitted
-  through the corporate system, with durable history but no inventory,
-  procurement, warehouse-administration, or external-submission ownership.
-- Optional checklist-level photo evidence after ADR-018's access, processing,
-  storage, and backup gates are satisfied.
-- Broader historical lookup through feature-owned views; global cross-module
-  search remains deferred.
-- Additional calendar and Day View participation as future modules are
-  implemented.
+- Knowledge Base remains conceptually planned and requires focused V1 product
+  discovery and an accepted Level 2 feature architecture.
+- Payslip Repository remains conceptually planned but blocked from
+  implementation by unresolved sensitive-data decisions and the absence of an
+  accepted Level 2 feature architecture.
+- Optional checklist-level photo evidence remains blocked until ADR-018's
+  access, processing, storage, cleanup, backup, restore, and independent
+  security-verification gates are satisfied.
+- Broader historical lookup may continue through separately authorized
+  feature-owned views; global cross-module search remains deferred.
+- Fleet and the Equipment Activity Timeline remain separate deferred concepts.
+- Future Day View contributors require separate feature authorization.
 
 Detailed requirements live in `docs/prd.md`. Module behavior lives in
 `docs/modules.md`.

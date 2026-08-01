@@ -42,6 +42,11 @@ The Phase 24.2 assessment established this baseline:
 
 This document defines procedures only. None of these gates is considered
 passed until a later authorized milestone executes and records the evidence.
+Checkpoint D recovery, deployment correction, access implementation,
+infrastructure recovery, and the operational pilot remain parked. This status
+includes production database operations, Tailscale, Caddy, SSH, firewall, and
+backup or restore execution. This status reconciliation does not authorize or
+resume any runbook step.
 
 ## Pilot Authorization Gates
 
@@ -51,7 +56,7 @@ signed off. A skipped, unknown, or partially verified gate is a failed gate.
 | Gate | Required evidence | Status before execution |
 | --- | --- | --- |
 | Access | Approved private boundary active; public bypass denied; approved devices work; PostgreSQL remains unpublished. | Blocked |
-| Deployment | Checkpoint D gates D1 through D8 accepted; intended immutable image deployed; PostgreSQL unchanged; Day View has ten contributors. | Blocked |
+| Deployment | Checkpoint D gates D1 through D8 accepted; intended immutable image deployed; PostgreSQL unchanged; Day View has eleven contributors, including Supply Requests. | Blocked |
 | Reference data | Minimum location, Equipment, Timesheet, fuel, and snapshot-name context reviewed and signed off. | Blocked |
 | Recovery | Current-schema archive validated and restored successfully into a disposable database without touching live data. | Blocked |
 | Pilot scope | First-shift modules, entry order, date rules, and event-driven exclusions understood. | Blocked |
@@ -168,8 +173,8 @@ The implementation record must prove:
 - Private HTTPS produces no browser warning.
 - Port `3000` remains loopback-only and PostgreSQL remains unpublished.
 - No Caddy, direct IP, DNS, Funnel, or other public bypass remains.
-- Application health, required routes, and all ten Day View contributors work
-  through the private service.
+- Application health, required routes, and all eleven Day View contributors,
+  including Supply Requests, work through the private service.
 - Device removal revokes access and re-enrollment requires approval.
 - VPS reboot and Docker restart preserve private-only access.
 - Key-only SSH recovery works independently.
@@ -181,7 +186,8 @@ The durable boundary and rollback rules are recorded in
 ### Deployment Gate
 
 Checkpoint D corrects application-image drift only. It deploys the approved
-commit containing all ten Day View contributors while preserving PostgreSQL,
+commit containing all eleven Day View contributors, including Supply Requests,
+while preserving PostgreSQL,
 the `postgres-data` volume, `nam-network`, loopback-only application
 publishing, and the temporarily retained public and private routes.
 
@@ -1129,7 +1135,7 @@ Complete this record in the later execution milestone:
 | Unauthorized external test |  |
 | Approved device tests |  |
 | Deployed commit and image |  |
-| Ten-contributor Day View |  |
+| Eleven-contributor Day View, including Supply Requests |  |
 | Migration verification |  |
 | Reference-data sign-off |  |
 | Smoke-data disposition |  |

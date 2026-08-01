@@ -119,7 +119,8 @@ Success criteria:
 
 ### Phase 1: MVP Workday History
 
-Status: In progress
+Status: Implemented foundation; residual enhancements deferred or separately
+authorized
 
 Business value:
 
@@ -136,12 +137,15 @@ Implemented:
   `docs/architecture/features/day-view.md`.
 - Date-aware participation for Shift Reports, Daily Work Logs, STOP Cards,
   Daily Inspections, Operational Safety Checklists, Work Authorizations, Defect
-  Tracking, Work Schedule, Timesheet, and Equipment Fuel Events.
+  Tracking, Work Schedule, Timesheet, Equipment Fuel Events, and Supply
+  Requests. Day View now composes eleven feature-owned contributors.
 
-Remaining:
+Residual work:
 
-- Broader historical lookup across modules.
-- Cross-record links where related modules require them.
+- Broader historical lookup across modules requires a separately confirmed
+  retrieval problem and feature-owned scope.
+- Cross-record links remain feature-owned and require separately approved
+  workflows.
 - Global cross-module search remains deferred until separately approved.
 
 Success criteria:
@@ -154,7 +158,8 @@ Success criteria:
 
 ### Phase 2: Shift And Safety Records
 
-Status: In progress
+Status: Implemented foundation; optional photo evidence blocked and other
+residual enhancements separately authorized
 
 Business value:
 
@@ -179,10 +184,11 @@ Implemented foundations and current Day View participation:
   filtering, `HOURS`/`MILES` meters, NAM save feedback, Create Another, and Day
   View participation.
 
-Remaining:
+Blocked or separately authorized work:
 
-- Implement optional checklist-level photo evidence only after ADR-018's
-  access, processing, storage, and backup gates are satisfied.
+- Optional checklist-level photo evidence remains blocked; no implementation
+  is authorized until ADR-018's access, processing, storage, and backup gates
+  are satisfied and a separate implementation milestone is approved.
 - Add cross-record relationships only where approved workflows require them.
 
 Success criteria:
@@ -202,7 +208,7 @@ Dependency notes:
 
 ### Phase 3: Personal Work Administration
 
-Status: In progress
+Status: Complete for the approved foundations
 
 Business value:
 
@@ -264,7 +270,7 @@ Dependency notes:
 
 ### Operational Usage Pilot
 
-Status: Preparation gated
+Status: Parked; authorization gates remain incomplete
 
 Phase 24.2 readiness assessment is complete. Phase 24.2.1 provides the
 [Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md), but
@@ -284,7 +290,7 @@ depend on resuming the pilot.
 
 ### Phase 4: Knowledge And Sensitive Records
 
-Status: Planned
+Status: Conceptually planned; discovery and prerequisite closure required
 
 Business value:
 
@@ -305,10 +311,14 @@ Success criteria:
 
 Dependency notes:
 
-- Knowledge Base benefits from stable location, mine, equipment, and attachment
-  patterns.
-- Payslip Repository requires privacy and storage decisions before sensitive
-  financial behavior expands.
+- Knowledge Base benefits from stable location, mine, and Equipment context,
+  but it still requires focused V1 product discovery and an accepted Level 2
+  feature architecture. Attachment and media needs remain part of that future
+  discovery rather than an implementation authorization.
+- Payslip Repository is supported by ADR-005 bounded-context guidance but is
+  blocked from implementation until privacy, access, storage, extraction,
+  redaction, and export decisions are complete and an accepted Level 2 feature
+  architecture exists.
 
 ### Phase 5: Product Expansion
 
@@ -386,10 +396,10 @@ The MVP should not require:
 | Supply Requests | Preserves records of requests already submitted through the corporate system, with permanent identity, ordered catalog items, lifecycle, immutable history, and bounded Daily Log and Day View context. | Equipment reference data; Phase 26.1 product decisions; boundary assessment: `docs/architecture/equipment-operations.md`; Approved feature architecture: `docs/architecture/features/supply-requests.md`. | Supply Requests V1 complete and accepted; Phases 26.1 through 26.10 complete as applicable; create, current detail, reference management, lifecycle, Correct Request, immutable history, canonical current-version history/filtering, explicit Submission/Fulfillment Daily Log Activity linking, and Day View participation available; deferred enhancements remain outside V1 and require separate authorization |
 | Operational Safety Checklist meter and confirmation | Adds explicit `HOURS`/`MILES` meter units and clear NAM save confirmation. | Approved Phase 23.3 architecture. | Phase 23.4 implemented; Phase 23.4.2 monotonic marker supersession and safe presentation fallback complete |
 | Operational Safety Checklist photo evidence | Adds optional checklist-level normalized photos with captions. | ADR-018 access boundary, Docker media processing, private storage, and coordinated backup/restore. | Architecture Approved; Phase 23.5 implementation and real photo use blocked until prerequisites close |
-| Fleet | May later address purchases, ownership, assignments, cards, receipts, registration, insurance, and replacement lifecycle. | Separate product discovery and architecture. | Deferred; not a prerequisite for Operational Safety Checklists |
-| Equipment Activity Timeline | Provides derived Equipment-centered history from feature-owned records. | Multiple implemented Equipment-centered contributors and demonstrated user need. | Deferred derived capability |
-| Knowledge Base | Preserves reusable operational knowledge. | Location, mine, and equipment organization. | Planned |
-| Payslip Repository | Preserves sensitive compensation history. | Privacy and storage decisions before expansion. | Planned |
+| Fleet | May later address purchases, ownership, assignments, cards, receipts, registration, insurance, and replacement lifecycle. | Separate product discovery and architecture. | Deferred; no product discovery or feature architecture; not a prerequisite for current Equipment Fuel Event or checklist workflows |
+| Equipment Activity Timeline | Provides derived Equipment-centered history from feature-owned records. | Multiple implemented Equipment-centered contributors and demonstrated user need. | Deferred derived capability; implemented contributors now include Supply Requests, but recurring user demand and feature architecture remain absent |
+| Knowledge Base | Preserves reusable operational knowledge. | Location, mine, and equipment organization. | Conceptually planned; focused V1 product discovery and accepted Level 2 feature architecture required before implementation |
+| Payslip Repository | Preserves sensitive compensation history. | Privacy and storage decisions before expansion. | Conceptually planned under ADR-005; implementation blocked by unresolved privacy, access, storage, extraction, redaction, and export decisions and absent Level 2 feature architecture |
 | Automation and integrations | Reduces manual work after workflows prove stable. | Reliable manual workflow and documented tradeoffs. | Deferred / Candidate Future |
 
 ## Deferred Capabilities

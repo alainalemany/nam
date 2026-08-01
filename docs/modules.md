@@ -58,8 +58,8 @@ Work Authorizations without owning Work Authorization validation or lifecycle
 logic.
 
 The implemented V1 module provides list, create, edit, and detail workflows,
-Prisma persistence, and selected-date Day View participation. Feature-owned
-list filtering and broader related-record links remain future work.
+Prisma persistence, feature-owned list filtering, and selected-date Day View
+participation. Broader related-record links remain future work.
 
 Implementation architecture:
 
@@ -72,8 +72,8 @@ The Work Authorizations module tracks safety and compliance paperwork required w
 The implemented V1 module provides list, create, edit, and detail workflows,
 structured permit/work-requirement fields, lifecycle validation, Prisma
 persistence, required Shift Report parent context, and selected-date Day View
-participation. Feature-owned list filtering and deeper child-record structures
-remain future work.
+participation. Feature-owned list filtering is implemented; deeper child-record
+structures remain future work.
 
 ### Purpose
 
@@ -345,6 +345,10 @@ Future phases may add richer timelines, templates, analytics, or work order inte
 ## Knowledge Base (KB)
 
 The Knowledge Base module stores operational knowledge by location, mine, equipment, and topic.
+
+Current status: Conceptually planned. Broad requirements exist, but focused V1
+product discovery, decision closure, an accepted Level 2 feature architecture,
+and explicit implementation authorization are still required.
 
 ### Purpose
 
@@ -682,6 +686,11 @@ explicitly evaluated later.
 
 The Payslip Repository module stores weekly work payment PDFs and extracts payroll data for search, calendar lookup, and financial analysis.
 
+Current status: Conceptually planned under ADR-005's financial bounded-context
+guidance. Implementation remains blocked by unresolved privacy, application
+access, storage, extraction, redaction, and export decisions and by the absence
+of an accepted Level 2 feature architecture.
+
 ### Purpose
 
 Create a permanent personal archive of payslips and make compensation data usable beyond the PDF itself.
@@ -896,17 +905,22 @@ Approved feature architecture:
 
 `docs/architecture/features/supply-requests.md`
 
-Current status: Phase 26.1 product discovery, Phase 26.2 feature architecture,
-Phase 26.2.1 independent review, and Phase 26.2.2 formal acceptance are
-complete. The architecture is Approved. Implementation has not started, and
-Phase 26.3A requires separate explicit authorization.
+Current status: The architecture is Approved, Phases 26.3A through 26.10 are
+implemented and accepted, and Supply Requests V1 is complete and accepted.
+The accepted workflow includes reference management, recording an already
+submitted corporate request, current detail, fulfillment and cancellation,
+immutable correction history, canonical current-version filtering, explicit
+Submission and Fulfillment Daily Log Activity links, and one current Day View
+entry per stable request. NAM does not perform corporate submission. No Phase
+26.11 is planned. Deferred enhancements remain outside V1 and require new
+product review, architecture review, and explicit authorization.
 
 ## Equipment Activity Timeline
 
 The Equipment Activity Timeline is a deferred derived capability. It should
 compose feature-owned Equipment history from checklists, Defects, Daily Work
-Logs, Equipment Fuel Events, Supply Requests after implementation, and other
-accepted contributors.
+Logs, Equipment Fuel Events, implemented Supply Requests, and other accepted
+contributors.
 
 It should not store duplicate event records or become a shared business-logic
 owner. Timeline architecture should begin only after several Equipment-centered

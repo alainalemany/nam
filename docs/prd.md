@@ -15,7 +15,7 @@ roadmap governance is [Product Roadmap](product-roadmap.md).
 - [Background](#background)
 - [Technical Stack](#technical-stack)
 - [Project Objectives](#project-objectives)
-- [Current Planned Modules](#current-planned-modules)
+- [Product Modules And Status](#product-modules-and-status)
 - [Documentation Rules](#documentation-rules)
 - [Idea Management Rules](#idea-management-rules)
 - [Version 1 Out of Scope](#version-1-out-of-scope)
@@ -83,7 +83,11 @@ The dashboard should become the central location for:
 
 The system should be designed to reduce paperwork, improve organization, and create historical records for future analysis.
 
-## Current Planned Modules
+## Product Modules And Status
+
+This section preserves both implemented requirements and conceptual future
+module requirements. Current implementation status is stated explicitly in the
+relevant module section; conceptual fields do not authorize implementation.
 
 ### 1. Dashboard Home
 
@@ -149,12 +153,13 @@ shift start. The Mobile checklist applies to work trucks, tractors, forklifts,
 and other supported mobile Equipment. A shift using a dragline, work truck, and
 tractor therefore produces three independent checklist records.
 
-The implemented V1 foundation currently records the approved Hour Meter
-context. Phase 23.3 approves an explicit whole-number `HOURS` or `MILES` meter
-unit and clear confirmation that the NAM record was saved. Optional
-checklist-level photo evidence with captions is also approved architecturally,
-but implementation and real photo use remain gated by ADR-018. These
-enhancements are not implemented yet.
+The implemented and accepted V1 foundation records an explicit whole-number
+`HOURS` or `MILES` meter unit, editable category suggestions, explicit known
+mismatch confirmation, NAM save feedback, correction, filtering, and Day View
+participation. Optional checklist-level photo evidence with captions is
+approved architecturally, but implementation and real photo use remain blocked
+by ADR-018's access, processing, private-storage, cleanup, backup, restore, and
+independent security-verification prerequisites.
 
 ### 4. Daily Log
 
@@ -807,5 +812,16 @@ fulfillment, analytics, exports, global search, or external integration.
 Phase 26.1 product decisions, Phase 26.2 feature architecture, Phase 26.2.1
 independent review, and Phase 26.2.2 formal acceptance are complete. The
 implementation architecture in
-`docs/architecture/features/supply-requests.md` is Approved. Implementation has
-not started, and Phase 26.3A requires separate explicit authorization.
+`docs/architecture/features/supply-requests.md` is Approved. Phases 26.3A
+through 26.10 are implemented and accepted, and Supply Requests V1 is complete
+and accepted. Operators can manage Supply Items and supervisors, record a
+request already submitted through the corporate system, review current detail,
+fulfill or cancel, correct through immutable versions, review Correction
+History and version detail, search canonical current-version history, link
+Submission and Fulfillment Daily Log Activities explicitly, and review the
+single current request entry in Day View. NAM never performs the corporate
+submission. No Phase 26.11 is planned; future Supply Request work requires new
+product review, architecture review, and explicit authorization. Partial
+fulfillment, received or outstanding quantities, normal Reopen, ordinary
+deletion, notifications, approvals, analytics, reports, exports, and corporate
+integrations remain outside V1.
