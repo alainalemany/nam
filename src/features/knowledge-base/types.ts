@@ -92,6 +92,8 @@ export type KnowledgeEditInput = Readonly<{
   knowledgeRecordId: string;
   expectedStateVersion: number;
   expectedCurrentRevisionId: string;
+  contentKind: KnowledgeContentKind;
+  changeSummary: string | null;
   title: string;
   bodyMarkdown: string;
   safetyCaution: string | null;
@@ -104,6 +106,8 @@ export type KnowledgeEditInput = Readonly<{
 export type KnowledgeEditFormValues = Readonly<{
   expectedStateVersion: string;
   expectedCurrentRevisionId: string;
+  contentKind: string;
+  changeSummary: string;
   title: string;
   bodyMarkdown: string;
   safetyCaution: string;
@@ -141,10 +145,13 @@ export type KnowledgeMutationResult = Readonly<{
   knowledgeRecordId: string;
   stateVersion: number;
   duplicate: boolean;
+  revisionNumber?: number;
 }>;
 
 export type KnowledgeEditPageData = Readonly<{
   id: string;
+  mode: "EDIT_UNVERIFIED" | "REVISE_REVIEWED";
+  revisionNumber: number;
   contentKind: KnowledgeContentKind;
   contentKindLabel: string;
   initialState: KnowledgeEditActionState;
@@ -183,5 +190,51 @@ export type KnowledgeDetailView = Readonly<{
   createdAt: string;
   updatedAt: string;
   reviewedAt: string | null;
+  revisionNumber: number;
+  historyHref: string;
   mutationTokens: KnowledgeMutationTokens | null;
+}>;
+
+export type KnowledgeHistoryRevisionSummary = Readonly<{
+  revisionNumber: number;
+  href: string;
+  isCurrent: boolean;
+  designation: "Current Unverified" | "Current Personally Reviewed" | "Retained Reviewed";
+  origin: "INITIAL" | "REVISED" | "RESTORED";
+  contentKindLabel: string;
+  trustLabel: "Unverified" | "Personally Reviewed";
+  changeSummary: string | null;
+  contextSummary: string;
+  createdAt: string;
+  updatedAt: string;
+  reviewedAt: string | null;
+}>;
+
+export type KnowledgeHistoryView = Readonly<{
+  id: string;
+  title: string;
+  currentRevisionNumber: number;
+  revisions: readonly KnowledgeHistoryRevisionSummary[];
+}>;
+
+export type KnowledgeHistoricalRevisionView = Readonly<{
+  recordId: string;
+  revisionNumber: number;
+  isCurrent: boolean;
+  designation: "Current Unverified" | "Current Personally Reviewed" | "Retained Reviewed";
+  title: string;
+  bodyMarkdown: string;
+  safetyCaution: string | null;
+  contentKindLabel: string;
+  trustLabel: "Unverified" | "Personally Reviewed";
+  originLabel: "Initial" | "Revised" | "Restored";
+  changeSummary: string | null;
+  contextSummary: string;
+  contextAvailability: string | null;
+  externalReferences: readonly Readonly<{ sequence: number; label: string; url: string }>[];
+  createdAt: string;
+  updatedAt: string;
+  reviewedAt: string | null;
+  currentHref: string;
+  historyHref: string;
 }>;

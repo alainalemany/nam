@@ -661,6 +661,8 @@ textarea {
 .knowledge-edit-form .notice-stack,
 .knowledge-review-control section,
 .knowledge-detail .notice-stack,
+.knowledge-history-page .notice-stack,
+.knowledge-revision-page .notice-stack,
 .knowledge-detail .knowledge-markdown,
 .knowledge-create-form .error-summary,
 .knowledge-edit-form .error-summary,
@@ -676,6 +678,50 @@ textarea {
   border-left: 4px solid #8a4b12;
   background: #fff9f1;
   padding: 16px;
+}
+
+.knowledge-history-page .notice-stack,
+.knowledge-revision-page .notice-stack {
+  border-left: 4px solid #8a4b12;
+  background: #fff9f1;
+  padding: 16px;
+}
+
+.knowledge-history-page .knowledge-history-list {
+  display: grid;
+  gap: 16px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.knowledge-history-page h1,
+.knowledge-history-page h2,
+.knowledge-history-page dd,
+.knowledge-revision-page h1,
+.knowledge-revision-page dd,
+.knowledge-revision-page p,
+.knowledge-revision-page li {
+  overflow-wrap: anywhere;
+}
+
+.knowledge-history-page .button,
+.knowledge-revision-page .button,
+.knowledge-history-page .knowledge-history-list h2 a,
+.knowledge-revision-page li a {
+  min-height: 44px;
+}
+
+.knowledge-history-page .knowledge-history-list h2 a,
+.knowledge-revision-page li a {
+  display: inline-flex;
+  align-items: center;
+}
+
+.knowledge-history-page :focus-visible,
+.knowledge-revision-page :focus-visible {
+  outline: 3px solid #1f6feb;
+  outline-offset: 2px;
 }
 
 .knowledge-create-form .error-summary,

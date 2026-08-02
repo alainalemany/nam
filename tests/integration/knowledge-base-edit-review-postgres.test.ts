@@ -110,6 +110,8 @@ function editInput(
     knowledgeRecordId: root.id,
     expectedStateVersion: root.stateVersion,
     expectedCurrentRevisionId: root.currentRevisionId,
+    contentKind: root.currentRevision?.contentKind ?? "FIELD_NOTE",
+    changeSummary: null,
     title: "Updated observation",
     bodyMarkdown: "## Observation\n\nUpdated body.",
     safetyCaution: "Verify isolation.",

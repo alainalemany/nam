@@ -5,17 +5,22 @@ import {
   knowledgeContentKindLabels,
   knowledgeCreateOptionLimit,
   knowledgeMaximumCautionLength,
+  knowledgeMaximumChangeSummaryLength,
+  knowledgeMaximumExternalReferences,
   knowledgeMaximumMutableStateVersion,
+  knowledgeMaximumMutableRevisionNumber,
   knowledgeMaximumTitleLength,
 } from "./constants";
 import {
   knowledgeIntegrityError,
   knowledgeNotEditableError,
+  knowledgeRevisionNumberExhaustedError,
 } from "./errors";
 import { parseKnowledgeMarkdown } from "./markdown";
 import {
   codePointLength,
   normalizeHttpsUrl,
+  normalizeSingleLineText,
   normalizeTitleKey,
 } from "./normalization";
 import type {
@@ -71,7 +76,14 @@ const detailSelect = {
     },
   },
   revisions: {
-    select: { id: true, revisionNumber: true, trust: true },
+    select: {
+      id: true,
+      revisionNumber: true,
+      origin: true,
+      trust: true,
+      changeSummary: true,
+      reviewedAt: true,
+    },
     orderBy: [{ revisionNumber: "asc" as const }, { id: "asc" as const }],
   },
 } satisfies Prisma.KnowledgeRecordSelect;
@@ -82,6 +94,14 @@ type LoadedKnowledgeDetail = Prisma.KnowledgeRecordGetPayload<{
 
 function nonblank(value: string | null) {
   return value !== null && value.trim().length > 0;
+}
+
+function validChangeSummary(value: string | null) {
+  return value !== null &&
+    value.length > 0 &&
+    value === normalizeSingleLineText(value) &&
+    !/[\u0000-\u001f\u007f]/u.test(value) &&
+    codePointLength(value) <= knowledgeMaximumChangeSummaryLength;
 }
 
 function contextIsCoherent(revision: NonNullable<LoadedKnowledgeDetail["currentRevision"]>) {
@@ -132,18 +152,28 @@ export function knowledgeDetailIsCoherent(record: LoadedKnowledgeDetail) {
     ) ||
     !Number.isSafeInteger(record.stateVersion) ||
     record.stateVersion < 1 ||
-    revision.revisionNumber !== 1 ||
-    revision.origin !== "INITIAL" ||
+    !Number.isSafeInteger(revision.revisionNumber) ||
+    revision.revisionNumber < 1 ||
     !(
       (revision.trust === "UNVERIFIED" && revision.reviewedAt === null) ||
       (revision.trust === "PERSONALLY_REVIEWED" && revision.reviewedAt !== null)
     ) ||
-    revision.changeSummary !== null ||
-    record.revisions.length !== 1 ||
-    record.revisions[0]?.id !== revision.id ||
-    record.revisions[0]?.revisionNumber !== 1 ||
-    record.revisions[0]?.trust !== revision.trust ||
+    !(
+      (revision.origin === "INITIAL" &&
+        revision.revisionNumber === 1 &&
+        revision.changeSummary === null) ||
+      (revision.origin === "REVISED" &&
+        revision.revisionNumber > 1 &&
+        validChangeSummary(revision.changeSummary)) ||
+      (revision.origin === "RESTORED" &&
+        revision.revisionNumber > 1 &&
+        revision.changeSummary === null)
+    ) ||
+    record.revisions.length < 1 ||
+    record.revisions.at(-1)?.id !== revision.id ||
+    record.revisions.at(-1)?.revisionNumber !== revision.revisionNumber ||
     revision.title.trim().length === 0 ||
+    revision.title !== normalizeSingleLineText(revision.title) ||
     codePointLength(revision.title) > knowledgeMaximumTitleLength ||
     revision.normalizedTitle !== normalizeTitleKey(revision.title) ||
     (revision.safetyCaution !== null &&
@@ -153,9 +183,40 @@ export function knowledgeDetailIsCoherent(record: LoadedKnowledgeDetail) {
   ) {
     return false;
   }
+  if (
+    !record.revisions.every((candidate, index) => {
+      const number = index + 1;
+      const originCoherent =
+        (candidate.origin === "INITIAL" &&
+          number === 1 &&
+          candidate.changeSummary === null) ||
+        (candidate.origin === "REVISED" &&
+          number > 1 &&
+          validChangeSummary(candidate.changeSummary)) ||
+        (candidate.origin === "RESTORED" &&
+          number > 1 &&
+          candidate.changeSummary === null);
+      const trustCoherent =
+        (candidate.trust === "UNVERIFIED" && candidate.reviewedAt === null) ||
+        (candidate.trust === "PERSONALLY_REVIEWED" &&
+          candidate.reviewedAt !== null);
+      return (
+        candidate.revisionNumber === number &&
+        originCoherent &&
+        trustCoherent &&
+        (candidate.id === revision.id ||
+          candidate.trust === "PERSONALLY_REVIEWED")
+      );
+    })
+  ) {
+    return false;
+  }
   try {
     parseKnowledgeMarkdown(revision.bodyMarkdown);
   } catch {
+    return false;
+  }
+  if (revision.externalReferences.length > knowledgeMaximumExternalReferences) {
     return false;
   }
   const normalizedUrls = new Set<string>();
@@ -227,10 +288,13 @@ export function mapKnowledgeDetail(record: LoadedKnowledgeDetail): KnowledgeDeta
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
     reviewedAt: revision.reviewedAt?.toISOString() ?? null,
+    revisionNumber: revision.revisionNumber,
+    historyHref: `/knowledge-base/${encodeURIComponent(record.id)}/history`,
     mutationTokens:
       record.lifecycle === "ACTIVE" &&
-      revision.trust === "UNVERIFIED" &&
-      record.stateVersion <= knowledgeMaximumMutableStateVersion
+      record.stateVersion <= knowledgeMaximumMutableStateVersion &&
+      (revision.trust === "UNVERIFIED" ||
+        revision.revisionNumber <= knowledgeMaximumMutableRevisionNumber)
         ? {
             expectedStateVersion: record.stateVersion,
             expectedCurrentRevisionId: revision.id,
@@ -304,11 +368,14 @@ export async function getKnowledgeEditPageDataWithClient(
   if (record.lifecycle !== "ACTIVE") {
     throw knowledgeNotEditableError();
   }
-  if (record.currentRevision.trust !== "UNVERIFIED") {
-    throw knowledgeNotEditableError();
-  }
   if (record.stateVersion > knowledgeMaximumMutableStateVersion) {
     throw knowledgeIntegrityError();
+  }
+  if (
+    record.currentRevision.trust === "PERSONALLY_REVIEWED" &&
+    record.currentRevision.revisionNumber > knowledgeMaximumMutableRevisionNumber
+  ) {
+    throw knowledgeRevisionNumberExhaustedError();
   }
   const options = await getKnowledgeCreatePageDataWithClient(client);
   const revision = record.currentRevision;
@@ -339,6 +406,11 @@ export async function getKnowledgeEditPageDataWithClient(
   }
   return {
     id: record.id,
+    mode:
+      revision.trust === "UNVERIFIED"
+        ? "EDIT_UNVERIFIED"
+        : "REVISE_REVIEWED",
+    revisionNumber: revision.revisionNumber,
     contentKind: revision.contentKind,
     contentKindLabel: knowledgeContentKindLabels[revision.contentKind],
     initialState: {
@@ -349,6 +421,8 @@ export async function getKnowledgeEditPageDataWithClient(
       values: {
         expectedStateVersion: String(record.stateVersion),
         expectedCurrentRevisionId: revision.id,
+        contentKind: revision.contentKind,
+        changeSummary: "",
         title: revision.title,
         bodyMarkdown: revision.bodyMarkdown,
         safetyCaution: revision.safetyCaution ?? "",

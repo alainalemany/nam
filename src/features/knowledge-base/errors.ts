@@ -6,7 +6,12 @@ export type KnowledgeBaseErrorCode =
   | "REFERENCE_NOT_FOUND"
   | "REFERENCE_INACTIVE"
   | "RECORD_NOT_FOUND"
+  | "REVISION_NOT_FOUND"
   | "RECORD_NOT_EDITABLE"
+  | "REVISION_NOT_AVAILABLE"
+  | "CHANGE_SUMMARY_REQUIRED"
+  | "NO_MATERIAL_CHANGE"
+  | "REVISION_NUMBER_EXHAUSTED"
   | "CONCURRENT_MODIFICATION"
   | "CURRENT_AUTHORITY_CHANGED"
   | "DUPLICATE_SUBMISSION_CONFLICT"
@@ -51,6 +56,29 @@ export function knowledgeNotEditableError() {
   return new KnowledgeBaseError(
     "RECORD_NOT_EDITABLE",
     "This Knowledge Record is read-only in its current state.",
+  );
+}
+
+export function knowledgeChangeSummaryRequiredError() {
+  return new KnowledgeBaseError(
+    "CHANGE_SUMMARY_REQUIRED",
+    "Describe what changed before creating a new revision.",
+    "changeSummary",
+  );
+}
+
+export function knowledgeNoMaterialChangeError() {
+  return new KnowledgeBaseError(
+    "NO_MATERIAL_CHANGE",
+    "No material change was found. The reviewed revision remains current.",
+    "form",
+  );
+}
+
+export function knowledgeRevisionNumberExhaustedError() {
+  return new KnowledgeBaseError(
+    "REVISION_NUMBER_EXHAUSTED",
+    "This Knowledge Record cannot create another revision safely.",
   );
 }
 

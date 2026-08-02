@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { KnowledgeBaseError } from "@/features/knowledge-base/errors";
 
@@ -22,13 +22,20 @@ import EditKnowledgeRecordPage from "@/app/knowledge-base/[id]/edit/page";
 
 describe("Knowledge Base edit route", () => {
   beforeEach(() => vi.clearAllMocks());
+  afterEach(cleanup);
 
   it("loads the stable route identity and server-derived form preparation", async () => {
-    mocks.getEdit.mockResolvedValue({ id: "record-1", contentKindLabel: "Field Note" });
+    mocks.getEdit.mockResolvedValue({ id: "record-1", mode: "EDIT_UNVERIFIED", contentKindLabel: "Field Note" });
     render(await EditKnowledgeRecordPage({ params: Promise.resolve({ id: "record-1" }) }));
     expect(screen.getByRole("heading", { name: "Edit Unverified Knowledge Record" })).toBeInTheDocument();
     expect(screen.getByTestId("edit-form")).toHaveTextContent("record-1");
     expect(mocks.getEdit).toHaveBeenCalledWith("record-1");
+  });
+
+  it("uses the same approved route for reviewed revision creation", async () => {
+    mocks.getEdit.mockResolvedValue({ id: "record-1", mode: "REVISE_REVIEWED", contentKindLabel: "Field Note" });
+    render(await EditKnowledgeRecordPage({ params: Promise.resolve({ id: "record-1" }) }));
+    expect(screen.getByRole("heading", { name: "Create a New Unverified Revision" })).toBeInTheDocument();
   });
 
   it("uses not-found only for an absent record", async () => {

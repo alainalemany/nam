@@ -89,12 +89,15 @@ export function KnowledgeRecordDetail({ detail }: { detail: KnowledgeDetailView 
 
       <div className="inline-actions">
         {detail.mutationTokens ? (
-          <Link className="button primary" href={`/knowledge-base/${encodeURIComponent(detail.id)}/edit`}>Edit Knowledge Record</Link>
+          <Link className="button primary" href={`/knowledge-base/${encodeURIComponent(detail.id)}/edit`}>
+            {detail.trust === "UNVERIFIED" ? "Edit Knowledge Record" : "Create New Unverified Revision"}
+          </Link>
         ) : null}
+        <Link className="button secondary" href={detail.historyHref}>Revision history</Link>
         <Link className="button secondary" href="/knowledge-base/new">Create another Knowledge Record</Link>
       </div>
 
-      {detail.mutationTokens ? (
+      {detail.mutationTokens && detail.trust === "UNVERIFIED" ? (
         <KnowledgeReviewControl
           knowledgeRecordId={detail.id}
           tokens={detail.mutationTokens}

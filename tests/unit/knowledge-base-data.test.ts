@@ -24,7 +24,7 @@ function record(overrides: Record<string, unknown> = {}) {
     id: "record-1", currentRevisionId: "revision-1", lifecycle: "ACTIVE", stateVersion: 1,
     archivedAt: null, createdAt: new Date("2026-08-01T12:00:00Z"), updatedAt: new Date("2026-08-01T12:00:00Z"),
     currentRevision: revision,
-    revisions: [{ id: "revision-1", revisionNumber: 1, trust: "UNVERIFIED" }],
+    revisions: [{ id: "revision-1", revisionNumber: 1, origin: "INITIAL", trust: "UNVERIFIED", changeSummary: null, reviewedAt: null }],
     ...overrides,
   } as never;
 }
@@ -43,24 +43,31 @@ describe("Knowledge Base create options and current detail query", () => {
     });
   });
 
-  it("supports a coherent Personally Reviewed current revision without edit tokens", () => {
+  it("supports a coherent Personally Reviewed current revision with revision authority tokens", () => {
     const loaded: any = record({ stateVersion: 2 });
     loaded.currentRevision.trust = "PERSONALLY_REVIEWED";
     loaded.currentRevision.reviewedAt = new Date("2026-08-01T13:00:00Z");
     loaded.revisions[0].trust = "PERSONALLY_REVIEWED";
+    loaded.revisions[0].reviewedAt = loaded.currentRevision.reviewedAt;
     const view = mapKnowledgeDetail(loaded);
     expect(view).toMatchObject({
       trust: "PERSONALLY_REVIEWED",
       trustLabel: "Personally Reviewed",
       reviewedAt: "2026-08-01T13:00:00.000Z",
-      mutationTokens: null,
+      mutationTokens: {
+        expectedStateVersion: 2,
+        expectedCurrentRevisionId: "revision-1",
+      },
     });
   });
 
   it.each([
     ["null pointer", { currentRevisionId: null }],
     ["pointer mismatch", { currentRevisionId: "decoy" }],
-    ["higher decoy", { revisions: [{ id: "revision-1", revisionNumber: 1, trust: "UNVERIFIED" }, { id: "revision-2", revisionNumber: 2, trust: "UNVERIFIED" }] }],
+    ["higher decoy", { revisions: [
+      { id: "revision-1", revisionNumber: 1, origin: "INITIAL", trust: "UNVERIFIED", changeSummary: null, reviewedAt: null },
+      { id: "revision-2", revisionNumber: 2, origin: "REVISED", trust: "UNVERIFIED", changeSummary: "Decoy", reviewedAt: null },
+    ] }],
   ])("rejects %s rather than inferring authority", (_name, override) => {
     const loaded = record(override);
     expect(knowledgeDetailIsCoherent(loaded)).toBe(false);
@@ -100,6 +107,19 @@ describe("Knowledge Base create options and current detail query", () => {
     expect(() => mapKnowledgeDetail(context)).toThrowError(
       expect.objectContaining({ code: "PERSISTED_STATE_INTEGRITY_FAILURE" }),
     );
+    const excessiveReferences: any = record();
+    excessiveReferences.currentRevision.externalReferences = Array.from(
+      { length: 11 },
+      (_, index) => ({
+        sequence: index + 1,
+        label: `Reference ${index + 1}`,
+        url: `https://example.com/${index + 1}`,
+        normalizedUrl: `https://example.com/${index + 1}`,
+      }),
+    );
+    expect(() => mapKnowledgeDetail(excessiveReferences)).toThrowError(
+      expect.objectContaining({ code: "PERSISTED_STATE_INTEGRITY_FAILURE" }),
+    );
   });
 
   it("returns null for malformed or missing stable IDs and safe options for active owners", async () => {
@@ -129,11 +149,15 @@ describe("Knowledge Base create options and current detail query", () => {
       "2c04dfeb-5fc2-46e5-b476-7e871851b87f",
     );
     expect(page).toMatchObject({
+      mode: "EDIT_UNVERIFIED",
+      revisionNumber: 1,
       contentKindLabel: "Field Note",
       initialState: {
         values: {
           expectedStateVersion: "4",
           expectedCurrentRevisionId: "revision-1",
+          contentKind: "FIELD_NOTE",
+          changeSummary: "",
           title: "Observation",
         },
       },
@@ -141,15 +165,24 @@ describe("Knowledge Base create options and current detail query", () => {
     expect(JSON.stringify(page)).not.toContain("createSubmission");
   });
 
-  it("rejects reviewed edit preparation while current detail remains readable", async () => {
+  it("prepares reviewed current authority for retained revision creation", async () => {
     const loaded: any = record({ stateVersion: 2 });
     loaded.currentRevision.trust = "PERSONALLY_REVIEWED";
     loaded.currentRevision.reviewedAt = new Date();
     loaded.revisions[0].trust = "PERSONALLY_REVIEWED";
-    const client: any = { knowledgeRecord: { findUnique: vi.fn().mockResolvedValue(loaded) } };
+    loaded.revisions[0].reviewedAt = loaded.currentRevision.reviewedAt;
+    const client: any = {
+      knowledgeRecord: { findUnique: vi.fn().mockResolvedValue(loaded) },
+      mine: { findMany: vi.fn().mockResolvedValue([]) },
+      equipment: { findMany: vi.fn().mockResolvedValue([]) },
+    };
     await expect(getKnowledgeEditPageDataWithClient(
       client,
       "2c04dfeb-5fc2-46e5-b476-7e871851b87f",
-    )).rejects.toMatchObject({ code: "RECORD_NOT_EDITABLE" });
+    )).resolves.toMatchObject({
+      mode: "REVISE_REVIEWED",
+      revisionNumber: 1,
+      initialState: { values: { changeSummary: "" } },
+    });
   });
 });

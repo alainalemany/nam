@@ -53,7 +53,14 @@ function aggregate() {
     createdAt: new Date("2026-08-01T12:00:00Z"),
     updatedAt: new Date("2026-08-01T12:00:00Z"),
     currentRevision: revision,
-    revisions: [{ id: revisionId, revisionNumber: 1, trust: "UNVERIFIED" }],
+    revisions: [{
+      id: revisionId,
+      revisionNumber: 1,
+      origin: "INITIAL",
+      trust: "UNVERIFIED",
+      changeSummary: null,
+      reviewedAt: null as Date | null,
+    }],
   };
 }
 
@@ -80,6 +87,7 @@ function clientHarness() {
         Object.assign(state.currentRevision, data);
         state.currentRevision.updatedAt = new Date();
         state.revisions[0]!.trust = state.currentRevision.trust;
+        state.revisions[0]!.reviewedAt = state.currentRevision.reviewedAt;
         return state.currentRevision;
       }),
     },
@@ -111,6 +119,8 @@ function editInput() {
     knowledgeRecordId: recordId,
     expectedStateVersion: 1,
     expectedCurrentRevisionId: revisionId,
+    contentKind: "FIELD_NOTE" as const,
+    changeSummary: null,
     title: "Updated",
     bodyMarkdown: "## Updated\n\nBody.",
     safetyCaution: "Keep clear.",
@@ -133,6 +143,7 @@ describe("Knowledge Base edit and personal-review persistence", () => {
       knowledgeRecordId: recordId,
       stateVersion: 2,
       duplicate: false,
+      revisionNumber: 1,
     });
     expect(state.currentRevision.id).toBe(revisionId);
     expect(state.currentRevision.revisionNumber).toBe(1);
@@ -164,6 +175,7 @@ describe("Knowledge Base edit and personal-review persistence", () => {
       knowledgeRecordId: recordId,
       stateVersion: 2,
       duplicate: false,
+      revisionNumber: 1,
     });
     expect(state.currentRevision.trust).toBe("PERSONALLY_REVIEWED");
     expect(state.currentRevision.reviewedAt).toEqual(reviewedAt);
@@ -182,6 +194,7 @@ describe("Knowledge Base edit and personal-review persistence", () => {
     state.currentRevision.trust = "PERSONALLY_REVIEWED";
     state.currentRevision.reviewedAt = new Date();
     state.revisions[0]!.trust = "PERSONALLY_REVIEWED";
+    state.revisions[0]!.reviewedAt = state.currentRevision.reviewedAt;
     await expect(reviewKnowledgeRecordWithDependencies({
       knowledgeRecordId: recordId,
       expectedStateVersion: 1,
@@ -190,6 +203,7 @@ describe("Knowledge Base edit and personal-review persistence", () => {
       knowledgeRecordId: recordId,
       stateVersion: 2,
       duplicate: true,
+      revisionNumber: 1,
     });
     expect(tx.knowledgeRecord.update).not.toHaveBeenCalled();
     expect(tx.knowledgeRecordRevision.update).not.toHaveBeenCalled();
@@ -202,6 +216,7 @@ describe("Knowledge Base edit and personal-review persistence", () => {
     state.currentRevision.reviewedAt = new Date();
     state.currentRevision.externalReferences[0]!.sequence = 2;
     state.revisions[0]!.trust = "PERSONALLY_REVIEWED";
+    state.revisions[0]!.reviewedAt = state.currentRevision.reviewedAt;
     await expect(reviewKnowledgeRecordWithDependencies({
       knowledgeRecordId: recordId,
       expectedStateVersion: 1,
@@ -230,6 +245,7 @@ describe("Knowledge Base edit and personal-review persistence", () => {
     reviewed.state.currentRevision.trust = "PERSONALLY_REVIEWED";
     reviewed.state.currentRevision.reviewedAt = new Date();
     reviewed.state.revisions[0]!.trust = "PERSONALLY_REVIEWED";
+    reviewed.state.revisions[0]!.reviewedAt = reviewed.state.currentRevision.reviewedAt;
     await expect(updateUnverifiedKnowledgeRecordWithDependencies(editInput(), { client: reviewed.client })).rejects.toMatchObject({ code: "RECORD_NOT_EDITABLE" });
   });
 

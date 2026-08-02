@@ -4,6 +4,7 @@ import {
   knowledgeContentKinds,
   knowledgeContextKinds,
   knowledgeMaximumCautionLength,
+  knowledgeMaximumChangeSummaryLength,
   knowledgeMaximumExternalReferenceLabelLength,
   knowledgeMaximumExternalReferences,
   knowledgeMaximumIdentifierLength,
@@ -43,6 +44,8 @@ const permittedCreateFields = new Set([
 const permittedEditFields = new Set([
   "expectedStateVersion",
   "expectedCurrentRevisionId",
+  "contentKind",
+  "changeSummary",
   "title",
   "bodyMarkdown",
   "safetyCaution",
@@ -372,6 +375,8 @@ export function knowledgeEditFormValues(formData: FormData): KnowledgeEditFormVa
       formData,
       "expectedCurrentRevisionId",
     ),
+    contentKind: knowledgeFormValue(formData, "contentKind"),
+    changeSummary: knowledgeFormValue(formData, "changeSummary"),
     title: knowledgeFormValue(formData, "title"),
     bodyMarkdown: knowledgeFormValue(formData, "bodyMarkdown"),
     safetyCaution: knowledgeFormValue(formData, "safetyCaution"),
@@ -387,6 +392,8 @@ export function parseKnowledgeEditInput(input: unknown): KnowledgeEditInput {
       knowledgeRecordId: z.string().uuid(),
       expectedStateVersion: z.union([z.string(), z.number()]),
       expectedCurrentRevisionId: z.string(),
+      contentKind: z.enum(knowledgeContentKinds),
+      changeSummary: z.string().nullable().optional(),
       title: z.string(),
       bodyMarkdown: z.string(),
       safetyCaution: z.string().nullable().optional(),
@@ -403,12 +410,22 @@ export function parseKnowledgeEditInput(input: unknown): KnowledgeEditInput {
   const expectedStateVersion = parseExpectedStateVersion(
     String(parsed.data.expectedStateVersion),
   );
+  const rawChangeSummary = parsed.data.changeSummary ?? "";
+  if (/[\u0000-\u001f\u007f]/u.test(rawChangeSummary)) {
+    invalid("Change summary must not contain control characters.", "changeSummary");
+  }
+  const changeSummary = normalizeSingleLineText(rawChangeSummary);
+  if (codePointLength(changeSummary) > knowledgeMaximumChangeSummaryLength) {
+    invalid("Change summary must be 500 characters or fewer.", "changeSummary");
+  }
   return {
     knowledgeRecordId: parsed.data.knowledgeRecordId.toLowerCase(),
     expectedStateVersion,
     expectedCurrentRevisionId: parseExpectedCurrentRevisionId(
       parsed.data.expectedCurrentRevisionId,
     ),
+    contentKind: parsed.data.contentKind,
+    changeSummary: changeSummary || null,
     ...parseEditableMaterial(parsed.data, true),
   };
 }

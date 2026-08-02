@@ -34,7 +34,7 @@ import { normalizeTitleKey } from "./normalization";
 
 type Transaction = Prisma.TransactionClient;
 type LoadedAggregate = NonNullable<
-  Awaited<ReturnType<typeof loadAggregate>>
+  Awaited<ReturnType<typeof loadKnowledgeMutationAggregate>>
 >;
 type RevisionContextData = ReturnType<typeof knowledgeRevisionContextData>;
 
@@ -55,7 +55,7 @@ export type KnowledgeEditReviewDependencies = Readonly<{
   now?: () => Date;
 }>;
 
-async function loadAggregate(client: PrismaClient | Transaction, id: string) {
+export async function loadKnowledgeMutationAggregate(client: PrismaClient | Transaction, id: string) {
   return client.knowledgeRecord.findUnique({
     where: { id },
     select: knowledgeDetailSelect,
@@ -68,7 +68,7 @@ async function lockAggregate(transaction: Transaction, id: string) {
   );
   if (roots.length === 0) throw knowledgeNotFoundError();
   if (roots.length !== 1 || roots[0]?.id !== id) throw knowledgeIntegrityError();
-  const aggregate = await loadAggregate(transaction, id);
+  const aggregate = await loadKnowledgeMutationAggregate(transaction, id);
   if (!aggregate || !aggregate.currentRevisionId || !aggregate.currentRevision) {
     throw knowledgeIntegrityError();
   }
@@ -87,7 +87,7 @@ async function lockAggregate(transaction: Transaction, id: string) {
   ) {
     throw knowledgeIntegrityError();
   }
-  const locked = await loadAggregate(transaction, id);
+  const locked = await loadKnowledgeMutationAggregate(transaction, id);
   if (
     !locked ||
     !locked.currentRevision ||
@@ -116,7 +116,7 @@ function requireMutableAuthority(
   return revision;
 }
 
-async function lockExternalReferences(
+export async function lockKnowledgeExternalReferences(
   transaction: Transaction,
   revisionId: string,
 ) {
@@ -131,7 +131,7 @@ async function lockExternalReferences(
   );
 }
 
-function retainedContextData(
+export function retainedKnowledgeContextData(
   revision: NonNullable<LoadedAggregate["currentRevision"]>,
 ): RevisionContextData {
   return {
@@ -147,7 +147,7 @@ function retainedContextData(
   } as RevisionContextData;
 }
 
-async function resolveEditContextData(
+export async function resolveKnowledgeEditContextData(
   transaction: Transaction,
   revision: NonNullable<LoadedAggregate["currentRevision"]>,
   input: KnowledgeEditInput,
@@ -182,7 +182,7 @@ async function resolveEditContextData(
       );
       if (rows.length !== 1) throw knowledgeIntegrityError();
     }
-    return retainedContextData(revision);
+    return retainedKnowledgeContextData(revision);
   }
   if (
     (input.contextKind === "MINE" && !input.mineId) ||
@@ -199,7 +199,7 @@ async function resolveEditContextData(
   );
 }
 
-function contextMatches(
+export function knowledgeContextDataMatches(
   revision: NonNullable<LoadedAggregate["currentRevision"]>,
   data: RevisionContextData,
 ) {
@@ -220,7 +220,6 @@ function editResultMatches(
   aggregate: LoadedAggregate,
   input: KnowledgeEditInput,
   expectedContext: RevisionContextData,
-  expectedContentKind: NonNullable<LoadedAggregate["currentRevision"]>["contentKind"],
 ) {
   const revision = aggregate.currentRevision;
   if (
@@ -230,7 +229,7 @@ function editResultMatches(
     aggregate.stateVersion !== input.expectedStateVersion + 1 ||
     revision.id !== input.expectedCurrentRevisionId ||
     revision.trust !== "UNVERIFIED" ||
-    revision.contentKind !== expectedContentKind ||
+    revision.contentKind !== input.contentKind ||
     revision.title !== input.title ||
     revision.normalizedTitle !== normalizeTitleKey(input.title) ||
     revision.bodyMarkdown !== input.bodyMarkdown ||
@@ -239,7 +238,7 @@ function editResultMatches(
   ) {
     return false;
   }
-  if (!contextMatches(revision, expectedContext)) return false;
+  if (!knowledgeContextDataMatches(revision, expectedContext)) return false;
   return revision.externalReferences.every((reference, index) => {
     const expected = input.externalReferences[index];
     return (
@@ -255,15 +254,15 @@ async function reconcileEdit(
   client: PrismaClient,
   input: KnowledgeEditInput,
   expectedContext: RevisionContextData,
-  expectedContentKind: NonNullable<LoadedAggregate["currentRevision"]>["contentKind"],
 ) {
-  const aggregate = await loadAggregate(client, input.knowledgeRecordId);
+  const aggregate = await loadKnowledgeMutationAggregate(client, input.knowledgeRecordId);
   if (!aggregate) return null;
-  if (!editResultMatches(aggregate, input, expectedContext, expectedContentKind)) return null;
+  if (!editResultMatches(aggregate, input, expectedContext)) return null;
   return {
     knowledgeRecordId: aggregate.id,
     stateVersion: aggregate.stateVersion,
     duplicate: true,
+    revisionNumber: aggregate.currentRevision!.revisionNumber,
   } satisfies KnowledgeMutationResult;
 }
 
@@ -272,9 +271,6 @@ async function editAttempt(
   input: KnowledgeEditInput,
   hooks: KnowledgeEditReviewHooks,
   captureContext: (context: RevisionContextData) => void,
-  captureContentKind: (
-    contentKind: NonNullable<LoadedAggregate["currentRevision"]>["contentKind"],
-  ) => void,
 ) {
   const result = await client.$transaction(
     async (transaction) => {
@@ -287,12 +283,18 @@ async function editAttempt(
       );
       if (!knowledgeDetailIsCoherent(aggregate)) throw knowledgeIntegrityError();
       if (revision.trust !== "UNVERIFIED") throw knowledgeNotEditableError();
-      captureContentKind(revision.contentKind);
+      if (input.changeSummary !== null) {
+        throw new KnowledgeBaseError(
+          "INVALID_INPUT",
+          "Change summary is only used for Personally Reviewed material.",
+          "changeSummary",
+        );
+      }
 
-      const context = await resolveEditContextData(transaction, revision, input);
+      const context = await resolveKnowledgeEditContextData(transaction, revision, input);
       captureContext(context);
       await hooks.afterContextResolved?.(transaction);
-      await lockExternalReferences(transaction, revision.id);
+      await lockKnowledgeExternalReferences(transaction, revision.id);
       await transaction.knowledgeRevisionExternalReference.deleteMany({
         where: { knowledgeRecordRevisionId: revision.id },
       });
@@ -303,6 +305,7 @@ async function editAttempt(
         data: {
           title: input.title,
           normalizedTitle: normalizeTitleKey(input.title),
+          contentKind: input.contentKind,
           bodyMarkdown: input.bodyMarkdown,
           safetyCaution: input.safetyCaution,
           ...context,
@@ -328,10 +331,10 @@ async function editAttempt(
         select: { stateVersion: true },
       });
       await hooks.afterRootUpdated?.(transaction);
-      const completed = await loadAggregate(transaction, aggregate.id);
+      const completed = await loadKnowledgeMutationAggregate(transaction, aggregate.id);
       if (
         !completed ||
-        !editResultMatches(completed, input, context, revision.contentKind)
+        !editResultMatches(completed, input, context)
       ) {
         throw knowledgeIntegrityError();
       }
@@ -340,6 +343,7 @@ async function editAttempt(
         knowledgeRecordId: aggregate.id,
         stateVersion: root.stateVersion,
         duplicate: false,
+        revisionNumber: revision.revisionNumber,
       } satisfies KnowledgeMutationResult;
     },
     {
@@ -359,12 +363,8 @@ export async function updateUnverifiedKnowledgeRecordWithDependencies(
   const parsed = parseKnowledgeEditInput(input);
   const hooks = dependencies.hooks ?? {};
   let expectedContext: RevisionContextData | null = null;
-  let expectedContentKind:
-    | NonNullable<LoadedAggregate["currentRevision"]>["contentKind"]
-    | null = null;
   for (let attempt = 1; attempt <= knowledgeCreateMaximumAttempts; attempt += 1) {
     expectedContext = null;
-    expectedContentKind = null;
     try {
       return await editAttempt(
         dependencies.client,
@@ -372,9 +372,6 @@ export async function updateUnverifiedKnowledgeRecordWithDependencies(
         hooks,
         (context) => {
           expectedContext = context;
-        },
-        (contentKind) => {
-          expectedContentKind = contentKind;
         },
       );
     } catch (error) {
@@ -384,14 +381,13 @@ export async function updateUnverifiedKnowledgeRecordWithDependencies(
         throw knowledgePersistenceError();
       }
       try {
-        if (!expectedContext || !expectedContentKind) {
+        if (!expectedContext) {
           throw knowledgePersistenceError();
         }
         const reconciled = await reconcileEdit(
           dependencies.client,
           parsed,
           expectedContext,
-          expectedContentKind,
         );
         if (reconciled) return reconciled;
       } catch {
@@ -433,7 +429,7 @@ function reviewMaterialSnapshot(
     normalizedTitle: revision.normalizedTitle,
     bodyMarkdown: revision.bodyMarkdown,
     safetyCaution: revision.safetyCaution,
-    context: retainedContextData(revision),
+    context: retainedKnowledgeContextData(revision),
     changeSummary: revision.changeSummary,
     createdAt: revision.createdAt.getTime(),
     references: revision.externalReferences.map((reference) => ({
@@ -456,7 +452,7 @@ function reviewMaterialMatches(
   revision: NonNullable<LoadedAggregate["currentRevision"]>,
   expected: ReviewMaterialSnapshot,
 ) {
-  const actualContext = retainedContextData(revision);
+  const actualContext = retainedKnowledgeContextData(revision);
   return (
     revision.revisionNumber === expected.revisionNumber &&
     revision.origin === expected.origin &&
@@ -519,7 +515,7 @@ async function reconcileReview(
   input: KnowledgeReviewInput,
   expectedMaterial: ReviewMaterialSnapshot,
 ) {
-  const aggregate = await loadAggregate(client, input.knowledgeRecordId);
+  const aggregate = await loadKnowledgeMutationAggregate(client, input.knowledgeRecordId);
   if (!aggregate || !reviewedResultMatches(aggregate, input, expectedMaterial)) {
     return null;
   }
@@ -527,6 +523,7 @@ async function reconcileReview(
     knowledgeRecordId: aggregate.id,
     stateVersion: aggregate.stateVersion,
     duplicate: true,
+    revisionNumber: aggregate.currentRevision!.revisionNumber,
   } satisfies KnowledgeMutationResult;
 }
 
@@ -552,8 +549,8 @@ async function reviewAttempt(
           if (!knowledgeDetailIsCoherent(aggregate)) {
             throw knowledgeIntegrityError();
           }
-          await lockExternalReferences(transaction, revision.id);
-          const protectedDuplicate = await loadAggregate(
+          await lockKnowledgeExternalReferences(transaction, revision.id);
+          const protectedDuplicate = await loadKnowledgeMutationAggregate(
             transaction,
             aggregate.id,
           );
@@ -564,6 +561,7 @@ async function reviewAttempt(
             knowledgeRecordId: aggregate.id,
             stateVersion: aggregate.stateVersion,
             duplicate: true,
+            revisionNumber: revision.revisionNumber,
           } satisfies KnowledgeMutationResult;
         }
       }
@@ -572,8 +570,8 @@ async function reviewAttempt(
       }
       if (!knowledgeDetailIsCoherent(aggregate)) throw knowledgeIntegrityError();
       if (revision.trust !== "UNVERIFIED") throw knowledgeNotEditableError();
-      await lockExternalReferences(transaction, revision.id);
-      const protectedAggregate = await loadAggregate(transaction, aggregate.id);
+      await lockKnowledgeExternalReferences(transaction, revision.id);
+      const protectedAggregate = await loadKnowledgeMutationAggregate(transaction, aggregate.id);
       if (
         !protectedAggregate ||
         !knowledgeDetailIsCoherent(protectedAggregate) ||
@@ -598,7 +596,7 @@ async function reviewAttempt(
         select: { stateVersion: true },
       });
       await hooks.afterRootUpdated?.(transaction);
-      const completed = await loadAggregate(transaction, aggregate.id);
+      const completed = await loadKnowledgeMutationAggregate(transaction, aggregate.id);
       if (!completed || !reviewedResultMatches(completed, input, expectedMaterial)) {
         throw knowledgeIntegrityError();
       }
@@ -607,6 +605,7 @@ async function reviewAttempt(
         knowledgeRecordId: aggregate.id,
         stateVersion: root.stateVersion,
         duplicate: false,
+        revisionNumber: revision.revisionNumber,
       } satisfies KnowledgeMutationResult;
     },
     {

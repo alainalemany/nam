@@ -15,6 +15,8 @@ function editForm() {
   const data = new FormData();
   data.set("expectedStateVersion", "3");
   data.set("expectedCurrentRevisionId", revisionId);
+  data.set("contentKind", "FIELD_NOTE");
+  data.set("changeSummary", "");
   data.set("title", "Updated field note");
   data.set("bodyMarkdown", "## Observation\n\nUpdated content.");
   data.set("safetyCaution", "Keep clear.");
@@ -42,6 +44,8 @@ describe("Knowledge Base edit and personal-review validation", () => {
       knowledgeRecordId: recordId,
       expectedStateVersion: 3,
       expectedCurrentRevisionId: revisionId,
+      contentKind: "FIELD_NOTE",
+      changeSummary: null,
       title: "Updated field note",
       contextKind: "GENERAL",
       externalReferences: [{ label: "Manual", url: "https://example.com/manual" }],
@@ -51,7 +55,7 @@ describe("Knowledge Base edit and personal-review validation", () => {
   it.each([
     ["repeated scalar", (data: FormData) => data.append("title", "again")],
     ["unexpected field", (data: FormData) => data.set("trust", "PERSONALLY_REVIEWED")],
-    ["content kind", (data: FormData) => data.set("contentKind", "REFERENCE")],
+    ["trust", (data: FormData) => data.set("trust", "UNVERIFIED")],
     ["lifecycle", (data: FormData) => data.set("lifecycle", "ARCHIVED")],
     ["snapshot", (data: FormData) => data.set("mineNameSnapshot", "Untrusted")],
   ])("rejects %s input outside the edit allowlist", (_name, mutate) => {
@@ -94,6 +98,8 @@ describe("Knowledge Base edit and personal-review validation", () => {
     ).toMatchObject({
       knowledgeRecordId: recordId,
       expectedCurrentRevisionId: revisionId,
+      contentKind: "FIELD_NOTE",
+      changeSummary: null,
     });
 
     const review = reviewForm();
@@ -106,11 +112,35 @@ describe("Knowledge Base edit and personal-review validation", () => {
     });
   });
 
+  it("normalizes reviewed-revision change summaries and rejects controls or excess length", () => {
+    const valid = editForm();
+    valid.set("contentKind", "REFERENCE");
+    valid.set("changeSummary", "  Changed kind and clarified steps.  ");
+    expect(parseKnowledgeEditFormData(recordId, valid).input).toMatchObject({
+      contentKind: "REFERENCE",
+      changeSummary: "Changed kind and clarified steps.",
+    });
+
+    const controlled = editForm();
+    controlled.set("changeSummary", "Changed\nsteps");
+    expect(() => parseKnowledgeEditFormData(recordId, controlled)).toThrowError(
+      expect.objectContaining({ code: "INVALID_INPUT", field: "changeSummary" }),
+    );
+
+    const tooLong = editForm();
+    tooLong.set("changeSummary", "🙂".repeat(501));
+    expect(() => parseKnowledgeEditFormData(recordId, tooLong)).toThrowError(
+      expect.objectContaining({ code: "INVALID_INPUT", field: "changeSummary" }),
+    );
+  });
+
   it("reuses content, Markdown, context, and reference validation", () => {
     expect(() => parseKnowledgeEditInput({
       knowledgeRecordId: recordId,
       expectedStateVersion: 1,
       expectedCurrentRevisionId: revisionId,
+      contentKind: "FIELD_NOTE",
+      changeSummary: null,
       title: "Valid",
       bodyMarkdown: "<script>alert(1)</script>",
       safetyCaution: null,

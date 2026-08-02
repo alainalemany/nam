@@ -6,15 +6,16 @@ import { redirect } from "next/navigation";
 import { KnowledgeBaseError, knowledgePersistenceError } from "./errors";
 import {
   reviewKnowledgeRecord,
-  updateUnverifiedKnowledgeRecord,
 } from "./edit-review-persistence";
 import { createKnowledgeRecord } from "./persistence";
+import { mutateKnowledgeRecord } from "./revision-persistence";
 import type {
   KnowledgeCreateActionState,
   KnowledgeCreateFormValues,
   KnowledgeEditActionState,
   KnowledgeEditFormValues,
   KnowledgeExternalReferenceInput,
+  KnowledgeMutationResult,
   KnowledgeReviewActionState,
 } from "./types";
 import {
@@ -57,6 +58,7 @@ function editErrorState(
       "CONCURRENT_MODIFICATION",
       "CURRENT_AUTHORITY_CHANGED",
       "RECORD_NOT_EDITABLE",
+      "REVISION_NUMBER_EXHAUSTED",
       "PERSISTED_STATE_INTEGRITY_FAILURE",
     ].includes(safe.code),
     fieldErrors:
@@ -113,17 +115,17 @@ export async function createKnowledgeRecordAction(
   redirect(path);
 }
 
-export async function updateUnverifiedKnowledgeRecordAction(
+export async function mutateKnowledgeRecordAction(
   knowledgeRecordId: string,
   _previousState: KnowledgeEditActionState,
   formData: FormData,
 ) {
   const values = knowledgeEditFormValues(formData);
   const externalReferences = recoverKnowledgeExternalReferences(formData);
-  let result: Awaited<ReturnType<typeof updateUnverifiedKnowledgeRecord>>;
+  let result: KnowledgeMutationResult;
   try {
     const parsed = parseKnowledgeEditFormData(knowledgeRecordId, formData);
-    result = await updateUnverifiedKnowledgeRecord(parsed.input);
+    result = await mutateKnowledgeRecord(parsed.input);
   } catch (error) {
     return editErrorState(error, values, externalReferences);
   }
@@ -132,6 +134,10 @@ export async function updateUnverifiedKnowledgeRecordAction(
   revalidatePath("/knowledge-base");
   revalidatePath(detailPath);
   revalidatePath(`${detailPath}/edit`);
+  revalidatePath(`${detailPath}/history`);
+  if (result.revisionNumber) {
+    revalidatePath(`${detailPath}/history/${result.revisionNumber}`);
+  }
   redirect(detailPath);
 }
 
@@ -152,5 +158,9 @@ export async function reviewKnowledgeRecordAction(
   revalidatePath("/knowledge-base");
   revalidatePath(detailPath);
   revalidatePath(`${detailPath}/edit`);
+  revalidatePath(`${detailPath}/history`);
+  if (result.revisionNumber) {
+    revalidatePath(`${detailPath}/history/${result.revisionNumber}`);
+  }
   redirect(detailPath);
 }

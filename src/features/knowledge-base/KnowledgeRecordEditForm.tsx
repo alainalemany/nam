@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { useActionState, useEffect, useId, useState } from "react";
 
-import { updateUnverifiedKnowledgeRecordAction } from "./actions";
+import { mutateKnowledgeRecordAction } from "./actions";
 import {
   knowledgeContextKindLabels,
   knowledgeContextKinds,
+  knowledgeContentKindLabels,
+  knowledgeContentKinds,
   knowledgeDisclaimer,
+  knowledgeHistoryReadOnlyExplanation,
   knowledgeMaximumExternalReferences,
   knowledgeUnverifiedWarning,
 } from "./constants";
@@ -48,7 +51,7 @@ function errorAttributes(
 }
 
 export function KnowledgeRecordEditForm({ pageData }: { pageData: KnowledgeEditPageData }) {
-  const action = updateUnverifiedKnowledgeRecordAction.bind(null, pageData.id);
+  const action = mutateKnowledgeRecordAction.bind(null, pageData.id);
   const [state, formAction, pending] = useActionState(action, pageData.initialState);
   const [contextKind, setContextKind] = useState(state.values.contextKind);
   const [mineId, setMineId] = useState(state.values.mineId);
@@ -95,6 +98,9 @@ export function KnowledgeRecordEditForm({ pageData }: { pageData: KnowledgeEditP
       <input name="expectedStateVersion" type="hidden" value={state.values.expectedStateVersion} />
       <input name="expectedCurrentRevisionId" type="hidden" value={state.values.expectedCurrentRevisionId} />
       <input name="externalReferencesPayload" type="hidden" value={JSON.stringify(references)} />
+      {pageData.mode === "EDIT_UNVERIFIED" ? (
+        <input name="changeSummary" type="hidden" value="" />
+      ) : null}
 
       {state.status === "error" ? (
         <div
@@ -113,13 +119,49 @@ export function KnowledgeRecordEditForm({ pageData }: { pageData: KnowledgeEditP
         <h2 id="knowledge-edit-authority-heading">Personal knowledge boundary</h2>
         <p>{knowledgeDisclaimer}</p>
         <p role="status"><strong>{knowledgeUnverifiedWarning}</strong></p>
+        <p>{pageData.mode === "REVISE_REVIEWED"
+          ? "Saving a material change creates a new current Unverified revision and retains the Personally Reviewed revision unchanged."
+          : "This current Unverified revision will be updated in place."}</p>
+        <p>{knowledgeHistoryReadOnlyExplanation}</p>
       </section>
 
-      <section aria-labelledby="knowledge-edit-kind-heading">
-        <h2 id="knowledge-edit-kind-heading">Content kind</h2>
-        <p><strong>{pageData.contentKindLabel}</strong></p>
-        <p className="field-help">Content kind cannot be changed in this editing phase.</p>
-      </section>
+      <div className="full-width-field">
+        <label htmlFor="knowledge-edit-kind">Content kind</label>
+        <select
+          defaultValue={state.values.contentKind}
+          id="knowledge-edit-kind"
+          name="contentKind"
+          {...errorAttributes(state, "contentKind", "knowledge-edit-kind-help")}
+        >
+          {knowledgeContentKinds.map((kind) => (
+            <option key={kind} value={kind}>{knowledgeContentKindLabels[kind]}</option>
+          ))}
+        </select>
+        <span className="field-help" id="knowledge-edit-kind-help">
+          {pageData.mode === "REVISE_REVIEWED"
+            ? "Changing kind is material and is retained in the new revision."
+            : "Kind changes update this Unverified revision in place."}
+        </span>
+        <FieldError field="contentKind" state={state} />
+      </div>
+
+      {pageData.mode === "REVISE_REVIEWED" ? (
+        <div className="full-width-field">
+          <label htmlFor="knowledge-edit-change-summary">Change summary</label>
+          <textarea
+            defaultValue={state.values.changeSummary}
+            id="knowledge-edit-change-summary"
+            name="changeSummary"
+            required
+            rows={3}
+            {...errorAttributes(state, "changeSummary", "knowledge-edit-change-summary-help")}
+          />
+          <span className="field-help" id="knowledge-edit-change-summary-help">
+            Briefly describe the material change. This plain-text summary becomes part of retained history.
+          </span>
+          <FieldError field="changeSummary" state={state} />
+        </div>
+      ) : null}
 
       <div className="full-width-field">
         <label htmlFor="knowledge-edit-title">Title</label>
@@ -264,7 +306,11 @@ export function KnowledgeRecordEditForm({ pageData }: { pageData: KnowledgeEditP
           }
           type="submit"
         >
-          {pending ? "Saving changes…" : "Save Changes"}
+          {pending
+            ? "Saving changes…"
+            : pageData.mode === "REVISE_REVIEWED"
+              ? "Create Unverified Revision"
+              : "Save Changes"}
         </button>
         {state.requiresReload ? (
           <a

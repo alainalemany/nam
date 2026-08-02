@@ -17,12 +17,15 @@ export default async function EditKnowledgeRecordPage({
   try {
     pageData = await getKnowledgeEditPageData(id);
   } catch (error) {
-    if (error instanceof KnowledgeBaseError && error.code === "RECORD_NOT_EDITABLE") {
+    if (
+      error instanceof KnowledgeBaseError &&
+      ["RECORD_NOT_EDITABLE", "REVISION_NUMBER_EXHAUSTED"].includes(error.code)
+    ) {
       return (
         <main className="page-stack knowledge-edit-page">
           <section className="panel" role="status">
             <h1>Knowledge Record is read-only</h1>
-            <p>Personally Reviewed or Archived material cannot be edited in this phase.</p>
+            <p>{error.message}</p>
             <Link className="button secondary" href={`/knowledge-base/${encodeURIComponent(id)}`}>Return to Knowledge Record</Link>
           </section>
         </main>
@@ -42,9 +45,11 @@ export default async function EditKnowledgeRecordPage({
   return (
     <main className="page-stack knowledge-edit-page">
       <section className="page-header">
-        <p className="eyebrow">Knowledge Base · {pageData.contentKindLabel}</p>
-        <h1>Edit Unverified Knowledge Record</h1>
-        <p className="summary">Update the current Unverified material without creating a new revision.</p>
+        <p className="eyebrow">Knowledge Base · Revision {pageData.revisionNumber}</p>
+        <h1>{pageData.mode === "REVISE_REVIEWED" ? "Create a New Unverified Revision" : "Edit Unverified Knowledge Record"}</h1>
+        <p className="summary">{pageData.mode === "REVISE_REVIEWED"
+          ? "Change Personally Reviewed material without losing its retained reviewed history."
+          : "Update the current Unverified material in place."}</p>
       </section>
       <KnowledgeRecordEditForm pageData={pageData} />
     </main>

@@ -9,7 +9,7 @@ import type { KnowledgeCreateActionState, KnowledgeDetailView } from "@/features
 vi.mock("@/features/knowledge-base/actions", () => ({
   createKnowledgeRecordAction: vi.fn(),
   reviewKnowledgeRecordAction: vi.fn(),
-  updateUnverifiedKnowledgeRecordAction: vi.fn(),
+  mutateKnowledgeRecordAction: vi.fn(),
 }));
 
 afterEach(cleanup);
@@ -80,7 +80,7 @@ describe("Knowledge Base create and detail components", () => {
 
   it("renders current General detail with safe Markdown and authority text", () => {
     const detail: KnowledgeDetailView = {
-      id: "record-1", title: "Startup reminder", bodyMarkdown: "## Steps\n\nRead the [manual](https://example.com/manual).", safetyCaution: "Verify isolation.", contentKind: "PROCEDURE", contentKindLabel: "Procedure", trust: "UNVERIFIED", trustLabel: "Unverified", lifecycleLabel: "Active", context: { kind: "GENERAL", label: "General" }, externalReferences: [{ sequence: 1, label: "Official manual", url: "https://example.com/manual" }], createdAt: "2026-08-01T12:00:00.000Z", updatedAt: "2026-08-01T12:00:00.000Z", reviewedAt: null, mutationTokens: null,
+      id: "record-1", title: "Startup reminder", bodyMarkdown: "## Steps\n\nRead the [manual](https://example.com/manual).", safetyCaution: "Verify isolation.", contentKind: "PROCEDURE", contentKindLabel: "Procedure", trust: "UNVERIFIED", trustLabel: "Unverified", lifecycleLabel: "Active", context: { kind: "GENERAL", label: "General" }, externalReferences: [{ sequence: 1, label: "Official manual", url: "https://example.com/manual" }], createdAt: "2026-08-01T12:00:00.000Z", updatedAt: "2026-08-01T12:00:00.000Z", reviewedAt: null, revisionNumber: 1, historyHref: "/knowledge-base/record-1/history", mutationTokens: null,
     };
     render(<KnowledgeRecordDetail detail={detail} />);
     expect(screen.getByRole("heading", { name: "Startup reminder" })).toBeInTheDocument();

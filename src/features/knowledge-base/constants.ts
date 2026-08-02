@@ -33,6 +33,7 @@ export const knowledgeCreateMaximumAttempts = 3;
 export const knowledgeMaximumTitleLength = 160;
 export const knowledgeMaximumBodyLength = 50_000;
 export const knowledgeMaximumCautionLength = 2_000;
+export const knowledgeMaximumChangeSummaryLength = 500;
 export const knowledgeMaximumExternalReferences = 10;
 export const knowledgeMaximumExternalReferenceLabelLength = 120;
 export const knowledgeMaximumExternalReferenceUrlLength = 2_048;
@@ -46,9 +47,13 @@ export const knowledgeListExcerptLength = 240;
 export const knowledgeListMaximumPage = 42_949_672;
 export const knowledgeListOptionLimit = 500;
 export const knowledgeMaximumMutableStateVersion = 2_147_483_646;
+export const knowledgeMaximumMutableRevisionNumber = 2_147_483_646;
+
+export const knowledgeHistoryReadOnlyExplanation =
+  "Retained revisions are read-only records. Current authority is identified explicitly by the Knowledge Record pointer.";
 
 export const knowledgePersonalReviewExplanation =
-  "Personal review means only that you reread this material and personally consider it useful. It is not corporate, management, manufacturer, engineering, MSHA, site, or another person's approval.";
+  "Personal review means only that you reread this material and personally consider it useful. It is not corporate, management, manufacturer, engineering, MSHA, site, certification, or another person's approval.";
 
 export const knowledgeReviewedReadOnlyExplanation =
-  "Personally Reviewed material is read-only until a later reviewed-revision workflow is implemented.";
+  "Personally Reviewed material is read-only. Changing it creates a new current Unverified revision while retaining the reviewed revision.";

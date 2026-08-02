@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { KnowledgeRecordDetail } from "@/features/knowledge-base/KnowledgeRecordDetail";
@@ -20,7 +20,7 @@ const actionMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/features/knowledge-base/actions", () => ({
-  updateUnverifiedKnowledgeRecordAction: actionMocks.edit,
+  mutateKnowledgeRecordAction: actionMocks.edit,
   reviewKnowledgeRecordAction: actionMocks.review,
   createKnowledgeRecordAction: vi.fn(),
 }));
@@ -34,6 +34,8 @@ const recordId = "bf7ca7c6-78e8-4f86-b36f-bf3238bd9cab";
 const revisionId = "32a793e7-ed30-46e5-8906-03def4e53a17";
 const pageData: KnowledgeEditPageData = {
   id: recordId,
+  mode: "EDIT_UNVERIFIED",
+  revisionNumber: 1,
   contentKind: "FIELD_NOTE",
   contentKindLabel: "Field Note",
   initialState: {
@@ -44,6 +46,8 @@ const pageData: KnowledgeEditPageData = {
     values: {
       expectedStateVersion: "2",
       expectedCurrentRevisionId: revisionId,
+      contentKind: "FIELD_NOTE",
+      changeSummary: "",
       title: "Existing title",
       bodyMarkdown: "## Existing\n\nBody.",
       safetyCaution: "",
@@ -74,19 +78,19 @@ function detail(trust: "UNVERIFIED" | "PERSONALLY_REVIEWED"): KnowledgeDetailVie
     createdAt: "2026-08-01T12:00:00.000Z",
     updatedAt: "2026-08-01T13:00:00.000Z",
     reviewedAt: trust === "PERSONALLY_REVIEWED" ? "2026-08-01T13:00:00.000Z" : null,
-    mutationTokens: trust === "UNVERIFIED"
-      ? { expectedStateVersion: 2, expectedCurrentRevisionId: revisionId }
-      : null,
+    revisionNumber: 1,
+    historyHref: `/knowledge-base/${recordId}/history`,
+    mutationTokens: { expectedStateVersion: 2, expectedCurrentRevisionId: revisionId },
   };
 }
 
 describe("Knowledge Base edit and personal-review components", () => {
-  it("renders an accessible Unverified edit form with fixed kind and no later-phase controls", () => {
+  it("renders an accessible Unverified edit form with an editable kind and no later-phase controls", () => {
     render(<KnowledgeRecordEditForm pageData={pageData} />);
     expect(screen.getByText(knowledgeDisclaimer)).toBeInTheDocument();
     expect(screen.getByText(knowledgeUnverifiedWarning)).toBeInTheDocument();
     expect(screen.getByText("Field Note")).toBeInTheDocument();
-    expect(document.querySelector('[name="contentKind"]')).toBeNull();
+    expect(screen.getByLabelText("Content kind")).toHaveValue("FIELD_NOTE");
     expect(screen.getByRole("button", { name: "Save Changes" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Cancel" })).toHaveAttribute("href", `/knowledge-base/${recordId}`);
     expect(screen.queryByRole("button", { name: /archive|restore|delete|history/i })).toBeNull();
@@ -108,6 +112,25 @@ describe("Knowledge Base edit and personal-review components", () => {
     expect(screen.queryByLabelText("Reference 2 label")).toBeNull();
   });
 
+  it("explains and validates reviewed-content revision creation on the same route", () => {
+    const reviewedPage: KnowledgeEditPageData = {
+      ...pageData,
+      mode: "REVISE_REVIEWED",
+      initialState: {
+        ...pageData.initialState,
+        values: {
+          ...pageData.initialState.values,
+          changeSummary: "Clarify the reviewed steps.",
+        },
+      },
+    };
+    render(<KnowledgeRecordEditForm pageData={reviewedPage} />);
+    expect(screen.getByLabelText("Change summary")).toHaveValue("Clarify the reviewed steps.");
+    expect(screen.getByRole("button", { name: "Create Unverified Revision" })).toBeInTheDocument();
+    expect(screen.getByText(/retains the Personally Reviewed revision unchanged/i)).toBeInTheDocument();
+    expect(screen.getByText(knowledgeUnverifiedWarning)).toBeInTheDocument();
+  });
+
   it("shows edit and explicit review confirmation only for Active Unverified detail", () => {
     render(<KnowledgeRecordDetail detail={detail("UNVERIFIED")} />);
     expect(screen.getByRole("link", { name: "Edit Knowledge Record" })).toBeInTheDocument();
@@ -121,8 +144,14 @@ describe("Knowledge Base edit and personal-review components", () => {
     render(<KnowledgeRecordDetail detail={detail("PERSONALLY_REVIEWED")} />);
     expect(screen.getAllByText("Personally Reviewed").length).toBeGreaterThan(0);
     expect(screen.getByText(knowledgeReviewedReadOnlyExplanation)).toBeInTheDocument();
+    expect(screen.getByText(knowledgeReviewedReadOnlyExplanation)).toHaveTextContent(
+      "creates a new current Unverified revision",
+    );
+    expect(document.body.textContent).not.toContain(
+      "until a later reviewed-revision workflow is implemented",
+    );
     expect(screen.queryByText(knowledgeUnverifiedWarning)).toBeNull();
-    expect(screen.queryByRole("link", { name: "Edit Knowledge Record" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Create New Unverified Revision" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Mark as Personally Reviewed" })).toBeNull();
     expect(screen.getByText(knowledgeDisclaimer)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/corporate approval|management approval|certified/i);
@@ -173,7 +202,7 @@ describe("Knowledge Base edit and personal-review components", () => {
     const alert = await screen.findByRole("alert", {
       name: "Personal review was not recorded",
     });
-    expect(alert).toHaveFocus();
+    await waitFor(() => expect(alert).toHaveFocus());
     expect(
       screen.getByRole("button", { name: "Mark as Personally Reviewed" }),
     ).toBeDisabled();

@@ -18,8 +18,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("@/features/knowledge-base/edit-review-persistence", () => ({
-  updateUnverifiedKnowledgeRecord: mocks.edit,
   reviewKnowledgeRecord: mocks.review,
+}));
+vi.mock("@/features/knowledge-base/revision-persistence", () => ({
+  mutateKnowledgeRecord: mocks.edit,
 }));
 vi.mock("@/features/knowledge-base/persistence", () => ({
   createKnowledgeRecord: vi.fn(),
@@ -27,7 +29,7 @@ vi.mock("@/features/knowledge-base/persistence", () => ({
 
 import {
   reviewKnowledgeRecordAction,
-  updateUnverifiedKnowledgeRecordAction,
+  mutateKnowledgeRecordAction,
 } from "@/features/knowledge-base/actions";
 
 const recordId = randomUUID();
@@ -40,6 +42,8 @@ const editInitial: KnowledgeEditActionState = {
   values: {
     expectedStateVersion: "2",
     expectedCurrentRevisionId: revisionId,
+    contentKind: "FIELD_NOTE",
+    changeSummary: "",
     title: "Existing",
     bodyMarkdown: "Existing body",
     safetyCaution: "",
@@ -63,6 +67,8 @@ function editForm() {
   const data = new FormData();
   data.set("expectedStateVersion", "2");
   data.set("expectedCurrentRevisionId", revisionId);
+  data.set("contentKind", "FIELD_NOTE");
+  data.set("changeSummary", "");
   data.set("title", "Updated");
   data.set("bodyMarkdown", "## Updated\n\nContent.");
   data.set("safetyCaution", "");
@@ -84,13 +90,13 @@ function reviewForm() {
 describe("Knowledge Base edit and personal-review actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.edit.mockResolvedValue({ knowledgeRecordId: recordId, stateVersion: 3, duplicate: false });
-    mocks.review.mockResolvedValue({ knowledgeRecordId: recordId, stateVersion: 3, duplicate: false });
+    mocks.edit.mockResolvedValue({ knowledgeRecordId: recordId, stateVersion: 3, duplicate: false, revisionNumber: 1 });
+    mocks.review.mockResolvedValue({ knowledgeRecordId: recordId, stateVersion: 3, duplicate: false, revisionNumber: 1 });
   });
 
   it("binds the route identity, calls edit once, revalidates only Knowledge Base paths, then redirects", async () => {
     await expect(
-      updateUnverifiedKnowledgeRecordAction(recordId, editInitial, editForm()),
+      mutateKnowledgeRecordAction(recordId, editInitial, editForm()),
     ).rejects.toThrow(`redirect:/knowledge-base/${recordId}`);
     expect(mocks.edit).toHaveBeenCalledWith(expect.objectContaining({
       knowledgeRecordId: recordId,
@@ -102,7 +108,26 @@ describe("Knowledge Base edit and personal-review actions", () => {
       "/knowledge-base",
       `/knowledge-base/${recordId}`,
       `/knowledge-base/${recordId}/edit`,
+      `/knowledge-base/${recordId}/history`,
+      `/knowledge-base/${recordId}/history/1`,
     ]);
+  });
+
+  it("revalidates the stable historical detail after reviewed revision creation", async () => {
+    mocks.edit.mockResolvedValue({
+      knowledgeRecordId: recordId,
+      stateVersion: 3,
+      duplicate: false,
+      revisionNumber: 2,
+    });
+    const data = editForm();
+    data.set("changeSummary", "Clarified the reviewed material.");
+    await expect(
+      mutateKnowledgeRecordAction(recordId, editInitial, data),
+    ).rejects.toThrow(`redirect:/knowledge-base/${recordId}`);
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(
+      `/knowledge-base/${recordId}/history/2`,
+    );
   });
 
   it("preserves editable values and concurrency tokens after a safe conflict", async () => {
@@ -112,7 +137,7 @@ describe("Knowledge Base edit and personal-review actions", () => {
     ));
     const data = editForm();
     data.set("externalReferencesPayload", JSON.stringify([{ label: "Manual", url: "https://example.com/manual" }]));
-    const result = await updateUnverifiedKnowledgeRecordAction(recordId, editInitial, data);
+    const result = await mutateKnowledgeRecordAction(recordId, editInitial, data);
     expect(result).toMatchObject({
       status: "error",
       requiresReload: true,
@@ -129,7 +154,7 @@ describe("Knowledge Base edit and personal-review actions", () => {
   it("keeps ordinary validation failures editable without treating tokens as stale", async () => {
     const invalid = editForm();
     invalid.set("title", "   ");
-    const result = await updateUnverifiedKnowledgeRecordAction(
+    const result = await mutateKnowledgeRecordAction(
       recordId,
       editInitial,
       invalid,
@@ -155,6 +180,8 @@ describe("Knowledge Base edit and personal-review actions", () => {
       "/knowledge-base",
       `/knowledge-base/${recordId}`,
       `/knowledge-base/${recordId}/edit`,
+      `/knowledge-base/${recordId}/history`,
+      `/knowledge-base/${recordId}/history/1`,
     ]);
   });
 
