@@ -1,18 +1,21 @@
 # Knowledge Base V1 Architecture
 
-Status: Approved
+Status: Approved and Implemented
 
 Product Phase: Phase 28.2 — Knowledge Base V1 Feature Architecture
 
 Product Discovery Authority: Phase 28.1 — Knowledge Base Product Discovery And
 V1 Decision Closure
 
-Review Status: Independent architecture review complete in Phase 28.2.1.
+Review Status: Independent architecture, implementation, and canonical closure
+reviews complete through Phase 28.9.1.
 
-Formal Acceptance Status: Complete in Phase 28.2.2.
+Formal Acceptance Status: Architecture, implementation Phases 28.3A through
+28.8, and Phase 28.9 canonical closure formally accepted in Phase 28.9.2.
 
-Implementation Authorization: Not granted. No Knowledge Base Prisma model,
-migration, route, feature module, component, Server Action, or test exists.
+Implementation Authorization: Completed for Phases 28.3A through 28.8. Phase
+28.9 canonical closure is complete. Phase 29 and future Knowledge Base
+enhancements are not authorized.
 
 Primary Feature: Knowledge Base V1 — Personal Operational Knowledge Records
 
@@ -49,7 +52,7 @@ Related Documents:
 - docs/decisions/adr-018-private-operational-safety-checklist-photo-storage.md
 - docs/decisions/adr-019-managed-private-overlay-operational-pilot.md
 
-Last Reviewed: 2026-08-01
+Last Reviewed: 2026-08-02
 
 ## 1. Status
 
@@ -57,12 +60,26 @@ Phase 28.1 closed the Knowledge Base V1 product boundary. The confirmed product
 is a text-first, single-user Personal Operational Knowledge Records feature.
 
 This Phase 28.2 architecture is Approved. Independent architecture review and
-formal acceptance are complete.
+formal acceptance are complete. Phases 28.3A through 28.8 implemented the V1
+foundation, create/detail, list/search, edit/review, revision history,
+lifecycle, and Daily Log/Defect relationship slices. Each implementation slice
+completed independent review and formal acceptance.
 
-Implementation has not started and no implementation phase is authorized.
-Separate explicit authorization must occur before any schema, migration, route,
-action, component, dependency, or test is added. Phase 28.3A remains a proposed
-first implementation phase only.
+Phase 28.9 synchronized canonical documentation and final evidence without
+adding product behavior. Independent closure review and formal acceptance are
+complete. Phase 28 and Knowledge Base V1 are canonically closed. Work beyond
+the implemented V1 boundary requires separate discovery and authorization;
+Phase 29 has not started and is not authorized.
+
+### Implementation Evidence Summary
+
+Phases 28.3A through 28.8 delivered the feature in independently reviewed
+vertical slices. Acceptance included focused unit and component coverage,
+dedicated real-PostgreSQL suites against `nam_knowledge_base_test`, migration
+status and drift checks, deterministic concurrency and rollback evidence, and
+the repository typecheck, lint, and production-build gates. Phase 28.9 reran the
+complete Knowledge Base and affected neighboring-feature verification set
+before formal canonical closure.
 
 ## 2. Purpose
 
@@ -284,8 +301,8 @@ a positive revision number.
 
 ## 8. Persistence Model
 
-The architecture proposes these conceptual Prisma-level entities. Names remain
-proposed until an authorized schema phase.
+The implementation uses these feature-owned Prisma entities and
+responsibilities.
 
 ### KnowledgeRecord
 
@@ -704,8 +721,8 @@ selected owner IDs, preserved-or-new snapshots, ordered external-reference
 labels and normalized URLs, and optional Daily Log/Defect IDs and snapshots.
 Root lifecycle, timestamps, state version, automatic SetNull navigation loss,
 and unrelated owner deactivation are excluded. A normalized no-op is rejected
-deterministically. Phase 28.8 must extend this same comparator for the two
-optional relationships; it may not create a second comparison rule.
+deterministically. Phase 28.8 extended this same comparator for the two optional
+relationships rather than creating a second comparison rule.
 
 The transaction:
 
@@ -869,9 +886,9 @@ The rendering library must:
 - Permit safe custom link and code rendering.
 - Have maintained TypeScript support and no requirement for client execution.
 
-No current repository dependency satisfies this boundary. Phase 28.3B must
-review the selected parser/renderer dependency and any package or lockfile
-change explicitly; this Approved architecture does not pre-approve a library.
+Phase 28.3B implemented this boundary with a reviewed server-compatible parser
+and React renderer and one feature-owned AST policy. Raw HTML remains disabled,
+and validation and rendering share the accepted syntax boundary.
 Fenced-code info strings are either ignored or restricted to a bounded safe
 language token and are never interpolated into unchecked HTML or executable
 behavior.
@@ -1554,11 +1571,9 @@ Real PostgreSQL evidence must prove:
 
 ## 44. Migration Architecture
 
-No migration is created in Phase 28.2.
+The implementation uses two additive migrations:
 
-The proposed implementation uses two additive migrations:
-
-1. **knowledge_base_foundation**
+1. **20260801000100_knowledge_base_foundation**
    - Feature enums.
    - KnowledgeRecord.
    - KnowledgeRecordRevision.
@@ -1566,7 +1581,7 @@ The proposed implementation uses two additive migrations:
    - Mine and Equipment live context relations.
    - Same-owner current-pointer constraint.
    - Checks, uniqueness, and indexes.
-2. **knowledge_base_daily_log_defect_links**
+2. **20260802000100_knowledge_base_daily_log_defect_links**
    - Nullable Daily Log and Defect live-reference fields.
    - Limited relationship snapshots.
    - SetNull foreign keys and indexes.
@@ -1606,12 +1621,14 @@ proof; destructive production rollback is not promised.
 
 ## 45. Implementation Sequence
 
-Every proposed implementation phase requires a later explicit authorization.
-No phase after 28.2 is authorized by this architecture acceptance. Each future
-implementation phase is followed by an independent review subphase and formal
-acceptance bookkeeping before the next phase.
+The implementation followed the authorized sequence below. Phases 28.3A
+through 28.8 are independently reviewed, formally accepted, committed, and
+closed. Phase 28.9 completed the documentation-only canonical closure. Phase 28
+and Knowledge Base V1 are closed; Phase 29 is not authorized.
 
 ### Phase 28.3A — Knowledge Base Persistence Foundation
+
+Status: Complete and accepted.
 
 - Scope: First migration, Prisma conceptual models, constraints, generated
   client, schema tests, and disposable PostgreSQL integrity tests.
@@ -1626,6 +1643,8 @@ acceptance bookkeeping before the next phase.
 - Acceptance: Foundation matches this architecture with no production surface.
 
 ### Phase 28.3B — Transactional Create And Current Detail
+
+Status: Complete and accepted.
 
 - Scope: Create persistence/action/form, stable current detail, restricted
   Markdown renderer, disclaimer, warning, and create idempotency.
@@ -1643,6 +1662,8 @@ acceptance bookkeeping before the next phase.
 
 ### Phase 28.4 — Canonical Knowledge Base Search And Filtering
 
+Status: Complete and accepted.
+
 - Scope: Canonical list, search, filters, ordering, pagination, normalized URL
   state, and empty/error states.
 - Exclusions: Mutation expansion and global search.
@@ -1656,6 +1677,8 @@ acceptance bookkeeping before the next phase.
 
 ### Phase 28.5 — Unverified Editing And Personal Review
 
+Status: Complete and accepted.
+
 - Scope: In-place Unverified edit, external-reference replacement, personal
   review, optimistic state, locks, and errors.
 - Exclusions: Reviewed-content revision/history, archive, relationships.
@@ -1668,6 +1691,8 @@ acceptance bookkeeping before the next phase.
 - Acceptance: Unverified content edits safely and becomes frozen when reviewed.
 
 ### Phase 28.6 — Reviewed Revision History And Content-Kind Change
+
+Status: Complete and accepted.
 
 - Scope: Reviewed-content revision transaction, change summary, kind change,
   history list, revision detail, stable URLs.
@@ -1683,6 +1708,8 @@ acceptance bookkeeping before the next phase.
 
 ### Phase 28.7 — Archive, Restore, And Permanent Delete
 
+Status: Complete and accepted.
+
 - Scope: Archive/read-only enforcement, both restore paths, destructive delete,
   safe confirmation, cleanup, and lifecycle UI.
 - Exclusions: Other owner relationships.
@@ -1695,6 +1722,8 @@ acceptance bookkeeping before the next phase.
 - Acceptance: Every accepted lifecycle/delete behavior is proven.
 
 ### Phase 28.8 — Daily Log And Defect Relationships
+
+Status: Complete and accepted.
 
 - Scope: Second migration, optional selection, snapshots, stable navigation,
   SetNull behavior, current/history presentation, and owner isolation.
@@ -1712,17 +1741,19 @@ acceptance bookkeeping before the next phase.
 
 ### Phase 28.9 — Knowledge Base V1 Acceptance And Canonical Closure
 
+Status: Complete, independently reviewed, and formally accepted.
+
 - Scope: Final regression verification, documentation synchronization,
-  implemented-capability status, implementation evidence, commit, and push.
+  implemented-capability status, and implementation evidence.
 - Exclusions: New product behavior or deferred scope.
 - Expected paths: Canonical Knowledge Base documentation and only corrections
   accepted by prior independent reviews.
 - Schema impact: None.
 - PostgreSQL evidence: All Knowledge Base suites on the dedicated disposable
   database plus affected reference regressions.
-- Tests: Full feature suite, relevant regressions, full repository suite, lint,
-  build, migration status, and drift.
-- Review: Preceded by independent final implementation review.
+- Tests: Full feature suite, relevant regressions, lint, build, migration
+  status, and drift.
+- Review: Independent canonical closure review completed in Phase 28.9.1.
 - Acceptance: Knowledge Base V1 is complete and accepted with no skipped
   required evidence.
 
@@ -1747,8 +1778,8 @@ Phase 28.2.1 independent architecture review verified:
 - Test completeness and real PostgreSQL evidence.
 - No Day View, media, auth, AI, tags, generic relationships, generic revisions,
   or other excluded/deferred scope.
-- Canonical documentation consistency and absence of implementation
-  authorization.
+- Canonical documentation consistency and the then-current absence of
+  implementation authorization.
 
 Review findings were classified and corrected only within the authorized
 documentation boundary. Phase 28.2.2 formal architecture acceptance is
@@ -1773,12 +1804,12 @@ Outcome: Completed in Phase 28.2.1.
 - Product decisions remain unchanged.
 - Aggregate, delete, Markdown, relationship, concurrency, and test boundaries
   are internally consistent.
-- Canonical status language records Approved architecture and implementation
-  not started after the acceptance milestone updates it.
+- Canonical status language records Approved architecture and the architecture
+  milestone's then-current implementation status.
 
 Outcome: Completed in Phase 28.2.2.
 
-### Eligible For Implementation Authorization
+### Implementation Authorization Outcome
 
 - The Chief Software Architect formally accepts this architecture.
 - Canonical status synchronization is committed.
@@ -1786,8 +1817,11 @@ Outcome: Completed in Phase 28.2.2.
   commit and bounded paths.
 - Disposable PostgreSQL safety requirements are available.
 
-Current outcome: Architecture acceptance is complete, but no implementation
-phase is authorized. Phase 28.3A remains Proposed.
+Current outcome: Phases 28.3A through 28.8 were explicitly authorized,
+implemented, independently reviewed, formally accepted, and closed. Phase 28.9
+completed final audit, evidence, independent closure review, formal acceptance,
+and canonical documentation closure. Phase 28 and Knowledge Base V1 are closed.
+Phase 29 and future enhancements are not authorized.
 
 ### Product Discovery Must Reopen If
 

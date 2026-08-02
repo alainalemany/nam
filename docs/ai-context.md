@@ -33,6 +33,8 @@ Use this order at the start of a new chat or when context is uncertain:
 12. `docs/engineering-workflow.md`
 13. `docs/feature-architecture.md`
 14. `docs/architecture/features/README.md`
+    - For Knowledge Base work, read
+      `docs/architecture/features/knowledge-base.md`.
 15. `docs/application-state-and-data-flow.md`
 16. `docs/ui-architecture.md`
 17. `docs/testing-strategy.md`

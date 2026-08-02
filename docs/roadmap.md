@@ -535,16 +535,11 @@ planned or deferred as described below.
 
 ## Knowledge Base Roadmap
 
-Current status: Phase 28.1 product discovery and V1 decision closure are
-complete. The confirmed product is **Knowledge Base V1 — Personal Operational
-Knowledge Records**. Phase 28.2 Level 2 architecture in
-docs/architecture/features/knowledge-base.md is Approved.
-
-Phase 28.2.1 independent architecture review and Phase 28.2.2 formal acceptance
-bookkeeping are complete. No Knowledge Base implementation has started, and no
-implementation milestone is active or authorized. Phase 28.3A remains the
-proposed first implementation phase and requires separate explicit
-authorization.
+Current status: **Knowledge Base V1 — Personal Operational Knowledge Records**
+is implemented, formally accepted, and canonically closed through Phase 28.9.
+Phase 28 is closed. The canonical Level 2 architecture is in
+[Knowledge Base V1 Architecture](architecture/features/knowledge-base.md).
+Phase 29 has not started and is not authorized.
 
 ### Phase 28.1 — Knowledge Base Product Discovery And V1 Decision Closure
 
@@ -568,12 +563,13 @@ tests, and a dedicated disposable PostgreSQL evidence plan.
 
 Phase 28.2.1 independently reviewed and corrected the architecture. Phase
 28.2.2 records formal architecture acceptance. Product decisions remain
-Confirmed, architecture is Approved, and implementation remains not started.
+Confirmed, architecture is Approved, and the architecture milestone is closed.
 
-### Proposed Delivery Sequence After Architecture Acceptance
+### Implemented Delivery Sequence
 
-The following sequence is architectural planning, not implementation
-authorization:
+Phases 28.3A through 28.8 below were separately authorized, independently
+reviewed, formally accepted, committed, and closed. Phase 28.9 completed the
+documentation-only canonical closure:
 
 1. Phase 28.3A — Knowledge Base Persistence Foundation
 2. Phase 28.3B — Transactional Create And Current Detail
@@ -584,13 +580,13 @@ authorization:
 7. Phase 28.8 — Daily Log And Defect Relationships
 8. Phase 28.9 — Knowledge Base V1 Acceptance And Canonical Closure
 
-Every phase requires separate explicit authorization, independent review, and
-formal acceptance. Photos, attachments, documents, authentication, multi-user
-collaboration, AI, global search, offline use, Day View participation,
-Equipment Activity Timeline integration, analytics, reports, exports, and
-generic platform infrastructure remain outside V1.
-
-Phase 28.3A is proposed but is not authorized by Phase 28.2 acceptance.
+Phases 28.3A through 28.8 and Phase 28.9 are complete and accepted. Phase 28 and
+Knowledge Base V1 are closed. Phase 29 has not started and is not authorized.
+Photos, attachments, documents, authentication, multi-user collaboration, AI,
+global search, offline use, Day View participation, Equipment Activity Timeline
+integration, analytics, reports, exports, and generic platform infrastructure
+remain outside V1. No later Knowledge Base phase or future enhancement is
+authorized by this closure.
 
 ## Payslip Repository Roadmap
 

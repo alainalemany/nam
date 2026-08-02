@@ -290,8 +290,9 @@ depend on resuming the pilot.
 
 ### Phase 4: Knowledge And Sensitive Records
 
-Status: Knowledge Base V1 product discovery and Approved Phase 28.2 architecture
-complete; implementation not started; Payslip Repository remains blocked
+Status: Knowledge Base V1 implemented, accepted, and canonically closed through
+Phase 28.9; Phase 28 complete; Phase 29 not authorized; Payslip Repository
+remains blocked
 
 Business value:
 
@@ -305,22 +306,20 @@ Capabilities:
 
 Success criteria:
 
-- Knowledge Base can preserve text-first reusable personal operational
-  knowledge with explicit trust, lifecycle, context, safe retrieval, and
-  reviewed-history boundaries after architecture acceptance and separately
-  authorized implementation.
+- Knowledge Base preserves text-first reusable personal operational knowledge
+  with explicit trust, lifecycle, context, safe retrieval, reviewed history,
+  and bounded Daily Log/Defect provenance links.
 - Payslip records can be archived and reviewed without mixing compensation data
   into general operational records.
 
 Dependency notes:
 
-- Knowledge Base V1 product discovery is complete. Its Phase 28.2 Level 2
-  architecture for General, Mine, or Equipment context, restricted Markdown,
-  personal review, retained reviewed revisions, search, and bounded Daily
-  Log/Defect navigation is Approved after independent review and formal
-  acceptance. Implementation has not started; Phase 28.3A remains proposed and
-  requires separate explicit authorization. Attachments and media are outside
-  V1.
+- Knowledge Base V1 product discovery and architecture are complete. Phases
+  28.3A through 28.8 implemented and formally accepted General, Mine, or
+  Equipment context, restricted Markdown, personal review, retained revisions,
+  lifecycle management, search, and bounded Daily Log/Defect navigation.
+  Attachments, media, authentication, AI, and Day View participation remain
+  outside V1.
 - Payslip Repository is supported by ADR-005 bounded-context guidance but is
   blocked from implementation until privacy, access, storage, extraction,
   redaction, and export decisions are complete and an accepted Level 2 feature
@@ -404,7 +403,7 @@ The MVP should not require:
 | Operational Safety Checklist photo evidence | Adds optional checklist-level normalized photos with captions. | ADR-018 access boundary, Docker media processing, private storage, and coordinated backup/restore. | Architecture Approved; Phase 23.5 implementation and real photo use blocked until prerequisites close |
 | Fleet | May later address purchases, ownership, assignments, cards, receipts, registration, insurance, and replacement lifecycle. | Separate product discovery and architecture. | Deferred; no product discovery or feature architecture; not a prerequisite for current Equipment Fuel Event or checklist workflows |
 | Equipment Activity Timeline | Provides derived Equipment-centered history from feature-owned records. | Multiple implemented Equipment-centered contributors and demonstrated user need. | Deferred derived capability; implemented contributors now include Supply Requests, but recurring user demand and feature architecture remain absent |
-| Knowledge Base | Preserves reusable personal operational knowledge independently of dated records. | Confirmed text-first V1 decisions and Approved Phase 28.2 Level 2 architecture; independent review and formal acceptance complete. | Implementation not started; no Prisma model, migration, route, feature module, or test exists; Phase 28.3A remains proposed and implementation authorization is not granted |
+| Knowledge Base | Preserves reusable personal operational knowledge independently of dated records. | Confirmed text-first V1 decisions and Approved Phase 28.2 Level 2 architecture. | V1 implementation Phases 28.3A through 28.8 and Phase 28.9 canonical closure independently reviewed, formally accepted, and complete; Phase 28 and Knowledge Base V1 closed; Phase 29 and deferred enhancements require separate authorization |
 | Payslip Repository | Preserves sensitive compensation history. | Privacy and storage decisions before expansion. | Conceptually planned under ADR-005; implementation blocked by unresolved privacy, access, storage, extraction, redaction, and export decisions and absent Level 2 feature architecture |
 | Automation and integrations | Reduces manual work after workflows prove stable. | Reliable manual workflow and documented tradeoffs. | Deferred / Candidate Future |
 

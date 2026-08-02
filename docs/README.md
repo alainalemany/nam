@@ -121,6 +121,7 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Understand Equipment Operations boundaries | [Equipment Operations Architecture Assessment](architecture/equipment-operations.md) |
 | Understand Equipment Fuel Events architecture | [Equipment Fuel Events Architecture](architecture/features/equipment-fuel-events.md) |
 | Understand Supply Requests architecture | [Supply Requests Architecture](architecture/features/supply-requests.md) |
+| Understand Knowledge Base V1 architecture | [Knowledge Base V1 Architecture](architecture/features/knowledge-base.md) |
 | Review source-derived reference catalogs | [Reference Catalogs](reference/README.md) |
 | Understand why decisions were made | [ADR Index](decisions/README.md) |
 | Run the application foundation | [Development Guide](development.md) |

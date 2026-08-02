@@ -199,9 +199,11 @@ Potential fields:
 
 ### 6. Knowledge Base (KB)
 
-Product decisions are Confirmed. Phase 28.2 Level 2 architecture is Approved
-after independent review and formal acceptance. Implementation has not started,
-and implementation authorization is not granted.
+Product decisions are Confirmed. Phase 28.2 Level 2 architecture and
+implementation Phases 28.3A through 28.8 completed independent review and
+formal acceptance. Phase 28.9 completed independent closure review and formal
+acceptance. Knowledge Base V1 and Phase 28 are canonically closed; Phase 29 is
+not authorized.
 
 Knowledge Base V1 preserves reusable personal operational knowledge that should
 outlive one shift, Defect, inspection, Supply Request, or dated event. It does

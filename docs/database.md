@@ -421,17 +421,15 @@ Relationships:
 
 ## Knowledge Base Entities
 
-Current status: Phase 28.1 product decisions are confirmed and Phase 28.2
-persistence architecture is Approved after independent review and formal
-acceptance. No current Knowledge Base Prisma model or migration exists. Exact
-implementation awaits separate authorization, and the concepts below do not
-authorize schema work.
+Current status: Knowledge Base V1 is implemented, formally accepted, and
+canonically closed through Phase 28.9. The feature uses the Prisma models and
+two additive migrations described below. Phase 29 is not authorized.
 
 ### KnowledgeRecord
 
-Accepted architectural stable aggregate root; not a current Prisma model.
+Implemented stable aggregate root.
 
-Conceptual fields:
+Key fields:
 
 - id
 - currentRevisionId
@@ -453,10 +451,9 @@ Responsibilities and relationships:
 
 ### KnowledgeRecordRevision
 
-Accepted architectural current or retained reviewed content; not a current
-Prisma model.
+Implemented current or retained reviewed content.
 
-Conceptual fields:
+Key fields:
 
 - id
 - knowledgeRecordId
@@ -486,8 +483,8 @@ Responsibilities and relationships:
 - Has a unique positive revision number within that stable record.
 - May be the explicit current revision for its same owning record.
 - Owns zero through ten ordered KnowledgeRevisionExternalReference rows.
-- Uses live Mine, Equipment, Daily Log, and Defect references only for
-  navigation and filtering.
+- Uses live Mine and Equipment references for navigation and approved current
+  filtering. Daily Log and Defect live references are navigation-only.
 - Retains limited snapshots for display after reference deactivation or
   exceptional deletion.
 
@@ -498,10 +495,9 @@ the stable root's explicit pointer.
 
 ### KnowledgeRevisionExternalReference
 
-Accepted architectural ordered external link owned by one revision; not a
-current Prisma model.
+Implemented ordered external link owned by one revision.
 
-Conceptual fields:
+Key fields:
 
 - id
 - knowledgeRecordRevisionId
@@ -519,7 +515,7 @@ Rules:
 - URLs are absolute HTTPS with no embedded credentials.
 - Rows cascade only with their owning Knowledge Base revision.
 
-### Proposed Enum Responsibilities
+### Implemented Enum Responsibilities
 
 - Knowledge content kind: exactly five fixed V1 values.
 - Knowledge trust: Unverified or Personally Reviewed.
@@ -529,7 +525,7 @@ Rules:
 
 Kind, trust, lifecycle, and context remain separate concepts.
 
-### Proposed Integrity Boundary
+### Implemented Integrity Boundary
 
 - Same-owner composite foreign key for the current-revision pointer.
 - Unique revision number per stable root.
@@ -545,11 +541,14 @@ Kind, trust, lifecycle, and context remain separate concepts.
   entity, attachment entity, tag entity, author/reviewer identity, or generic
   revision/relationship entity.
 
-The Approved architecture expects one foundation migration and a later
-independently reviewed additive migration for optional Daily Log and Defect
-relationship fields. Exact Prisma syntax and SQL remain implementation-phase
-work after separate authorization. No schema change or migration is authorized
-by architecture acceptance.
+The implemented migrations are
+`20260801000100_knowledge_base_foundation` and
+`20260802000100_knowledge_base_daily_log_defect_links`. The root cascades only
+to its revisions, and revisions cascade only to their external references.
+Mine, Equipment, Daily Log, and Defect remain neighboring owners; live owner
+deletion uses SetNull while retained snapshots preserve readability. The
+explicit same-owner current pointer is authoritative, and `stateVersion`
+provides optimistic concurrency for retained-root mutations.
 
 ## Daily Log Entities
 

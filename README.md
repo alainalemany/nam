@@ -41,7 +41,7 @@ scope, architecture, infrastructure, and future implementation direction.
 | Daily Inspections | Manual equipment and work-area inspection summaries. |
 | Operational Safety Checklists | Implemented Dragline and Mobile pre-shift Equipment inspections, one per inspected Equipment, with explicit Hours/Miles readings, canonical responses, permanent history, and NAM-only save confirmation; private photo evidence remains access-gated. |
 | Defect Tracking | Equipment issue tracking from report through closure. |
-| Knowledge Base | Product decisions confirmed for text-first Personal Operational Knowledge Records; Phase 28.2 architecture Approved; implementation not started and requires separate authorization. |
+| Knowledge Base | Implemented and accepted text-first Personal Operational Knowledge Records with stable revision history, personal review, lifecycle management, search, and optional Daily Log and Defect provenance links. |
 | Work Schedule | Manual weekly schedule entry, edits, assignment history, and schedule context. |
 | Timesheet | Personal record of weekly time entries, pay codes, equipment, work codes, and totals. |
 | Equipment Fuel Events | Operational fuel delivered to Equipment, including occurrences with multiple tank fills. |
@@ -116,12 +116,17 @@ selected-date contributions from owning features. Current operational modules
 provide feature-owned list filtering; global cross-module search remains future
 work.
 
-Knowledge Base V1 product decisions are confirmed and its Phase 28.2 feature
-architecture is Approved, but implementation has not started and requires
-separate authorization. Payslip Repository is blocked from implementation by
-unresolved sensitive-data decisions, while Fleet and the Equipment Activity
-Timeline remain deferred. Future work must continue to follow the
-documentation-first, vertical-slice approach.
+Knowledge Base V1 is implemented, accepted, and canonically closed through
+Phase 28.9. It provides
+stable Personal Operational Knowledge Records, restricted Markdown, personal
+review and retained revision history, archive/restore/delete lifecycle,
+current-content search, and optional outbound Daily Log and Defect provenance
+links. Phase 28 is closed; Phase 29 has not started and is not authorized. The
+feature does not participate in Day View and does not add media,
+authentication, AI, or generic content infrastructure. Payslip Repository is
+blocked from implementation by unresolved sensitive-data decisions, while
+Fleet and the Equipment Activity Timeline remain deferred. Future work must
+continue to follow the documentation-first, vertical-slice approach.
 
 Phase 23.4 implements Operational Safety Checklist `HOURS`/`MILES` meter units,
 editable category suggestions, explicit known-mismatch confirmation, signed

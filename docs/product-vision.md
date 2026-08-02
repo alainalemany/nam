@@ -174,13 +174,11 @@ into confirmed requirements.
   and module.
 - Compose eleven feature-owned operational contributors in the read-only Day
   View.
-
-### Approved Architecture; Implementation Not Started
-
-- Knowledge Base V1 product discovery and decision closure are complete.
-  Phase 28.2 architecture for text-first Personal Operational Knowledge Records
-  is Approved after independent review and formal acceptance. Implementation
-  has not started, and implementation authorization is not granted.
+- Preserve text-first Personal Operational Knowledge Records with explicit
+  trust and lifecycle, retained reviewed history, safe current-content search,
+  and optional outbound Daily Log and Defect provenance links. Knowledge Base
+  V1 is implemented, accepted, and canonically closed through Phase 28.9. Phase
+  29 is not authorized, and Knowledge Base does not participate in Day View.
 
 ### Blocked
 
@@ -241,10 +239,6 @@ The current implemented product capabilities include:
 
 ### Future Product Work
 
-- Knowledge Base V1 product decisions are confirmed for text-first Personal
-  Operational Knowledge Records. Its Phase 28.2 Level 2 architecture is
-  Approved; no schema, migration, route, feature module, or test is implemented,
-  and implementation authorization is not granted.
 - Payslip Repository remains conceptually planned but blocked from
   implementation by unresolved sensitive-data decisions and the absence of an
   accepted Level 2 feature architecture.

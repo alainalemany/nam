@@ -356,11 +356,9 @@ The Knowledge Base module preserves reusable personal operational knowledge
 that should outlive one workday, Defect, inspection, Supply Request, or dated
 event.
 
-Current status: Phase 28.1 product discovery and V1 decision closure are
-complete, and the module product contract is confirmed. Phase 28.2 Level 2
-feature architecture is Approved after independent review and formal
-acceptance. Implementation has not started, implementation authorization is not
-granted, and no Knowledge Base schema, route, feature module, or test exists.
+Current status: Knowledge Base V1 is implemented, formally accepted, and
+canonically closed through Phase 28.9. Phase 28 is closed. Phase 29 and future
+Knowledge Base enhancements are not authorized.
 
 ### Purpose
 
@@ -440,6 +438,27 @@ Day View participation, photos, attachments, PDFs, structured steps, rich text,
 authentication, multi-user review, AI, global search, offline use, analytics,
 reports, exports, automation, and generic relationship infrastructure are
 outside V1.
+
+### Implemented Surfaces And Ownership
+
+The module owns exactly these routes:
+
+- `/knowledge-base`
+- `/knowledge-base/new`
+- `/knowledge-base/[id]`
+- `/knowledge-base/[id]/edit`
+- `/knowledge-base/[id]/history`
+- `/knowledge-base/[id]/history/[revisionNumber]`
+
+Feature-owned Server Actions handle create, edit, review, revision, archive,
+restore, and permanent delete. The explicit root pointer alone selects current
+content.
+
+Daily Logs and Defects are optional outbound provenance targets owned by their
+existing modules. Knowledge Base stores revision-owned live navigation IDs and
+display snapshots, never mutates those owners, and retains snapshots after
+owner deletion clears a live ID. Knowledge Base does not contribute to Day
+View.
 
 ## Work Schedule
 

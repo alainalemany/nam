@@ -299,9 +299,10 @@ and its derived live Mine reference where available, and does not add
 multi-Equipment, model/category, Fleet, or generic Equipment relationships.
 Knowledge Base does not own Equipment, Mine, or City lifecycle.
 
-Independent architecture review and formal acceptance are complete.
-Implementation has not started, and implementation authorization is not
-granted.
+Independent architecture review, implementation, formal acceptance, and
+canonical closure are complete through Knowledge Base Phase 28.9. The
+implemented boundary remains unchanged: Knowledge Base does not own Equipment,
+Mine, or City lifecycle.
 
 ## 11. Day View
 
