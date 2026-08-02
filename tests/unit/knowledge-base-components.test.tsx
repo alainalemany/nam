@@ -10,6 +10,9 @@ vi.mock("@/features/knowledge-base/actions", () => ({
   createKnowledgeRecordAction: vi.fn(),
   reviewKnowledgeRecordAction: vi.fn(),
   mutateKnowledgeRecordAction: vi.fn(),
+  archiveKnowledgeRecordAction: vi.fn(),
+  restoreKnowledgeRecordAction: vi.fn(),
+  deleteKnowledgeRecordAction: vi.fn(),
 }));
 
 afterEach(cleanup);
@@ -80,7 +83,7 @@ describe("Knowledge Base create and detail components", () => {
 
   it("renders current General detail with safe Markdown and authority text", () => {
     const detail: KnowledgeDetailView = {
-      id: "record-1", title: "Startup reminder", bodyMarkdown: "## Steps\n\nRead the [manual](https://example.com/manual).", safetyCaution: "Verify isolation.", contentKind: "PROCEDURE", contentKindLabel: "Procedure", trust: "UNVERIFIED", trustLabel: "Unverified", lifecycleLabel: "Active", context: { kind: "GENERAL", label: "General" }, externalReferences: [{ sequence: 1, label: "Official manual", url: "https://example.com/manual" }], createdAt: "2026-08-01T12:00:00.000Z", updatedAt: "2026-08-01T12:00:00.000Z", reviewedAt: null, revisionNumber: 1, historyHref: "/knowledge-base/record-1/history", mutationTokens: null,
+      id: "record-1", title: "Startup reminder", bodyMarkdown: "## Steps\n\nRead the [manual](https://example.com/manual).", safetyCaution: "Verify isolation.", contentKind: "PROCEDURE", contentKindLabel: "Procedure", trust: "UNVERIFIED", trustLabel: "Unverified", lifecycle: "ACTIVE", lifecycleLabel: "Active", archivedAt: null, context: { kind: "GENERAL", label: "General" }, externalReferences: [{ sequence: 1, label: "Official manual", url: "https://example.com/manual" }], createdAt: "2026-08-01T12:00:00.000Z", updatedAt: "2026-08-01T12:00:00.000Z", reviewedAt: null, revisionNumber: 1, historyHref: "/knowledge-base/record-1/history", mutationTokens: null, lifecycleControls: { lifecycle: "ACTIVE", trust: "UNVERIFIED", archivedAt: null, tokens: { expectedStateVersion: 1, expectedCurrentRevisionId: "11111111-1111-4111-8111-111111111111" }, canArchive: true, canRestore: false, canDelete: true, deleteConfirmationTitle: "Startup reminder" },
     };
     render(<KnowledgeRecordDetail detail={detail} />);
     expect(screen.getByRole("heading", { name: "Startup reminder" })).toBeInTheDocument();

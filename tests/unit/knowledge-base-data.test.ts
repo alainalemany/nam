@@ -80,12 +80,23 @@ describe("Knowledge Base create options and current detail query", () => {
       archivedAt: new Date("2026-08-01T14:00:00Z"),
       stateVersion: 2,
     }));
-    expect(view).toMatchObject({ lifecycleLabel: "Archived", mutationTokens: null });
+    expect(view).toMatchObject({
+      lifecycle: "ARCHIVED",
+      lifecycleLabel: "Archived",
+      archivedAt: "2026-08-01T14:00:00.000Z",
+      mutationTokens: null,
+      lifecycleControls: { canArchive: false, canRestore: true, canDelete: true },
+    });
   });
 
   it("keeps an exhausted state version readable without exposing an unsafe mutation token", async () => {
     const loaded: any = record({ stateVersion: 2_147_483_647 });
     expect(mapKnowledgeDetail(loaded).mutationTokens).toBeNull();
+    expect(mapKnowledgeDetail(loaded).lifecycleControls).toMatchObject({
+      canArchive: false,
+      canRestore: false,
+      canDelete: true,
+    });
     const client: any = {
       knowledgeRecord: { findUnique: vi.fn().mockResolvedValue(loaded) },
     };

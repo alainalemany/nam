@@ -27,6 +27,7 @@ export function KnowledgeHistoricalRevision({ revision }: { revision: KnowledgeH
         <div aria-label="Revision status" className="badge-row">
           <span className="status-badge">Authority: {revision.designation}</span>
           <span className="status-badge">Trust: {revision.trustLabel}</span>
+          <span className="status-badge">Record lifecycle: {revision.lifecycleLabel}</span>
         </div>
       </section>
       <section aria-labelledby="knowledge-revision-authority" className="panel notice-stack">
@@ -34,6 +35,7 @@ export function KnowledgeHistoricalRevision({ revision }: { revision: KnowledgeH
         {revision.trustLabel === "Unverified" ? <p role="alert"><strong>{knowledgeUnverifiedWarning}</strong></p> : null}
         <p>{knowledgePersonalReviewExplanation}</p>
         <p>{knowledgeHistoryReadOnlyExplanation}</p>
+        {revision.lifecycleLabel === "Archived" ? <p>The owning personal Knowledge Record is Archived; this revision remains read-only.</p> : null}
         <p>{knowledgeDisclaimer}</p>
       </section>
       {revision.changeSummary ? <section className="panel" aria-labelledby="knowledge-revision-summary"><h2 id="knowledge-revision-summary">Change summary</h2><p>{revision.changeSummary}</p></section> : null}

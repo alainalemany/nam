@@ -671,6 +671,41 @@ textarea {
   gap: 12px;
 }
 
+.knowledge-detail .knowledge-lifecycle-controls,
+.knowledge-detail .knowledge-lifecycle-control {
+  display: grid;
+  gap: 12px;
+}
+
+.knowledge-detail .knowledge-lifecycle-control {
+  overflow-wrap: anywhere;
+}
+
+.knowledge-detail .knowledge-lifecycle-control .confirmation-choice {
+  display: grid;
+  min-height: 44px;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #c5ced6;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.knowledge-detail .knowledge-lifecycle-control input:not([type="hidden"]),
+.knowledge-detail .knowledge-lifecycle-control .button {
+  min-height: 44px;
+}
+
+.knowledge-detail .knowledge-delete-control {
+  border-left: 4px solid #a51d1d;
+}
+
+.knowledge-detail .knowledge-lifecycle-control :focus-visible {
+  outline: 3px solid #1f6feb;
+  outline-offset: 2px;
+}
+
 .knowledge-create-form .notice-stack,
 .knowledge-edit-form .notice-stack,
 .knowledge-review-control,

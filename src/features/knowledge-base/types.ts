@@ -3,6 +3,7 @@ import type {
   KnowledgeContentKind,
   KnowledgeContextKind,
   KnowledgeTrust,
+  KnowledgeRecordLifecycle,
 } from "@prisma/client";
 
 export type KnowledgeExternalReferenceInput = Readonly<{
@@ -148,6 +149,48 @@ export type KnowledgeMutationResult = Readonly<{
   revisionNumber?: number;
 }>;
 
+export type KnowledgeLifecycleOperation = "ARCHIVE" | "RESTORE" | "DELETE";
+
+export type KnowledgeLifecycleInput = Readonly<{
+  knowledgeRecordId: string;
+  expectedStateVersion: number;
+  expectedCurrentRevisionId: string;
+}>;
+
+export type KnowledgeDeleteInput = KnowledgeLifecycleInput & Readonly<{
+  confirmationTitle: string;
+}>;
+
+export type KnowledgeLifecycleActionState = Readonly<{
+  status: "idle" | "error";
+  message: string;
+  requiresReload: boolean;
+  fieldErrors: Readonly<Record<string, readonly string[]>>;
+  expectedStateVersion: string;
+  expectedCurrentRevisionId: string;
+  confirmed: boolean;
+  deleteConfirmation: string;
+}>;
+
+export type KnowledgeLifecycleResult = Readonly<{
+  knowledgeRecordId: string;
+  operation: KnowledgeLifecycleOperation;
+  stateVersion: number | null;
+  duplicate: boolean;
+  revisionNumber?: number;
+}>;
+
+export type KnowledgeLifecycleControlsView = Readonly<{
+  lifecycle: KnowledgeRecordLifecycle;
+  trust: KnowledgeTrust;
+  archivedAt: string | null;
+  tokens: KnowledgeMutationTokens;
+  canArchive: boolean;
+  canRestore: boolean;
+  canDelete: boolean;
+  deleteConfirmationTitle: string;
+}>;
+
 export type KnowledgeEditPageData = Readonly<{
   id: string;
   mode: "EDIT_UNVERIFIED" | "REVISE_REVIEWED";
@@ -170,6 +213,8 @@ export type KnowledgeDetailView = Readonly<{
   trust: KnowledgeTrust;
   trustLabel: "Unverified" | "Personally Reviewed";
   lifecycleLabel: "Active" | "Archived";
+  lifecycle: KnowledgeRecordLifecycle;
+  archivedAt: string | null;
   context:
     | Readonly<{ kind: "GENERAL"; label: "General" }>
     | Readonly<{
@@ -193,6 +238,7 @@ export type KnowledgeDetailView = Readonly<{
   revisionNumber: number;
   historyHref: string;
   mutationTokens: KnowledgeMutationTokens | null;
+  lifecycleControls: KnowledgeLifecycleControlsView;
 }>;
 
 export type KnowledgeHistoryRevisionSummary = Readonly<{
@@ -213,12 +259,16 @@ export type KnowledgeHistoryRevisionSummary = Readonly<{
 export type KnowledgeHistoryView = Readonly<{
   id: string;
   title: string;
+  lifecycleLabel: "Active" | "Archived";
+  archivedAt: string | null;
   currentRevisionNumber: number;
   revisions: readonly KnowledgeHistoryRevisionSummary[];
 }>;
 
 export type KnowledgeHistoricalRevisionView = Readonly<{
   recordId: string;
+  lifecycleLabel: "Active" | "Archived";
+  archivedAt: string | null;
   revisionNumber: number;
   isCurrent: boolean;
   designation: "Current Unverified" | "Current Personally Reviewed" | "Retained Reviewed";

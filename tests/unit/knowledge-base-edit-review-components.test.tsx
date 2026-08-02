@@ -23,6 +23,9 @@ vi.mock("@/features/knowledge-base/actions", () => ({
   mutateKnowledgeRecordAction: actionMocks.edit,
   reviewKnowledgeRecordAction: actionMocks.review,
   createKnowledgeRecordAction: vi.fn(),
+  archiveKnowledgeRecordAction: vi.fn(),
+  restoreKnowledgeRecordAction: vi.fn(),
+  deleteKnowledgeRecordAction: vi.fn(),
 }));
 
 afterEach(() => {
@@ -73,6 +76,8 @@ function detail(trust: "UNVERIFIED" | "PERSONALLY_REVIEWED"): KnowledgeDetailVie
     trust,
     trustLabel: trust === "UNVERIFIED" ? "Unverified" : "Personally Reviewed",
     lifecycleLabel: "Active",
+    lifecycle: "ACTIVE",
+    archivedAt: null,
     context: { kind: "GENERAL", label: "General" },
     externalReferences: [],
     createdAt: "2026-08-01T12:00:00.000Z",
@@ -81,6 +86,16 @@ function detail(trust: "UNVERIFIED" | "PERSONALLY_REVIEWED"): KnowledgeDetailVie
     revisionNumber: 1,
     historyHref: `/knowledge-base/${recordId}/history`,
     mutationTokens: { expectedStateVersion: 2, expectedCurrentRevisionId: revisionId },
+    lifecycleControls: {
+      lifecycle: "ACTIVE",
+      trust,
+      archivedAt: null,
+      tokens: { expectedStateVersion: 2, expectedCurrentRevisionId: revisionId },
+      canArchive: true,
+      canRestore: false,
+      canDelete: true,
+      deleteConfirmationTitle: "Existing title",
+    },
   };
 }
 
@@ -155,6 +170,32 @@ describe("Knowledge Base edit and personal-review components", () => {
     expect(screen.queryByRole("button", { name: "Mark as Personally Reviewed" })).toBeNull();
     expect(screen.getByText(knowledgeDisclaimer)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/corporate approval|management approval|certified/i);
+  });
+
+  it("renders Archived authority read-only with restore and exact-title deletion only", () => {
+    const active = detail("PERSONALLY_REVIEWED");
+    const archived: KnowledgeDetailView = {
+      ...active,
+      lifecycle: "ARCHIVED",
+      lifecycleLabel: "Archived",
+      archivedAt: "2026-08-02T12:00:00.000Z",
+      mutationTokens: null,
+      lifecycleControls: {
+        ...active.lifecycleControls,
+        lifecycle: "ARCHIVED",
+        archivedAt: "2026-08-02T12:00:00.000Z",
+        canArchive: false,
+        canRestore: true,
+      },
+    };
+    render(<KnowledgeRecordDetail detail={archived} />);
+    expect(screen.getByText(/retained read-only/i)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Edit Knowledge Record|Create New Unverified Revision/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Mark as Personally Reviewed" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Restore Knowledge Record" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Permanently Delete Record and History" })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Enter the exact current title/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mine, Equipment, City, Daily Log, and Defect records are not deleted/i)).toBeInTheDocument();
   });
 
   it("requires a fresh load after an optimistic edit conflict", () => {

@@ -8,6 +8,11 @@ export type KnowledgeBaseErrorCode =
   | "RECORD_NOT_FOUND"
   | "REVISION_NOT_FOUND"
   | "RECORD_NOT_EDITABLE"
+  | "RECORD_ALREADY_ARCHIVED"
+  | "RECORD_NOT_ARCHIVED"
+  | "RESTORE_NOT_AVAILABLE"
+  | "DELETE_CONFIRMATION_REQUIRED"
+  | "STATE_VERSION_EXHAUSTED"
   | "REVISION_NOT_AVAILABLE"
   | "CHANGE_SUMMARY_REQUIRED"
   | "NO_MATERIAL_CHANGE"
@@ -79,6 +84,42 @@ export function knowledgeRevisionNumberExhaustedError() {
   return new KnowledgeBaseError(
     "REVISION_NUMBER_EXHAUSTED",
     "This Knowledge Record cannot create another revision safely.",
+  );
+}
+
+export function knowledgeStateVersionExhaustedError() {
+  return new KnowledgeBaseError(
+    "STATE_VERSION_EXHAUSTED",
+    "This Knowledge Record cannot perform another lifecycle transition safely.",
+  );
+}
+
+export function knowledgeAlreadyArchivedError() {
+  return new KnowledgeBaseError(
+    "RECORD_ALREADY_ARCHIVED",
+    "This Knowledge Record is already Archived.",
+  );
+}
+
+export function knowledgeNotArchivedError() {
+  return new KnowledgeBaseError(
+    "RECORD_NOT_ARCHIVED",
+    "This Knowledge Record is not Archived.",
+  );
+}
+
+export function knowledgeRestoreNotAvailableError() {
+  return new KnowledgeBaseError(
+    "RESTORE_NOT_AVAILABLE",
+    "This Knowledge Record cannot be restored safely.",
+  );
+}
+
+export function knowledgeDeleteConfirmationError() {
+  return new KnowledgeBaseError(
+    "DELETE_CONFIRMATION_REQUIRED",
+    "Enter the exact current title to confirm permanent deletion.",
+    "deleteConfirmation",
   );
 }
 

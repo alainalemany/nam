@@ -16,6 +16,8 @@ afterEach(cleanup);
 const history: KnowledgeHistoryView = {
   id: "record-1",
   title: "Current procedure",
+  lifecycleLabel: "Active",
+  archivedAt: null,
   currentRevisionNumber: 2,
   revisions: [{
     revisionNumber: 2,
@@ -48,6 +50,8 @@ const history: KnowledgeHistoryView = {
 
 const historical: KnowledgeHistoricalRevisionView = {
   recordId: "record-1",
+  lifecycleLabel: "Active",
+  archivedAt: null,
   revisionNumber: 1,
   isCurrent: false,
   designation: "Retained Reviewed",

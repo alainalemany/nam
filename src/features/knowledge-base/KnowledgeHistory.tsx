@@ -23,12 +23,14 @@ export function KnowledgeHistory({ history }: { history: KnowledgeHistoryView })
       <section className="page-header">
         <p className="eyebrow">Knowledge Base · Retained history</p>
         <h1>Revision history: {history.title}</h1>
+        <p><strong>Lifecycle: {history.lifecycleLabel}</strong>{history.archivedAt ? ` · Archived ${dateTime(history.archivedAt)}` : ""}</p>
         <p>{knowledgeHistoryReadOnlyExplanation}</p>
       </section>
       <section aria-labelledby="knowledge-history-authority" className="panel notice-stack">
         <h2 id="knowledge-history-authority">Authority and review limits</h2>
         {includesUnverified ? <p role="alert"><strong>{knowledgeUnverifiedWarning}</strong></p> : null}
         <p>{knowledgePersonalReviewExplanation}</p>
+        {history.lifecycleLabel === "Archived" ? <p>This personal Knowledge Record is Archived and remains readable as retained, read-only history until permanently deleted.</p> : null}
         <p>{knowledgeDisclaimer}</p>
       </section>
       <ol aria-label="Knowledge Record revisions" className="knowledge-history-list">

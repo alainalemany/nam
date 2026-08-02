@@ -8,6 +8,7 @@ import {
 } from "./constants";
 import { KnowledgeMarkdown } from "./markdown";
 import { KnowledgeReviewControl } from "./KnowledgeReviewControl";
+import { KnowledgeLifecycleControls } from "./KnowledgeLifecycleControls";
 import type { KnowledgeDetailView } from "./types";
 
 function dateTime(value: string) {
@@ -84,11 +85,12 @@ export function KnowledgeRecordDetail({ detail }: { detail: KnowledgeDetailView 
           <dt>Created</dt><dd>{dateTime(detail.createdAt)}</dd>
           <dt>Updated</dt><dd>{dateTime(detail.updatedAt)}</dd>
           {detail.reviewedAt ? <><dt>Personally reviewed</dt><dd>{dateTime(detail.reviewedAt)}</dd></> : null}
+          {detail.archivedAt ? <><dt>Archived</dt><dd>{dateTime(detail.archivedAt)}</dd></> : null}
         </dl>
       </section>
 
       <div className="inline-actions">
-        {detail.mutationTokens ? (
+        {detail.lifecycle === "ACTIVE" && detail.mutationTokens ? (
           <Link className="button primary" href={`/knowledge-base/${encodeURIComponent(detail.id)}/edit`}>
             {detail.trust === "UNVERIFIED" ? "Edit Knowledge Record" : "Create New Unverified Revision"}
           </Link>
@@ -97,12 +99,24 @@ export function KnowledgeRecordDetail({ detail }: { detail: KnowledgeDetailView 
         <Link className="button secondary" href="/knowledge-base/new">Create another Knowledge Record</Link>
       </div>
 
-      {detail.mutationTokens && detail.trust === "UNVERIFIED" ? (
+      {detail.lifecycle === "ACTIVE" && detail.mutationTokens && detail.trust === "UNVERIFIED" ? (
         <KnowledgeReviewControl
           knowledgeRecordId={detail.id}
           tokens={detail.mutationTokens}
         />
       ) : null}
+
+      {detail.lifecycle === "ARCHIVED" ? (
+        <section className="panel notice-stack" aria-labelledby="knowledge-archived-heading">
+          <h2 id="knowledge-archived-heading">Archived personal record</h2>
+          <p>This personal Knowledge Record is retained read-only. Archive does not imply an organizational retention policy or approval.</p>
+        </section>
+      ) : null}
+
+      <KnowledgeLifecycleControls
+        knowledgeRecordId={detail.id}
+        controls={detail.lifecycleControls}
+      />
     </main>
   );
 }

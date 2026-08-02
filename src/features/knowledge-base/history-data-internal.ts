@@ -202,6 +202,8 @@ export function mapKnowledgeHistory(root: Root): KnowledgeHistoryView {
   return {
     id: root.id,
     title: current.title,
+    lifecycleLabel: root.lifecycle === "ACTIVE" ? "Active" : "Archived",
+    archivedAt: root.archivedAt?.toISOString() ?? null,
     currentRevisionNumber: current.revisionNumber,
     revisions: [...root.revisions].reverse().map((revision) => summary(root, revision)),
   };
@@ -215,6 +217,8 @@ export function mapKnowledgeHistoricalRevision(root: Root, revisionNumber: numbe
   if (!contextView) throw knowledgeIntegrityError();
   return {
     recordId: root.id,
+    lifecycleLabel: root.lifecycle === "ACTIVE" ? "Active" : "Archived",
+    archivedAt: root.archivedAt?.toISOString() ?? null,
     revisionNumber,
     isCurrent: revision.id === root.currentRevisionId,
     designation: designation(revision, root.currentRevisionId!),

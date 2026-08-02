@@ -9,6 +9,7 @@ import {
   knowledgeMaximumExternalReferences,
   knowledgeMaximumIdentifierLength,
   knowledgeMaximumMutableStateVersion,
+  knowledgeMaximumStateVersion,
   knowledgeMaximumTitleLength,
 } from "./constants";
 import { KnowledgeBaseError } from "./errors";
@@ -27,6 +28,8 @@ import type {
   KnowledgeEditInput,
   KnowledgeExternalReferenceInput,
   KnowledgeReviewInput,
+  KnowledgeLifecycleInput,
+  KnowledgeDeleteInput,
 } from "./types";
 
 const permittedCreateFields = new Set([
@@ -59,6 +62,24 @@ const permittedReviewFields = new Set([
   "expectedStateVersion",
   "expectedCurrentRevisionId",
   "personalReviewConfirmed",
+]);
+
+const permittedArchiveFields = new Set([
+  "expectedStateVersion",
+  "expectedCurrentRevisionId",
+  "archiveConfirmed",
+]);
+
+const permittedRestoreFields = new Set([
+  "expectedStateVersion",
+  "expectedCurrentRevisionId",
+  "restoreConfirmed",
+]);
+
+const permittedDeleteFields = new Set([
+  "expectedStateVersion",
+  "expectedCurrentRevisionId",
+  "deleteConfirmation",
 ]);
 
 const rawCreateSchema = z
@@ -97,7 +118,7 @@ export function knowledgeFormValue(formData: FormData, field: string) {
   return values.length === 1 && typeof values[0] === "string" ? values[0] : "";
 }
 
-function assertStrictFields(formData: FormData, permittedFields = permittedCreateFields) {
+function assertStrictFields(formData: FormData, permittedFields: ReadonlySet<string> = permittedCreateFields) {
   const counts = new Map<string, number>();
   for (const key of formData.keys()) {
     if (key.startsWith("$ACTION_")) continue;
@@ -281,7 +302,10 @@ export function parseKnowledgeCreateFormData(formData: FormData) {
   return { input, values, externalReferences };
 }
 
-function parseExpectedStateVersion(value: unknown) {
+function parseExpectedStateVersion(
+  value: unknown,
+  maximum = knowledgeMaximumMutableStateVersion,
+) {
   if (typeof value !== "string" || !/^[1-9][0-9]*$/u.test(value)) {
     invalid("The expected record version is invalid.", "expectedStateVersion");
   }
@@ -289,11 +313,19 @@ function parseExpectedStateVersion(value: unknown) {
   if (
     !Number.isSafeInteger(parsed) ||
     parsed < 1 ||
-    parsed > knowledgeMaximumMutableStateVersion
+    parsed > maximum
   ) {
     invalid("The expected record version is invalid.", "expectedStateVersion");
   }
   return parsed;
+}
+
+function parseKnowledgeRecordId(value: unknown) {
+  const parsed = z.string().uuid().safeParse(value);
+  if (!parsed.success || /[\u0000-\u001f\u007f]/u.test(parsed.data)) {
+    invalid("The Knowledge Record identifier is invalid.");
+  }
+  return parsed.data.toLowerCase();
 }
 
 function parseExpectedCurrentRevisionId(value: unknown) {
@@ -486,5 +518,125 @@ export function parseKnowledgeReviewInput(input: unknown): KnowledgeReviewInput 
     expectedCurrentRevisionId: parseExpectedCurrentRevisionId(
       parsed.data.expectedCurrentRevisionId,
     ),
+  };
+}
+
+function parseLifecycleInput(
+  knowledgeRecordId: string,
+  formData: FormData,
+  permittedFields: ReadonlySet<string>,
+  confirmationField: "archiveConfirmed" | "restoreConfirmed",
+): KnowledgeLifecycleInput {
+  assertStrictFields(formData, permittedFields);
+  if (knowledgeFormValue(formData, confirmationField) !== "true") {
+    invalid(
+      confirmationField === "archiveConfirmed"
+        ? "Confirm that this record should become Archived and read-only."
+        : "Confirm that this Archived record should be restored.",
+      confirmationField,
+    );
+  }
+  return {
+    knowledgeRecordId: parseKnowledgeRecordId(knowledgeRecordId),
+    expectedStateVersion: parseExpectedStateVersion(
+      knowledgeFormValue(formData, "expectedStateVersion"),
+    ),
+    expectedCurrentRevisionId: parseExpectedCurrentRevisionId(
+      knowledgeFormValue(formData, "expectedCurrentRevisionId"),
+    ),
+  };
+}
+
+export function parseKnowledgeArchiveFormData(
+  knowledgeRecordId: string,
+  formData: FormData,
+) {
+  return parseLifecycleInput(
+    knowledgeRecordId,
+    formData,
+    permittedArchiveFields,
+    "archiveConfirmed",
+  );
+}
+
+export function parseKnowledgeRestoreFormData(
+  knowledgeRecordId: string,
+  formData: FormData,
+) {
+  return parseLifecycleInput(
+    knowledgeRecordId,
+    formData,
+    permittedRestoreFields,
+    "restoreConfirmed",
+  );
+}
+
+export function parseKnowledgeDeleteFormData(
+  knowledgeRecordId: string,
+  formData: FormData,
+): KnowledgeDeleteInput {
+  assertStrictFields(formData, permittedDeleteFields);
+  const confirmationTitle = knowledgeFormValue(formData, "deleteConfirmation");
+  if (
+    confirmationTitle.length === 0 ||
+    codePointLength(confirmationTitle) > knowledgeMaximumTitleLength ||
+    /[\u0000-\u001f\u007f]/u.test(confirmationTitle)
+  ) {
+    invalid(
+      "Enter the exact current title to confirm permanent deletion.",
+      "deleteConfirmation",
+    );
+  }
+  return {
+    knowledgeRecordId: parseKnowledgeRecordId(knowledgeRecordId),
+    expectedStateVersion: parseExpectedStateVersion(
+      knowledgeFormValue(formData, "expectedStateVersion"),
+      knowledgeMaximumStateVersion,
+    ),
+    expectedCurrentRevisionId: parseExpectedCurrentRevisionId(
+      knowledgeFormValue(formData, "expectedCurrentRevisionId"),
+    ),
+    confirmationTitle,
+  };
+}
+
+export function parseKnowledgeLifecycleInput(
+  input: unknown,
+  maximumStateVersion = knowledgeMaximumMutableStateVersion,
+): KnowledgeLifecycleInput {
+  const parsed = z.object({
+    knowledgeRecordId: z.string(),
+    expectedStateVersion: z.union([z.string(), z.number()]),
+    expectedCurrentRevisionId: z.string(),
+  }).strict().safeParse(input);
+  if (!parsed.success) invalid("The lifecycle request is invalid.");
+  return {
+    knowledgeRecordId: parseKnowledgeRecordId(parsed.data.knowledgeRecordId),
+    expectedStateVersion: parseExpectedStateVersion(
+      String(parsed.data.expectedStateVersion),
+      maximumStateVersion,
+    ),
+    expectedCurrentRevisionId: parseExpectedCurrentRevisionId(parsed.data.expectedCurrentRevisionId),
+  };
+}
+
+export function parseKnowledgeDeleteInput(input: unknown): KnowledgeDeleteInput {
+  const parsed = z.object({
+    knowledgeRecordId: z.string(),
+    expectedStateVersion: z.union([z.string(), z.number()]),
+    expectedCurrentRevisionId: z.string(),
+    confirmationTitle: z.string(),
+  }).strict().safeParse(input);
+  if (!parsed.success) invalid("The permanent-delete request is invalid.");
+  if (parsed.data.confirmationTitle.length === 0 ||
+    codePointLength(parsed.data.confirmationTitle) > knowledgeMaximumTitleLength ||
+    /[\u0000-\u001f\u007f]/u.test(parsed.data.confirmationTitle)) {
+    invalid("Enter the exact current title to confirm permanent deletion.", "deleteConfirmation");
+  }
+  return {
+    knowledgeRecordId: parseKnowledgeRecordId(parsed.data.knowledgeRecordId),
+    expectedStateVersion: parseExpectedStateVersion(String(parsed.data.expectedStateVersion), knowledgeMaximumStateVersion),
+    expectedCurrentRevisionId: parseExpectedCurrentRevisionId(parsed.data.expectedCurrentRevisionId),
+    confirmationTitle: parsed.data.confirmationTitle,
   };
 }

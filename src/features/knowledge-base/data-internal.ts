@@ -279,6 +279,8 @@ export function mapKnowledgeDetail(record: LoadedKnowledgeDetail): KnowledgeDeta
     trustLabel:
       revision.trust === "UNVERIFIED" ? "Unverified" : "Personally Reviewed",
     lifecycleLabel: record.lifecycle === "ACTIVE" ? "Active" : "Archived",
+    lifecycle: record.lifecycle,
+    archivedAt: record.archivedAt?.toISOString() ?? null,
     context: contextView(revision),
     externalReferences: revision.externalReferences.map((reference) => ({
       sequence: reference.sequence,
@@ -300,6 +302,25 @@ export function mapKnowledgeDetail(record: LoadedKnowledgeDetail): KnowledgeDeta
             expectedCurrentRevisionId: revision.id,
           }
         : null,
+    lifecycleControls: {
+      lifecycle: record.lifecycle,
+      trust: revision.trust,
+      archivedAt: record.archivedAt?.toISOString() ?? null,
+      tokens: {
+        expectedStateVersion: record.stateVersion,
+        expectedCurrentRevisionId: revision.id,
+      },
+      canArchive:
+        record.lifecycle === "ACTIVE" &&
+        record.stateVersion <= knowledgeMaximumMutableStateVersion,
+      canRestore:
+        record.lifecycle === "ARCHIVED" &&
+        record.stateVersion <= knowledgeMaximumMutableStateVersion &&
+        (revision.trust === "UNVERIFIED" ||
+          revision.revisionNumber <= knowledgeMaximumMutableRevisionNumber),
+      canDelete: true,
+      deleteConfirmationTitle: revision.title,
+    },
   };
 }
 

@@ -48,6 +48,8 @@ export const knowledgeListMaximumPage = 42_949_672;
 export const knowledgeListOptionLimit = 500;
 export const knowledgeMaximumMutableStateVersion = 2_147_483_646;
 export const knowledgeMaximumMutableRevisionNumber = 2_147_483_646;
+export const knowledgeMaximumStateVersion = 2_147_483_647;
+export const knowledgeLifecycleConfirmationValue = "true";
 
 export const knowledgeHistoryReadOnlyExplanation =
   "Retained revisions are read-only records. Current authority is identified explicitly by the Knowledge Record pointer.";
