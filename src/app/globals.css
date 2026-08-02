@@ -658,21 +658,29 @@ textarea {
 }
 
 .knowledge-create-form .notice-stack,
+.knowledge-edit-form .notice-stack,
+.knowledge-review-control section,
 .knowledge-detail .notice-stack,
 .knowledge-detail .knowledge-markdown,
-.knowledge-create-form .error-summary {
+.knowledge-create-form .error-summary,
+.knowledge-edit-form .error-summary,
+.knowledge-review-control .error-summary {
   display: grid;
   gap: 12px;
 }
 
 .knowledge-create-form .notice-stack,
+.knowledge-edit-form .notice-stack,
+.knowledge-review-control,
 .knowledge-detail .notice-stack {
   border-left: 4px solid #8a4b12;
   background: #fff9f1;
   padding: 16px;
 }
 
-.knowledge-create-form .error-summary {
+.knowledge-create-form .error-summary,
+.knowledge-edit-form .error-summary,
+.knowledge-review-control .error-summary {
   border: 1px solid #f0b4b1;
   border-radius: 8px;
   background: #fff5f4;
@@ -680,6 +688,7 @@ textarea {
 }
 
 .knowledge-create-form .field-help,
+.knowledge-edit-form .field-help,
 .knowledge-detail .field-help {
   color: #667581;
   font-size: 0.875rem;
@@ -688,13 +697,16 @@ textarea {
 }
 
 .knowledge-create-form .choice-grid,
+.knowledge-edit-form .choice-grid,
 .knowledge-detail .badge-row {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
 }
 
-.knowledge-create-form .choice-grid label {
+.knowledge-create-form .choice-grid label,
+.knowledge-edit-form .choice-grid label,
+.knowledge-review-control .confirmation-choice {
   min-height: 44px;
   align-items: center;
   grid-template-columns: auto 1fr;
@@ -703,7 +715,9 @@ textarea {
   padding: 10px 12px;
 }
 
-.knowledge-create-form .choice-grid input {
+.knowledge-create-form .choice-grid input,
+.knowledge-edit-form .choice-grid input,
+.knowledge-review-control .confirmation-choice input {
   width: auto;
 }
 
@@ -732,22 +746,33 @@ textarea {
 
 .knowledge-detail .knowledge-markdown :focus-visible,
 .knowledge-create-form .notice-stack :focus-visible,
+.knowledge-edit-form .notice-stack :focus-visible,
+.knowledge-review-control :focus-visible,
 .knowledge-detail .notice-stack :focus-visible,
-.knowledge-create-form .error-summary:focus-visible {
+.knowledge-create-form .error-summary:focus-visible,
+.knowledge-edit-form .error-summary:focus-visible {
   outline: 3px solid #1f6feb;
   outline-offset: 3px;
 }
 
 .knowledge-create-form input:not([type="hidden"]),
 .knowledge-create-form select,
-.knowledge-create-form .button {
+.knowledge-create-form .button,
+.knowledge-edit-form input:not([type="hidden"]),
+.knowledge-edit-form select,
+.knowledge-edit-form .button,
+.knowledge-review-control .button {
   min-height: 44px;
 }
 
 .knowledge-create-form input:focus-visible,
 .knowledge-create-form select:focus-visible,
 .knowledge-create-form textarea:focus-visible,
-.knowledge-create-form button:focus-visible {
+.knowledge-create-form button:focus-visible,
+.knowledge-edit-form input:focus-visible,
+.knowledge-edit-form select:focus-visible,
+.knowledge-edit-form textarea:focus-visible,
+.knowledge-edit-form button:focus-visible {
   outline: 3px solid #1f6feb;
   outline-offset: 2px;
 }

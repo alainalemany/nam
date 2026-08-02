@@ -2,6 +2,7 @@ import type {
   EquipmentCategory,
   KnowledgeContentKind,
   KnowledgeContextKind,
+  KnowledgeTrust,
 } from "@prisma/client";
 
 export type KnowledgeExternalReferenceInput = Readonly<{
@@ -82,6 +83,76 @@ export type KnowledgeCreateResult = Readonly<{
   duplicate: boolean;
 }>;
 
+export type KnowledgeMutationTokens = Readonly<{
+  expectedStateVersion: number;
+  expectedCurrentRevisionId: string;
+}>;
+
+export type KnowledgeEditInput = Readonly<{
+  knowledgeRecordId: string;
+  expectedStateVersion: number;
+  expectedCurrentRevisionId: string;
+  title: string;
+  bodyMarkdown: string;
+  safetyCaution: string | null;
+  contextKind: KnowledgeContextKind;
+  mineId: string | null;
+  equipmentId: string | null;
+  externalReferences: readonly KnowledgeExternalReferenceInput[];
+}>;
+
+export type KnowledgeEditFormValues = Readonly<{
+  expectedStateVersion: string;
+  expectedCurrentRevisionId: string;
+  title: string;
+  bodyMarkdown: string;
+  safetyCaution: string;
+  contextKind: string;
+  mineId: string;
+  equipmentId: string;
+}>;
+
+export type KnowledgeEditActionState = Readonly<{
+  status: "idle" | "error";
+  message: string;
+  requiresReload: boolean;
+  fieldErrors: Readonly<Record<string, readonly string[]>>;
+  values: KnowledgeEditFormValues;
+  externalReferences: readonly KnowledgeExternalReferenceInput[];
+}>;
+
+export type KnowledgeReviewInput = Readonly<{
+  knowledgeRecordId: string;
+  expectedStateVersion: number;
+  expectedCurrentRevisionId: string;
+}>;
+
+export type KnowledgeReviewActionState = Readonly<{
+  status: "idle" | "error";
+  message: string;
+  requiresReload: boolean;
+  fieldErrors: Readonly<Record<string, readonly string[]>>;
+  expectedStateVersion: string;
+  expectedCurrentRevisionId: string;
+  confirmed: boolean;
+}>;
+
+export type KnowledgeMutationResult = Readonly<{
+  knowledgeRecordId: string;
+  stateVersion: number;
+  duplicate: boolean;
+}>;
+
+export type KnowledgeEditPageData = Readonly<{
+  id: string;
+  contentKind: KnowledgeContentKind;
+  contentKindLabel: string;
+  initialState: KnowledgeEditActionState;
+  mines: readonly KnowledgeMineOption[];
+  equipment: readonly KnowledgeEquipmentOption[];
+  loadError: string | null;
+}>;
+
 export type KnowledgeDetailView = Readonly<{
   id: string;
   title: string;
@@ -89,8 +160,9 @@ export type KnowledgeDetailView = Readonly<{
   safetyCaution: string | null;
   contentKind: KnowledgeContentKind;
   contentKindLabel: string;
-  trustLabel: "Unverified";
-  lifecycleLabel: "Active";
+  trust: KnowledgeTrust;
+  trustLabel: "Unverified" | "Personally Reviewed";
+  lifecycleLabel: "Active" | "Archived";
   context:
     | Readonly<{ kind: "GENERAL"; label: "General" }>
     | Readonly<{
@@ -110,4 +182,6 @@ export type KnowledgeDetailView = Readonly<{
   }>[];
   createdAt: string;
   updatedAt: string;
+  reviewedAt: string | null;
+  mutationTokens: KnowledgeMutationTokens | null;
 }>;

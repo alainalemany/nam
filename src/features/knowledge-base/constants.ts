@@ -45,3 +45,10 @@ export const knowledgeListMaximumSearchLength = 200;
 export const knowledgeListExcerptLength = 240;
 export const knowledgeListMaximumPage = 42_949_672;
 export const knowledgeListOptionLimit = 500;
+export const knowledgeMaximumMutableStateVersion = 2_147_483_646;
+
+export const knowledgePersonalReviewExplanation =
+  "Personal review means only that you reread this material and personally consider it useful. It is not corporate, management, manufacturer, engineering, MSHA, site, or another person's approval.";
+
+export const knowledgeReviewedReadOnlyExplanation =
+  "Personally Reviewed material is read-only until a later reviewed-revision workflow is implemented.";

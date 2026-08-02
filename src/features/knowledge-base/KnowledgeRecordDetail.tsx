@@ -1,7 +1,13 @@
 import Link from "next/link";
 
-import { knowledgeDisclaimer, knowledgeUnverifiedWarning } from "./constants";
+import {
+  knowledgeDisclaimer,
+  knowledgePersonalReviewExplanation,
+  knowledgeReviewedReadOnlyExplanation,
+  knowledgeUnverifiedWarning,
+} from "./constants";
 import { KnowledgeMarkdown } from "./markdown";
+import { KnowledgeReviewControl } from "./KnowledgeReviewControl";
 import type { KnowledgeDetailView } from "./types";
 
 function dateTime(value: string) {
@@ -26,7 +32,15 @@ export function KnowledgeRecordDetail({ detail }: { detail: KnowledgeDetailView 
 
       <section aria-labelledby="knowledge-warning-heading" className="panel notice-stack">
         <h2 id="knowledge-warning-heading">Authority and trust</h2>
-        <p role="alert"><strong>{knowledgeUnverifiedWarning}</strong></p>
+        {detail.trust === "UNVERIFIED" ? (
+          <p role="alert"><strong>{knowledgeUnverifiedWarning}</strong></p>
+        ) : (
+          <>
+            <p><strong>Personally Reviewed</strong></p>
+            <p>{knowledgePersonalReviewExplanation}</p>
+            <p>{knowledgeReviewedReadOnlyExplanation}</p>
+          </>
+        )}
         <p>{knowledgeDisclaimer}</p>
       </section>
 
@@ -69,12 +83,23 @@ export function KnowledgeRecordDetail({ detail }: { detail: KnowledgeDetailView 
         <dl>
           <dt>Created</dt><dd>{dateTime(detail.createdAt)}</dd>
           <dt>Updated</dt><dd>{dateTime(detail.updatedAt)}</dd>
+          {detail.reviewedAt ? <><dt>Personally reviewed</dt><dd>{dateTime(detail.reviewedAt)}</dd></> : null}
         </dl>
       </section>
 
       <div className="inline-actions">
+        {detail.mutationTokens ? (
+          <Link className="button primary" href={`/knowledge-base/${encodeURIComponent(detail.id)}/edit`}>Edit Knowledge Record</Link>
+        ) : null}
         <Link className="button secondary" href="/knowledge-base/new">Create another Knowledge Record</Link>
       </div>
+
+      {detail.mutationTokens ? (
+        <KnowledgeReviewControl
+          knowledgeRecordId={detail.id}
+          tokens={detail.mutationTokens}
+        />
+      ) : null}
     </main>
   );
 }

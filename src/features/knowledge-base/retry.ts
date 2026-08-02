@@ -29,6 +29,9 @@ export function isRetryableKnowledgeCreateError(error: unknown) {
   );
 }
 
+export const isRetryableKnowledgeMutationError =
+  isRetryableKnowledgeCreateError;
+
 export function isKnowledgeSubmissionKeyUniqueError(error: unknown) {
   if (code(error) !== "P2002") return false;
   const target = metadata(error)?.target;

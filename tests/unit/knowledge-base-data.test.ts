@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   getKnowledgeCreatePageDataWithClient,
   getKnowledgeDetailWithClient,
+  getKnowledgeEditPageDataWithClient,
   knowledgeDetailIsCoherent,
   mapKnowledgeDetail,
 } from "@/features/knowledge-base/data-internal";
@@ -11,7 +12,7 @@ function record(overrides: Record<string, unknown> = {}) {
   const revision = {
     id: "revision-1", knowledgeRecordId: "record-1", revisionNumber: 1,
     origin: "INITIAL", contentKind: "FIELD_NOTE", trust: "UNVERIFIED",
-    title: "Observation", bodyMarkdown: "## Symptom\n\nInspect the alarm.", safetyCaution: null,
+    title: "Observation", normalizedTitle: "observation", bodyMarkdown: "## Symptom\n\nInspect the alarm.", safetyCaution: null,
     contextKind: "GENERAL", mineId: null, equipmentId: null,
     equipmentDisplayNameSnapshot: null, equipmentNumberSnapshot: null,
     equipmentCategorySnapshot: null, mineNameSnapshot: null, cityNameSnapshot: null,
@@ -36,18 +37,55 @@ describe("Knowledge Base create options and current detail query", () => {
     expect(view).toMatchObject({ id: "record-1", title: "Observation", trustLabel: "Unverified", lifecycleLabel: "Active" });
     expect(view).not.toHaveProperty("currentRevisionId");
     expect(view).not.toHaveProperty("createSubmissionKey");
-    expect(JSON.stringify(view)).not.toContain("revision-1");
+    expect(view.mutationTokens).toEqual({
+      expectedStateVersion: 1,
+      expectedCurrentRevisionId: "revision-1",
+    });
+  });
+
+  it("supports a coherent Personally Reviewed current revision without edit tokens", () => {
+    const loaded: any = record({ stateVersion: 2 });
+    loaded.currentRevision.trust = "PERSONALLY_REVIEWED";
+    loaded.currentRevision.reviewedAt = new Date("2026-08-01T13:00:00Z");
+    loaded.revisions[0].trust = "PERSONALLY_REVIEWED";
+    const view = mapKnowledgeDetail(loaded);
+    expect(view).toMatchObject({
+      trust: "PERSONALLY_REVIEWED",
+      trustLabel: "Personally Reviewed",
+      reviewedAt: "2026-08-01T13:00:00.000Z",
+      mutationTokens: null,
+    });
   });
 
   it.each([
     ["null pointer", { currentRevisionId: null }],
     ["pointer mismatch", { currentRevisionId: "decoy" }],
     ["higher decoy", { revisions: [{ id: "revision-1", revisionNumber: 1, trust: "UNVERIFIED" }, { id: "revision-2", revisionNumber: 2, trust: "UNVERIFIED" }] }],
-    ["archived root", { lifecycle: "ARCHIVED", archivedAt: new Date() }],
   ])("rejects %s rather than inferring authority", (_name, override) => {
     const loaded = record(override);
     expect(knowledgeDetailIsCoherent(loaded)).toBe(false);
     expect(() => mapKnowledgeDetail(loaded)).toThrowError(expect.objectContaining({ code: "PERSISTED_STATE_INTEGRITY_FAILURE" }));
+  });
+
+  it("keeps a coherent Archived record readable but exposes no mutation tokens", () => {
+    const view = mapKnowledgeDetail(record({
+      lifecycle: "ARCHIVED",
+      archivedAt: new Date("2026-08-01T14:00:00Z"),
+      stateVersion: 2,
+    }));
+    expect(view).toMatchObject({ lifecycleLabel: "Archived", mutationTokens: null });
+  });
+
+  it("keeps an exhausted state version readable without exposing an unsafe mutation token", async () => {
+    const loaded: any = record({ stateVersion: 2_147_483_647 });
+    expect(mapKnowledgeDetail(loaded).mutationTokens).toBeNull();
+    const client: any = {
+      knowledgeRecord: { findUnique: vi.fn().mockResolvedValue(loaded) },
+    };
+    await expect(getKnowledgeEditPageDataWithClient(
+      client,
+      "2c04dfeb-5fc2-46e5-b476-7e871851b87f",
+    )).rejects.toMatchObject({ code: "PERSISTED_STATE_INTEGRITY_FAILURE" });
   });
 
   it("fails safely for incoherent context or external-reference sequence", () => {
@@ -77,5 +115,41 @@ describe("Knowledge Base create options and current detail query", () => {
     expect(options.equipment[0]?.label).toBe("Dragline #133 — North");
     expect(client.mine.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { status: "ACTIVE" } }));
     expect(client.equipment.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { status: "ACTIVE" } }));
+  });
+
+  it("prepares editable values and concurrency tokens from explicit current authority", async () => {
+    const loaded: any = record({ stateVersion: 4 });
+    const client: any = {
+      knowledgeRecord: { findUnique: vi.fn().mockResolvedValue(loaded) },
+      mine: { findMany: vi.fn().mockResolvedValue([]) },
+      equipment: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const page = await getKnowledgeEditPageDataWithClient(
+      client,
+      "2c04dfeb-5fc2-46e5-b476-7e871851b87f",
+    );
+    expect(page).toMatchObject({
+      contentKindLabel: "Field Note",
+      initialState: {
+        values: {
+          expectedStateVersion: "4",
+          expectedCurrentRevisionId: "revision-1",
+          title: "Observation",
+        },
+      },
+    });
+    expect(JSON.stringify(page)).not.toContain("createSubmission");
+  });
+
+  it("rejects reviewed edit preparation while current detail remains readable", async () => {
+    const loaded: any = record({ stateVersion: 2 });
+    loaded.currentRevision.trust = "PERSONALLY_REVIEWED";
+    loaded.currentRevision.reviewedAt = new Date();
+    loaded.revisions[0].trust = "PERSONALLY_REVIEWED";
+    const client: any = { knowledgeRecord: { findUnique: vi.fn().mockResolvedValue(loaded) } };
+    await expect(getKnowledgeEditPageDataWithClient(
+      client,
+      "2c04dfeb-5fc2-46e5-b476-7e871851b87f",
+    )).rejects.toMatchObject({ code: "RECORD_NOT_EDITABLE" });
   });
 });

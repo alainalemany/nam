@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import {
   getKnowledgeCreatePageDataWithClient,
   getKnowledgeDetailWithClient,
+  getKnowledgeEditPageDataWithClient,
 } from "./data-internal";
 
 export async function getKnowledgeCreatePageData() {
@@ -15,4 +16,8 @@ export async function getKnowledgeCreatePageData() {
 
 export function getKnowledgeDetail(id: unknown) {
   return getKnowledgeDetailWithClient(prisma, id);
+}
+
+export function getKnowledgeEditPageData(id: unknown) {
+  return getKnowledgeEditPageDataWithClient(prisma, id);
 }

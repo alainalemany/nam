@@ -7,6 +7,7 @@ import {
   knowledgeMaximumExternalReferenceLabelLength,
   knowledgeMaximumExternalReferences,
   knowledgeMaximumIdentifierLength,
+  knowledgeMaximumMutableStateVersion,
   knowledgeMaximumTitleLength,
 } from "./constants";
 import { KnowledgeBaseError } from "./errors";
@@ -21,7 +22,10 @@ import {
 import type {
   KnowledgeCreateFormValues,
   KnowledgeCreateInput,
+  KnowledgeEditFormValues,
+  KnowledgeEditInput,
   KnowledgeExternalReferenceInput,
+  KnowledgeReviewInput,
 } from "./types";
 
 const permittedCreateFields = new Set([
@@ -34,6 +38,24 @@ const permittedCreateFields = new Set([
   "mineId",
   "equipmentId",
   "externalReferencesPayload",
+]);
+
+const permittedEditFields = new Set([
+  "expectedStateVersion",
+  "expectedCurrentRevisionId",
+  "title",
+  "bodyMarkdown",
+  "safetyCaution",
+  "contextKind",
+  "mineId",
+  "equipmentId",
+  "externalReferencesPayload",
+]);
+
+const permittedReviewFields = new Set([
+  "expectedStateVersion",
+  "expectedCurrentRevisionId",
+  "personalReviewConfirmed",
 ]);
 
 const rawCreateSchema = z
@@ -67,21 +89,21 @@ function invalid(
   );
 }
 
-function formValue(formData: FormData, field: string) {
+export function knowledgeFormValue(formData: FormData, field: string) {
   const values = formData.getAll(field);
   return values.length === 1 && typeof values[0] === "string" ? values[0] : "";
 }
 
-function assertStrictFields(formData: FormData) {
+function assertStrictFields(formData: FormData, permittedFields = permittedCreateFields) {
   const counts = new Map<string, number>();
   for (const key of formData.keys()) {
     if (key.startsWith("$ACTION_")) continue;
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   if (
-    counts.size !== permittedCreateFields.size ||
+    counts.size !== permittedFields.size ||
     [...counts].some(
-      ([key, count]) => !permittedCreateFields.has(key) || count !== 1,
+      ([key, count]) => !permittedFields.has(key) || count !== 1,
     )
   ) {
     invalid("The submitted form contained unexpected or repeated fields.");
@@ -92,14 +114,14 @@ export function knowledgeCreateFormValues(
   formData: FormData,
 ): KnowledgeCreateFormValues {
   return {
-    submissionKey: formValue(formData, "submissionKey"),
-    contentKind: formValue(formData, "contentKind"),
-    title: formValue(formData, "title"),
-    bodyMarkdown: formValue(formData, "bodyMarkdown"),
-    safetyCaution: formValue(formData, "safetyCaution"),
-    contextKind: formValue(formData, "contextKind"),
-    mineId: formValue(formData, "mineId"),
-    equipmentId: formValue(formData, "equipmentId"),
+    submissionKey: knowledgeFormValue(formData, "submissionKey"),
+    contentKind: knowledgeFormValue(formData, "contentKind"),
+    title: knowledgeFormValue(formData, "title"),
+    bodyMarkdown: knowledgeFormValue(formData, "bodyMarkdown"),
+    safetyCaution: knowledgeFormValue(formData, "safetyCaution"),
+    contextKind: knowledgeFormValue(formData, "contextKind"),
+    mineId: knowledgeFormValue(formData, "mineId"),
+    equipmentId: knowledgeFormValue(formData, "equipmentId"),
   };
 }
 
@@ -131,7 +153,7 @@ export function parseKnowledgeExternalReferencesPayload(
 export function recoverKnowledgeExternalReferences(formData: FormData) {
   try {
     return parseKnowledgeExternalReferencesPayload(
-      formValue(formData, "externalReferencesPayload"),
+      knowledgeFormValue(formData, "externalReferencesPayload"),
     );
   } catch {
     return [];
@@ -147,7 +169,7 @@ function normalizeOptionalId(value: string | null | undefined) {
   return normalized;
 }
 
-function normalizeExternalReferences(
+export function normalizeKnowledgeExternalReferences(
   references: readonly KnowledgeExternalReferenceInput[],
 ) {
   const normalized = references.map((reference, index) => {
@@ -230,7 +252,7 @@ export function parseKnowledgeCreateInput(input: unknown): KnowledgeCreateInput 
     contextKind: parsed.data.contextKind,
     mineId,
     equipmentId,
-    externalReferences: normalizeExternalReferences(
+    externalReferences: normalizeKnowledgeExternalReferences(
       parsed.data.externalReferences,
     ),
   };
@@ -240,7 +262,7 @@ export function parseKnowledgeCreateFormData(formData: FormData) {
   assertStrictFields(formData);
   const values = knowledgeCreateFormValues(formData);
   const externalReferences = parseKnowledgeExternalReferencesPayload(
-    formValue(formData, "externalReferencesPayload"),
+    knowledgeFormValue(formData, "externalReferencesPayload"),
   );
   const input = parseKnowledgeCreateInput({
     submissionKey: values.submissionKey,
@@ -254,4 +276,198 @@ export function parseKnowledgeCreateFormData(formData: FormData) {
     externalReferences,
   });
   return { input, values, externalReferences };
+}
+
+function parseExpectedStateVersion(value: unknown) {
+  if (typeof value !== "string" || !/^[1-9][0-9]*$/u.test(value)) {
+    invalid("The expected record version is invalid.", "expectedStateVersion");
+  }
+  const parsed = Number(value);
+  if (
+    !Number.isSafeInteger(parsed) ||
+    parsed < 1 ||
+    parsed > knowledgeMaximumMutableStateVersion
+  ) {
+    invalid("The expected record version is invalid.", "expectedStateVersion");
+  }
+  return parsed;
+}
+
+function parseExpectedCurrentRevisionId(value: unknown) {
+  const parsed = z.string().uuid().safeParse(value);
+  if (!parsed.success || /[\u0000-\u001f\u007f]/u.test(parsed.data)) {
+    invalid(
+      "The expected current revision is invalid.",
+      "expectedCurrentRevisionId",
+    );
+  }
+  return parsed.data.toLowerCase();
+}
+
+function parseEditableMaterial(input: {
+  title: string;
+  bodyMarkdown: string;
+  safetyCaution?: string | null;
+  contextKind: (typeof knowledgeContextKinds)[number];
+  mineId?: string | null;
+  equipmentId?: string | null;
+  externalReferences: readonly KnowledgeExternalReferenceInput[];
+}, allowSnapshotOnlyContext = false) {
+  const title = normalizeSingleLineText(input.title);
+  const normalizedTitle = normalizeTitleKey(title);
+  if (
+    title.length === 0 ||
+    codePointLength(title) > knowledgeMaximumTitleLength ||
+    codePointLength(normalizedTitle) > knowledgeMaximumTitleLength
+  ) {
+    invalid("Title is required and must be 160 characters or fewer.", "title");
+  }
+  const bodyMarkdown = parseKnowledgeMarkdown(input.bodyMarkdown).source;
+  const cautionInput = input.safetyCaution ?? "";
+  const safetyCaution = normalizePlainText(cautionInput);
+  if (
+    safetyCaution.length > 0 &&
+    codePointLength(safetyCaution) > knowledgeMaximumCautionLength
+  ) {
+    invalid("Safety caution must be 2000 characters or fewer.", "safetyCaution");
+  }
+  if (cautionInput.length > 0 && safetyCaution.length === 0) {
+    invalid(
+      "Remove the empty safety caution or enter meaningful text.",
+      "safetyCaution",
+    );
+  }
+  const mineId = normalizeOptionalId(input.mineId);
+  const equipmentId = normalizeOptionalId(input.equipmentId);
+  if (
+    (input.contextKind === "GENERAL" && (mineId || equipmentId)) ||
+    (input.contextKind === "MINE" &&
+      (equipmentId || (!mineId && !allowSnapshotOnlyContext))) ||
+    (input.contextKind === "EQUIPMENT" &&
+      (mineId || (!equipmentId && !allowSnapshotOnlyContext)))
+  ) {
+    throw new KnowledgeBaseError(
+      "INVALID_CONTEXT",
+      "Choose exactly one valid General, Mine, or Equipment context.",
+      "contextKind",
+    );
+  }
+  return {
+    title,
+    bodyMarkdown,
+    safetyCaution: safetyCaution || null,
+    contextKind: input.contextKind,
+    mineId,
+    equipmentId,
+    externalReferences: normalizeKnowledgeExternalReferences(
+      input.externalReferences,
+    ),
+  };
+}
+
+export function knowledgeEditFormValues(formData: FormData): KnowledgeEditFormValues {
+  return {
+    expectedStateVersion: knowledgeFormValue(formData, "expectedStateVersion"),
+    expectedCurrentRevisionId: knowledgeFormValue(
+      formData,
+      "expectedCurrentRevisionId",
+    ),
+    title: knowledgeFormValue(formData, "title"),
+    bodyMarkdown: knowledgeFormValue(formData, "bodyMarkdown"),
+    safetyCaution: knowledgeFormValue(formData, "safetyCaution"),
+    contextKind: knowledgeFormValue(formData, "contextKind"),
+    mineId: knowledgeFormValue(formData, "mineId"),
+    equipmentId: knowledgeFormValue(formData, "equipmentId"),
+  };
+}
+
+export function parseKnowledgeEditInput(input: unknown): KnowledgeEditInput {
+  const parsed = z
+    .object({
+      knowledgeRecordId: z.string().uuid(),
+      expectedStateVersion: z.union([z.string(), z.number()]),
+      expectedCurrentRevisionId: z.string(),
+      title: z.string(),
+      bodyMarkdown: z.string(),
+      safetyCaution: z.string().nullable().optional(),
+      contextKind: z.enum(knowledgeContextKinds),
+      mineId: z.string().nullable().optional(),
+      equipmentId: z.string().nullable().optional(),
+      externalReferences: z
+        .array(z.object({ label: z.string(), url: z.string() }).strict())
+        .max(knowledgeMaximumExternalReferences),
+    })
+    .strict()
+    .safeParse(input);
+  if (!parsed.success) invalid("The submitted Knowledge Record edit is invalid.");
+  const expectedStateVersion = parseExpectedStateVersion(
+    String(parsed.data.expectedStateVersion),
+  );
+  return {
+    knowledgeRecordId: parsed.data.knowledgeRecordId.toLowerCase(),
+    expectedStateVersion,
+    expectedCurrentRevisionId: parseExpectedCurrentRevisionId(
+      parsed.data.expectedCurrentRevisionId,
+    ),
+    ...parseEditableMaterial(parsed.data, true),
+  };
+}
+
+export function parseKnowledgeEditFormData(
+  knowledgeRecordId: string,
+  formData: FormData,
+) {
+  assertStrictFields(formData, permittedEditFields);
+  const values = knowledgeEditFormValues(formData);
+  const externalReferences = parseKnowledgeExternalReferencesPayload(
+    knowledgeFormValue(formData, "externalReferencesPayload"),
+  );
+  const input = parseKnowledgeEditInput({
+    knowledgeRecordId,
+    ...values,
+    externalReferences,
+  });
+  return { input, values, externalReferences };
+}
+
+export function parseKnowledgeReviewFormData(
+  knowledgeRecordId: string,
+  formData: FormData,
+): KnowledgeReviewInput {
+  assertStrictFields(formData, permittedReviewFields);
+  if (knowledgeFormValue(formData, "personalReviewConfirmed") !== "true") {
+    invalid(
+      "Confirm that you personally reviewed the current material.",
+      "personalReviewConfirmed",
+    );
+  }
+  return parseKnowledgeReviewInput({
+    knowledgeRecordId,
+    expectedStateVersion: knowledgeFormValue(formData, "expectedStateVersion"),
+    expectedCurrentRevisionId: knowledgeFormValue(
+      formData,
+      "expectedCurrentRevisionId",
+    ),
+  });
+}
+
+export function parseKnowledgeReviewInput(input: unknown): KnowledgeReviewInput {
+  const parsed = z
+    .object({
+      knowledgeRecordId: z.string().uuid(),
+      expectedStateVersion: z.union([z.string(), z.number()]),
+      expectedCurrentRevisionId: z.string(),
+    })
+    .strict()
+    .safeParse(input);
+  if (!parsed.success) invalid("The personal-review request is invalid.");
+  return {
+    knowledgeRecordId: parsed.data.knowledgeRecordId.toLowerCase(),
+    expectedStateVersion: parseExpectedStateVersion(
+      String(parsed.data.expectedStateVersion),
+    ),
+    expectedCurrentRevisionId: parseExpectedCurrentRevisionId(
+      parsed.data.expectedCurrentRevisionId,
+    ),
+  };
 }

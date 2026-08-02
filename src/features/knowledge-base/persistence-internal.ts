@@ -79,9 +79,9 @@ function optionalSnapshot(value: string | null) {
   return normalized.length > 0 ? normalized : null;
 }
 
-async function resolveContext(
+export async function resolveKnowledgeContext(
   transaction: KnowledgeCreateTransaction,
-  input: KnowledgeCreateInput,
+  input: Pick<KnowledgeCreateInput, "contextKind" | "mineId" | "equipmentId">,
 ): Promise<KnowledgeContextSnapshot> {
   if (input.contextKind === "GENERAL") return { kind: "GENERAL" };
 
@@ -214,12 +214,23 @@ async function reconcileSubmission(
   return { knowledgeRecordId: existing.id, duplicate: true };
 }
 
-function revisionContextData(context: KnowledgeContextSnapshot) {
+export function knowledgeRevisionContextData(context: KnowledgeContextSnapshot) {
+  const cleared = {
+    mineId: null,
+    equipmentId: null,
+    equipmentDisplayNameSnapshot: null,
+    equipmentNumberSnapshot: null,
+    equipmentCategorySnapshot: null,
+    mineNameSnapshot: null,
+    cityNameSnapshot: null,
+    cityStateSnapshot: null,
+  };
   if (context.kind === "GENERAL") {
-    return { contextKind: "GENERAL" as const };
+    return { ...cleared, contextKind: "GENERAL" as const };
   }
   if (context.kind === "MINE") {
     return {
+      ...cleared,
       contextKind: "MINE" as const,
       mineId: context.mineId,
       mineNameSnapshot: context.mineName,
@@ -228,6 +239,7 @@ function revisionContextData(context: KnowledgeContextSnapshot) {
     };
   }
   return {
+    ...cleared,
     contextKind: "EQUIPMENT" as const,
     mineId: context.mineId,
     equipmentId: context.equipmentId,
@@ -248,7 +260,7 @@ async function createAttempt(
 ): Promise<KnowledgeCreateResult> {
   const result = await client.$transaction(
     async (transaction) => {
-      const context = await resolveContext(transaction, input);
+      const context = await resolveKnowledgeContext(transaction, input);
       await hooks.afterContextResolved?.(transaction, context);
       const fingerprint = fingerprintKnowledgeCreatePayload(input, context);
       captureFingerprint(fingerprint);
@@ -283,7 +295,7 @@ async function createAttempt(
           normalizedTitle: normalizeTitleKey(input.title),
           bodyMarkdown: input.bodyMarkdown,
           safetyCaution: input.safetyCaution,
-          ...revisionContextData(context),
+          ...knowledgeRevisionContextData(context),
           changeSummary: null,
           reviewedAt: null,
         },

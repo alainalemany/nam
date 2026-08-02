@@ -1,13 +1,27 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { z } from "zod";
 
-import { knowledgeContentKindLabels, knowledgeCreateOptionLimit } from "./constants";
-import { knowledgeIntegrityError } from "./errors";
+import {
+  knowledgeContentKindLabels,
+  knowledgeCreateOptionLimit,
+  knowledgeMaximumCautionLength,
+  knowledgeMaximumMutableStateVersion,
+  knowledgeMaximumTitleLength,
+} from "./constants";
+import {
+  knowledgeIntegrityError,
+  knowledgeNotEditableError,
+} from "./errors";
 import { parseKnowledgeMarkdown } from "./markdown";
-import { normalizeHttpsUrl } from "./normalization";
+import {
+  codePointLength,
+  normalizeHttpsUrl,
+  normalizeTitleKey,
+} from "./normalization";
 import type {
   KnowledgeCreatePageData,
   KnowledgeDetailView,
+  KnowledgeEditPageData,
 } from "./types";
 
 type KnowledgeDataClient = PrismaClient | Prisma.TransactionClient;
@@ -29,6 +43,7 @@ const detailSelect = {
       contentKind: true,
       trust: true,
       title: true,
+      normalizedTitle: true,
       bodyMarkdown: true,
       safetyCaution: true,
       contextKind: true,
@@ -111,19 +126,29 @@ export function knowledgeDetailIsCoherent(record: LoadedKnowledgeDetail) {
     !revision ||
     revision.id !== record.currentRevisionId ||
     revision.knowledgeRecordId !== record.id ||
-    record.lifecycle !== "ACTIVE" ||
-    record.archivedAt !== null ||
-    record.stateVersion !== 1 ||
+    !(
+      (record.lifecycle === "ACTIVE" && record.archivedAt === null) ||
+      (record.lifecycle === "ARCHIVED" && record.archivedAt !== null)
+    ) ||
+    !Number.isSafeInteger(record.stateVersion) ||
+    record.stateVersion < 1 ||
     revision.revisionNumber !== 1 ||
     revision.origin !== "INITIAL" ||
-    revision.trust !== "UNVERIFIED" ||
-    revision.reviewedAt !== null ||
+    !(
+      (revision.trust === "UNVERIFIED" && revision.reviewedAt === null) ||
+      (revision.trust === "PERSONALLY_REVIEWED" && revision.reviewedAt !== null)
+    ) ||
     revision.changeSummary !== null ||
     record.revisions.length !== 1 ||
     record.revisions[0]?.id !== revision.id ||
     record.revisions[0]?.revisionNumber !== 1 ||
-    record.revisions[0]?.trust !== "UNVERIFIED" ||
+    record.revisions[0]?.trust !== revision.trust ||
     revision.title.trim().length === 0 ||
+    codePointLength(revision.title) > knowledgeMaximumTitleLength ||
+    revision.normalizedTitle !== normalizeTitleKey(revision.title) ||
+    (revision.safetyCaution !== null &&
+      (revision.safetyCaution.trim().length === 0 ||
+        codePointLength(revision.safetyCaution) > knowledgeMaximumCautionLength)) ||
     !contextIsCoherent(revision)
   ) {
     return false;
@@ -189,8 +214,10 @@ export function mapKnowledgeDetail(record: LoadedKnowledgeDetail): KnowledgeDeta
     safetyCaution: revision.safetyCaution,
     contentKind: revision.contentKind,
     contentKindLabel: knowledgeContentKindLabels[revision.contentKind],
-    trustLabel: "Unverified",
-    lifecycleLabel: "Active",
+    trust: revision.trust,
+    trustLabel:
+      revision.trust === "UNVERIFIED" ? "Unverified" : "Personally Reviewed",
+    lifecycleLabel: record.lifecycle === "ACTIVE" ? "Active" : "Archived",
     context: contextView(revision),
     externalReferences: revision.externalReferences.map((reference) => ({
       sequence: reference.sequence,
@@ -199,6 +226,16 @@ export function mapKnowledgeDetail(record: LoadedKnowledgeDetail): KnowledgeDeta
     })),
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
+    reviewedAt: revision.reviewedAt?.toISOString() ?? null,
+    mutationTokens:
+      record.lifecycle === "ACTIVE" &&
+      revision.trust === "UNVERIFIED" &&
+      record.stateVersion <= knowledgeMaximumMutableStateVersion
+        ? {
+            expectedStateVersion: record.stateVersion,
+            expectedCurrentRevisionId: revision.id,
+          }
+        : null,
   };
 }
 
@@ -247,6 +284,86 @@ export async function getKnowledgeCreatePageDataWithClient(
       label: `${item.displayName}${item.equipmentNumber ? ` #${item.equipmentNumber}` : ""} — ${item.mine.name}`,
     })),
     loadError: null,
+  };
+}
+
+export async function getKnowledgeEditPageDataWithClient(
+  client: KnowledgeDataClient,
+  idInput: unknown,
+): Promise<KnowledgeEditPageData | null> {
+  const id = z.string().uuid().safeParse(idInput);
+  if (!id.success) return null;
+  const record = await client.knowledgeRecord.findUnique({
+    where: { id: id.data },
+    select: detailSelect,
+  });
+  if (!record) return null;
+  if (!knowledgeDetailIsCoherent(record) || !record.currentRevision) {
+    throw knowledgeIntegrityError();
+  }
+  if (record.lifecycle !== "ACTIVE") {
+    throw knowledgeNotEditableError();
+  }
+  if (record.currentRevision.trust !== "UNVERIFIED") {
+    throw knowledgeNotEditableError();
+  }
+  if (record.stateVersion > knowledgeMaximumMutableStateVersion) {
+    throw knowledgeIntegrityError();
+  }
+  const options = await getKnowledgeCreatePageDataWithClient(client);
+  const revision = record.currentRevision;
+  const mines = [...options.mines];
+  if (
+    revision.contextKind === "MINE" &&
+    revision.mineId &&
+    !mines.some((option) => option.id === revision.mineId)
+  ) {
+    mines.push({
+      id: revision.mineId,
+      label: `${revision.mineNameSnapshot} — retained current context`,
+    });
+  }
+  const equipment = [...options.equipment];
+  if (
+    revision.contextKind === "EQUIPMENT" &&
+    revision.equipmentId &&
+    !equipment.some((option) => option.id === revision.equipmentId)
+  ) {
+    const label = revision.equipmentNumberSnapshot
+      ? `${revision.equipmentDisplayNameSnapshot} #${revision.equipmentNumberSnapshot}`
+      : revision.equipmentDisplayNameSnapshot;
+    equipment.push({
+      id: revision.equipmentId,
+      label: `${label} — retained current context`,
+    });
+  }
+  return {
+    id: record.id,
+    contentKind: revision.contentKind,
+    contentKindLabel: knowledgeContentKindLabels[revision.contentKind],
+    initialState: {
+      status: "idle",
+      message: "",
+      requiresReload: false,
+      fieldErrors: {},
+      values: {
+        expectedStateVersion: String(record.stateVersion),
+        expectedCurrentRevisionId: revision.id,
+        title: revision.title,
+        bodyMarkdown: revision.bodyMarkdown,
+        safetyCaution: revision.safetyCaution ?? "",
+        contextKind: revision.contextKind,
+        mineId: revision.mineId ?? "",
+        equipmentId: revision.equipmentId ?? "",
+      },
+      externalReferences: revision.externalReferences.map((reference) => ({
+        label: reference.label,
+        url: reference.url,
+      })),
+    },
+    mines,
+    equipment,
+    loadError: options.loadError,
   };
 }
 
