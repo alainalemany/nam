@@ -20,6 +20,7 @@ function dateTime(value: string) {
 }
 
 export function KnowledgeRecordDetail({ detail }: { detail: KnowledgeDetailView }) {
+  const relationships = detail.relationships ?? { sourceDailyLog: null, relatedDefect: null };
   return (
     <main className="page-stack knowledge-detail">
       <section className="page-header">
@@ -50,6 +51,25 @@ export function KnowledgeRecordDetail({ detail }: { detail: KnowledgeDetailView 
         <p>{detail.context.label}</p>
         {detail.context.kind === "MINE" && !detail.context.mineAvailable ? <p>Live Mine record unavailable; retained display context shown.</p> : null}
         {detail.context.kind === "EQUIPMENT" && !detail.context.equipmentAvailable ? <p>Live Equipment record unavailable; retained display context shown.</p> : null}
+      </section>
+
+      <section aria-labelledby="knowledge-relationships-heading" className="panel knowledge-relationships">
+        <h2 id="knowledge-relationships-heading">Provenance relationships</h2>
+        <dl>
+          <dt>Source Daily Log</dt>
+          <dd>{relationships.sourceDailyLog ? (
+            relationships.sourceDailyLog.available && relationships.sourceDailyLog.href
+              ? <Link href={relationships.sourceDailyLog.href}>{relationships.sourceDailyLog.date} · {relationships.sourceDailyLog.shift}</Link>
+              : <>{relationships.sourceDailyLog.date} · {relationships.sourceDailyLog.shift} — Daily Log unavailable (retained snapshot)</>
+          ) : "None"}</dd>
+          <dt>Related Defect</dt>
+          <dd>{relationships.relatedDefect ? (
+            relationships.relatedDefect.available && relationships.relatedDefect.href
+              ? <Link href={relationships.relatedDefect.href}>{relationships.relatedDefect.title} · reported {relationships.relatedDefect.reportedDate}</Link>
+              : <>{relationships.relatedDefect.title} · reported {relationships.relatedDefect.reportedDate} — Defect unavailable (retained snapshot)</>
+          ) : "None"}</dd>
+        </dl>
+        <p className="field-help">Linked for navigation and provenance only; linking does not modify either owner record.</p>
       </section>
 
       {detail.safetyCaution ? (

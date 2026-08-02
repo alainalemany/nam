@@ -23,6 +23,10 @@ function editForm() {
   data.set("contextKind", "GENERAL");
   data.set("mineId", "");
   data.set("equipmentId", "");
+  data.set("sourceDailyLogId", "");
+  data.set("relatedDefectId", "");
+  data.set("retainUnavailableSourceDailyLog", "false");
+  data.set("retainUnavailableRelatedDefect", "false");
   data.set(
     "externalReferencesPayload",
     JSON.stringify([{ label: "Manual", url: "https://example.com/manual" }]),

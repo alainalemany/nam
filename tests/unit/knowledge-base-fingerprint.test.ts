@@ -18,6 +18,8 @@ const input: KnowledgeCreateInput = {
   contextKind: "MINE",
   mineId: "mine-1",
   equipmentId: null,
+  sourceDailyLogId: null,
+  relatedDefectId: null,
   externalReferences: [
     { label: "Manual", url: "https://example.com/manual" },
     { label: "Policy", url: "https://example.com/policy" },
@@ -36,7 +38,7 @@ describe("Knowledge Base canonical create fingerprint", () => {
     const payload = canonicalKnowledgeCreatePayload(input, context);
     const serialized = serializeCanonicalKnowledgeCreatePayload(payload);
     expect(serialized).toBe(JSON.stringify(payload));
-    expect(serialized).toContain('"formatVersion":"nam.knowledge-base.create.v1"');
+    expect(serialized).toContain('"formatVersion":"nam.knowledge-base.create.v2"');
     expect(fingerprintKnowledgeCreatePayload(input, context)).toMatch(/^[0-9a-f]{64}$/u);
     expect(fingerprintKnowledgeCreatePayload(input, context)).toBe(
       fingerprintKnowledgeCreatePayload({ ...input }, { ...context }),
@@ -59,5 +61,23 @@ describe("Knowledge Base canonical create fingerprint", () => {
     expect(fingerprintKnowledgeCreatePayload(input, context)).not.toBe(
       fingerprintKnowledgeCreatePayload({ ...input, safetyCaution: "" }, context),
     );
+  });
+
+  it("fingerprints selected relationship identity without mutable owner snapshots", () => {
+    const selected = {
+      ...input,
+      sourceDailyLogId: "daily-log-stable-id",
+      relatedDefectId: "defect-stable-id",
+    };
+    const baseline = fingerprintKnowledgeCreatePayload(selected, context);
+    expect(baseline).not.toBe(fingerprintKnowledgeCreatePayload(input, context));
+    expect(fingerprintKnowledgeCreatePayload({
+      ...selected,
+      relatedDefectId: "different-defect-id",
+    }, context)).not.toBe(baseline);
+    expect(canonicalKnowledgeCreatePayload(selected, context).relationships).toEqual({
+      sourceDailyLogId: "daily-log-stable-id",
+      relatedDefectId: "defect-stable-id",
+    });
   });
 });

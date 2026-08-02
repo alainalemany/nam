@@ -19,12 +19,14 @@ afterEach(cleanup);
 
 const initial: KnowledgeCreateActionState = {
   status: "idle", message: "", fieldErrors: {},
-  values: { submissionKey: "517ad4fa-91ee-438d-9c0e-eaf42886a850", contentKind: "FIELD_NOTE", title: "", bodyMarkdown: "", safetyCaution: "", contextKind: "GENERAL", mineId: "", equipmentId: "" },
+  values: { submissionKey: "517ad4fa-91ee-438d-9c0e-eaf42886a850", contentKind: "FIELD_NOTE", title: "", bodyMarkdown: "", safetyCaution: "", contextKind: "GENERAL", mineId: "", equipmentId: "", sourceDailyLogId: "", relatedDefectId: "" },
   externalReferences: [],
 };
 const pageData = {
   mines: [{ id: "mine-1", label: "North Mine — Gillette, WY" }],
   equipment: [{ id: "equipment-1", label: "Dragline 133 — North Mine" }],
+  dailyLogs: [{ id: "daily-log-1", label: "Aug 1, 2026 — Night" }],
+  defects: [{ id: "defect-1", label: "Swing alarm — reported Jul 31, 2026" }],
   loadError: null,
 };
 
@@ -41,6 +43,9 @@ describe("Knowledge Base create and detail components", () => {
     expect(screen.queryByLabelText(/photo|camera/i)).toBeNull();
     expect(screen.getByLabelText("Title")).not.toHaveAttribute("maxlength");
     expect(screen.getByLabelText("Body (restricted Markdown)")).not.toHaveAttribute("maxlength");
+    expect(screen.getByLabelText("Source Daily Log (optional)")).toHaveTextContent("Aug 1, 2026 — Night");
+    expect(screen.getByLabelText("Related Defect (optional)")).toHaveTextContent("Swing alarm");
+    expect(screen.getByText(/does not modify either record/i)).toBeInTheDocument();
   });
 
   it("associates field errors and moves focus to the error summary", () => {
@@ -83,7 +88,7 @@ describe("Knowledge Base create and detail components", () => {
 
   it("renders current General detail with safe Markdown and authority text", () => {
     const detail: KnowledgeDetailView = {
-      id: "record-1", title: "Startup reminder", bodyMarkdown: "## Steps\n\nRead the [manual](https://example.com/manual).", safetyCaution: "Verify isolation.", contentKind: "PROCEDURE", contentKindLabel: "Procedure", trust: "UNVERIFIED", trustLabel: "Unverified", lifecycle: "ACTIVE", lifecycleLabel: "Active", archivedAt: null, context: { kind: "GENERAL", label: "General" }, externalReferences: [{ sequence: 1, label: "Official manual", url: "https://example.com/manual" }], createdAt: "2026-08-01T12:00:00.000Z", updatedAt: "2026-08-01T12:00:00.000Z", reviewedAt: null, revisionNumber: 1, historyHref: "/knowledge-base/record-1/history", mutationTokens: null, lifecycleControls: { lifecycle: "ACTIVE", trust: "UNVERIFIED", archivedAt: null, tokens: { expectedStateVersion: 1, expectedCurrentRevisionId: "11111111-1111-4111-8111-111111111111" }, canArchive: true, canRestore: false, canDelete: true, deleteConfirmationTitle: "Startup reminder" },
+      id: "record-1", title: "Startup reminder", bodyMarkdown: "## Steps\n\nRead the [manual](https://example.com/manual).", safetyCaution: "Verify isolation.", contentKind: "PROCEDURE", contentKindLabel: "Procedure", trust: "UNVERIFIED", trustLabel: "Unverified", lifecycle: "ACTIVE", lifecycleLabel: "Active", archivedAt: null, context: { kind: "GENERAL", label: "General" }, relationships: { sourceDailyLog: { date: "2026-08-01", shift: "NIGHT", available: true, href: "/daily-logs/daily-log-1" }, relatedDefect: { title: "Swing alarm", reportedDate: "2026-07-31", available: false, href: null } }, externalReferences: [{ sequence: 1, label: "Official manual", url: "https://example.com/manual" }], createdAt: "2026-08-01T12:00:00.000Z", updatedAt: "2026-08-01T12:00:00.000Z", reviewedAt: null, revisionNumber: 1, historyHref: "/knowledge-base/record-1/history", mutationTokens: null, lifecycleControls: { lifecycle: "ACTIVE", trust: "UNVERIFIED", archivedAt: null, tokens: { expectedStateVersion: 1, expectedCurrentRevisionId: "11111111-1111-4111-8111-111111111111" }, canArchive: true, canRestore: false, canDelete: true, deleteConfirmationTitle: "Startup reminder" },
     };
     render(<KnowledgeRecordDetail detail={detail} />);
     expect(screen.getByRole("heading", { name: "Startup reminder" })).toBeInTheDocument();
@@ -91,6 +96,8 @@ describe("Knowledge Base create and detail components", () => {
     expect(screen.getByText(knowledgeDisclaimer)).toBeInTheDocument();
     expect(screen.getByText("Verify isolation.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Official manual" })).toHaveAttribute("href", "https://example.com/manual");
+    expect(screen.getByRole("link", { name: "2026-08-01 · NIGHT" })).toHaveAttribute("href", "/daily-logs/daily-log-1");
+    expect(screen.getByText(/Defect unavailable \(retained snapshot\)/i)).toBeInTheDocument();
     expect(screen.queryByText(/approved|certified|verified by management|corporate reviewed/i)).toBeNull();
     expect(document.body.innerHTML).not.toContain("submissionKey");
     expect(document.body.innerHTML).not.toContain("currentRevisionId");

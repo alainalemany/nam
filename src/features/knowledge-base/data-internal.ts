@@ -23,6 +23,7 @@ import {
   normalizeSingleLineText,
   normalizeTitleKey,
 } from "./normalization";
+import { knowledgeRelationshipDataIsCoherent } from "./relationship-persistence-internal";
 import type {
   KnowledgeCreatePageData,
   KnowledgeDetailView,
@@ -60,6 +61,12 @@ const detailSelect = {
       mineNameSnapshot: true,
       cityNameSnapshot: true,
       cityStateSnapshot: true,
+      sourceDailyLogId: true,
+      sourceDailyLogDateSnapshot: true,
+      sourceDailyLogShiftSnapshot: true,
+      relatedDefectId: true,
+      relatedDefectTitleSnapshot: true,
+      relatedDefectReportedDateSnapshot: true,
       changeSummary: true,
       reviewedAt: true,
       createdAt: true,
@@ -180,6 +187,7 @@ export function knowledgeDetailIsCoherent(record: LoadedKnowledgeDetail) {
       (revision.safetyCaution.trim().length === 0 ||
         codePointLength(revision.safetyCaution) > knowledgeMaximumCautionLength)) ||
     !contextIsCoherent(revision)
+    || !knowledgeRelationshipDataIsCoherent(revision)
   ) {
     return false;
   }
@@ -237,6 +245,39 @@ export function knowledgeDetailIsCoherent(record: LoadedKnowledgeDetail) {
   });
 }
 
+function dateOnly(value: Date) {
+  return value.toISOString().slice(0, 10);
+}
+
+function relationshipView(
+  revision: NonNullable<LoadedKnowledgeDetail["currentRevision"]>,
+): KnowledgeDetailView["relationships"] {
+  return {
+    sourceDailyLog: revision.sourceDailyLogDateSnapshot &&
+      revision.sourceDailyLogShiftSnapshot
+      ? {
+          date: dateOnly(revision.sourceDailyLogDateSnapshot),
+          shift: revision.sourceDailyLogShiftSnapshot,
+          available: revision.sourceDailyLogId !== null,
+          href: revision.sourceDailyLogId
+            ? `/daily-logs/${encodeURIComponent(revision.sourceDailyLogId)}`
+            : null,
+        }
+      : null,
+    relatedDefect: revision.relatedDefectTitleSnapshot &&
+      revision.relatedDefectReportedDateSnapshot
+      ? {
+          title: revision.relatedDefectTitleSnapshot,
+          reportedDate: dateOnly(revision.relatedDefectReportedDateSnapshot),
+          available: revision.relatedDefectId !== null,
+          href: revision.relatedDefectId
+            ? `/defect-tracking/${encodeURIComponent(revision.relatedDefectId)}`
+            : null,
+        }
+      : null,
+  };
+}
+
 function contextView(
   revision: NonNullable<LoadedKnowledgeDetail["currentRevision"]>,
 ): KnowledgeDetailView["context"] {
@@ -282,6 +323,7 @@ export function mapKnowledgeDetail(record: LoadedKnowledgeDetail): KnowledgeDeta
     lifecycle: record.lifecycle,
     archivedAt: record.archivedAt?.toISOString() ?? null,
     context: contextView(revision),
+    relationships: relationshipView(revision),
     externalReferences: revision.externalReferences.map((reference) => ({
       sequence: reference.sequence,
       label: reference.label,
@@ -340,7 +382,7 @@ export async function getKnowledgeDetailWithClient(
 export async function getKnowledgeCreatePageDataWithClient(
   client: KnowledgeDataClient,
 ): Promise<KnowledgeCreatePageData> {
-  const [mines, equipment] = await Promise.all([
+  const [mines, equipment, dailyLogs, defects] = await Promise.all([
     client.mine.findMany({
       where: { status: "ACTIVE" },
       select: { id: true, name: true, city: { select: { name: true, state: true } } },
@@ -358,6 +400,16 @@ export async function getKnowledgeCreatePageDataWithClient(
       orderBy: [{ displayName: "asc" }, { id: "asc" }],
       take: knowledgeCreateOptionLimit,
     }),
+    client.dailyLog?.findMany({
+      select: { id: true, logDate: true, shift: true },
+      orderBy: [{ logDate: "desc" }, { shift: "asc" }, { id: "desc" }],
+      take: knowledgeCreateOptionLimit,
+    }) ?? Promise.resolve([]),
+    client.defect?.findMany({
+      select: { id: true, title: true, reportedDate: true },
+      orderBy: [{ reportedDate: "desc" }, { title: "asc" }, { id: "asc" }],
+      take: knowledgeCreateOptionLimit,
+    }) ?? Promise.resolve([]),
   ]);
   return {
     mines: mines.map((mine) => ({
@@ -367,6 +419,14 @@ export async function getKnowledgeCreatePageDataWithClient(
     equipment: equipment.map((item) => ({
       id: item.id,
       label: `${item.displayName}${item.equipmentNumber ? ` #${item.equipmentNumber}` : ""} — ${item.mine.name}`,
+    })),
+    dailyLogs: dailyLogs.map((dailyLog) => ({
+      id: dailyLog.id,
+      label: `${dateOnly(dailyLog.logDate)} — ${dailyLog.shift}`,
+    })),
+    defects: defects.map((defect) => ({
+      id: defect.id,
+      label: `${defect.title} — reported ${dateOnly(defect.reportedDate)}`,
     })),
     loadError: null,
   };
@@ -425,6 +485,30 @@ export async function getKnowledgeEditPageDataWithClient(
       label: `${label} — retained current context`,
     });
   }
+  const dailyLogs = [...(options.dailyLogs ?? [])];
+  if (
+    revision.sourceDailyLogId &&
+    revision.sourceDailyLogDateSnapshot &&
+    revision.sourceDailyLogShiftSnapshot &&
+    !dailyLogs.some((option) => option.id === revision.sourceDailyLogId)
+  ) {
+    dailyLogs.push({
+      id: revision.sourceDailyLogId,
+      label: `${dateOnly(revision.sourceDailyLogDateSnapshot)} — ${revision.sourceDailyLogShiftSnapshot} — current selection`,
+    });
+  }
+  const defects = [...(options.defects ?? [])];
+  if (
+    revision.relatedDefectId &&
+    revision.relatedDefectTitleSnapshot &&
+    revision.relatedDefectReportedDateSnapshot &&
+    !defects.some((option) => option.id === revision.relatedDefectId)
+  ) {
+    defects.push({
+      id: revision.relatedDefectId,
+      label: `${revision.relatedDefectTitleSnapshot} — reported ${dateOnly(revision.relatedDefectReportedDateSnapshot)} — current selection`,
+    });
+  }
   return {
     id: record.id,
     mode:
@@ -450,6 +534,16 @@ export async function getKnowledgeEditPageDataWithClient(
         contextKind: revision.contextKind,
         mineId: revision.mineId ?? "",
         equipmentId: revision.equipmentId ?? "",
+        sourceDailyLogId: revision.sourceDailyLogId ?? "",
+        relatedDefectId: revision.relatedDefectId ?? "",
+        retainUnavailableSourceDailyLog: String(
+          revision.sourceDailyLogId === null &&
+          revision.sourceDailyLogDateSnapshot !== null,
+        ),
+        retainUnavailableRelatedDefect: String(
+          revision.relatedDefectId === null &&
+          revision.relatedDefectTitleSnapshot !== null,
+        ),
       },
       externalReferences: revision.externalReferences.map((reference) => ({
         label: reference.label,
@@ -458,6 +552,18 @@ export async function getKnowledgeEditPageDataWithClient(
     },
     mines,
     equipment,
+    dailyLogs,
+    defects,
+    unavailableSourceDailyLogLabel:
+      revision.sourceDailyLogId === null && revision.sourceDailyLogDateSnapshot &&
+      revision.sourceDailyLogShiftSnapshot
+        ? `${dateOnly(revision.sourceDailyLogDateSnapshot)} — ${revision.sourceDailyLogShiftSnapshot}`
+        : null,
+    unavailableRelatedDefectLabel:
+      revision.relatedDefectId === null && revision.relatedDefectTitleSnapshot &&
+      revision.relatedDefectReportedDateSnapshot
+        ? `${revision.relatedDefectTitleSnapshot} — reported ${dateOnly(revision.relatedDefectReportedDateSnapshot)}`
+        : null,
     loadError: options.loadError,
   };
 }

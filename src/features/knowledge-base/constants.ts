@@ -28,7 +28,7 @@ export const knowledgeDisclaimer =
 export const knowledgeUnverifiedWarning =
   "Unverified field knowledge — do not treat as instruction; confirm before use.";
 
-export const knowledgeFingerprintDomain = "nam.knowledge-base.create.v1";
+export const knowledgeFingerprintDomain = "nam.knowledge-base.create.v2";
 export const knowledgeCreateMaximumAttempts = 3;
 export const knowledgeMaximumTitleLength = 160;
 export const knowledgeMaximumBodyLength = 50_000;
@@ -39,6 +39,7 @@ export const knowledgeMaximumExternalReferenceLabelLength = 120;
 export const knowledgeMaximumExternalReferenceUrlLength = 2_048;
 export const knowledgeMaximumIdentifierLength = 191;
 export const knowledgeCreateOptionLimit = 250;
+export const knowledgeMaximumDefectTitleSnapshotLength = 200;
 export const knowledgeMarkdownMaximumDepth = 32;
 export const knowledgeMarkdownMaximumNodes = 10_000;
 export const knowledgeListPageSize = 50;

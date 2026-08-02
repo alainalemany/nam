@@ -35,6 +35,12 @@ import {
 } from "./edit-review-persistence-internal";
 import { normalizeTitleKey } from "./normalization";
 import { isRetryableKnowledgeMutationError } from "./retry";
+import {
+  knowledgeRelationshipDataMatches,
+  retainedKnowledgeRelationshipData,
+  resolveKnowledgeEditRelationships,
+  type KnowledgeRelationshipData,
+} from "./relationship-persistence-internal";
 import type { KnowledgeEditInput, KnowledgeMutationResult } from "./types";
 import { parseKnowledgeEditInput } from "./validation";
 
@@ -99,6 +105,7 @@ function revisionSnapshot(revision: Revision) {
     bodyMarkdown: revision.bodyMarkdown,
     safetyCaution: revision.safetyCaution,
     context: retainedKnowledgeContextData(revision),
+    relationships: retainedKnowledgeRelationshipData(revision),
     changeSummary: revision.changeSummary,
     reviewedAt: revision.reviewedAt?.getTime() ?? null,
     createdAt: revision.createdAt.getTime(),
@@ -123,12 +130,18 @@ function referencesMatch(revision: Revision, input: KnowledgeEditInput) {
     });
 }
 
-function materialMatches(revision: Revision, input: KnowledgeEditInput, context: ContextData) {
+function materialMatches(
+  revision: Revision,
+  input: KnowledgeEditInput,
+  context: ContextData,
+  relationships: KnowledgeRelationshipData,
+) {
   return revision.contentKind === input.contentKind && revision.title === input.title &&
     revision.normalizedTitle === normalizeTitleKey(input.title) &&
     revision.bodyMarkdown === input.bodyMarkdown &&
     revision.safetyCaution === input.safetyCaution &&
-    knowledgeContextDataMatches(revision, context) && referencesMatch(revision, input);
+    knowledgeContextDataMatches(revision, context) &&
+    knowledgeRelationshipDataMatches(revision, relationships) && referencesMatch(revision, input);
 }
 
 async function fullRevision(client: PrismaClient | Transaction, id: string) {
@@ -144,6 +157,7 @@ async function reviewedRevisionResultMatches(
   newRevisionId: string,
   oldSnapshot: RevisionSnapshot,
   context: ContextData,
+  relationships: KnowledgeRelationshipData,
 ) {
   const root = await client.knowledgeRecord.findUnique({
     where: { id: input.knowledgeRecordId },
@@ -158,7 +172,7 @@ async function reviewedRevisionResultMatches(
       current.revisionNumber !== oldSnapshot.revisionNumber + 1 ||
       current.origin !== "REVISED" || current.trust !== "UNVERIFIED" ||
       current.reviewedAt !== null || current.changeSummary !== input.changeSummary ||
-      !materialMatches(current as Revision, input, context) ||
+      !materialMatches(current as Revision, input, context, relationships) ||
       !snapshotMatches(retained as Revision, oldSnapshot)) return false;
   return true;
 }
@@ -166,7 +180,7 @@ async function reviewedRevisionResultMatches(
 async function reviewedRevisionAttempt(
   input: KnowledgeEditInput,
   dependencies: KnowledgeRevisionDependencies,
-  capture: (value: { newRevisionId: string; oldSnapshot: RevisionSnapshot; context: ContextData }) => void,
+  capture: (value: { newRevisionId: string; oldSnapshot: RevisionSnapshot; context: ContextData; relationships: KnowledgeRelationshipData }) => void,
 ) {
   const hooks = dependencies.hooks ?? {};
   const newRevisionId = randomUUID();
@@ -184,15 +198,16 @@ async function reviewedRevisionAttempt(
     }
     const context = await resolveKnowledgeEditContextData(transaction, current, input);
     await hooks.afterContextResolved?.(transaction);
+    const relationships = await resolveKnowledgeEditRelationships(transaction, current, input);
     await lockKnowledgeExternalReferences(transaction, current.id);
     const protectedCurrent = await fullRevision(transaction, current.id);
     if (!protectedCurrent) throw knowledgeIntegrityError();
     const oldSnapshot = revisionSnapshot(protectedCurrent as Revision);
-    if (materialMatches(protectedCurrent as Revision, input, context)) {
+    if (materialMatches(protectedCurrent as Revision, input, context, relationships)) {
       throw knowledgeNoMaterialChangeError();
     }
     if (!input.changeSummary) throw knowledgeChangeSummaryRequiredError();
-    capture({ newRevisionId, oldSnapshot, context });
+    capture({ newRevisionId, oldSnapshot, context, relationships });
     const nextRevisionNumber = current.revisionNumber + 1;
     await transaction.knowledgeRecordRevision.create({
       data: {
@@ -207,6 +222,7 @@ async function reviewedRevisionAttempt(
         bodyMarkdown: input.bodyMarkdown,
         safetyCaution: input.safetyCaution,
         ...context,
+        ...relationships,
         changeSummary: input.changeSummary,
         reviewedAt: null,
       },
@@ -236,7 +252,7 @@ async function reviewedRevisionAttempt(
       select: { stateVersion: true },
     });
     await hooks.afterRootUpdated?.(transaction, newRevisionId);
-    if (!await reviewedRevisionResultMatches(transaction, input, newRevisionId, oldSnapshot, context)) {
+    if (!await reviewedRevisionResultMatches(transaction, input, newRevisionId, oldSnapshot, context, relationships)) {
       throw knowledgeIntegrityError();
     }
     await hooks.beforeCommit?.(transaction, newRevisionId);
@@ -260,7 +276,7 @@ export async function reviseReviewedKnowledgeRecordWithDependencies(
   dependencies: KnowledgeRevisionDependencies,
 ) {
   const parsed = parseKnowledgeEditInput(input);
-  let expected: { newRevisionId: string; oldSnapshot: RevisionSnapshot; context: ContextData } | null = null;
+  let expected: { newRevisionId: string; oldSnapshot: RevisionSnapshot; context: ContextData; relationships: KnowledgeRelationshipData } | null = null;
   for (let attempt = 1; attempt <= knowledgeCreateMaximumAttempts; attempt += 1) {
     expected = null;
     try {
@@ -276,6 +292,7 @@ export async function reviseReviewedKnowledgeRecordWithDependencies(
           newRevisionId: string;
           oldSnapshot: RevisionSnapshot;
           context: ContextData;
+          relationships: KnowledgeRelationshipData;
         } | null;
         if (captured && await reviewedRevisionResultMatches(
           dependencies.client,
@@ -283,6 +300,7 @@ export async function reviseReviewedKnowledgeRecordWithDependencies(
           captured.newRevisionId,
           captured.oldSnapshot,
           captured.context,
+          captured.relationships,
         )) {
           return {
             knowledgeRecordId: parsed.knowledgeRecordId,

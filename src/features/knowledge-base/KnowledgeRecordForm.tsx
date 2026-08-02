@@ -261,6 +261,30 @@ export function KnowledgeRecordForm({
         </div>
       ) : null}
 
+      <fieldset className="knowledge-relationship-fields">
+        <legend>Optional provenance relationships</legend>
+        <p className="field-help">
+          A Source Daily Log records where reusable knowledge came from. A Related Defect connects troubleshooting knowledge to an existing Defect. Linking is for navigation and provenance only and does not modify either record.
+        </p>
+        <div className="full-width-field">
+          <label htmlFor="knowledge-source-daily-log">Source Daily Log (optional)</label>
+          <select defaultValue={state.values.sourceDailyLogId ?? ""} id="knowledge-source-daily-log" name="sourceDailyLogId" {...errorAttributes(state, "sourceDailyLogId")}>
+            <option value="">No source Daily Log</option>
+            {(pageData.dailyLogs ?? []).map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+          </select>
+          <FieldError field="sourceDailyLogId" state={state} />
+        </div>
+        <div className="full-width-field">
+          <label htmlFor="knowledge-related-defect">Related Defect (optional)</label>
+          <select defaultValue={state.values.relatedDefectId ?? ""} id="knowledge-related-defect" name="relatedDefectId" {...errorAttributes(state, "relatedDefectId")}>
+            <option value="">No related Defect</option>
+            {(pageData.defects ?? []).map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+          </select>
+          <FieldError field="relatedDefectId" state={state} />
+        </div>
+        <p className="field-help">If an owner is later deleted, retained snapshot text may remain without a live link.</p>
+      </fieldset>
+
       <fieldset
         {...errorAttributes(
           state,

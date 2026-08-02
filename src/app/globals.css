@@ -825,6 +825,33 @@ textarea {
   padding: 16px;
 }
 
+.knowledge-create-form .knowledge-relationship-fields,
+.knowledge-edit-form .knowledge-relationship-fields,
+.knowledge-detail .knowledge-relationships,
+.knowledge-revision-page .knowledge-relationships {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-create-form .knowledge-relationship-fields select,
+.knowledge-edit-form .knowledge-relationship-fields select,
+.knowledge-detail .knowledge-relationships a,
+.knowledge-revision-page .knowledge-relationships a {
+  min-height: 44px;
+}
+
+.knowledge-detail .knowledge-relationships a,
+.knowledge-revision-page .knowledge-relationships a {
+  align-items: center;
+  display: inline-flex;
+}
+
+.knowledge-detail .knowledge-relationships a:focus-visible,
+.knowledge-revision-page .knowledge-relationships a:focus-visible {
+  outline: 3px solid #1f6feb;
+  outline-offset: 3px;
+}
+
 .knowledge-detail .knowledge-markdown :focus-visible,
 .knowledge-create-form .notice-stack :focus-visible,
 .knowledge-edit-form .notice-stack :focus-visible,

@@ -12,6 +12,7 @@ import {
   knowledgeConcurrentModificationError,
   knowledgeCurrentAuthorityChangedError,
   knowledgeIntegrityError,
+  knowledgeNoMaterialChangeError,
   knowledgeNotEditableError,
   knowledgeNotFoundError,
   knowledgePersistenceError,
@@ -21,6 +22,13 @@ import {
   resolveKnowledgeContext,
 } from "./persistence-internal";
 import { isRetryableKnowledgeMutationError } from "./retry";
+import {
+  knowledgeRelationshipDataMatches,
+  retainedKnowledgeRelationshipData,
+  retainedKnowledgeRelationshipMatches,
+  resolveKnowledgeEditRelationships,
+  type KnowledgeRelationshipData,
+} from "./relationship-persistence-internal";
 import type {
   KnowledgeEditInput,
   KnowledgeMutationResult,
@@ -41,6 +49,7 @@ type RevisionContextData = ReturnType<typeof knowledgeRevisionContextData>;
 export type KnowledgeEditReviewHooks = Readonly<{
   beforeRootLock?: (transaction: Transaction) => Promise<void>;
   afterContextResolved?: (transaction: Transaction) => Promise<void>;
+  afterRelationshipsResolved?: (transaction: Transaction) => Promise<void>;
   afterReferencesDeleted?: (transaction: Transaction) => Promise<void>;
   afterRevisionUpdated?: (transaction: Transaction) => Promise<void>;
   afterReferencesInserted?: (transaction: Transaction) => Promise<void>;
@@ -220,6 +229,7 @@ function editResultMatches(
   aggregate: LoadedAggregate,
   input: KnowledgeEditInput,
   expectedContext: RevisionContextData,
+  expectedRelationships: KnowledgeRelationshipData,
 ) {
   const revision = aggregate.currentRevision;
   if (
@@ -238,7 +248,10 @@ function editResultMatches(
   ) {
     return false;
   }
-  if (!knowledgeContextDataMatches(revision, expectedContext)) return false;
+  if (
+    !knowledgeContextDataMatches(revision, expectedContext) ||
+    !knowledgeRelationshipDataMatches(revision, expectedRelationships)
+  ) return false;
   return revision.externalReferences.every((reference, index) => {
     const expected = input.externalReferences[index];
     return (
@@ -250,14 +263,44 @@ function editResultMatches(
   });
 }
 
+function editMaterialMatches(
+  aggregate: LoadedAggregate,
+  input: KnowledgeEditInput,
+  expectedContext: RevisionContextData,
+  expectedRelationships: KnowledgeRelationshipData,
+) {
+  const revision = aggregate.currentRevision;
+  return Boolean(
+    revision &&
+    revision.id === input.expectedCurrentRevisionId &&
+    revision.trust === "UNVERIFIED" &&
+    revision.contentKind === input.contentKind &&
+    revision.title === input.title &&
+    revision.normalizedTitle === normalizeTitleKey(input.title) &&
+    revision.bodyMarkdown === input.bodyMarkdown &&
+    revision.safetyCaution === input.safetyCaution &&
+    knowledgeContextDataMatches(revision, expectedContext) &&
+    knowledgeRelationshipDataMatches(revision, expectedRelationships) &&
+    revision.externalReferences.length === input.externalReferences.length &&
+    revision.externalReferences.every((reference, index) => {
+      const expected = input.externalReferences[index];
+      return reference.sequence === index + 1 &&
+        reference.label === expected?.label &&
+        reference.url === expected?.url &&
+        reference.normalizedUrl === expected?.url;
+    })
+  );
+}
+
 async function reconcileEdit(
   client: PrismaClient,
   input: KnowledgeEditInput,
   expectedContext: RevisionContextData,
+  expectedRelationships: KnowledgeRelationshipData,
 ) {
   const aggregate = await loadKnowledgeMutationAggregate(client, input.knowledgeRecordId);
   if (!aggregate) return null;
-  if (!editResultMatches(aggregate, input, expectedContext)) return null;
+  if (!editResultMatches(aggregate, input, expectedContext, expectedRelationships)) return null;
   return {
     knowledgeRecordId: aggregate.id,
     stateVersion: aggregate.stateVersion,
@@ -271,6 +314,7 @@ async function editAttempt(
   input: KnowledgeEditInput,
   hooks: KnowledgeEditReviewHooks,
   captureContext: (context: RevisionContextData) => void,
+  captureRelationships: (relationships: KnowledgeRelationshipData) => void,
 ) {
   const result = await client.$transaction(
     async (transaction) => {
@@ -294,7 +338,13 @@ async function editAttempt(
       const context = await resolveKnowledgeEditContextData(transaction, revision, input);
       captureContext(context);
       await hooks.afterContextResolved?.(transaction);
+      const relationships = await resolveKnowledgeEditRelationships(transaction, revision, input);
+      captureRelationships(relationships);
+      await hooks.afterRelationshipsResolved?.(transaction);
       await lockKnowledgeExternalReferences(transaction, revision.id);
+      if (editMaterialMatches(aggregate, input, context, relationships)) {
+        throw knowledgeNoMaterialChangeError();
+      }
       await transaction.knowledgeRevisionExternalReference.deleteMany({
         where: { knowledgeRecordRevisionId: revision.id },
       });
@@ -309,6 +359,7 @@ async function editAttempt(
           bodyMarkdown: input.bodyMarkdown,
           safetyCaution: input.safetyCaution,
           ...context,
+          ...relationships,
         },
       });
       await hooks.afterRevisionUpdated?.(transaction);
@@ -334,7 +385,7 @@ async function editAttempt(
       const completed = await loadKnowledgeMutationAggregate(transaction, aggregate.id);
       if (
         !completed ||
-        !editResultMatches(completed, input, context)
+        !editResultMatches(completed, input, context, relationships)
       ) {
         throw knowledgeIntegrityError();
       }
@@ -363,8 +414,10 @@ export async function updateUnverifiedKnowledgeRecordWithDependencies(
   const parsed = parseKnowledgeEditInput(input);
   const hooks = dependencies.hooks ?? {};
   let expectedContext: RevisionContextData | null = null;
+  let expectedRelationships: KnowledgeRelationshipData | null = null;
   for (let attempt = 1; attempt <= knowledgeCreateMaximumAttempts; attempt += 1) {
     expectedContext = null;
+    expectedRelationships = null;
     try {
       return await editAttempt(
         dependencies.client,
@@ -372,6 +425,9 @@ export async function updateUnverifiedKnowledgeRecordWithDependencies(
         hooks,
         (context) => {
           expectedContext = context;
+        },
+        (relationships) => {
+          expectedRelationships = relationships;
         },
       );
     } catch (error) {
@@ -381,13 +437,14 @@ export async function updateUnverifiedKnowledgeRecordWithDependencies(
         throw knowledgePersistenceError();
       }
       try {
-        if (!expectedContext) {
+        if (!expectedContext || !expectedRelationships) {
           throw knowledgePersistenceError();
         }
         const reconciled = await reconcileEdit(
           dependencies.client,
           parsed,
           expectedContext,
+          expectedRelationships,
         );
         if (reconciled) return reconciled;
       } catch {
@@ -408,6 +465,7 @@ type ReviewMaterialSnapshot = Readonly<{
   bodyMarkdown: string;
   safetyCaution: string | null;
   context: RevisionContextData;
+  relationships: KnowledgeRelationshipData;
   changeSummary: string | null;
   createdAt: number;
   references: readonly Readonly<{
@@ -430,6 +488,7 @@ function reviewMaterialSnapshot(
     bodyMarkdown: revision.bodyMarkdown,
     safetyCaution: revision.safetyCaution,
     context: retainedKnowledgeContextData(revision),
+    relationships: retainedKnowledgeRelationshipData(revision),
     changeSummary: revision.changeSummary,
     createdAt: revision.createdAt.getTime(),
     references: revision.externalReferences.map((reference) => ({
@@ -476,6 +535,7 @@ function reviewMaterialMatches(
     actualContext.mineNameSnapshot === expected.context.mineNameSnapshot &&
     actualContext.cityNameSnapshot === expected.context.cityNameSnapshot &&
     actualContext.cityStateSnapshot === expected.context.cityStateSnapshot &&
+    retainedKnowledgeRelationshipMatches(revision, expected.relationships) &&
     revision.changeSummary === expected.changeSummary &&
     revision.createdAt.getTime() === expected.createdAt &&
     revision.externalReferences.length === expected.references.length &&

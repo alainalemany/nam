@@ -20,6 +20,8 @@ export type KnowledgeCreateInput = Readonly<{
   contextKind: KnowledgeContextKind;
   mineId: string | null;
   equipmentId: string | null;
+  sourceDailyLogId?: string | null;
+  relatedDefectId?: string | null;
   externalReferences: readonly KnowledgeExternalReferenceInput[];
 }>;
 
@@ -32,6 +34,8 @@ export type KnowledgeCreateFormValues = Readonly<{
   contextKind: string;
   mineId: string;
   equipmentId: string;
+  sourceDailyLogId?: string;
+  relatedDefectId?: string;
 }>;
 
 export type KnowledgeCreateActionState = Readonly<{
@@ -52,9 +56,16 @@ export type KnowledgeEquipmentOption = Readonly<{
   label: string;
 }>;
 
+export type KnowledgeRelationshipOption = Readonly<{
+  id: string;
+  label: string;
+}>;
+
 export type KnowledgeCreatePageData = Readonly<{
   mines: readonly KnowledgeMineOption[];
   equipment: readonly KnowledgeEquipmentOption[];
+  dailyLogs?: readonly KnowledgeRelationshipOption[];
+  defects?: readonly KnowledgeRelationshipOption[];
   loadError: string | null;
 }>;
 
@@ -101,6 +112,10 @@ export type KnowledgeEditInput = Readonly<{
   contextKind: KnowledgeContextKind;
   mineId: string | null;
   equipmentId: string | null;
+  sourceDailyLogId?: string | null;
+  relatedDefectId?: string | null;
+  retainUnavailableSourceDailyLog?: boolean;
+  retainUnavailableRelatedDefect?: boolean;
   externalReferences: readonly KnowledgeExternalReferenceInput[];
 }>;
 
@@ -115,6 +130,10 @@ export type KnowledgeEditFormValues = Readonly<{
   contextKind: string;
   mineId: string;
   equipmentId: string;
+  sourceDailyLogId?: string;
+  relatedDefectId?: string;
+  retainUnavailableSourceDailyLog?: string;
+  retainUnavailableRelatedDefect?: string;
 }>;
 
 export type KnowledgeEditActionState = Readonly<{
@@ -200,7 +219,26 @@ export type KnowledgeEditPageData = Readonly<{
   initialState: KnowledgeEditActionState;
   mines: readonly KnowledgeMineOption[];
   equipment: readonly KnowledgeEquipmentOption[];
+  dailyLogs?: readonly KnowledgeRelationshipOption[];
+  defects?: readonly KnowledgeRelationshipOption[];
+  unavailableSourceDailyLogLabel?: string | null;
+  unavailableRelatedDefectLabel?: string | null;
   loadError: string | null;
+}>;
+
+export type KnowledgeRelationshipView = Readonly<{
+  sourceDailyLog: Readonly<{
+    date: string;
+    shift: string;
+    available: boolean;
+    href: string | null;
+  }> | null;
+  relatedDefect: Readonly<{
+    title: string;
+    reportedDate: string;
+    available: boolean;
+    href: string | null;
+  }> | null;
 }>;
 
 export type KnowledgeDetailView = Readonly<{
@@ -227,6 +265,7 @@ export type KnowledgeDetailView = Readonly<{
         label: string;
         equipmentAvailable: boolean;
       }>;
+  relationships?: KnowledgeRelationshipView;
   externalReferences: readonly Readonly<{
     sequence: number;
     label: string;
@@ -251,6 +290,7 @@ export type KnowledgeHistoryRevisionSummary = Readonly<{
   trustLabel: "Unverified" | "Personally Reviewed";
   changeSummary: string | null;
   contextSummary: string;
+  relationshipSummary?: string | null;
   createdAt: string;
   updatedAt: string;
   reviewedAt: string | null;
@@ -281,6 +321,7 @@ export type KnowledgeHistoricalRevisionView = Readonly<{
   changeSummary: string | null;
   contextSummary: string;
   contextAvailability: string | null;
+  relationships?: KnowledgeRelationshipView;
   externalReferences: readonly Readonly<{ sequence: number; label: string; url: string }>[];
   createdAt: string;
   updatedAt: string;

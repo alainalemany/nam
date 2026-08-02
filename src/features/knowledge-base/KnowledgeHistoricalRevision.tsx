@@ -18,6 +18,7 @@ function dateTime(value: string) {
 }
 
 export function KnowledgeHistoricalRevision({ revision }: { revision: KnowledgeHistoricalRevisionView }) {
+  const relationships = revision.relationships ?? { sourceDailyLog: null, relatedDefect: null };
   return (
     <main className="page-stack knowledge-revision-page">
       <section className="page-header">
@@ -40,6 +41,14 @@ export function KnowledgeHistoricalRevision({ revision }: { revision: KnowledgeH
       </section>
       {revision.changeSummary ? <section className="panel" aria-labelledby="knowledge-revision-summary"><h2 id="knowledge-revision-summary">Change summary</h2><p>{revision.changeSummary}</p></section> : null}
       <section className="panel" aria-labelledby="knowledge-revision-context"><h2 id="knowledge-revision-context">Context</h2><p>{revision.contextSummary}</p>{revision.contextAvailability ? <p>{revision.contextAvailability}; retained snapshot shown.</p> : null}</section>
+      <section className="panel knowledge-relationships" aria-labelledby="knowledge-revision-relationships">
+        <h2 id="knowledge-revision-relationships">Provenance relationships</h2>
+        <dl>
+          <dt>Source Daily Log</dt><dd>{relationships.sourceDailyLog ? (relationships.sourceDailyLog.available && relationships.sourceDailyLog.href ? <Link href={relationships.sourceDailyLog.href}>{relationships.sourceDailyLog.date} · {relationships.sourceDailyLog.shift}</Link> : <>{relationships.sourceDailyLog.date} · {relationships.sourceDailyLog.shift} — Daily Log unavailable (retained snapshot)</>) : "None"}</dd>
+          <dt>Related Defect</dt><dd>{relationships.relatedDefect ? (relationships.relatedDefect.available && relationships.relatedDefect.href ? <Link href={relationships.relatedDefect.href}>{relationships.relatedDefect.title} · reported {relationships.relatedDefect.reportedDate}</Link> : <>{relationships.relatedDefect.title} · reported {relationships.relatedDefect.reportedDate} — Defect unavailable (retained snapshot)</>) : "None"}</dd>
+        </dl>
+        <p className="field-help">Linked for navigation and provenance only. This retained revision is read-only.</p>
+      </section>
       {revision.safetyCaution ? <section className="panel notice-stack" aria-labelledby="knowledge-revision-caution"><h2 id="knowledge-revision-caution">Personal safety caution</h2><p>{revision.safetyCaution}</p></section> : null}
       <article className="panel knowledge-markdown" aria-labelledby="knowledge-revision-body"><h2 className="sr-only" id="knowledge-revision-body">Revision content</h2><KnowledgeMarkdown source={revision.bodyMarkdown} /></article>
       {revision.externalReferences.length ? <section className="panel" aria-labelledby="knowledge-revision-references"><h2 id="knowledge-revision-references">External references</h2><ol>{revision.externalReferences.map((reference) => <li key={reference.sequence}><a href={reference.url} rel="noreferrer">{reference.label}</a></li>)}</ol></section> : null}

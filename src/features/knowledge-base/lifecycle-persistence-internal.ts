@@ -171,6 +171,12 @@ function copiedRevisionMatches(actual: Revision, retained: Revision) {
     actual.mineNameSnapshot === retained.mineNameSnapshot &&
     actual.cityNameSnapshot === retained.cityNameSnapshot &&
     actual.cityStateSnapshot === retained.cityStateSnapshot &&
+    actual.sourceDailyLogId === retained.sourceDailyLogId &&
+    actual.sourceDailyLogDateSnapshot?.getTime() === retained.sourceDailyLogDateSnapshot?.getTime() &&
+    actual.sourceDailyLogShiftSnapshot === retained.sourceDailyLogShiftSnapshot &&
+    actual.relatedDefectId === retained.relatedDefectId &&
+    actual.relatedDefectTitleSnapshot === retained.relatedDefectTitleSnapshot &&
+    actual.relatedDefectReportedDateSnapshot?.getTime() === retained.relatedDefectReportedDateSnapshot?.getTime() &&
     actual.externalReferences.length === retained.externalReferences.length &&
     actual.externalReferences.every((reference, index) => {
       const expected = retained.externalReferences[index];
@@ -292,6 +298,12 @@ async function restoreAttempt(
           mineNameSnapshot: retained.mineNameSnapshot,
           cityNameSnapshot: retained.cityNameSnapshot,
           cityStateSnapshot: retained.cityStateSnapshot,
+          sourceDailyLogId: retained.sourceDailyLogId,
+          sourceDailyLogDateSnapshot: retained.sourceDailyLogDateSnapshot,
+          sourceDailyLogShiftSnapshot: retained.sourceDailyLogShiftSnapshot,
+          relatedDefectId: retained.relatedDefectId,
+          relatedDefectTitleSnapshot: retained.relatedDefectTitleSnapshot,
+          relatedDefectReportedDateSnapshot: retained.relatedDefectReportedDateSnapshot,
           changeSummary: null,
           reviewedAt: null,
         },

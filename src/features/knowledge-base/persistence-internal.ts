@@ -12,6 +12,10 @@ import {
 import { fingerprintKnowledgeCreatePayload } from "./fingerprint";
 import { normalizeSingleLineText, normalizeTitleKey } from "./normalization";
 import {
+  resolveKnowledgeCreateRelationships,
+  type KnowledgeRelationshipData,
+} from "./relationship-persistence-internal";
+import {
   isKnowledgeSubmissionKeyUniqueError,
   isRetryableKnowledgeCreateError,
 } from "./retry";
@@ -48,6 +52,10 @@ export type KnowledgeCreateInternalHooks = Readonly<{
   afterContextResolved?: (
     transaction: KnowledgeCreateTransaction,
     context: KnowledgeContextSnapshot,
+  ) => Promise<void>;
+  afterRelationshipsResolved?: (
+    transaction: KnowledgeCreateTransaction,
+    relationships: KnowledgeRelationshipData,
   ) => Promise<void>;
   afterReferencesInserted?: (
     transaction: KnowledgeCreateTransaction,
@@ -271,6 +279,12 @@ async function createAttempt(
       );
       if (duplicate) return duplicate;
 
+      const relationships = await resolveKnowledgeCreateRelationships(
+        transaction,
+        input,
+      );
+      await hooks.afterRelationshipsResolved?.(transaction, relationships);
+
       const rootId = randomUUID();
       const revisionId = randomUUID();
       await transaction.knowledgeRecord.create({
@@ -296,6 +310,7 @@ async function createAttempt(
           bodyMarkdown: input.bodyMarkdown,
           safetyCaution: input.safetyCaution,
           ...knowledgeRevisionContextData(context),
+          ...relationships,
           changeSummary: null,
           reviewedAt: null,
         },

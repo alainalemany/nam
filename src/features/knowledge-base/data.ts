@@ -10,7 +10,7 @@ export async function getKnowledgeCreatePageData() {
   try {
     return await getKnowledgeCreatePageDataWithClient(prisma);
   } catch {
-    return { mines: [], equipment: [], loadError: "Reference options are temporarily unavailable." } as const;
+    return { mines: [], equipment: [], dailyLogs: [], defects: [], loadError: "Reference options are temporarily unavailable." } as const;
   }
 }
 

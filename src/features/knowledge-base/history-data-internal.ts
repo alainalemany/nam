@@ -17,6 +17,7 @@ import {
   normalizeSingleLineText,
   normalizeTitleKey,
 } from "./normalization";
+import { knowledgeRelationshipDataIsCoherent } from "./relationship-persistence-internal";
 import type {
   KnowledgeHistoricalRevisionView,
   KnowledgeHistoryRevisionSummary,
@@ -45,6 +46,12 @@ export const knowledgeHistoryRevisionSelect = {
   mineNameSnapshot: true,
   cityNameSnapshot: true,
   cityStateSnapshot: true,
+  sourceDailyLogId: true,
+  sourceDailyLogDateSnapshot: true,
+  sourceDailyLogShiftSnapshot: true,
+  relatedDefectId: true,
+  relatedDefectTitleSnapshot: true,
+  relatedDefectReportedDateSnapshot: true,
   changeSummary: true,
   reviewedAt: true,
   createdAt: true,
@@ -135,7 +142,7 @@ function revisionIsCoherent(revision: Revision) {
       revision.title !== normalizeSingleLineText(revision.title) ||
       revision.normalizedTitle !== normalizeTitleKey(revision.title) ||
       (revision.safetyCaution !== null && !nonblank(revision.safetyCaution, knowledgeMaximumCautionLength)) ||
-      !context(revision)) return false;
+      !context(revision) || !knowledgeRelationshipDataIsCoherent(revision)) return false;
   try { parseKnowledgeMarkdown(revision.bodyMarkdown); } catch { return false; }
   if (revision.externalReferences.length > knowledgeMaximumExternalReferences) {
     return false;
@@ -152,6 +159,50 @@ function revisionIsCoherent(revision: Revision) {
       return valid;
     } catch { return false; }
   });
+}
+
+function dateOnly(value: Date) {
+  return value.toISOString().slice(0, 10);
+}
+
+function relationships(revision: Revision) {
+  return {
+    sourceDailyLog: revision.sourceDailyLogDateSnapshot &&
+      revision.sourceDailyLogShiftSnapshot
+      ? {
+          date: dateOnly(revision.sourceDailyLogDateSnapshot),
+          shift: revision.sourceDailyLogShiftSnapshot,
+          available: revision.sourceDailyLogId !== null,
+          href: revision.sourceDailyLogId
+            ? `/daily-logs/${encodeURIComponent(revision.sourceDailyLogId)}`
+            : null,
+        }
+      : null,
+    relatedDefect: revision.relatedDefectTitleSnapshot &&
+      revision.relatedDefectReportedDateSnapshot
+      ? {
+          title: revision.relatedDefectTitleSnapshot,
+          reportedDate: dateOnly(revision.relatedDefectReportedDateSnapshot),
+          available: revision.relatedDefectId !== null,
+          href: revision.relatedDefectId
+            ? `/defect-tracking/${encodeURIComponent(revision.relatedDefectId)}`
+            : null,
+        }
+      : null,
+  } as const;
+}
+
+function relationshipSummary(revision: Revision) {
+  const value = relationships(revision);
+  const parts = [
+    value.sourceDailyLog
+      ? `Source Daily Log ${value.sourceDailyLog.date} (${value.sourceDailyLog.shift})${value.sourceDailyLog.available ? "" : " — unavailable"}`
+      : null,
+    value.relatedDefect
+      ? `Related Defect ${value.relatedDefect.title}${value.relatedDefect.available ? "" : " — unavailable"}`
+      : null,
+  ].filter((part): part is string => Boolean(part));
+  return parts.length ? parts.join("; ") : null;
 }
 
 export function knowledgeHistoryIsCoherent(root: Root) {
@@ -190,6 +241,7 @@ function summary(root: Root, revision: Revision): KnowledgeHistoryRevisionSummar
     trustLabel: revision.trust === "UNVERIFIED" ? "Unverified" : "Personally Reviewed",
     changeSummary: revision.changeSummary,
     contextSummary: contextView.summary,
+    relationshipSummary: relationshipSummary(revision),
     createdAt: revision.createdAt.toISOString(),
     updatedAt: revision.updatedAt.toISOString(),
     reviewedAt: revision.reviewedAt?.toISOString() ?? null,
@@ -231,6 +283,7 @@ export function mapKnowledgeHistoricalRevision(root: Root, revisionNumber: numbe
     changeSummary: revision.changeSummary,
     contextSummary: contextView.summary,
     contextAvailability: contextView.availability,
+    relationships: relationships(revision),
     externalReferences: revision.externalReferences.map(({ sequence, label, url }) => ({ sequence, label, url })),
     createdAt: revision.createdAt.toISOString(),
     updatedAt: revision.updatedAt.toISOString(),

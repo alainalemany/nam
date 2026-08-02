@@ -56,6 +56,12 @@ export function KnowledgeRecordEditForm({ pageData }: { pageData: KnowledgeEditP
   const [contextKind, setContextKind] = useState(state.values.contextKind);
   const [mineId, setMineId] = useState(state.values.mineId);
   const [equipmentId, setEquipmentId] = useState(state.values.equipmentId);
+  const [sourceDailyLogId, setSourceDailyLogId] = useState(
+    state.values.retainUnavailableSourceDailyLog === "true" ? "__retain_unavailable__" : (state.values.sourceDailyLogId ?? ""),
+  );
+  const [relatedDefectId, setRelatedDefectId] = useState(
+    state.values.retainUnavailableRelatedDefect === "true" ? "__retain_unavailable__" : (state.values.relatedDefectId ?? ""),
+  );
   const [references, setReferences] = useState<KnowledgeExternalReferenceInput[]>([
     ...state.externalReferences,
   ]);
@@ -66,6 +72,8 @@ export function KnowledgeRecordEditForm({ pageData }: { pageData: KnowledgeEditP
       setContextKind(state.values.contextKind);
       setMineId(state.values.mineId);
       setEquipmentId(state.values.equipmentId);
+      setSourceDailyLogId(state.values.retainUnavailableSourceDailyLog === "true" ? "__retain_unavailable__" : (state.values.sourceDailyLogId ?? ""));
+      setRelatedDefectId(state.values.retainUnavailableRelatedDefect === "true" ? "__retain_unavailable__" : (state.values.relatedDefectId ?? ""));
       setReferences([...state.externalReferences]);
       document.getElementById(errorSummaryId)?.focus();
     }
@@ -98,6 +106,10 @@ export function KnowledgeRecordEditForm({ pageData }: { pageData: KnowledgeEditP
       <input name="expectedStateVersion" type="hidden" value={state.values.expectedStateVersion} />
       <input name="expectedCurrentRevisionId" type="hidden" value={state.values.expectedCurrentRevisionId} />
       <input name="externalReferencesPayload" type="hidden" value={JSON.stringify(references)} />
+      <input name="sourceDailyLogId" type="hidden" value={sourceDailyLogId === "__retain_unavailable__" ? "" : sourceDailyLogId} />
+      <input name="retainUnavailableSourceDailyLog" type="hidden" value={sourceDailyLogId === "__retain_unavailable__" ? "true" : "false"} />
+      <input name="relatedDefectId" type="hidden" value={relatedDefectId === "__retain_unavailable__" ? "" : relatedDefectId} />
+      <input name="retainUnavailableRelatedDefect" type="hidden" value={relatedDefectId === "__retain_unavailable__" ? "true" : "false"} />
       {pageData.mode === "EDIT_UNVERIFIED" ? (
         <input name="changeSummary" type="hidden" value="" />
       ) : null}
@@ -264,6 +276,30 @@ export function KnowledgeRecordEditForm({ pageData }: { pageData: KnowledgeEditP
           <FieldError field="equipmentId" state={state} />
         </div>
       ) : null}
+
+      <fieldset className="knowledge-relationship-fields">
+        <legend>Optional provenance relationships</legend>
+        <p className="field-help">Linking is for navigation and provenance only. It does not modify the Daily Log or Defect.</p>
+        <div className="full-width-field">
+          <label htmlFor="knowledge-edit-source-daily-log">Source Daily Log (optional)</label>
+          <select id="knowledge-edit-source-daily-log" onChange={(event) => setSourceDailyLogId(event.target.value)} value={sourceDailyLogId} {...errorAttributes(state, "sourceDailyLogId")}>
+            <option value="">No source Daily Log</option>
+            {pageData.unavailableSourceDailyLogLabel ? <option value="__retain_unavailable__">Retain unavailable snapshot — {pageData.unavailableSourceDailyLogLabel}</option> : null}
+            {(pageData.dailyLogs ?? []).map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+          </select>
+          <FieldError field="sourceDailyLogId" state={state} />
+        </div>
+        <div className="full-width-field">
+          <label htmlFor="knowledge-edit-related-defect">Related Defect (optional)</label>
+          <select id="knowledge-edit-related-defect" onChange={(event) => setRelatedDefectId(event.target.value)} value={relatedDefectId} {...errorAttributes(state, "relatedDefectId")}>
+            <option value="">No related Defect</option>
+            {pageData.unavailableRelatedDefectLabel ? <option value="__retain_unavailable__">Retain unavailable snapshot — {pageData.unavailableRelatedDefectLabel}</option> : null}
+            {(pageData.defects ?? []).map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+          </select>
+          <FieldError field="relatedDefectId" state={state} />
+        </div>
+        <p className="field-help">Deleting an owner may leave retained snapshot text without a live link. You may retain or remove that unavailable relationship.</p>
+      </fieldset>
 
       <fieldset {...errorAttributes(state, "externalReferences", "knowledge-edit-references-help")}>
         <legend>External references (optional)</legend>

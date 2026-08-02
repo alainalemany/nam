@@ -191,13 +191,15 @@ describe("Knowledge Base persistence foundation schema", () => {
     expect(migration.match(/~ '\[\^\[:space:\]\]'/g)).toHaveLength(14);
   });
 
-  it("does not add later-slice relationships or unauthorized infrastructure", () => {
+  it("adds only the authorized relationship slice and no other unauthorized infrastructure", () => {
     const knowledgeModels = [
       model("KnowledgeRecord"),
       model("KnowledgeRecordRevision"),
       model("KnowledgeRevisionExternalReference"),
     ].join("\n");
-    expect(knowledgeModels).not.toMatch(/DailyLog|Defect|DayView|Attachment|Tag|User|Author|Reviewer/);
+    expect(knowledgeModels).toMatch(/DailyLog/);
+    expect(knowledgeModels).toMatch(/Defect/);
+    expect(knowledgeModels).not.toMatch(/DayView|Attachment|Tag|User|Author|Reviewer/);
     expect(migration).not.toMatch(/DailyLog|Defect|DayView|Attachment|Tag|User|Author|Reviewer/);
   });
 });

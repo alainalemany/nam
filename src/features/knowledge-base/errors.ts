@@ -5,6 +5,9 @@ export type KnowledgeBaseErrorCode =
   | "INVALID_CONTEXT"
   | "REFERENCE_NOT_FOUND"
   | "REFERENCE_INACTIVE"
+  | "DAILY_LOG_NOT_FOUND"
+  | "DEFECT_NOT_FOUND"
+  | "INVALID_RELATIONSHIP"
   | "RECORD_NOT_FOUND"
   | "REVISION_NOT_FOUND"
   | "RECORD_NOT_EDITABLE"
@@ -57,6 +60,26 @@ export function knowledgeNotFoundError() {
   );
 }
 
+export function knowledgeDailyLogNotFoundError() {
+  return new KnowledgeBaseError(
+    "DAILY_LOG_NOT_FOUND",
+    "The selected source Daily Log could not be found.",
+    "sourceDailyLogId",
+  );
+}
+
+export function knowledgeDefectNotFoundError() {
+  return new KnowledgeBaseError(
+    "DEFECT_NOT_FOUND",
+    "The selected related Defect could not be found.",
+    "relatedDefectId",
+  );
+}
+
+export function knowledgeInvalidRelationshipError(message = "Choose a valid relationship state.") {
+  return new KnowledgeBaseError("INVALID_RELATIONSHIP", message, "relationships");
+}
+
 export function knowledgeNotEditableError() {
   return new KnowledgeBaseError(
     "RECORD_NOT_EDITABLE",
@@ -75,7 +98,7 @@ export function knowledgeChangeSummaryRequiredError() {
 export function knowledgeNoMaterialChangeError() {
   return new KnowledgeBaseError(
     "NO_MATERIAL_CHANGE",
-    "No material change was found. The reviewed revision remains current.",
+    "No material change was found. The current revision remains unchanged.",
     "form",
   );
 }

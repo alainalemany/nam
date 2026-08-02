@@ -41,6 +41,8 @@ const permittedCreateFields = new Set([
   "contextKind",
   "mineId",
   "equipmentId",
+  "sourceDailyLogId",
+  "relatedDefectId",
   "externalReferencesPayload",
 ]);
 
@@ -55,7 +57,18 @@ const permittedEditFields = new Set([
   "contextKind",
   "mineId",
   "equipmentId",
+  "sourceDailyLogId",
+  "relatedDefectId",
+  "retainUnavailableSourceDailyLog",
+  "retainUnavailableRelatedDefect",
   "externalReferencesPayload",
+]);
+const optionalCreateFields = new Set(["sourceDailyLogId", "relatedDefectId"]);
+const optionalEditFields = new Set([
+  "sourceDailyLogId",
+  "relatedDefectId",
+  "retainUnavailableSourceDailyLog",
+  "retainUnavailableRelatedDefect",
 ]);
 
 const permittedReviewFields = new Set([
@@ -92,6 +105,8 @@ const rawCreateSchema = z
     contextKind: z.enum(knowledgeContextKinds),
     mineId: z.string().nullable().optional(),
     equipmentId: z.string().nullable().optional(),
+    sourceDailyLogId: z.string().nullable().optional(),
+    relatedDefectId: z.string().nullable().optional(),
     externalReferences: z
       .array(z.object({ label: z.string(), url: z.string() }).strict())
       .max(knowledgeMaximumExternalReferences),
@@ -118,14 +133,18 @@ export function knowledgeFormValue(formData: FormData, field: string) {
   return values.length === 1 && typeof values[0] === "string" ? values[0] : "";
 }
 
-function assertStrictFields(formData: FormData, permittedFields: ReadonlySet<string> = permittedCreateFields) {
+function assertStrictFields(
+  formData: FormData,
+  permittedFields: ReadonlySet<string> = permittedCreateFields,
+  optionalFields: ReadonlySet<string> = optionalCreateFields,
+) {
   const counts = new Map<string, number>();
   for (const key of formData.keys()) {
     if (key.startsWith("$ACTION_")) continue;
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   if (
-    counts.size !== permittedFields.size ||
+    [...permittedFields].some((field) => !optionalFields.has(field) && counts.get(field) !== 1) ||
     [...counts].some(
       ([key, count]) => !permittedFields.has(key) || count !== 1,
     )
@@ -146,6 +165,8 @@ export function knowledgeCreateFormValues(
     contextKind: knowledgeFormValue(formData, "contextKind"),
     mineId: knowledgeFormValue(formData, "mineId"),
     equipmentId: knowledgeFormValue(formData, "equipmentId"),
+    sourceDailyLogId: knowledgeFormValue(formData, "sourceDailyLogId"),
+    relatedDefectId: knowledgeFormValue(formData, "relatedDefectId"),
   };
 }
 
@@ -191,6 +212,21 @@ function normalizeOptionalId(value: string | null | undefined) {
     invalid("The selected reference is invalid.", "contextKind");
   }
   return normalized;
+}
+
+function normalizeOptionalRelationshipId(
+  value: string | null | undefined,
+  field: "sourceDailyLogId" | "relatedDefectId",
+) {
+  if (value === null || value === undefined || value === "") return null;
+  if (
+    value !== value.trim() ||
+    value.length > knowledgeMaximumIdentifierLength ||
+    /[\u0000-\u001f\u007f\s]/u.test(value)
+  ) {
+    invalid("The selected relationship is invalid.", field);
+  }
+  return value;
 }
 
 export function normalizeKnowledgeExternalReferences(
@@ -255,6 +291,14 @@ export function parseKnowledgeCreateInput(input: unknown): KnowledgeCreateInput 
 
   const mineId = normalizeOptionalId(parsed.data.mineId);
   const equipmentId = normalizeOptionalId(parsed.data.equipmentId);
+  const sourceDailyLogId = normalizeOptionalRelationshipId(
+    parsed.data.sourceDailyLogId,
+    "sourceDailyLogId",
+  );
+  const relatedDefectId = normalizeOptionalRelationshipId(
+    parsed.data.relatedDefectId,
+    "relatedDefectId",
+  );
   if (
     (parsed.data.contextKind === "GENERAL" && (mineId || equipmentId)) ||
     (parsed.data.contextKind === "MINE" && (!mineId || equipmentId)) ||
@@ -276,6 +320,8 @@ export function parseKnowledgeCreateInput(input: unknown): KnowledgeCreateInput 
     contextKind: parsed.data.contextKind,
     mineId,
     equipmentId,
+    sourceDailyLogId,
+    relatedDefectId,
     externalReferences: normalizeKnowledgeExternalReferences(
       parsed.data.externalReferences,
     ),
@@ -297,6 +343,8 @@ export function parseKnowledgeCreateFormData(formData: FormData) {
     contextKind: values.contextKind,
     mineId: values.mineId,
     equipmentId: values.equipmentId,
+    sourceDailyLogId: values.sourceDailyLogId,
+    relatedDefectId: values.relatedDefectId,
     externalReferences,
   });
   return { input, values, externalReferences };
@@ -415,7 +463,26 @@ export function knowledgeEditFormValues(formData: FormData): KnowledgeEditFormVa
     contextKind: knowledgeFormValue(formData, "contextKind"),
     mineId: knowledgeFormValue(formData, "mineId"),
     equipmentId: knowledgeFormValue(formData, "equipmentId"),
+    sourceDailyLogId: knowledgeFormValue(formData, "sourceDailyLogId"),
+    relatedDefectId: knowledgeFormValue(formData, "relatedDefectId"),
+    retainUnavailableSourceDailyLog: knowledgeFormValue(
+      formData,
+      "retainUnavailableSourceDailyLog",
+    ),
+    retainUnavailableRelatedDefect: knowledgeFormValue(
+      formData,
+      "retainUnavailableRelatedDefect",
+    ),
   };
+}
+
+function parseRetentionFlag(
+  value: unknown,
+  field: "retainUnavailableSourceDailyLog" | "retainUnavailableRelatedDefect",
+) {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  invalid("The unavailable relationship choice is invalid.", field);
 }
 
 export function parseKnowledgeEditInput(input: unknown): KnowledgeEditInput {
@@ -432,6 +499,10 @@ export function parseKnowledgeEditInput(input: unknown): KnowledgeEditInput {
       contextKind: z.enum(knowledgeContextKinds),
       mineId: z.string().nullable().optional(),
       equipmentId: z.string().nullable().optional(),
+      sourceDailyLogId: z.string().nullable().optional(),
+      relatedDefectId: z.string().nullable().optional(),
+      retainUnavailableSourceDailyLog: z.union([z.boolean(), z.string()]).optional(),
+      retainUnavailableRelatedDefect: z.union([z.boolean(), z.string()]).optional(),
       externalReferences: z
         .array(z.object({ label: z.string(), url: z.string() }).strict())
         .max(knowledgeMaximumExternalReferences),
@@ -450,6 +521,34 @@ export function parseKnowledgeEditInput(input: unknown): KnowledgeEditInput {
   if (codePointLength(changeSummary) > knowledgeMaximumChangeSummaryLength) {
     invalid("Change summary must be 500 characters or fewer.", "changeSummary");
   }
+  const sourceDailyLogId = normalizeOptionalRelationshipId(
+    parsed.data.sourceDailyLogId,
+    "sourceDailyLogId",
+  );
+  const relatedDefectId = normalizeOptionalRelationshipId(
+    parsed.data.relatedDefectId,
+    "relatedDefectId",
+  );
+  const retainUnavailableSourceDailyLog = parseRetentionFlag(
+    String(parsed.data.retainUnavailableSourceDailyLog ?? false),
+    "retainUnavailableSourceDailyLog",
+  );
+  const retainUnavailableRelatedDefect = parseRetentionFlag(
+    String(parsed.data.retainUnavailableRelatedDefect ?? false),
+    "retainUnavailableRelatedDefect",
+  );
+  if (sourceDailyLogId && retainUnavailableSourceDailyLog) {
+    invalid(
+      "Choose either a live source Daily Log or the retained unavailable snapshot.",
+      "sourceDailyLogId",
+    );
+  }
+  if (relatedDefectId && retainUnavailableRelatedDefect) {
+    invalid(
+      "Choose either a live related Defect or the retained unavailable snapshot.",
+      "relatedDefectId",
+    );
+  }
   return {
     knowledgeRecordId: parsed.data.knowledgeRecordId.toLowerCase(),
     expectedStateVersion,
@@ -458,6 +557,10 @@ export function parseKnowledgeEditInput(input: unknown): KnowledgeEditInput {
     ),
     contentKind: parsed.data.contentKind,
     changeSummary: changeSummary || null,
+    sourceDailyLogId,
+    relatedDefectId,
+    retainUnavailableSourceDailyLog,
+    retainUnavailableRelatedDefect,
     ...parseEditableMaterial(parsed.data, true),
   };
 }
@@ -466,7 +569,7 @@ export function parseKnowledgeEditFormData(
   knowledgeRecordId: string,
   formData: FormData,
 ) {
-  assertStrictFields(formData, permittedEditFields);
+  assertStrictFields(formData, permittedEditFields, optionalEditFields);
   const values = knowledgeEditFormValues(formData);
   const externalReferences = parseKnowledgeExternalReferencesPayload(
     knowledgeFormValue(formData, "externalReferencesPayload"),
@@ -474,6 +577,10 @@ export function parseKnowledgeEditFormData(
   const input = parseKnowledgeEditInput({
     knowledgeRecordId,
     ...values,
+    retainUnavailableSourceDailyLog:
+      values.retainUnavailableSourceDailyLog || "false",
+    retainUnavailableRelatedDefect:
+      values.retainUnavailableRelatedDefect || "false",
     externalReferences,
   });
   return { input, values, externalReferences };

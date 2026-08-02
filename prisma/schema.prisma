@@ -431,23 +431,24 @@ model OperationalSafetyChecklistResponse {
 }
 
 model Defect {
-  id                      String           @id @default(cuid())
-  reportedDate            DateTime         @db.Date
+  id                      String                    @id @default(cuid())
+  reportedDate            DateTime                  @db.Date
   equipmentId             String
-  equipment               Equipment        @relation("DefectEquipment", fields: [equipmentId], references: [id], onDelete: Restrict)
+  equipment               Equipment                 @relation("DefectEquipment", fields: [equipmentId], references: [id], onDelete: Restrict)
   sourceDailyInspectionId String?
-  sourceDailyInspection   DailyInspection? @relation("DefectSourceDailyInspection", fields: [sourceDailyInspectionId], references: [id], onDelete: SetNull)
+  sourceDailyInspection   DailyInspection?          @relation("DefectSourceDailyInspection", fields: [sourceDailyInspectionId], references: [id], onDelete: SetNull)
   severity                DefectSeverity
   priority                DefectPriority
-  status                  DefectStatus     @default(OPEN)
+  status                  DefectStatus              @default(OPEN)
   title                   String
   description             String
   correctiveAction        String?
   resolutionSummary       String?
   resolvedAt              DateTime?
   closedAt                DateTime?
-  createdAt               DateTime         @default(now())
-  updatedAt               DateTime         @updatedAt
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  knowledgeRevisions      KnowledgeRecordRevision[] @relation("KnowledgeRevisionRelatedDefect")
 
   @@index([reportedDate])
   @@index([equipmentId])
@@ -550,19 +551,20 @@ model WorkAuthorization {
 }
 
 model DailyLog {
-  id                 String             @id @default(cuid())
-  logDate            DateTime           @db.Date
-  shift              ShiftType          @default(UNKNOWN)
+  id                 String                    @id @default(cuid())
+  logDate            DateTime                  @db.Date
+  shift              ShiftType                 @default(UNKNOWN)
   mineId             String?
-  mine               Mine?              @relation(fields: [mineId], references: [id], onDelete: SetNull)
+  mine               Mine?                     @relation(fields: [mineId], references: [id], onDelete: SetNull)
   primaryEquipmentId String?
-  primaryEquipment   Equipment?         @relation("DailyLogPrimaryEquipment", fields: [primaryEquipmentId], references: [id], onDelete: SetNull)
+  primaryEquipment   Equipment?                @relation("DailyLogPrimaryEquipment", fields: [primaryEquipmentId], references: [id], onDelete: SetNull)
   summary            String?
   weatherConditions  String?
   generalNotes       String?
   activities         DailyLogActivity[]
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  knowledgeRevisions KnowledgeRecordRevision[] @relation("KnowledgeRevisionSourceDailyLog")
 
   @@index([logDate])
   @@index([shift])
@@ -1035,40 +1037,50 @@ model KnowledgeRecord {
 }
 
 model KnowledgeRecordRevision {
-  id                           String                               @id @default(uuid()) @db.Uuid
-  knowledgeRecordId            String                               @db.Uuid
-  knowledgeRecord              KnowledgeRecord                      @relation("KnowledgeRecordOwnedRevisions", fields: [knowledgeRecordId], references: [id], onDelete: Cascade, map: "KnowledgeRecordRevision_record_fkey")
-  currentForRecord             KnowledgeRecord?                     @relation("KnowledgeRecordCurrentRevision")
-  revisionNumber               Int
-  origin                       KnowledgeRevisionOrigin
-  contentKind                  KnowledgeContentKind
-  trust                        KnowledgeTrust                       @default(UNVERIFIED)
-  title                        String
-  normalizedTitle              String
-  bodyMarkdown                 String
-  safetyCaution                String?
-  contextKind                  KnowledgeContextKind                 @default(GENERAL)
-  mineId                       String?
-  mine                         Mine?                                @relation("KnowledgeRevisionMine", fields: [mineId], references: [id], onDelete: SetNull, map: "KnowledgeRecordRevision_mine_fkey")
-  equipmentId                  String?
-  equipment                    Equipment?                           @relation("KnowledgeRevisionEquipment", fields: [equipmentId], references: [id], onDelete: SetNull, map: "KnowledgeRecordRevision_equipment_fkey")
-  equipmentDisplayNameSnapshot String?
-  equipmentNumberSnapshot      String?
-  equipmentCategorySnapshot    EquipmentCategory?
-  mineNameSnapshot             String?
-  cityNameSnapshot             String?
-  cityStateSnapshot            String?
-  changeSummary                String?
-  reviewedAt                   DateTime?
-  externalReferences           KnowledgeRevisionExternalReference[]
-  createdAt                    DateTime                             @default(now())
-  updatedAt                    DateTime                             @updatedAt
+  id                                String                               @id @default(uuid()) @db.Uuid
+  knowledgeRecordId                 String                               @db.Uuid
+  knowledgeRecord                   KnowledgeRecord                      @relation("KnowledgeRecordOwnedRevisions", fields: [knowledgeRecordId], references: [id], onDelete: Cascade, map: "KnowledgeRecordRevision_record_fkey")
+  currentForRecord                  KnowledgeRecord?                     @relation("KnowledgeRecordCurrentRevision")
+  revisionNumber                    Int
+  origin                            KnowledgeRevisionOrigin
+  contentKind                       KnowledgeContentKind
+  trust                             KnowledgeTrust                       @default(UNVERIFIED)
+  title                             String
+  normalizedTitle                   String
+  bodyMarkdown                      String
+  safetyCaution                     String?
+  contextKind                       KnowledgeContextKind                 @default(GENERAL)
+  mineId                            String?
+  mine                              Mine?                                @relation("KnowledgeRevisionMine", fields: [mineId], references: [id], onDelete: SetNull, map: "KnowledgeRecordRevision_mine_fkey")
+  equipmentId                       String?
+  equipment                         Equipment?                           @relation("KnowledgeRevisionEquipment", fields: [equipmentId], references: [id], onDelete: SetNull, map: "KnowledgeRecordRevision_equipment_fkey")
+  equipmentDisplayNameSnapshot      String?
+  equipmentNumberSnapshot           String?
+  equipmentCategorySnapshot         EquipmentCategory?
+  mineNameSnapshot                  String?
+  cityNameSnapshot                  String?
+  cityStateSnapshot                 String?
+  sourceDailyLogId                  String?
+  sourceDailyLog                    DailyLog?                            @relation("KnowledgeRevisionSourceDailyLog", fields: [sourceDailyLogId], references: [id], onDelete: SetNull, map: "KnowledgeRecordRevision_sourceDailyLog_fkey")
+  sourceDailyLogDateSnapshot        DateTime?                            @db.Date
+  sourceDailyLogShiftSnapshot       ShiftType?
+  relatedDefectId                   String?
+  relatedDefect                     Defect?                              @relation("KnowledgeRevisionRelatedDefect", fields: [relatedDefectId], references: [id], onDelete: SetNull, map: "KnowledgeRecordRevision_relatedDefect_fkey")
+  relatedDefectTitleSnapshot        String?
+  relatedDefectReportedDateSnapshot DateTime?                            @db.Date
+  changeSummary                     String?
+  reviewedAt                        DateTime?
+  externalReferences                KnowledgeRevisionExternalReference[]
+  createdAt                         DateTime                             @default(now())
+  updatedAt                         DateTime                             @updatedAt
 
   @@unique([knowledgeRecordId, revisionNumber], map: "KnowledgeRevision_record_number_key")
   @@unique([id, knowledgeRecordId], map: "KnowledgeRevision_id_record_key")
   @@index([normalizedTitle], map: "KnowledgeRevision_normalizedTitle_idx")
   @@index([mineId], map: "KnowledgeRevision_mine_idx")
   @@index([equipmentId], map: "KnowledgeRevision_equipment_idx")
+  @@index([sourceDailyLogId], map: "KnowledgeRevision_sourceDailyLog_idx")
+  @@index([relatedDefectId], map: "KnowledgeRevision_relatedDefect_idx")
 }
 
 model KnowledgeRevisionExternalReference {

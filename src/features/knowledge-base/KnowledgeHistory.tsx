@@ -46,6 +46,7 @@ export function KnowledgeHistory({ history }: { history: KnowledgeHistoryView })
                 <dt>Kind</dt><dd>{revision.contentKindLabel}</dd>
                 <dt>Trust</dt><dd>{revision.trustLabel}</dd>
                 <dt>Context</dt><dd>{revision.contextSummary}</dd>
+                {revision.relationshipSummary ? <><dt>Relationships</dt><dd>{revision.relationshipSummary}</dd></> : null}
                 {revision.changeSummary ? <><dt>Change summary</dt><dd>{revision.changeSummary}</dd></> : null}
                 <dt>Created</dt><dd>{dateTime(revision.createdAt)}</dd>
                 <dt>Updated</dt><dd>{dateTime(revision.updatedAt)}</dd>

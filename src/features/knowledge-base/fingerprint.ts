@@ -25,6 +25,10 @@ export type KnowledgeCanonicalCreatePayload = Readonly<{
     cityState: string | null;
   }>;
   externalReferences: readonly KnowledgeExternalReferenceInput[];
+  relationships: Readonly<{
+    sourceDailyLogId: string | null;
+    relatedDefectId: string | null;
+  }>;
 }>;
 
 function canonicalContext(context: KnowledgeContextSnapshot) {
@@ -82,6 +86,10 @@ export function canonicalKnowledgeCreatePayload(
       label: reference.label,
       url: reference.url,
     })),
+    relationships: {
+      sourceDailyLogId: input.sourceDailyLogId ?? null,
+      relatedDefectId: input.relatedDefectId ?? null,
+    },
   };
 }
 

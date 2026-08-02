@@ -11,7 +11,7 @@ export default async function NewKnowledgeRecordPage() {
   try {
     pageData = await getKnowledgeCreatePageData();
   } catch {
-    pageData = { mines: [], equipment: [], loadError: "Active Mine and Equipment options could not be loaded safely. Reload and try again." };
+    pageData = { mines: [], equipment: [], dailyLogs: [], defects: [], loadError: "Reference options could not be loaded safely. Reload and try again." };
   }
   const initialState: KnowledgeCreateActionState = {
     status: "idle",
@@ -26,6 +26,8 @@ export default async function NewKnowledgeRecordPage() {
       contextKind: "GENERAL",
       mineId: "",
       equipmentId: "",
+      sourceDailyLogId: "",
+      relatedDefectId: "",
     },
     externalReferences: [],
   };
