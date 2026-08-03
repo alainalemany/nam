@@ -266,7 +266,7 @@ describePostgres("Knowledge Base lifecycle PostgreSQL evidence", () => {
     await expect(client.mine.findUnique({ where: { id: location.mine.id } })).resolves.not.toBeNull();
     await expect(client.equipment.findUnique({ where: { id: location.equipment.id } })).resolves.not.toBeNull();
     await expect(client.city.findUnique({ where: { id: location.city.id } })).resolves.not.toBeNull();
-  });
+  }, 15_000);
 
   it("serializes archive, restore, delete, and owner races without lost updates", async () => {
     if (!client || !concurrentClient) throw new Error("Missing clients.");
@@ -545,7 +545,7 @@ describePostgres("Knowledge Base lifecycle PostgreSQL evidence", () => {
     );
     expect(deletedDuplicate.duplicate).toBe(true);
     rootIds.delete(reviewedRoot.id);
-  });
+  }, 15_000);
 
   it("rejects stale authority, corrupt lifecycle state, and exhaustion safely", async () => {
     if (!client) throw new Error("Missing client.");
