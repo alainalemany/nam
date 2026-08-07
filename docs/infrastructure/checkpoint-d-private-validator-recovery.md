@@ -2,6 +2,14 @@
 
 Status: Confirmed incident-specific recovery procedure.
 
+> **Historical Checkpoint D evidence:** This incident procedure is bound to the
+> sealed `76cdba9`/ten-panel response and the unchanged 16-migration deployment
+> generation. It does not establish current ADR-019 acceptance and is not
+> executable authority for repository HEAD `4eba24f`. Preserve its sealed
+> identities and results. Current readiness status and sequencing are governed
+> by the
+> [Controlled Pilot Readiness Re-baseline](controlled-pilot-readiness-rebaseline.md).
+
 This runbook completes only the structural-validation portion of Checkpoint D
 D6.4 after the Windows `HTMLFile` COM parser failed to preserve the HTML5
 `section` ancestry in an already downloaded Day View response. The failure is a

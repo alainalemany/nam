@@ -1,7 +1,10 @@
 # Operational Pilot Runbook
 
-This runbook is the canonical preparation and execution procedure for the first
-controlled NAM Dashboard real-data pilot.
+This runbook is the canonical source for durable preparation requirements,
+pilot scope, support, execution expectations, and exit review for the first
+controlled NAM Dashboard real-data pilot. The current deployment and readiness
+baseline, remaining gate status, and approved gate order are governed by the
+[Controlled Pilot Readiness Re-baseline](controlled-pilot-readiness-rebaseline.md).
 
 It coordinates access authorization, deployment verification, reference-data
 preparation, PostgreSQL recovery evidence, pilot entry order, and the pilot exit
@@ -20,33 +23,39 @@ remains governed by [Server Identity Disaster Recovery](disaster-recovery.md).
 
 ## Current Baseline
 
-The Phase 24.2 assessment established this baseline:
+The accepted read-only re-baseline established:
 
-- Repository commit `76cdba9530e49334e775009a811ae5ae74305c65` is
-  clean and synchronized with `origin/main`. Its application build inputs are
-  equivalent to commit `3753168`; later changes are documentation-only and
-  excluded from the Docker build context.
-- PostgreSQL is healthy, private to the Docker network, and has all 16 current
-  migrations applied with matching checksums.
-- The application container is bound to `127.0.0.1:3000`, but host-level Caddy
-  exposes `https://dev.alemany.me` publicly without authentication.
-- The running application image predates the ten-contributor Day View change
-  and shows eight contributors; the repository implementation has ten.
-- City, Mine, Equipment, Timesheet reference, and Fuel Service Person tables
-  have no operational reference records.
-- Existing product records are one Phase 3.2 Daily Log smoke record and its one
-  activity. `phase2a_persistence_check` contains one infrastructure row.
-- Existing backup archives contain only the old Phase 2A persistence-check
-  schema and are not current recovery evidence.
-- Photo evidence is unavailable and remains blocked by ADR-018.
+- Repository `main` is at
+  `4eba24fb97abac61c6511258ad4e97aebd4ea6a2`, contains 20 migrations and
+  eleven Day View contributors, and implements Supply Requests and Knowledge
+  Base V1.
+- The healthy deployed application remains the historical Checkpoint D image
+  from `76cdba9530e49334e775009a811ae5ae74305c65`. It has Next.js `15.5.19`,
+  ten Day View contributors, and no Supply Requests or Knowledge Base.
+- Live PostgreSQL `18.4` has 16 successful migrations and no failed
+  migrations. The first 16 checksums match the repository; the four Supply
+  Request and Knowledge Base migrations are not applied live.
+- The application remains bound to `127.0.0.1:3000` and PostgreSQL remains
+  unpublished, but Caddy still exposes NAM publicly over TCP `80`/`443` and
+  UDP `443`. Both public IPv4 and direct IPv6/SNI paths were observed.
+- Tailscale is installed, connected, and configured to Serve the loopback
+  application, but private HTTPS and policy/device acceptance remain open.
+  ADR-019 is partially implemented, not accepted.
+- Cities, Mines, and Equipment have aggregate counts of 3, 3, and 7.
+  Timesheet Work Codes, Work Orders, Support Personnel, and Fuel Service
+  Personnel each have an aggregate count of 0. No record contents were
+  inspected, and the Reference-Data Gate remains open.
+- Only two historical Phase 2A dumps exist. No accepted current 16-migration
+  backup, 20-migration backup, or current-schema disposable restore proof
+  exists.
+- Photo evidence remains unavailable and blocked by ADR-018 prerequisites.
 
-This document defines procedures only. None of these gates is considered
-passed until a later authorized milestone executes and records the evidence.
-Checkpoint D recovery, deployment correction, access implementation,
-infrastructure recovery, and the operational pilot remain parked. This status
-includes production database operations, Tailscale, Caddy, SSH, firewall, and
-backup or restore execution. This status reconciliation does not authorize or
-resume any runbook step.
+This runbook does not authorize execution. Its existing mutation procedures
+are suspended until they are reconciled with the current 20-migration schema
+and approved through a separately reviewed execution authority. Historical
+Checkpoint D procedures are evidence only. No Tailscale, Caddy, SSH, firewall,
+DNS, deployment, database, backup, restore, or pilot step may begin from this
+document alone.
 
 ## Pilot Authorization Gates
 
@@ -56,7 +65,7 @@ signed off. A skipped, unknown, or partially verified gate is a failed gate.
 | Gate | Required evidence | Status before execution |
 | --- | --- | --- |
 | Access | Approved private boundary active; public bypass denied; approved devices work; PostgreSQL remains unpublished. | Blocked |
-| Deployment | Checkpoint D gates D1 through D8 accepted; intended immutable image deployed; PostgreSQL unchanged; Day View has eleven contributors, including Supply Requests. | Blocked |
+| Deployment | Immutable image for exact current revision deployed after a separately authorized migration transition; live database has all 20 migrations; Supply Requests, Knowledge Base, and eleven Day View contributors verified. | Blocked |
 | Reference data | Minimum location, Equipment, Timesheet, fuel, and snapshot-name context reviewed and signed off. | Blocked |
 | Recovery | Current-schema archive validated and restored successfully into a disposable database without touching live data. | Blocked |
 | Pilot scope | First-shift modules, entry order, date rules, and event-driven exclusions understood. | Blocked |
@@ -112,29 +121,14 @@ credential values in this repository or in pilot evidence.
 
 #### Controlled Implementation Sequence
 
-Execute these steps only in a separately authorized infrastructure milestone:
-
-1. Capture the current privileged UFW rules and effective SSH configuration.
-2. Verify independent key-only SSH recovery through the non-root administrator
-   account.
-3. Create and secure the Tailscale administrative account.
-4. Enable administrator MFA and device approval.
-5. Install and enroll the VPS.
-6. Enroll approved Windows and mobile devices.
-7. Remove the default allow-all policy and configure explicit deny-by-default
-   grants for the NAM HTTPS service only.
-8. Configure tailnet-only private HTTPS forwarding to `127.0.0.1:3000`.
-9. Confirm Tailscale Funnel and every public-sharing capability are disabled.
-10. Verify private access from each approved device class in pilot scope.
-11. Verify denial from an unapproved overlay device.
-12. Remove the public Caddy application route.
-13. Remove public DNS reachability for `dev.alemany.me`.
-14. Close public TCP `80` and `443` and UDP `443` over IPv4 and IPv6.
-15. Verify no direct IP, hostname, Caddy, IPv4, IPv6, or other public bypass
-    exists.
-16. Verify private-only access persists across VPS reboot and Docker restart.
-17. Verify device removal revokes access and re-enrollment requires approval.
-18. Record the Access Gate evidence and independent review result.
+The current approved order is maintained in the
+[Controlled Pilot Readiness Re-baseline](controlled-pilot-readiness-rebaseline.md).
+In summary, private HTTPS, policy/device controls, and independent administrator
+recovery must pass before public NAM exposure is removed. Public exposure must
+then be removed and independently disproven before the live database and
+application transition. Pre-migration recovery proof must also pass before any
+live migration. Each security-sensitive mutation requires separate approval;
+no item in this runbook implicitly authorizes the next.
 
 Do not enter real operational data during this transition. Removing only the
 public DNS `A` record is insufficient. Public Caddy routing and public firewall
@@ -185,27 +179,20 @@ The durable boundary and rollback rules are recorded in
 
 ### Deployment Gate
 
-Checkpoint D corrects application-image drift only. It deploys the approved
-commit containing all eleven Day View contributors, including Supply Requests,
-while preserving PostgreSQL,
-the `postgres-data` volume, `nam-network`, loopback-only application
-publishing, and the temporarily retained public and private routes.
+The Checkpoint D application-image correction is historical evidence bound to
+the `76cdba9`/16-migration deployment generation. It is not executable authority
+for repository HEAD `4eba24f` and does not close the current Deployment Gate.
 
-The prior inline Deployment Gate procedure is superseded and has been removed.
-It must not be recovered from Git history or used as an execution procedure.
-It checked migration parity too late, used a mutable implicit image, compared
-different Docker identity layers, and created an unverified rollback tag.
+Current deployment requires a fresh immutable image built from exact revision
+`4eba24f` with embedded identity, accepted rollback compatibility, and a
+separately authorized transition of live migrations 17 through 20. The gate
+must verify Supply Requests, Knowledge Base, and all eleven Day View
+contributors. Public NAM exposure must already be removed under the accepted
+private boundary, and a current 16-migration backup and disposable restore must
+already have passed, before the live database/application transition begins.
 
-The only authoritative executable procedure is the
-[Checkpoint D Application Deployment Correction Runbook](checkpoint-d-application-deployment-correction.md).
-That runbook defines fail-closed gates D1 through D8, the fixed immutable
-candidate, the accepted V17 rollback authority, application-only replacement,
-server validation, the external Darnassus gate, conditional rollback, and
-acceptance evidence.
-
-Checkpoint D does not pass the larger pilot Deployment Gate until every
-required D1 through D8 result is independently accepted. A rollback restores
-service but leaves Checkpoint D and this Deployment Gate failed.
+The complete current sequence and authorization boundaries are in the
+[Controlled Pilot Readiness Re-baseline](controlled-pilot-readiness-rebaseline.md).
 
 ### Reference-Data Gate
 
@@ -324,6 +311,13 @@ because the records are identifiable and predate the pilot. Reconsider cleanup
 only if they materially confuse real retrieval.
 
 ## PostgreSQL Backup Procedure
+
+**Suspended current procedure:** the commands below predate Supply Requests and
+Knowledge Base and do not represent the current 20-migration data model. They
+are retained for review context only and must not be executed against the live
+database. A separately authorized execution procedure must refresh the model
+inventory, immutable identities, manifest, and rollback boundary before the
+Pre-migration Recovery Gate can run.
 
 The authoritative backup directory is:
 
@@ -612,6 +606,12 @@ result. A dump without its validated checksum, TOC, manifest, and PASS record
 does not satisfy the Recovery Gate.
 
 ## Disposable Restore Procedure
+
+**Suspended current procedure:** this procedure is paired with the stale backup
+inventory above. It is not current execution authority and must not be run
+until a separately reviewed 16-migration pre-migration recovery procedure is
+approved. A later 20-migration current-schema recovery procedure requires its
+own authorization after deployment parity.
 
 Archive listing proves readability of the backup container, not recoverability.
 This procedure restores into a generated database whose name begins with
@@ -1111,7 +1111,6 @@ The pilot is not complete until the review records:
 
 Possible next milestones remain evidence-driven:
 
-- Supply Requests discovery when repeated operator-originated needs exist.
 - Access control or authentication when broader secure access is the main
   operational constraint.
 - Phase 23.5 prerequisites only after its access, processing, storage, and

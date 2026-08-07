@@ -1,5 +1,12 @@
 # Checkpoint D Existing-Candidate Recovery
 
+> **Historical Checkpoint D evidence:** This one-time path is bound to the
+> `76cdba9` application and unchanged 16-migration deployment generation. It is
+> not executable authority for repository HEAD `4eba24f` or migrations 17
+> through 20. Preserve the fixed identities and results below. Current
+> readiness status and sequencing are governed by the
+> [Controlled Pilot Readiness Re-baseline](controlled-pilot-readiness-rebaseline.md).
+
 This one-time operator path bridges the already validated candidate to corrected
 D4 without rebuilding or rerunning D1 or D2. The authoritative procedure remains
 [Checkpoint D Application Deployment Correction](checkpoint-d-application-deployment-correction.md).

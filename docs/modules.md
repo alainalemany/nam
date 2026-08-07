@@ -257,8 +257,9 @@ suggestions, no-default Tractor/Forklift behavior, known-mismatch confirmation,
 signed NAM-only save feedback, and Create Another. Photo evidence remains
 checklist-owned, optional, unavailable, and access-gated under ADR-018 for Phase
 23.5. ADR-019 approves the managed private-overlay design, but its implementation
-and the remaining media prerequisites are still blocked. Photos do not create
-Defects or Daily Log records.
+is only partially configured and is not accepted; the remaining access and
+media prerequisites are still blocked. Photos do not create Defects or Daily
+Log records.
 
 ## Daily Log
 

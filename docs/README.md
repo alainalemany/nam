@@ -126,9 +126,11 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Understand why decisions were made | [ADR Index](decisions/README.md) |
 | Run the application foundation | [Development Guide](development.md) |
 | Operate infrastructure | [Infrastructure Operations](infrastructure.md) |
-| Prepare and execute a controlled operational pilot | [Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md) |
-| Correct the Checkpoint D stale application deployment | [Checkpoint D Application Deployment Correction](infrastructure/checkpoint-d-application-deployment-correction.md) |
-| Complete the sealed Checkpoint D private Day View validation | [Checkpoint D Private Validator Recovery](infrastructure/checkpoint-d-private-validator-recovery.md) |
+| Understand current controlled-pilot readiness identity and gate order | [Controlled Pilot Readiness Re-baseline](infrastructure/controlled-pilot-readiness-rebaseline.md) |
+| Review controlled operational pilot requirements and future execution flow | [Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md) |
+| Review historical Checkpoint D application-deployment evidence | [Checkpoint D Application Deployment Correction](infrastructure/checkpoint-d-application-deployment-correction.md) |
+| Review historical Checkpoint D candidate-recovery evidence | [Checkpoint D Existing-Candidate Recovery](infrastructure/checkpoint-d-existing-candidate-recovery.md) |
+| Review historical Checkpoint D private-validator evidence | [Checkpoint D Private Validator Recovery](infrastructure/checkpoint-d-private-validator-recovery.md) |
 | Understand the controlled-pilot private-access decision | [ADR-019: Managed Private Overlay](decisions/adr-019-managed-private-overlay-operational-pilot.md) |
 | Understand server identity | [Server Environment Identity](infrastructure/server-environment.md) |
 | Understand bootstrap and verification | [Bootstrap And Verification](infrastructure/bootstrap-and-verification.md) |
@@ -136,6 +138,11 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Understand implementation phases | [Implementation Roadmap](roadmap.md) |
 | Review unapproved future concepts | [Ideas Backlog](ideas.md) |
 | Follow documentation formatting rules | [Documentation Style Guide](documentation-style.md) |
+
+Current infrastructure readiness authority is the
+[Controlled Pilot Readiness Re-baseline](infrastructure/controlled-pilot-readiness-rebaseline.md).
+The Checkpoint D documents linked above are historical evidence only and are
+not current execution authority.
 
 ## Authoritative Sources
 
@@ -167,9 +174,9 @@ to that home but should not restate the same policy in detail.
 | Architecture philosophy | `docs/architecture.md`, principles in `docs/philosophy.md` |
 | Architecture decisions | `docs/decisions/` |
 | Infrastructure philosophy | `docs/infrastructure.md`, durable decisions in `docs/decisions/` |
-| Operational pilot authorization, preparation, execution, and exit review | `docs/infrastructure/operational-pilot-runbook.md` |
-| Checkpoint D application-image-only deployment correction | `docs/infrastructure/checkpoint-d-application-deployment-correction.md` |
-| Checkpoint D sealed private Day View validator recovery | `docs/infrastructure/checkpoint-d-private-validator-recovery.md` |
+| Current controlled-pilot deployment identity, gate status, and readiness order | `docs/infrastructure/controlled-pilot-readiness-rebaseline.md` |
+| Operational pilot requirements, future execution, and exit review | `docs/infrastructure/operational-pilot-runbook.md` |
+| Historical Checkpoint D application deployment, candidate recovery, and private-validator evidence | `docs/infrastructure/checkpoint-d-application-deployment-correction.md`, `docs/infrastructure/checkpoint-d-existing-candidate-recovery.md`, `docs/infrastructure/checkpoint-d-private-validator-recovery.md` |
 | Controlled-pilot private-access architecture | `docs/decisions/adr-019-managed-private-overlay-operational-pilot.md` |
 | Environment identity | `docs/infrastructure/server-environment.md` |
 | Deployment philosophy | `docs/architecture.md`, deployment operations in `docs/infrastructure.md` |

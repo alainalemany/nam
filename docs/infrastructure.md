@@ -30,6 +30,7 @@ Key documents:
 - `docs/infrastructure/bootstrap-and-verification.md`
 - `docs/infrastructure/server-config.md`
 - `docs/infrastructure/disaster-recovery.md`
+- `docs/infrastructure/controlled-pilot-readiness-rebaseline.md`
 - `docs/infrastructure/operational-pilot-runbook.md`
 
 Phase 2B includes:
@@ -50,11 +51,14 @@ existing development app:
   configured in Caddy yet.
 
 ADR-019 approves a managed private overlay, with Tailscale as the implementation
-reference, for the controlled real-data pilot. That boundary is not implemented
-yet. The current public Caddy route remains development-only and does not
-authorize real operational data. The later access milestone must establish
-tailnet-only HTTPS, remove the public NAM route, and close public HTTP/HTTPS
-ingress over IPv4 and IPv6 before the Access Gate can pass.
+reference, for the controlled real-data pilot. Tailscale is installed,
+connected, and configured to Serve the loopback application, but private HTTPS,
+policy, device, revocation, and recovery acceptance remain incomplete. The
+boundary is partially implemented but not accepted. The current public Caddy
+route remains development-only and does not authorize real operational data.
+The later access milestone must prove tailnet-only HTTPS and administrator
+recovery before removing the public NAM route and closing public HTTP/HTTPS
+ingress over IPv4 and IPv6.
 
 Phase 2B does not include:
 
@@ -123,7 +127,7 @@ Internet -> Caddy :443 -> 127.0.0.1:3000 -> nam-app
 
 Docker should continue to publish the app only on `127.0.0.1:3000`.
 
-The approved but unimplemented pilot path is:
+The partially configured but unaccepted pilot path is:
 
 ```text
 Approved tailnet device -> private HTTPS -> 127.0.0.1:3000 -> nam-app
@@ -195,15 +199,19 @@ Development PostgreSQL backups should be written to:
 /home/alain/backups/nam/postgres/
 ```
 
-The canonical current-schema pilot backup procedure is the
-[Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md). It
-defines private file permissions, custom-format `pg_dump`, partial-file failure
-handling, a manifest, migration and record-count context, SHA-256 validation,
-and a mandatory disposable restore before real pilot data is authorized.
+The [Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md)
+records the durable backup and restore requirements. Its existing command
+blocks predate the 20-migration repository model and are suspended. The
+[Controlled Pilot Readiness Re-baseline](infrastructure/controlled-pilot-readiness-rebaseline.md)
+requires a separately authorized 16-migration pre-migration procedure and a
+later 20-migration current-schema procedure, each with private permissions,
+custom-format `pg_dump`, failure-safe partial-file handling, a manifest,
+migration and aggregate-count context, SHA-256 validation, and a mandatory
+disposable restore.
 
-Older Phase 2A archives and archive listings are not current-schema recovery
-evidence. No pilot backup or restore is considered proven until the runbook is
-executed successfully in a separately authorized operations milestone.
+The two existing Phase 2A archives and archive listings are not current
+recovery evidence. No pilot backup or restore is considered proven until the
+applicable separately approved procedure is executed and accepted.
 
 ## Planned Operational Safety Checklist Media Storage
 
@@ -247,10 +255,12 @@ encrypted off-host copies and regular restore exercises.
 ## PostgreSQL Restore
 
 Never validate a pilot backup by restoring over the live database. Use the
-guarded disposable-database procedure in the
-[Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md), then
-drop only that unmistakably named validation database after comparing migration
-and record counts with the backup manifest.
+future separately authorized guarded disposable-database procedure for the
+applicable schema generation, then drop only that unmistakably named validation
+database after comparing migration and aggregate counts with the backup
+manifest. The existing command blocks in the
+[Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md) are
+not current execution authority.
 
 An actual disaster recovery restore is a separate, destructive operation that
 requires explicit authorization and the
@@ -351,15 +361,14 @@ docker compose down -v
 
 Phase 2B deployment workflow should remain development-only.
 
-The exact Checkpoint D application-image correction, immutable image identity
-checks, PostgreSQL preservation assertions, route validation, evidence record,
-and application-only rollback are defined in the
-[Checkpoint D Application Deployment Correction Runbook](infrastructure/checkpoint-d-application-deployment-correction.md).
-The [Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md)
-keeps Checkpoint D in the larger pilot sequence without duplicating its
-executable procedure. The pilot remains unauthorized until every pilot gate is
-independently accepted. ADR-019 approves the boundary architecture; it does not
-make the temporarily retained public deployment eligible for pilot data.
+The [Controlled Pilot Readiness Re-baseline](infrastructure/controlled-pilot-readiness-rebaseline.md)
+records the current repository, deployed image, live migration, access,
+recovery, and rollback identities and governs the remaining gate order. The
+Checkpoint D documents are historical evidence for the `76cdba9`/16-migration
+generation, not current executable authority. The
+[Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md)
+continues to own durable pilot requirements and exit review. The pilot remains
+unauthorized until every current gate is independently accepted.
 
 The expected sequence is:
 

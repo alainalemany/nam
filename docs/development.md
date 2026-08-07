@@ -35,7 +35,7 @@ The current development platform includes:
 - Operations reference data
 - Daily Work Logs, STOP Cards, Daily Inspections, Operational Safety Checklists,
   Shift Reports, Work Authorizations, Defect Tracking, Work Schedule, and
-  Timesheet feature foundations, plus Supply Requests V1
+  Timesheet feature foundations, plus Supply Requests V1 and Knowledge Base V1
 - Selected-date Day View composition across eleven participating operational
   modules, including Operational Safety Checklists, Equipment Fuel Events, and
   Supply Requests
@@ -171,16 +171,22 @@ be configured for the development app.
 
 This current public endpoint is limited to non-sensitive development use. It
 does not satisfy the controlled-pilot Access Gate. ADR-019 approves a managed
-private overlay with tailnet-only HTTPS for the pilot, but implementation has
-not started. The canonical sequence and evidence requirements are in the
+private overlay with tailnet-only HTTPS for the pilot. Tailscale is installed,
+connected, and configured to Serve the loopback application, but private HTTPS
+and policy/device acceptance remain incomplete. The boundary is partially
+implemented, not accepted. Current deployment identity and gate order are in
+the [Controlled Pilot Readiness Re-baseline](infrastructure/controlled-pilot-readiness-rebaseline.md);
+durable pilot requirements remain in the
 [Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md).
 
 ## Docker Compose Workflow
 
 These commands support local development. A controlled real-data pilot must use
-the gated deployment, rollback, route, migration, and runtime verification
-sequence in the
-[Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md).
+separately authorized procedures conforming to the current gate order in the
+[Controlled Pilot Readiness Re-baseline](infrastructure/controlled-pilot-readiness-rebaseline.md).
+The [Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md)
+continues to define durable pilot requirements; its mutation procedures are not
+current execution authority.
 
 Build and start the full development stack:
 

@@ -6,6 +6,13 @@ Status: Accepted
 
 Category: Infrastructure/security architecture
 
+Implementation status: Partially configured, not accepted as the operational
+pilot boundary. Tailscale is installed, connected, and configured to Serve the
+loopback application, while private HTTPS, policy/device evidence, public-route
+removal, and independent administrator recovery remain open. Current evidence
+and gate ordering are recorded in the
+[Controlled Pilot Readiness Re-baseline](../infrastructure/controlled-pilot-readiness-rebaseline.md).
+
 ## Decision
 
 NAM Dashboard will use a managed private overlay network, with Tailscale as the
@@ -219,7 +226,7 @@ Implementation acceptance must prove:
 - Private HTTPS produces no browser certificate warning.
 - Port `3000` remains loopback-only and PostgreSQL remains unpublished.
 - No public Caddy, direct IP, DNS, Funnel, or other sharing bypass remains.
-- Application health, expected routes, and all ten Day View contributors work
+- Application health, expected routes, and all eleven Day View contributors work
   through the private service.
 - Device removal revokes access and re-enrollment requires approval.
 - VPS reboot and Docker restart preserve private-only access.
@@ -253,6 +260,7 @@ and public ingress closed and must not modify PostgreSQL or application data.
 ## Related Documents
 
 - [Operational Pilot Runbook](../infrastructure/operational-pilot-runbook.md)
+- [Controlled Pilot Readiness Re-baseline](../infrastructure/controlled-pilot-readiness-rebaseline.md)
 - [Infrastructure Operations](../infrastructure.md)
 - [Development Guide](../development.md)
 - [Server Identity Disaster Recovery](../infrastructure/disaster-recovery.md)

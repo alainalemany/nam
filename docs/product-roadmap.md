@@ -270,23 +270,28 @@ Dependency notes:
 
 ### Operational Usage Pilot
 
-Status: Parked; authorization gates remain incomplete
+Status: Controlled Pilot Readiness Security and Deployment Re-baseline is the
+current approved unnumbered direction; authorization gates remain incomplete
 
 Phase 24.2 readiness assessment is complete. Phase 24.2.1 provides the
 [Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md), but
 real operational use is not yet authorized. Phase 24.2.2 selected the private
 access architecture, and ADR-019 records the approved managed private overlay
-with Tailscale as the implementation reference. Phase 24.2.2.1 records the
-controlled implementation and verification plan. The access implementation,
-current-deployment, reference-data, recovery, and pilot-scope gates must all
-pass before the first real shift.
+with Tailscale as the implementation reference. Tailscale is partially
+configured but the private boundary is not accepted. The dependency-security
+correction at `4eba24f` is complete. Current repository/deployment drift,
+public exposure, recovery gaps, and ordered gate status are recorded in the
+[Controlled Pilot Readiness Re-baseline](infrastructure/controlled-pilot-readiness-rebaseline.md).
+Private access and administrator recovery, public exposure removal, immutable
+current deployment, migration parity, both recovery gates, reference-data
+review, and pilot-scope authorization must pass before the first real shift.
 
 No new product feature is required merely to continue preparation. Phase 23.5
 photo evidence remains blocked by its approved access and media prerequisites.
-The operational pilot remains gated and parked outside the Supply Requests
-feature series. Supply Requests were selected through explicit product
-direction; their architecture and later implementation do not authorize or
-depend on resuming the pilot.
+This readiness direction has no phase number, does not create Phase 29, and
+does not authorize deployment, access cutover, database mutation, or pilot
+execution. The operational pilot remains gated outside the Supply Requests
+feature series.
 
 ### Phase 4: Knowledge And Sensitive Records
 
@@ -390,7 +395,7 @@ The MVP should not require:
 | Operations reference data | Establishes shared mine and equipment context. | None beyond the application foundation. | Implemented |
 | Daily Work Log foundation | Establishes the first usable workday history. | Operations reference data. Feature architecture: `docs/architecture/features/daily-work-logs.md`. | Implemented |
 | Feature filtering, date navigation, and Day View | Makes historical lookup practical across implemented modules. | Daily records and date-aware modules. | Feature-owned filtering and Day View composition implemented for current operational modules; global cross-module search deferred |
-| Controlled operational pilot | Validates implemented workflows with narrowly governed real use. | Implemented and verified ADR-019 private access, current verified deployment, reviewed reference data, and proven current-schema recovery. | Phase 24.2 assessment and Phase 24.2.1 runbook complete; Phase 24.2.2.1 access architecture approved; implementation pending; real pilot not authorized |
+| Controlled operational pilot | Validates implemented workflows with narrowly governed real use. | Independently accepted ADR-019 implementation and administrator recovery, removed public exposure, immutable current deployment and migration parity, reviewed reference data, proven pre-migration and current-schema recovery, and approved pilot scope. | Current unnumbered security/deployment re-baseline direction approved; dependency-security slice complete; documentation authority re-baseline pending independent review; Tailscale partial but unaccepted; deployment, recovery, and real pilot not authorized |
 | STOP Cards | Captures safety observations and corrective actions. | Day View context; feature architecture: `docs/architecture/features/stop-cards.md`. | V1 foundation, filtering, and Day View participation implemented |
 | Daily Inspections | Captures equipment inspection findings and condition context. | Equipment reference data and Day View context; feature architecture: `docs/architecture/features/daily-inspections.md`. | Daily Inspection and Operational Safety Checklist foundations, feature-owned filtering, and Day View participation implemented |
 | Shift Reports | Creates the parent structure for shift paperwork. | Daily/date context and equipment references. Feature architecture: `docs/architecture/features/shift-reports.md`. | V1 foundation, filtering, and Day View participation implemented |

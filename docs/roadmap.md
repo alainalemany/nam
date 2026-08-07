@@ -708,25 +708,38 @@ Canonical procedure:
 
 `docs/infrastructure/operational-pilot-runbook.md`
 
-Current status: Phase 24.2 readiness assessment is complete and Phase 24.2.1
-runbook preparation is complete. Phase 24.2.2 selected a managed private
-overlay, and ADR-019 records the approved architecture with Tailscale as the
-implementation reference. Phase 24.2.2.1 records the controlled implementation
-and verification plan. The boundary is not implemented, the real-data pilot has
-not started, and the pilot is not authorized. Checkpoint D recovery,
-deployment correction, access implementation, infrastructure recovery, and the
-entire operational pilot sequence remain parked until separately authorized.
+Current state and gate ordering authority:
+
+`docs/infrastructure/controlled-pilot-readiness-rebaseline.md`
+
+Current status: Phase 24.2 readiness assessment and Phase 24.2.1 runbook
+preparation are complete. ADR-019 approves a managed private overlay. Tailscale
+is installed, connected, and configured to Serve the loopback application, but
+private HTTPS, policy/device evidence, public-route removal, and independent
+administrator recovery remain incomplete. The boundary is partially
+implemented, not accepted, and the real-data pilot is not authorized.
+
+The dependency-security correction at `4eba24f` is complete as unnumbered
+readiness work. The Controlled Pilot Readiness Security and Deployment
+Re-baseline is the current approved direction, also unnumbered. Documentation
+authority re-baselining is in progress pending independent review;
+access/deployment/recovery mutations and pilot execution remain separately
+gated. Phase 29 does not exist and is not authorized.
 
 ### Phase 1: Close Pilot Gates
 
-- Implement and independently verify the ADR-019 managed private-overlay
-  boundary; the current public unauthenticated endpoint still does not qualify.
-- Deploy and verify the intended current commit, including eleven Day View
-  contributors with Supply Requests as the eleventh.
+- Accept the ADR-019 private HTTPS and policy/device boundary and prove
+  independent administrator recovery.
+- Remove public NAM exposure over IPv4 and IPv6 only after the private path and
+  recovery pass, and before the live database/application transition.
+- Build an immutable current candidate with embedded repository identity.
+- Create and disposable-restore a current 16-migration backup before applying
+  migrations 17 through 20.
+- Separately authorize and verify the 20-migration deployment, including Supply
+  Requests, Knowledge Base, and eleven Day View contributors.
+- Create and disposable-restore a current 20-migration backup after parity.
 - Prepare and review minimum operational reference data without fabricating
   unknown facts.
-- Create a current-schema baseline backup and prove it through a guarded
-  disposable restore.
 - Confirm the first-shift scope and entry order.
 
 ### Phase 2: Controlled Use
@@ -1107,11 +1120,11 @@ Status: Complete and accepted
 - Deferred enhancements remain outside V1 and are not incomplete V1 work.
 - Any future Supply Request enhancement requires new product review,
   architecture review, and separate explicit authorization.
-- Checkpoint D recovery, deployment, and the operational pilot remain parked
-  and are not resumed by this closure.
+- Controlled-pilot readiness is governed separately and is not authorized by
+  this closure.
 
-The operational pilot and Checkpoint D recovery remain parked outside this
-feature series. Supply Requests work does not resume or authorize them.
+The operational pilot remains outside this feature series. Supply Requests
+work does not resume or authorize it.
 
 ## Equipment Activity Timeline
 

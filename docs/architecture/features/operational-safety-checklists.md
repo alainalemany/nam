@@ -55,8 +55,10 @@ forklifts, and other supported mobile Equipment. Phase 23.4 implements explicit
 mismatch confirmation, signed NAM-only save results, and Create Another. Photo
 implementation and real photo use remain blocked. ADR-019 approves the managed
 private-overlay architecture for ADR-018's access requirement, but that
-boundary is not implemented and the remaining processing, storage, backup, and
-recovery prerequisites also remain open.
+boundary is only partially configured and is not accepted; private HTTPS,
+policy/device, public-exposure, and administrator-recovery gates remain open.
+The remaining processing, storage, backup, and recovery prerequisites also
+remain open.
 
 ## 1. Purpose
 
@@ -1100,10 +1102,11 @@ every read and mutation:
 ADR-019 selects the second boundary for the controlled pilot, with Tailscale as
 the managed private-overlay implementation reference. Architecture approval is
 not gate completion. Real photo routes remain disabled until the overlay is
-implemented, deny-by-default grants and device approval are verified, and no
-public Caddy, DNS, IPv4, IPv6, Funnel, or other bypass remains. Tailscale
-controls network reachability; it does not provide checklist-level application
-authorization.
+accepted: private HTTPS, deny-by-default grants, device approval, administrator
+recovery, and removal of every public Caddy, DNS, IPv4, IPv6, Funnel, or other
+bypass must be verified. The current partial Tailscale configuration does not
+pass that gate. Tailscale controls network reachability; it does not provide
+checklist-level application authorization.
 
 TLS, an Internet-facing Caddy hostname, client-side hiding, `robots.txt`, and
 unpredictable media URLs do not satisfy this gate. Loopback-only development

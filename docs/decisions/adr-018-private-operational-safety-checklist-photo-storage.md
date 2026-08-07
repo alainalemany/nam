@@ -96,9 +96,10 @@ or client-side hiding do not authorize access to workplace evidence.
   public file URLs are prohibited.
 - Real photo use remains implementation-blocked until the approved access gate
   exists. ADR-019 approves the managed private-overlay architecture, but that
-  boundary must still be implemented and verified. Loopback-only development
-  with synthetic, non-sensitive fixtures is permitted for implementation
-  verification.
+  boundary is only partially configured and must still be accepted through
+  private HTTPS, policy/device, public-exposure, and administrator-recovery
+  evidence. Loopback-only development with synthetic, non-sensitive fixtures
+  is permitted for implementation verification.
 - This decision does not create a generic attachment service, object-storage
   platform, authentication system, Defect linkage, or external corporate-form
   integration.

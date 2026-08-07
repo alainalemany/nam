@@ -112,8 +112,13 @@ Confirmed deployment baseline:
 - Host-level Caddy reverse proxies `dev.alemany.me` to `127.0.0.1:3000` for
   external development access.
 - ADR-019 approves a managed private overlay with Tailscale as the
-  implementation reference for the controlled pilot. It is not implemented;
-  the current public Caddy route remains ineligible for real operational data.
+  implementation reference for the controlled pilot. Tailscale is installed,
+  connected, and configured to Serve the loopback application, but private
+  HTTPS and policy/device acceptance remain incomplete. The boundary is
+  partially implemented, not accepted, and the current public Caddy route
+  remains ineligible for real operational data. Current readiness identity and
+  sequencing are recorded in
+  `docs/infrastructure/controlled-pilot-readiness-rebaseline.md`.
 - `nam.alemany.me` is reserved for future production use.
 - Staging and production deployment remain future work.
 

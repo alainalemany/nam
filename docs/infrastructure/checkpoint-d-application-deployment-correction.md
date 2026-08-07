@@ -1,13 +1,22 @@
 # Checkpoint D Application Deployment Correction
 
-This runbook is the authoritative execution procedure for Checkpoint D. It
+> **Historical Checkpoint D evidence:** This document is bound to application
+> revision `76cdba9530e49334e775009a811ae5ae74305c65` and the unchanged
+> 16-migration deployment generation. It is not executable authority for
+> repository HEAD `4eba24fb97abac61c6511258ad4e97aebd4ea6a2` or for migrations
+> 17 through 20. Preserve the identities, commands, and results below as
+> historical evidence. Current readiness status and sequencing are governed by
+> the [Controlled Pilot Readiness Re-baseline](controlled-pilot-readiness-rebaseline.md).
+
+Within its historical Checkpoint D generation, this runbook was the
+authoritative execution procedure. It
 replaces only the stale NAM application container with an application image
 built from the immutable application-source commit while the repository remains
 at the runbook/control commit. It must not migrate, seed, reset, restore, or
 otherwise change PostgreSQL, and it must not change any public or private access
 control.
 
-The larger pilot sequence remains canonical in the
+The durable pilot requirements remain canonical in the
 [Operational Pilot Runbook](operational-pilot-runbook.md). General operations
 remain in [Infrastructure Operations](../infrastructure.md), recovery policy
 remains in [Server Identity Disaster Recovery](disaster-recovery.md), and the

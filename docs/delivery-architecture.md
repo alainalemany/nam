@@ -303,9 +303,10 @@ observations and the exit review should determine whether another product
 milestone is justified.
 
 ADR-019 now approves the managed private-overlay architecture for the Access
-Gate. The implementation, public-route removal, device and revocation checks,
-and independent acceptance remain a separate infrastructure milestone. An
-approved architecture does not pass the gate or authorize pilot data.
+Gate. Tailscale is partially configured, but private HTTPS, public-route
+removal, device and revocation checks, administrator recovery, and independent
+acceptance remain separate infrastructure work. An approved architecture or
+partial configuration does not pass the gate or authorize pilot data.
 
 ## Relationship To Future Implementation Architecture
 

@@ -7,7 +7,7 @@
 | Confirmed | NAM Dashboard server identity must be recoverable from GitHub. |
 | Confirmed | `/etc/nam/environment` and the NAM MOTD are required identity assets for a rebuilt server. |
 | Recommended | Keep reusable host configuration under `infrastructure/server-config/`, bootstrap entry points under `infrastructure/bootstrap/`, verification scripts under `infrastructure/checks/`, and operational runbooks under `docs/infrastructure/`. |
-| Open Question | Full production restore procedures are not confirmed because production does not exist yet. |
+| Open Question | Live application-data restore procedures are not accepted; current backup and disposable-restore evidence is incomplete. |
 
 ## Scenario
 
@@ -26,6 +26,27 @@ deployment restore require separate runbooks as those systems mature. The
 [Operational Pilot Runbook](operational-pilot-runbook.md) now defines the
 non-destructive current-schema PostgreSQL backup and disposable-restore evidence
 required before a controlled pilot; it does not authorize a live restore.
+Current deployment, backup, restore, and rollback evidence is governed by the
+[Controlled Pilot Readiness Re-baseline](controlled-pilot-readiness-rebaseline.md).
+
+## Current Recovery Evidence
+
+The accepted read-only re-baseline found only two historical Phase 2A
+PostgreSQL dumps. They do not represent either the live 16-migration database
+or the repository's 20-migration schema. No accepted current 16-migration live
+backup, 20-migration current-schema backup, or disposable restore proof exists.
+
+The historical Checkpoint D V17 rollback remains valid only for the unchanged
+16-migration deployment generation. Its compatibility after migrations 17
+through 20 is unproven. A mutable image tag, retained local image, or existing
+dump is not current rollback/recovery authority without immutable identity,
+schema compatibility, checksums, and successful restore evidence.
+
+The approved future order requires a separately authorized 16-migration backup,
+manifest, checksums, and disposable restore before live migrations. After the
+20-migration application/database transition, a second separately authorized
+current-schema backup and disposable restore must establish the new recovery
+authority. Neither recovery gate is authorized by this document.
 
 ## Minimum Recovery Inputs
 
@@ -151,9 +172,12 @@ Those backup payloads are intentionally outside Git. Before a real-data pilot,
 the [Operational Pilot Runbook](operational-pilot-runbook.md) requires a
 current-schema custom-format archive, manifest, SHA-256, and successful restore
 into a guarded disposable database. That test must leave the live database
-untouched. It is not proven until the later execution milestone records the
-result. A complete future disaster recovery plan should additionally include
-off-server storage and documented secret recovery.
+untouched. The existing operational-pilot backup and restore command blocks
+predate the current 20-migration model and are suspended pending a separately
+reviewed execution procedure. Recovery is not proven until the future
+pre-migration and current-schema gates record their respective results. A
+complete future disaster recovery plan should additionally include off-server
+storage and documented secret recovery.
 
 ADR-018 adds a planned media recovery boundary for Operational Safety
 Checklist photos. After Phase 23.5 implementation, a recoverable set must pair
