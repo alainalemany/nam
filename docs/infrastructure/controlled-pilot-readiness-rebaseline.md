@@ -31,15 +31,16 @@ runbook is approved. The Operational Pilot Runbook may become pilot
 orchestration and execution authority only after its stale procedure blocks are
 replaced or revalidated and independently accepted. Security-sensitive gates
 may also require focused execution procedures. All such authority requires
-separate approval before Gate B or any later mutation.
+separate approval before Gate D or any later mutation.
 
 ## Current Repository Identity
 
 | Item | Current identity |
 | --- | --- |
 | Branch | `main` |
-| Repository revision | `4eba24fb97abac61c6511258ad4e97aebd4ea6a2` |
-| Latest change | Dependency-security correction with Next.js `15.5.22`, Next-owned PostCSS `8.5.18`, and Sharp removed from the production graph |
+| Repository revision | `efdea5402401437d9e962b3aa8421a49931e6189` |
+| Application-bearing revision | `4eba24fb97abac61c6511258ad4e97aebd4ea6a2` |
+| Latest change | Accepted [Gate C immutable deployment candidate evidence](gate-c-immutable-deployment-candidate-evidence.md) |
 | Production dependency audit | Zero known vulnerabilities at the accepted verification point |
 | Repository migrations | 20 |
 | Day View contributors | 11 |
@@ -66,9 +67,13 @@ correction by this readiness effort.
 
 The deployed application is healthy but stale. Its tag and image ID prove the
 Checkpoint D generation; they do not prove parity with repository HEAD. No
-immutable deployment candidate with embedded revision `4eba24f` currently
-exists. A retained local Strategy B image is verification evidence only because
-its repository revision is not proven in the image.
+deployment has occurred. Gate C produced and accepted the immutable local
+pre-pilot candidate `nam-app:pre-pilot-candidate-git-130a7fe6` at
+`sha256:20623c0354b224d641be8e95f20034e9db5ff2c73e01fe12edaf63a6a1597da7`,
+with complete repository revision `130a7fe6` and application-bearing revision
+`4eba24f` embedded as separate labels. The
+[Gate C evidence](gate-c-immutable-deployment-candidate-evidence.md) is image
+authority; it does not make the candidate deployed or pilot-ready.
 
 ## Current Live Migration Identity
 
@@ -97,27 +102,32 @@ database mutation.
   DNS removal alone therefore cannot close public access.
 - NAM has no application authentication or authorization.
 - Tailscale is installed, connected, tagged for pilot use, and configured to
-  Serve `127.0.0.1:3000`; Funnel is not configured. Overlay connectivity to a
-  Windows peer was observed.
-- Private HTTPS acceptance has not been proven. Tailnet-hostname resolution on
-  the VPS was unavailable during observation, and a direct private-IP/SNI test
-  did not establish an accepted HTTPS path.
-- MFA, deny-by-default policy, device approval, unapproved-device denial,
-  revocation, re-enrollment, and approved mobile access remain unverified.
+  Serve `127.0.0.1:3000`; Funnel is disabled. Approved Windows and iPad clients
+  passed private HTTPS, health, and Day View checks without bypassing TLS.
+- Prior accepted tailnet-administration evidence records identity-provider MFA,
+  Device Approval, the `tag:nam-pilot` assignment, and an explicit owner-to-tag
+  TCP `443` access rule.
+- Unapproved-device denial, revocation, re-enrollment, and emergency-disablement
+  exercises are intentionally deferred rather than failed.
 
-ADR-019 is therefore **partially implemented, not accepted** as the
-operational-pilot boundary. Installed software, overlay connectivity, and Serve
-configuration do not by themselves pass the Access Gate.
+Gate B is accepted for private access and independent administrator recovery;
+see the [Gate B evidence](gate-b-private-access-administrator-recovery-evidence.md).
+ADR-019 remains partially implemented as the complete operational-pilot
+boundary because public NAM exposure and later pilot gates remain open.
 
 ## Administrator Recovery State
 
 - Public SSH is available over IPv4 and IPv6.
 - Effective configuration is key-only and disables root login.
 - Two authorized ED25519 administrator keys are present.
-- An independent external key-authenticated recovery session has not been
-  executed and accepted.
+- A dedicated Windows recovery key completed an accepted independent external
+  key-authenticated session to the non-root `alain` sudo administrator.
+- The Fail2ban SSH jail passed prior accepted verification and the service
+  remains active.
 - `/etc/ssh/ssh_config.d/20-systemd-ssh-proxy.conf` is world-writable. This is a
-  security defect and has interfered with normal Git-over-SSH verification.
+  separate outbound-client security defect and has interfered with normal
+  Git-over-SSH verification; it does not participate in inbound `sshd`
+  authentication or invalidate the accepted recovery proof.
 
 Correcting the SSH client-fragment permissions is a separately authorized host
 hardening mutation. This document neither authorizes nor supplies that change.
@@ -133,8 +143,8 @@ hardening mutation. This document neither authorizes nor supplies that change.
   only for the unchanged 16-migration deployment generation.
 - V17 compatibility after migrations 17 through 20 is unproven.
 - `nam-app:latest` is mutable and is not deployment or rollback authority.
-- No immutable image for repository revision `4eba24f` is a formal deployment
-  or rollback candidate.
+- The Gate C immutable image is an accepted pre-pilot deployment candidate but
+  is not deployed and is not rollback authority for the current live schema.
 
 A dump file, mutable tag, or retained local image is not recovery proof without
 identity, checksum, compatibility, and restore evidence.
@@ -160,11 +170,11 @@ Gate; correctness and pilot suitability still require review.
 
 | Gate | Status | Reason |
 | --- | --- | --- |
-| Repository identity | PASS | Clean synchronized `main` at `4eba24f` was proven during the accepted read-only investigation. |
-| Private network access | PARTIAL | Tailscale is connected and Serve is configured, but private HTTPS and policy/device controls are unaccepted. |
+| Repository identity | PASS | Clean synchronized `main` at `efdea54` was proven during Gate B formal closure. |
+| Private network access | PASS | Approved Windows and iPad clients passed tailnet-only HTTPS, health, and Day View checks; current Serve/Funnel state remains coherent with the [Gate B evidence](gate-b-private-access-administrator-recovery-evidence.md). |
 | Public exposure removal | OPEN | Public Caddy paths remain reachable over IPv4 and direct IPv6/SNI. |
-| Administrator recovery | PARTIAL | Key-only configuration exists; independent external recovery is unproven and a world-writable SSH client fragment remains. |
-| Immutable deployment candidate | OPEN | No formal image with proven embedded revision `4eba24f` exists. |
+| Administrator recovery | PASS | Independent Windows public-key recovery to non-root sudo administrator `alain` passed; current server-side state does not contradict the accepted evidence. |
+| Immutable deployment candidate | PASS | Gate C accepted the labeled immutable image recorded in the [Gate C evidence](gate-c-immutable-deployment-candidate-evidence.md). |
 | Deployment parity | OPEN | The healthy runtime remains at `76cdba9`, Next.js `15.5.19`, and ten contributors. |
 | Database migration parity | OPEN | Live has 16 successful migrations; repository has 20. |
 | Pre-migration recovery | OPEN | No current 16-migration backup and disposable restore proof exists. |
@@ -180,29 +190,32 @@ explicit owner authorization. Completion of one does not authorize the next.
 
 ### A. Current Documentation And Runbook Authority Re-baseline
 
-Reconcile current-state documentation while preserving Checkpoint D as
-historical evidence. This documentation-only task addresses Gate A and remains
-pending independent review and acceptance; it does not change deployment or
-pilot status.
+**Complete.** Current-state authority was reconciled while preserving
+Checkpoint D as historical evidence. Gate A changed documentation authority
+only; it did not change deployment or pilot status.
 
 ### B. Private Access And Administrator-Recovery Preparation
 
-Correct and verify Tailscale private HTTPS; obtain policy, MFA, approval,
-device-denial, revocation, re-enrollment, and approved-mobile evidence; prove
-independent external key-only SSH recovery; and separately correct the
-world-writable SSH client fragment. Each security-sensitive host mutation needs
-separate approval.
+**Complete.** Approved Windows and iPad devices passed private HTTPS checks,
+tailnet MFA/approval/tag/grant evidence was accepted, Funnel remains disabled,
+and independent external key-only SSH recovery passed. The declined disposable
+device exercises are accepted deferrals, not failures. The world-writable
+outbound SSH client fragment remains separately authorized hardening and was
+not changed. See the
+[Gate B evidence](gate-b-private-access-administrator-recovery-evidence.md).
 
 ### C. Immutable Deployment Candidate
 
-Build a fresh immutable image from exact revision `4eba24f`, embed and verify
-the repository identity, and establish compatible rollback evidence. Do not use
-the unlabeled Strategy B image as deployment authority.
+**Complete.** The labeled immutable pre-pilot candidate was built and passed
+focused dependency, migration, runtime, feature, isolation, and live-state
+protection checks. It remains undeployed. See the
+[Gate C evidence](gate-c-immutable-deployment-candidate-evidence.md).
 
 ### D. Public Exposure Cutover
 
-Only after private access and administrator recovery pass, remove NAM's public
-Caddy exposure, remove public DNS where appropriate, close public NAM TCP
+**Next unresolved gate; not authorized.** Only under a separate authorization,
+remove NAM's public Caddy exposure, remove public DNS where appropriate, close
+public NAM TCP
 `80`/`443` and UDP `443` over IPv4 and IPv6, and prove public NAM paths fail
 while the separately approved SSH recovery path remains available.
 
