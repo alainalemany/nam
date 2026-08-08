@@ -73,7 +73,12 @@ pre-pilot candidate `nam-app:pre-pilot-candidate-git-130a7fe6` at
 with complete repository revision `130a7fe6` and application-bearing revision
 `4eba24f` embedded as separate labels. The
 [Gate C evidence](gate-c-immutable-deployment-candidate-evidence.md) is image
-authority; it does not make the candidate deployed or pilot-ready.
+authority. The accepted image is also preserved in the private registry at
+`docker.io/alainalemany/nam-app@sha256:20623c0354b224d641be8e95f20034e9db5ff2c73e01fe12edaf63a6a1597da7`;
+this digest-qualified reference is its authoritative registry retrieval
+identity. Registry preservation does not make the candidate deployed or
+pilot-ready and does not preserve or back up PostgreSQL data or application
+uploads.
 
 ## Current Live Migration Identity
 

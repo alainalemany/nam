@@ -34,7 +34,33 @@ public or private access, create a production backup, or start a pilot.
 | Local repository digest | `nam-app@sha256:20623c0354b224d641be8e95f20034e9db5ff2c73e01fe12edaf63a6a1597da7` |
 
 The tag is the human-readable name. The SHA-256 image ID/digest is the
-immutable deployment authority. The image was not pushed to a registry.
+immutable deployment authority. At the Gate C acceptance point, the image had
+not been pushed to a registry.
+
+### Post-acceptance private registry preservation
+
+After Gate C was accepted, the project owner preserved the same image without
+rebuilding it under the private registry tag
+`docker.io/alainalemany/nam-app:pre-pilot-candidate-git-130a7fe6`. The
+authoritative permanent retrieval identity is:
+
+`docker.io/alainalemany/nam-app@sha256:20623c0354b224d641be8e95f20034e9db5ff2c73e01fe12edaf63a6a1597da7`
+
+Docker reported the matching image ID
+`sha256:20623c0354b224d641be8e95f20034e9db5ff2c73e01fe12edaf63a6a1597da7`
+for the digest-qualified reference. The push succeeded, and a later
+pull-by-digest verification returned the same digest and image ID. The project
+owner confirmed that the repository is private, its tags are configured as
+immutable, Docker logout was completed, and the temporary Read & Write token
+used for publication was revoked after verification. The token had no Delete
+permission, and no token value was shared or recorded in the repository.
+
+This preservation event was not part of the original Gate C acceptance
+criteria and does not change its verdict. It was not a deployment. The registry
+copy preserves only the accepted application image; it does not preserve or
+back up PostgreSQL data or uploaded operational data. The digest-qualified
+reference above, rather than a convenience tag, is the authoritative registry
+retrieval identity.
 
 The exact build was:
 
