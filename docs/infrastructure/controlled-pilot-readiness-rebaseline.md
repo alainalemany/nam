@@ -226,6 +226,9 @@ while the separately approved SSH recovery path remains available.
 
 Public exposure must be removed before the live database/application
 transition. The older Checkpoint D ordering is not current authority.
+The [Gate D Public Exposure Cutover Procedure](gate-d-public-exposure-cutover-procedure.md)
+is designed for separate review; it has not been executed or authorized and is
+not Gate D acceptance evidence.
 
 ### E. Pre-migration Recovery Gate
 
