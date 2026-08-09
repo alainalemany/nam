@@ -33,14 +33,17 @@ replaced or revalidated and independently accepted. Security-sensitive gates
 may also require focused execution procedures. All such authority requires
 separate approval before Gate D or any later mutation.
 
-## Current Repository Identity
+## Repository And Application Identity
 
-| Item | Current identity |
+| Item | Authority |
 | --- | --- |
 | Branch | `main` |
-| Repository revision | `efdea5402401437d9e962b3aa8421a49931e6189` |
+| Repository revision | Resolve from clean synchronized local `main` at the start of each readiness review; no revision recorded here is Gate D execution authority. |
+| Prospective Gate D readiness revision | The exact committed revision inspected by a readiness task; it remains evidence only and may be superseded by later documentation commits. |
+| Authorized Gate D execution revision | Unassigned. A separate execution authorization must name an exact committed revision containing the reviewed procedure. |
+| Gate B closure evidence revision | `efdea5402401437d9e962b3aa8421a49931e6189` |
 | Application-bearing revision | `4eba24fb97abac61c6511258ad4e97aebd4ea6a2` |
-| Latest change | Accepted [Gate C immutable deployment candidate evidence](gate-c-immutable-deployment-candidate-evidence.md) |
+| Latest accepted completed gate | [Gate C immutable deployment candidate evidence](gate-c-immutable-deployment-candidate-evidence.md) |
 | Production dependency audit | Zero known vulnerabilities at the accepted verification point |
 | Repository migrations | 20 |
 | Day View contributors | 11 |
@@ -175,7 +178,7 @@ Gate; correctness and pilot suitability still require review.
 
 | Gate | Status | Reason |
 | --- | --- | --- |
-| Repository identity | PASS | Clean synchronized `main` at `efdea54` was proven during Gate B formal closure. |
+| Repository identity | REVALIDATE | Gate B closure proved clean synchronized `main` at `efdea54`; every later readiness or execution task must record its own exact clean synchronized revision. No prior or prospective readiness revision authorizes Gate D execution. |
 | Private network access | PASS | Approved Windows and iPad clients passed tailnet-only HTTPS, health, and Day View checks; current Serve/Funnel state remains coherent with the [Gate B evidence](gate-b-private-access-administrator-recovery-evidence.md). |
 | Public exposure removal | OPEN | Public Caddy paths remain reachable over IPv4 and direct IPv6/SNI. |
 | Administrator recovery | PASS | Independent Windows public-key recovery to non-root sudo administrator `alain` passed; current server-side state does not contradict the accepted evidence. |
@@ -229,6 +232,13 @@ transition. The older Checkpoint D ordering is not current authority.
 The [Gate D Public Exposure Cutover Procedure](gate-d-public-exposure-cutover-procedure.md)
 is designed for separate review; it has not been executed or authorized and is
 not Gate D acceptance evidence.
+
+Gate D's approved persistence-proof boundary is unchanged container, volume,
+mount, network, restart, and port-binding identities together with no Gate D
+database, upload, migration, backup, restore, or Docker mutation. This proves
+resource continuity only; it does not claim logical, row-level, or byte-for-byte
+database equality. Any unexpected upload store, application persistent mount,
+or changed persistence topology requires a new baseline and procedure re-audit.
 
 ### E. Pre-migration Recovery Gate
 

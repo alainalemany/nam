@@ -44,8 +44,11 @@ Gate D is complete only when independent evidence proves all of the following:
 - public key-only SSH recovery still works independently of Tailscale;
 - the application remains bound only to `127.0.0.1:3000`;
 - PostgreSQL remains unpublished; and
-- repository, container, image, restart-count, database, upload, and deployment
-  identities remain unchanged.
+- the selected container, image, Compose project/service, restart-count, mount,
+  PostgreSQL-volume, network/attachment, and configured and observed runtime
+  port-binding identities remain unchanged; and
+- Gate D performed no Docker, database, migration, upload, backup, or restore
+  mutation.
 
 A TLS or certificate error alone is never denial evidence. TCP/UDP reachability
 and correct hostname/SNI paths must be tested independently.
@@ -112,6 +115,33 @@ revalidate every item before mutation and stop on a material difference.
   to `wikijs-nam.fly.dev`; only the VPS `A` record is in Gate D scope.
 - Independent private-client and public SSH recovery checks have passed, but
   both require fresh execution-time proof.
+- Repository evidence establishes PostgreSQL as the only currently implemented
+  durable application-data store. Compose uses the `postgres-data` volume at
+  `/var/lib/postgresql`, defines no application persistent mount, and the
+  application implements no upload/media store. `/var/lib/nam/media` is future
+  architecture, not current storage. Live evidence establishes only the
+  observed Docker mount and persistence topology and must be revalidated before
+  mutation.
+- Read-only readiness evidence confirmed `getfacl` 2.3.2 and `getfattr` 2.5.2
+  support every option used below and inspected `/etc/caddy/Caddyfile`
+  successfully. Their presence, versions, option compatibility, and current
+  Caddyfile metadata must be revalidated at execution time.
+
+### Persistence-Proof Boundary
+
+Gate D must leave the application, PostgreSQL, Docker resources, uploads, and
+persistent data untouched. Its approved persistence proof is exact equality of
+the selected before/after container, immutable image, Compose project/service,
+volume, mount, network, restart-count, and port-binding identities, together
+with an evidence review confirming that Gate D performed no Docker, database,
+migration, upload, backup, or restore mutation.
+
+This resource-identity proof does not claim logical, row-level, or byte-for-byte
+database equality. Normal application activity may change PostgreSQL contents.
+If media storage, external object storage, another application persistence
+mechanism, or any persistence topology not represented by the accepted
+repository baseline is implemented or discovered, stop and require a new
+persistence baseline and relevant procedure re-audit before reuse.
 
 ## Preconditions And Stop Conditions
 
@@ -129,8 +159,13 @@ The operator must have all of the following:
   policy capture;
 - fresh effective `sshd` proof of key-only, non-root recovery and a fresh
   external recovery-key login;
-- current application and PostgreSQL container identity, start time, restart
-  count, and port-binding evidence;
+- current application and PostgreSQL container, immutable image, Compose
+  project/service, mount, network, restart-count, and port-binding evidence;
+- unambiguous proof that PostgreSQL uses the same `postgres-data` volume,
+  including its attachment at `/var/lib/postgresql`, and that the application
+  has no persistent Docker mount; the live volume driver is an anchored identity
+  that must remain unchanged, not a driver value claimed from repository
+  configuration;
 - current Caddyfile identity and a complete NAM/unrelated-site inventory;
 - proof that no unrelated workload depends on TCP `80`, TCP `443`, or UDP
   `443`;
@@ -167,6 +202,16 @@ Stop before mutation if:
 - UFW contains a UDP `443` allow or nonstandard web rule not covered here;
 - a Docker, nftables, provider, redirect, wildcard, alternate-host, or other
   public bypass is found;
+- a container, immutable image, Compose project/service, volume, mount, network,
+  restart-count, or port-binding identity is missing, ambiguous, unexpected, or
+  differs from the captured before-state;
+- the PostgreSQL volume cannot be identified unambiguously as `postgres-data`
+  attached at `/var/lib/postgresql`, or its driver cannot be identified;
+- an application persistent Docker mount exists, or repository or other
+  approved evidence identifies an upload/media, external object, or other
+  persistence mechanism outside the accepted baseline;
+- any evidence suggests Gate D would require a Docker, database, migration,
+  upload, backup, or restore mutation;
 - rollback files, record values, checksums, ownership, permissions, ACLs, or
   extended-attribute evidence are incomplete;
 - the DNS operator cannot distinguish the VPS `A` record from the unrelated
@@ -176,6 +221,11 @@ Stop before mutation if:
 
 During mutation, stop at the current checkpoint if private access or public SSH
 degrades, a command fails, an identity changes, or an unexpected route remains.
+Before any authorized rollback, attempt the mandatory failure/pre-rollback
+persistence capture defined below. Failure of that inspection or comparison
+keeps Gate D failed and prohibits an unchanged-persistence claim, but it must
+not prevent the minimum safety rollback needed for Caddy, firewall, DNS, or
+access recovery.
 Do not describe NAM as fail-closed until independent testing proves every
 relevant public path is denied; an older Caddy runtime or another bypass may
 still be active. Determine the actual public state immediately. Do not
@@ -296,13 +346,38 @@ esac
 ```
 
 The recorded checkpoint must be one of the explicitly defined states below.
-Before any mutation after re-entry, verify the checkpoint-specific artifacts,
-re-run the complete recovery-copy verification, re-inspect the active Caddy
-runtime and persistent Caddyfile, and re-run the Match-aware SSH policy block in
-the new public session. Missing, empty, inconsistent, or unexpected artifacts,
+Before any forward cutover mutation after re-entry, verify the
+checkpoint-specific artifacts, re-run the complete recovery-copy verification,
+re-inspect the active Caddy runtime and persistent Caddyfile, and re-run the
+Match-aware SSH policy block in the new public session. Re-enter all reviewed
+persistence validation, comparison, and capture function
+definitions without invoking them. The verified and anchored before snapshot
+and checksum must already exist;
+the new re-entry output and checksum must not exist. Fail closed on a missing,
+empty, altered, or unverifiable before artifact. Then invoke the exact `reentry`
+phase; the common capture function creates both new artifacts without
+overwriting either one:
+
+```bash
+test -s "$GATE_D_RECOVERY_DIR/runtime-persistence.before.txt"
+test -s "$GATE_D_RECOVERY_DIR/runtime-persistence.before.sha256"
+test ! -L "$GATE_D_RECOVERY_DIR/runtime-persistence.before.txt"
+test ! -L "$GATE_D_RECOVERY_DIR/runtime-persistence.before.sha256"
+test ! -e "$GATE_D_RECOVERY_DIR/runtime-persistence.reentry.txt"
+test ! -e "$GATE_D_RECOVERY_DIR/runtime-persistence.reentry.sha256"
+verify_gate_d_persistence_before
+capture_gate_d_persistence_identity reentry
+verify_gate_d_persistence_phase reentry
+compare_gate_d_persistence_with_before reentry
+```
+
+Missing, empty, inconsistent, or unexpected artifacts or persistence topology,
 an ambiguous runtime/persistent checkpoint, or an SSH policy mismatch prohibits
-all Caddy reload, UFW, and DNS mutation. Never infer progress from filenames or
-select a recovery directory automatically.
+all further cutover mutation. It does not prohibit an explicitly authorized
+minimum safety rollback after a failed cutover; that path must attempt the
+failure/pre-rollback capture, record any inspection failure, complete only the
+necessary rollback, and attempt the post-rollback comparison. Never infer
+progress from filenames or select a recovery directory automatically.
 
 For every candidate-bearing checkpoint, compare current candidate metadata to
 `caddy-candidate.stat`. For a persisted checkpoint, also run the verified
@@ -313,7 +388,14 @@ checkpoint. These are mandatory state validations, not recovery-directory
 discovery. The explicit exit for `CANDIDATE_ACTIVE_PERSISTENT_BEFORE` prevents
 automated continuation across a known runtime/disk mismatch.
 
-### Repository And Runtime Identity
+### Repository, Runtime, And Persistence Identity
+
+This safeguard assumes one trusted operator uses a dedicated shell and that no
+concurrent same-user process is maliciously changing the recovery directory or
+its evidence files. It does not defend against a compromised Linux account or a
+precisely timed same-UID attack. The recovery directory remains private, and an
+unexpected or incomplete artifact still stops the procedure for operator
+review.
 
 ```bash
 pwd
@@ -334,15 +416,414 @@ git status --porcelain=v1 \
   > "$GATE_D_RECOVERY_DIR/repository-status.before.txt"
 test ! -s "$GATE_D_RECOVERY_DIR/repository-status.before.txt"
 
-docker inspect --type container nam-app \
-  --format 'id={{.Id}} image={{.Image}} state={{.State.Status}} started={{.State.StartedAt}} restarts={{.RestartCount}} ports={{json .HostConfig.PortBindings}}' \
-  > "$GATE_D_RECOVERY_DIR/nam-app.before.txt"
-docker inspect --type container nam-postgres \
-  --format 'id={{.Id}} image={{.Image}} state={{.State.Status}} started={{.State.StartedAt}} restarts={{.RestartCount}} ports={{json .HostConfig.PortBindings}}' \
-  > "$GATE_D_RECOVERY_DIR/nam-postgres.before.txt"
+gate_d_require_single_record() {
+  local record="${1-}" expected_fields="$2" delimiters
+  test -n "$record" || return 1
+  case "$record" in *$'\n'*|*$'\r'*) return 1 ;; esac
+  delimiters="${record//[^|]/}"
+  test "$(( ${#delimiters} + 1 ))" -eq "$expected_fields"
+}
+
+gate_d_require_full_id() {
+  [[ "${1-}" =~ ^[0-9a-f]{64}$ ]]
+}
+
+gate_d_require_image_id() {
+  [[ "${1-}" =~ ^sha256:[0-9a-f]{64}$ ]]
+}
+
+gate_d_require_image_ref() {
+  [[ "${1-}" =~ ^[A-Za-z0-9][A-Za-z0-9._/@:+-]*$ ]]
+}
+
+gate_d_require_started_at() {
+  [[ "${1-}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$ ]]
+}
+
+gate_d_require_safe_token() {
+  [[ "${1-}" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]]
+}
+
+gate_d_validate_recovery_directory() {
+  test ! -L "$GATE_D_RECOVERY_DIR" || return 1
+  test -d "$GATE_D_RECOVERY_DIR" || return 1
+  test "$(realpath -- "$GATE_D_RECOVERY_DIR")" = "$GATE_D_RECOVERY_DIR" || \
+    return 1
+  test "$(stat -c %u -- "$GATE_D_RECOVERY_DIR")" = "$(id -u)" || return 1
+  test "$(stat -c %a -- "$GATE_D_RECOVERY_DIR")" = 700
+}
+
+gate_d_require_private_file() {
+  local path="$1"
+  test ! -L "$path" || return 1
+  test -f "$path" || return 1
+  test "$(stat -c %u -- "$path")" = "$(id -u)" || return 1
+  test "$(stat -c %a -- "$path")" = 600
+}
+
+verify_gate_d_persistence_phase() {
+  local phase="$1" output_name checksum_name output checksum
+  case "$phase" in
+    before|reentry|after|failure-pre-rollback|post-rollback) ;;
+    *) return 47 ;;
+  esac
+  output_name="runtime-persistence.${phase}.txt"
+  checksum_name="runtime-persistence.${phase}.sha256"
+  output="$GATE_D_RECOVERY_DIR/$output_name"
+  checksum="$GATE_D_RECOVERY_DIR/$checksum_name"
+  gate_d_validate_recovery_directory || return 48
+  gate_d_require_private_file "$output" || return 49
+  gate_d_require_private_file "$checksum" || return 50
+  test -s "$output" || return 51
+  test -s "$checksum" || return 52
+  test "$(wc -l < "$output")" -eq 12 || return 53
+  (cd -- "$GATE_D_RECOVERY_DIR" && \
+    sha256sum --check --strict -- "$checksum_name")
+}
+
+verify_gate_d_persistence_before() {
+  verify_gate_d_persistence_phase before || return 54
+  test -f "$GATE_D_RECOVERY_DIR/pre-mutation-artifacts.sha256" || return 55
+  test ! -L "$GATE_D_RECOVERY_DIR/pre-mutation-artifacts.sha256" || return 56
+  test -s "$GATE_D_RECOVERY_DIR/pre-mutation-artifacts.sha256" || return 57
+  test -f "$GATE_D_RECOVERY_DIR/pre-mutation-manifest.anchor.sha256" || return 58
+  test ! -L "$GATE_D_RECOVERY_DIR/pre-mutation-manifest.anchor.sha256" || return 59
+  test -s "$GATE_D_RECOVERY_DIR/pre-mutation-manifest.anchor.sha256" || return 60
+  (
+    set -euo pipefail
+    cd -- "$GATE_D_RECOVERY_DIR"
+    sha256sum --check --strict pre-mutation-manifest.anchor.sha256
+    sudo sha256sum --check --strict pre-mutation-artifacts.sha256
+  )
+}
+
+compare_gate_d_persistence_with_before() {
+  local phase="$1" before phase_output
+  case "$phase" in
+    reentry|after|failure-pre-rollback|post-rollback) ;;
+    *) return 61 ;;
+  esac
+  verify_gate_d_persistence_before || return 62
+  verify_gate_d_persistence_phase "$phase" || return 63
+  before="$GATE_D_RECOVERY_DIR/runtime-persistence.before.txt"
+  phase_output="$GATE_D_RECOVERY_DIR/runtime-persistence.${phase}.txt"
+  cmp --silent -- "$before" "$phase_output"
+}
+
+capture_gate_d_persistence_identity() {
+  local phase="$1"
+  local output_name checksum_name output checksum artifact_path partial
+  local checksum_partial digest
+  local capture_status=0 errexit_was_set=0
+  case "$phase" in
+    before|reentry|after|failure-pre-rollback|post-rollback) ;;
+    *) return 40 ;;
+  esac
+  output_name="runtime-persistence.${phase}.txt"
+  checksum_name="runtime-persistence.${phase}.sha256"
+  output="$GATE_D_RECOVERY_DIR/$output_name"
+  checksum="$GATE_D_RECOVERY_DIR/$checksum_name"
+  gate_d_validate_recovery_directory || return 41
+  for artifact_path in "$output" "$checksum"; do
+    if test -e "$artifact_path" || test -L "$artifact_path"; then
+      return 42
+    fi
+  done
+
+  umask 077
+  partial="$(mktemp --tmpdir="$GATE_D_RECOVERY_DIR" \
+    ".runtime-persistence.${phase}.txt.XXXXXXXXXX")" || return 43
+  checksum_partial="$(mktemp --tmpdir="$GATE_D_RECOVERY_DIR" \
+    ".runtime-persistence.${phase}.sha256.XXXXXXXXXX")" || {
+      rm -f -- "$partial"
+      return 44
+    }
+  if ! gate_d_require_private_file "$partial" || \
+     ! gate_d_require_private_file "$checksum_partial"; then
+    rm -f -- "$partial" "$checksum_partial"
+    return 45
+  fi
+
+  case "$-" in
+    *e*) errexit_was_set=1 ;;
+  esac
+  set +e
+  (
+    set -euo pipefail
+    umask 077
+    local app_identity postgres_identity
+    local app_name app_id app_image_id app_image_ref app_state app_started
+    local app_restarts app_project app_service
+    local postgres_name postgres_id postgres_image_id postgres_image_ref
+    local postgres_state postgres_started postgres_restarts postgres_project
+    local postgres_service
+    local postgres_mount mount_count mount_type mount_name mount_destination
+    local mount_rw app_network postgres_network app_network_count
+    local postgres_network_count app_network_id postgres_network_id
+    local app_endpoint_id postgres_endpoint_id network_identity network_name
+    local network_id network_driver network_scope network_attachment_count
+    local actual_attachments expected_attachments volume_identity volume_name
+    local volume_driver volume_scope app_mount_count project_inventory
+    local attachment_inventory app_config_port app_config_port_count
+    local app_config_binding_count app_config_host_ip app_config_host_port
+    local app_runtime_port app_runtime_port_count app_runtime_binding_count
+    local app_runtime_host_ip app_runtime_host_port postgres_config_port_count
+    local postgres_runtime_port
+    local project_record enum_id enum_name enum_project enum_service
+    local enum_app_id='' enum_postgres_id='' app_matches=0 postgres_matches=0
+    local attachment_record attachment_id attachment_name attachment_endpoint
+    local -a project_records=() attachment_records=()
+
+    if test "$phase" != before; then
+      verify_gate_d_persistence_before
+    fi
+
+    app_identity="$(docker inspect --type container nam-app --format \
+      '{{.Name}}|{{.Id}}|{{.Image}}|{{.Config.Image}}|{{.State.Status}}|{{.State.StartedAt}}|{{.RestartCount}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}')"
+    gate_d_require_single_record "$app_identity" 9
+    IFS='|' read -r app_name app_id app_image_id app_image_ref app_state \
+      app_started app_restarts app_project app_service <<< "$app_identity"
+    test "$app_name" = /nam-app
+    gate_d_require_full_id "$app_id"
+    gate_d_require_image_id "$app_image_id"
+    gate_d_require_image_ref "$app_image_ref"
+    test "$app_state" = running
+    gate_d_require_started_at "$app_started"
+    case "$app_restarts" in ''|*[!0-9]*) exit 42 ;; esac
+    test "$app_project|$app_service" = 'nam|app'
+
+    postgres_identity="$(docker inspect --type container nam-postgres --format \
+      '{{.Name}}|{{.Id}}|{{.Image}}|{{.Config.Image}}|{{.State.Status}}|{{.State.StartedAt}}|{{.RestartCount}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}')"
+    gate_d_require_single_record "$postgres_identity" 9
+    IFS='|' read -r postgres_name postgres_id postgres_image_id \
+      postgres_image_ref postgres_state postgres_started postgres_restarts \
+      postgres_project postgres_service <<< "$postgres_identity"
+    test "$postgres_name" = /nam-postgres
+    gate_d_require_full_id "$postgres_id"
+    gate_d_require_image_id "$postgres_image_id"
+    gate_d_require_image_ref "$postgres_image_ref"
+    test "$postgres_state" = running
+    gate_d_require_started_at "$postgres_started"
+    case "$postgres_restarts" in ''|*[!0-9]*) exit 43 ;; esac
+    test "$postgres_project|$postgres_service" = 'nam|postgres'
+    test "$app_id" != "$postgres_id"
+
+    project_inventory="$(docker ps --all --no-trunc \
+      --filter label=com.docker.compose.project=nam \
+      --format '{{.ID}}|{{.Names}}|{{.Label "com.docker.compose.project"}}|{{.Label "com.docker.compose.service"}}' | \
+      LC_ALL=C sort)"
+    test -n "$project_inventory"
+    case "$project_inventory" in *$'\r'*) exit 44 ;; esac
+    mapfile -t project_records <<< "$project_inventory"
+    test "${#project_records[@]}" -eq 2
+    for project_record in "${project_records[@]}"; do
+      gate_d_require_single_record "$project_record" 4
+      IFS='|' read -r enum_id enum_name enum_project enum_service \
+        <<< "$project_record"
+      gate_d_require_full_id "$enum_id"
+      test "$enum_project" = nam
+      case "$enum_service|$enum_name" in
+        app\|nam-app)
+          app_matches=$((app_matches + 1))
+          enum_app_id="$enum_id"
+          ;;
+        postgres\|nam-postgres)
+          postgres_matches=$((postgres_matches + 1))
+          enum_postgres_id="$enum_id"
+          ;;
+        *) exit 45 ;;
+      esac
+    done
+    test "$app_matches" -eq 1
+    test "$postgres_matches" -eq 1
+    test "$enum_app_id" = "$app_id"
+    test "$enum_postgres_id" = "$postgres_id"
+
+    app_mount_count="$(docker inspect --type container nam-app --format \
+      '{{len .Mounts}}')"
+    gate_d_require_single_record "$app_mount_count" 1
+    test "$app_mount_count" = 0
+    postgres_mount="$(docker inspect --type container nam-postgres --format \
+      '{{len .Mounts}}|{{with index .Mounts 0}}{{.Type}}|{{.Name}}|{{.Destination}}|{{.RW}}{{end}}')"
+    gate_d_require_single_record "$postgres_mount" 5
+    IFS='|' read -r mount_count mount_type mount_name mount_destination \
+      mount_rw <<< "$postgres_mount"
+    test "$mount_count|$mount_type|$mount_name|$mount_destination|$mount_rw" = \
+      '1|volume|postgres-data|/var/lib/postgresql|true'
+
+    app_network="$(docker inspect --type container nam-app --format \
+      '{{len .NetworkSettings.Networks}}|{{with index .NetworkSettings.Networks "nam-network"}}{{.NetworkID}}|{{.EndpointID}}{{end}}')"
+    gate_d_require_single_record "$app_network" 3
+    IFS='|' read -r app_network_count app_network_id app_endpoint_id \
+      <<< "$app_network"
+    test "$app_network_count" = 1
+    gate_d_require_full_id "$app_network_id"
+    gate_d_require_full_id "$app_endpoint_id"
+    postgres_network="$(docker inspect --type container nam-postgres --format \
+      '{{len .NetworkSettings.Networks}}|{{with index .NetworkSettings.Networks "nam-network"}}{{.NetworkID}}|{{.EndpointID}}{{end}}')"
+    gate_d_require_single_record "$postgres_network" 3
+    IFS='|' read -r postgres_network_count postgres_network_id \
+      postgres_endpoint_id <<< "$postgres_network"
+    test "$postgres_network_count" = 1
+    gate_d_require_full_id "$postgres_network_id"
+    gate_d_require_full_id "$postgres_endpoint_id"
+    test "$app_network_id" = "$postgres_network_id"
+    test "$app_endpoint_id" != "$postgres_endpoint_id"
+
+    network_identity="$(docker network inspect nam-network --format \
+      '{{.Name}}|{{.Id}}|{{.Driver}}|{{.Scope}}|{{len .Containers}}')"
+    gate_d_require_single_record "$network_identity" 5
+    IFS='|' read -r network_name network_id network_driver network_scope \
+      network_attachment_count <<< "$network_identity"
+    test "$network_name" = nam-network
+    gate_d_require_full_id "$network_id"
+    test "$network_driver" = bridge
+    gate_d_require_safe_token "$network_scope"
+    test "$network_attachment_count" = 2
+    test "$network_id" = "$app_network_id"
+    attachment_inventory="$(docker network inspect nam-network --format \
+      '{{range $id, $attachment := .Containers}}{{printf "%s|%s|%s\n" $id $attachment.Name $attachment.EndpointID}}{{end}}')"
+    test -n "$attachment_inventory"
+    case "$attachment_inventory" in *$'\r'*) exit 46 ;; esac
+    mapfile -t attachment_records <<< "$attachment_inventory"
+    test "${#attachment_records[@]}" -eq 2
+    for attachment_record in "${attachment_records[@]}"; do
+      gate_d_require_single_record "$attachment_record" 3
+      IFS='|' read -r attachment_id attachment_name attachment_endpoint \
+        <<< "$attachment_record"
+      gate_d_require_full_id "$attachment_id"
+      gate_d_require_full_id "$attachment_endpoint"
+      case "$attachment_name" in nam-app|nam-postgres) ;; *) exit 47 ;; esac
+    done
+    actual_attachments="$(printf '%s\n' "${attachment_records[@]}" | \
+      LC_ALL=C sort)"
+    expected_attachments="$(printf '%s|nam-app|%s\n%s|nam-postgres|%s\n' \
+      "$app_id" "$app_endpoint_id" "$postgres_id" "$postgres_endpoint_id" | \
+      LC_ALL=C sort)"
+    test "$actual_attachments" = "$expected_attachments"
+
+    volume_identity="$(docker volume inspect postgres-data --format \
+      '{{.Name}}|{{.Driver}}|{{.Scope}}')"
+    gate_d_require_single_record "$volume_identity" 3
+    IFS='|' read -r volume_name volume_driver volume_scope <<< "$volume_identity"
+    test "$volume_name" = postgres-data
+    gate_d_require_safe_token "$volume_driver"
+    gate_d_require_safe_token "$volume_scope"
+
+    app_config_port="$(docker inspect --type container nam-app --format \
+      '{{len .HostConfig.PortBindings}}|{{with index .HostConfig.PortBindings "3000/tcp"}}{{len .}}|{{(index . 0).HostIp}}|{{(index . 0).HostPort}}{{end}}')"
+    gate_d_require_single_record "$app_config_port" 4
+    IFS='|' read -r app_config_port_count app_config_binding_count \
+      app_config_host_ip app_config_host_port <<< "$app_config_port"
+    test "$app_config_port_count|$app_config_binding_count|$app_config_host_ip|$app_config_host_port" = \
+      '1|1|127.0.0.1|3000'
+    app_runtime_port="$(docker inspect --type container nam-app --format \
+      '{{len .NetworkSettings.Ports}}|{{with index .NetworkSettings.Ports "3000/tcp"}}{{len .}}|{{(index . 0).HostIp}}|{{(index . 0).HostPort}}{{end}}')"
+    gate_d_require_single_record "$app_runtime_port" 4
+    IFS='|' read -r app_runtime_port_count app_runtime_binding_count \
+      app_runtime_host_ip app_runtime_host_port <<< "$app_runtime_port"
+    test "$app_runtime_port_count|$app_runtime_binding_count|$app_runtime_host_ip|$app_runtime_host_port" = \
+      '1|1|127.0.0.1|3000'
+    test "$app_runtime_port" = "$app_config_port"
+    postgres_config_port_count="$(docker inspect --type container nam-postgres \
+      --format '{{len .HostConfig.PortBindings}}')"
+    gate_d_require_single_record "$postgres_config_port_count" 1
+    test "$postgres_config_port_count" = 0
+    postgres_runtime_port="$(docker inspect --type container nam-postgres \
+      --format '{{json .NetworkSettings.Ports}}')"
+    case "$postgres_runtime_port" in
+      null|'{}'|'{"5432/tcp":null}') ;;
+      *) exit 48 ;;
+    esac
+
+    {
+      printf 'container|name=%s|id=%s|image_id=%s|image_ref=%s|state=%s|started=%s|restarts=%s|compose_project=%s|compose_service=%s\n' \
+        "$app_name" "$app_id" "$app_image_id" "$app_image_ref" "$app_state" \
+        "$app_started" "$app_restarts" "$app_project" "$app_service"
+      printf 'container|name=%s|id=%s|image_id=%s|image_ref=%s|state=%s|started=%s|restarts=%s|compose_project=%s|compose_service=%s\n' \
+        "$postgres_name" "$postgres_id" "$postgres_image_id" \
+        "$postgres_image_ref" "$postgres_state" "$postgres_started" \
+        "$postgres_restarts" "$postgres_project" "$postgres_service"
+      printf 'mount|container=%s|none=true\n' "$app_name"
+      printf 'mount|container=%s|type=%s|name=%s|destination=%s|rw=%s\n' \
+        "$postgres_name" "$mount_type" "$mount_name" "$mount_destination" \
+        "$mount_rw"
+      printf 'network|name=%s|id=%s|driver=%s|scope=%s\n' \
+        "$network_name" "$network_id" "$network_driver" "$network_scope"
+      printf 'network_attachment|network=%s|network_id=%s|container=%s|container_id=%s|endpoint_id=%s\n' \
+        "$network_name" "$network_id" "$app_name" "$app_id" "$app_endpoint_id"
+      printf 'network_attachment|network=%s|network_id=%s|container=%s|container_id=%s|endpoint_id=%s\n' \
+        "$network_name" "$network_id" "$postgres_name" "$postgres_id" \
+        "$postgres_endpoint_id"
+      printf 'volume|name=%s|driver=%s|scope=%s\n' \
+        "$volume_name" "$volume_driver" "$volume_scope"
+      printf 'port|source=configured|container=%s|container_port=3000/tcp|host_ip=%s|host_port=%s\n' \
+        "$app_name" "$app_config_host_ip" "$app_config_host_port"
+      printf 'port|source=runtime|container=%s|container_port=3000/tcp|host_ip=%s|host_port=%s\n' \
+        "$app_name" "$app_runtime_host_ip" "$app_runtime_host_port"
+      printf 'port|source=configured|container=%s|none=true\n' "$postgres_name"
+      printf 'port|source=runtime|container=%s|none=true\n' "$postgres_name"
+    } > "$partial"
+    test "$(wc -l < "$partial")" -eq 12
+    digest="$(sha256sum -- "$partial" | awk '{print $1}')"
+    [[ "$digest" =~ ^[0-9a-f]{64}$ ]]
+    printf '%s  %s\n' "$digest" "$output_name" > "$checksum_partial"
+  )
+  capture_status=$?
+  if test "$errexit_was_set" -eq 1; then
+    set -e
+  else
+    set +e
+  fi
+  if test "$capture_status" -ne 0; then
+    rm -f -- "$partial" "$checksum_partial"
+    return "$capture_status"
+  fi
+
+  if ! ln -- "$partial" "$output"; then
+    rm -f -- "$partial" "$checksum_partial"
+    return 46
+  fi
+  if ! ln -- "$checksum_partial" "$checksum"; then
+    rm -f -- "$output" "$partial" "$checksum_partial"
+    return 47
+  fi
+  rm -- "$partial" "$checksum_partial"
+  verify_gate_d_persistence_phase "$phase"
+}
+
+capture_gate_d_persistence_identity before
+verify_gate_d_persistence_phase before
 ```
 
-Do not inspect container environments or execute a command inside PostgreSQL.
+This capture validates all expected topology before writing evidence records.
+It uses a no-truncation, all-container inventory so stopped, stale, and one-off
+Compose containers cannot disappear from the guard. It enumerates only
+allowlisted identity fields for every container in Compose project `nam`,
+requires exactly `nam/app/nam-app` and
+`nam/postgres/nam-postgres`, and then targets only those two containers,
+`postgres-data`, and `nam-network`. Configured and observed runtime port maps are
+validated separately and reconciled before fixed-order sanitized records are
+written. The capture never records raw mount sources, volume mountpoints, volume
+options, unrestricted labels, container environments, secrets, credentials,
+tokens, raw JSON, or unrestricted inspect output.
+Repository evidence establishes that no upload/media store is implemented; the
+zero application-mount guard establishes only the observed Docker mount
+topology. The repository explicitly establishes the `bridge` network driver.
+Because Compose does not explicitly declare a volume driver, the nonempty live
+volume driver is captured as an anchored identity that must compare unchanged,
+not as a repository-validated driver value.
+
+Run the functions only in the persistent Bash shell initialized above with
+`set -euo pipefail`. Fixed record order and `LC_ALL=C` project-enumeration and
+attachment checks make serialization deterministic. `mktemp` atomically creates
+unpredictable mode-`0600` regular temporary files in the verified recovery
+directory; topology guards must all succeed before evidence is written.
+Evidence and checksum are then hard-linked to unique final names without
+overwrite. A failed second publication removes the first link. No phase is
+valid unless both final paths are owner-controlled mode-`0600` regular
+non-symlink files, the evidence has the fixed 12-record schema, and its checksum
+verifies.
 
 ### Caddy Recovery Material
 
@@ -624,7 +1105,7 @@ test -s "$GATE_D_RECOVERY_DIR/caddy-service.before.txt"
 PRE_MUTATION_ARTIFACTS=(
   run-id absolute-path
   repository-head.before.txt repository-status.before.txt
-  nam-app.before.txt nam-postgres.before.txt
+  runtime-persistence.before.txt runtime-persistence.before.sha256
   Caddyfile.before Caddyfile.before.stat
   Caddyfile.before.acl Caddyfile.backup.acl
   Caddyfile.before.xattrs Caddyfile.backup.xattrs
@@ -932,7 +1413,10 @@ Every failure is handled immediately and recorded:
 Never continue with an unresolved runtime/disk mismatch. Do not delete or
 modify Caddy certificate/storage material. Confirm private Windows and iPad
 access and the open recovery session after the runtime and disk agree. The
-firewall and independent denial tests remain mandatory.
+firewall and independent denial tests remain mandatory. Any path from this
+checkpoint into rollback must follow the mandatory failure/pre-rollback
+persistence attempt. An inspection failure does not delay the minimum safety
+rollback and cannot support an unchanged-persistence claim.
 
 ### Checkpoint D3: Remove Public Web Allows From UFW
 
@@ -969,7 +1453,9 @@ strict `Invoke-GateDPostCutoverNamDenialChecks` with the same prefix and reviewe
 classes, `Invoke-GateDDirectDenialChecks "after-ufw"`, and
 `Invoke-GateDPrivateChecks "after-ufw"`. Confirm the recovery anchor. Any failed
 validator stops execution and requires an explicit recovery or rollback
-decision; evidence files alone do not authorize D4.
+decision; evidence files alone do not authorize D4. Before rollback, follow the
+mandatory failure/pre-rollback persistence attempt without allowing an
+inspection failure to delay safety recovery.
 
 ### Checkpoint D4: Remove Only The VPS DNS Records
 
@@ -1043,16 +1529,9 @@ printf 'nam_sites=%s\nnam_backends=%s\n' \
 grep -qx 'nam_sites=0' "$GATE_D_RECOVERY_DIR/Caddyfile.after.summary.txt"
 grep -qx 'nam_backends=0' "$GATE_D_RECOVERY_DIR/Caddyfile.after.summary.txt"
 
-docker inspect --type container nam-app \
-  --format 'id={{.Id}} image={{.Image}} state={{.State.Status}} started={{.State.StartedAt}} restarts={{.RestartCount}} ports={{json .HostConfig.PortBindings}}' \
-  > "$GATE_D_RECOVERY_DIR/nam-app.after.txt"
-docker inspect --type container nam-postgres \
-  --format 'id={{.Id}} image={{.Image}} state={{.State.Status}} started={{.State.StartedAt}} restarts={{.RestartCount}} ports={{json .HostConfig.PortBindings}}' \
-  > "$GATE_D_RECOVERY_DIR/nam-postgres.after.txt"
-cmp --silent "$GATE_D_RECOVERY_DIR/nam-app.before.txt" \
-  "$GATE_D_RECOVERY_DIR/nam-app.after.txt"
-cmp --silent "$GATE_D_RECOVERY_DIR/nam-postgres.before.txt" \
-  "$GATE_D_RECOVERY_DIR/nam-postgres.after.txt"
+capture_gate_d_persistence_identity after
+verify_gate_d_persistence_phase after
+compare_gate_d_persistence_with_before after
 
 sudo ss -H -ltnup \
   '( sport = :22 or sport = :80 or sport = :443 or sport = :3000 or sport = :5432 )' \
@@ -1904,16 +2383,76 @@ the observed TTL; neither source alone is sufficient.
 | iPad cellular private access | Tailscale connected; root, health, Day View | Pages work without certificate warning | Time, network class, routes, result | Any private route fails |
 | iPad without Tailscale | Disconnect Tailscale while remaining on cellular; retry private hostname only | Private NAM unavailable | Time and denial result | Private NAM remains reachable |
 | Independent public SSH | Fresh dedicated-key login outside Tailscale; retain anchor session | Key-only non-root login and sudo membership confirmed | Sanitized auth method, hostname, UID/group result | Login fails or password/root path appears |
-| App container identity | Compare exact before/after formatted `docker inspect` files | Exact match, restart count unchanged | Checksums and sanitized comparison | Any identity/state difference |
-| PostgreSQL identity | Same for `nam-postgres` | Exact match; no host port | Checksums and comparison | Any identity/binding difference |
-| Restart counts | Compare both container snapshots | Both remain exactly unchanged | Before/after counts | Either count changes |
-| Application/database ports | VPS `ss` plus Docker bindings | App loopback-only; no PostgreSQL host port | Sanitized listener/binding matrix | Public `3000`/`5432` or changed binding |
+| App container and persistence identity | Compare the common sanitized before/after captures and checksums | Exactly one enumerated `nam/app/nam-app`; container, image, network attachment, restart count, and separately recorded configured and observed runtime loopback bindings match exactly; observed Docker mount count remains zero | Sanitized capture, checksums, and exact comparison | Any identity difference, extra project container, configured/runtime disagreement, or persistent Docker mount |
+| PostgreSQL container and volume identity | Same capture plus exact `postgres-data` attachment | Exactly one enumerated `nam/postgres/nam-postgres`; container, image, network attachment, restart count, volume name, anchored driver/scope, mount destination, and attachment match exactly; configured and observed runtime host publication both remain absent | Sanitized capture, checksums, and exact comparison | Missing, ambiguous, or changed container, volume, mount, network, restart, or binding identity |
+| Docker network identity | Targeted `nam-network` resource and attachment guards | Exact `nam-network` bridge ID; exactly the expected app and PostgreSQL container IDs with distinct nonempty endpoints on the same network ID | Sanitized network and attachment records | Missing, renamed, duplicate, additional, ambiguous, or changed resource or attachment |
+| Persistence mutation boundary | Operator log and evidence review | Gate D performed no Docker, database, migration, upload, backup, or restore mutation; no claim of logical database equality | Sanitized command/deviation review | Any Gate D persistence mutation, unexpected topology, or need for one |
+| Failure and rollback persistence | On every post-mutation failure, attempt failure/pre-rollback capture without blocking safety rollback; after rollback require post-rollback capture | Successful captures use the common schema and compare exactly with verified anchored before evidence; any unavailable or failed proof keeps Gate D failed | Conditional captures, checksums, comparisons, numeric pre-rollback results, and deviation record | Missing attempt, bypassed rollback comparison, inspection failure, mismatch, or unchanged-persistence claim without proof |
+| Application/database ports | VPS `ss` plus configured and observed Docker runtime bindings | App configured and runtime maps both contain only `127.0.0.1:3000:3000`; PostgreSQL has no configured or runtime host publication | Sanitized listener/binding matrix with explicit binding source | Public `3000`/`5432`, configured/runtime disagreement, or changed binding |
 | Tailscale Serve/Funnel | Compare filtered before/after status | Same tailnet-only proxy; Funnel disabled | Sanitized comparison | Serve changes or sharing enabled |
 | Repository immutability | `git status --porcelain=v1`, HEAD, local refs, index check, Gate C ancestry | Exact authorized revision; clean worktree/index; Gate C ancestor | Command output | Dirty tree, identity change, or missing ancestry |
 
 The normal public `nam.alemany.me` result may belong to the preserved legacy
 destination. Gate D tests the forced VPS route and verifies removal of only the
 VPS `A` record; it does not require the unrelated destination to be unavailable.
+
+### Mandatory Failure/Pre-Rollback Persistence Attempt
+
+After the first Gate D mutation, every failure path must attempt one unique
+`failure-pre-rollback` capture before rollback whenever the operator shell and
+Docker inspection remain usable. This applies to Caddy, UFW, DNS, acceptance,
+client, interruption, recovery/re-entry, and unexpected-state failures. The
+common function first verifies the anchored before evidence, validates the live
+topology in memory, and creates a sanitized output and checksum only on complete
+success.
+
+Run this block before rollback. It deliberately completes with status zero so a
+failed inspection cannot block the minimum safety rollback. The initialized
+result variable is evidence state for the operator log, not authorization to
+continue the cutover:
+
+```bash
+GATE_D_PERSISTENCE_PRE_ROLLBACK_VERIFIED=0
+GATE_D_PERSISTENCE_PRE_ROLLBACK_CAPTURE_EXIT=125
+GATE_D_PERSISTENCE_PRE_ROLLBACK_CHECKSUM_EXIT=125
+GATE_D_PERSISTENCE_PRE_ROLLBACK_COMPARE_EXIT=125
+case "$-" in
+  *e*) GATE_D_PERSISTENCE_PRE_ROLLBACK_ERREXIT_WAS_SET=1 ;;
+  *) GATE_D_PERSISTENCE_PRE_ROLLBACK_ERREXIT_WAS_SET=0 ;;
+esac
+set +e
+capture_gate_d_persistence_identity failure-pre-rollback
+GATE_D_PERSISTENCE_PRE_ROLLBACK_CAPTURE_EXIT=$?
+if test "$GATE_D_PERSISTENCE_PRE_ROLLBACK_CAPTURE_EXIT" -eq 0; then
+  verify_gate_d_persistence_phase failure-pre-rollback
+  GATE_D_PERSISTENCE_PRE_ROLLBACK_CHECKSUM_EXIT=$?
+  compare_gate_d_persistence_with_before failure-pre-rollback
+  GATE_D_PERSISTENCE_PRE_ROLLBACK_COMPARE_EXIT=$?
+fi
+if test "$GATE_D_PERSISTENCE_PRE_ROLLBACK_ERREXIT_WAS_SET" -eq 1; then
+  set -e
+else
+  set +e
+fi
+if test "$GATE_D_PERSISTENCE_PRE_ROLLBACK_CAPTURE_EXIT" -eq 0 && \
+   test "$GATE_D_PERSISTENCE_PRE_ROLLBACK_CHECKSUM_EXIT" -eq 0 && \
+   test "$GATE_D_PERSISTENCE_PRE_ROLLBACK_COMPARE_EXIT" -eq 0; then
+  GATE_D_PERSISTENCE_PRE_ROLLBACK_VERIFIED=1
+  printf '%s\n' 'Gate D persistence identity matched before rollback.' >&2
+else
+  printf '%s\n' \
+    'Gate D persistence identity was not proven before rollback; continue minimum safety rollback, keep Gate D failed, and make no unchanged-persistence claim.' \
+    >&2
+fi
+true
+```
+
+If interruption requires a new session, complete the recovery-directory,
+anchored-before, checkpoint, Caddy, SSH, and `reentry` validations first when
+they are available. A failed or unavailable re-entry or failure/pre-rollback
+capture prohibits forward cutover work but must not prevent the minimum
+authorized safety rollback. Record all four numeric results above, or record why
+the attempt was operationally unavailable. In either case Gate D remains failed.
 
 ## Rollback
 
@@ -1924,8 +2463,8 @@ recovery anchor open. The owner must explicitly decide whether to recover the
 private path in place or intentionally restore the pre-cutover public
 development route. Do not enter confidential data before Gate D acceptance.
 
-If intentional rollback is authorized, restore only Gate D changes in this
-order.
+If intentional rollback is authorized, first complete or attempt the mandatory
+failure/pre-rollback block above, then restore only Gate D changes in this order.
 
 ### R1: Restore The Verified Caddyfile
 
@@ -2015,16 +2554,36 @@ In the Namecheap control plane:
 
 ### R4: Verify Rollback
 
+After Caddy, UFW, DNS, and access recovery actions are complete, create a new
+non-overwriting `post-rollback` capture with the common sanitized schema. The
+function verifies the anchored before evidence before inspection. Verify the
+new checksum and compare the new snapshot exactly with that anchored before
+snapshot:
+
+```bash
+capture_gate_d_persistence_identity post-rollback
+verify_gate_d_persistence_phase post-rollback
+compare_gate_d_persistence_with_before post-rollback
+```
+
+If capture, checksum validation, or comparison fails, rollback verification is
+incomplete, Gate D remains failed, and no unchanged-persistence claim may be
+made. Safety rollback actions already completed must not be reversed merely to
+retry this inspection.
+
 Prove:
 
 - the recovery anchor and a fresh independent key-only SSH login work;
 - Tailscale private access remains unchanged;
 - intentionally restored public behavior matches the captured pre-state;
-- app and PostgreSQL identities, restart counts, and bindings are unchanged;
+- app, PostgreSQL, volume, mount, network, restart-count, and configured and
+  observed runtime binding identities are unchanged;
 - Caddyfile ownership, mode, and checksum match the captured pre-state;
 - only the intended UFW and DNS records were restored; and
-- no application data, upload, container, certificate storage, or unrelated
-  configuration changed.
+- Gate D performed no Docker, database, migration, upload, backup, or restore
+  mutation; and
+- no Gate D container, certificate-storage, or unrelated-configuration mutation
+  occurred.
 
 Record the reason, decision authority, commands, results, and deviations.
 Rollback means Gate D execution did not pass.
@@ -2055,17 +2614,36 @@ concise sanitized review record. Record:
 - Windows and iPad private-access results;
 - independent recovery SSH result, Match-aware effective-policy result, and
   confirmation that the anchor remained open;
-- before/after app, PostgreSQL, Tailscale, binding, restart-count, and Git
-  comparisons;
+- before/after selected app, PostgreSQL, immutable image, allowlisted Compose
+  project/service, volume, mount, network resource/attachments, configured and
+  observed runtime binding, restart-count, Tailscale, and Git comparisons,
+  including proof that the observed application Docker mount set remained empty
+  and `postgres-data` remained unambiguously attached;
+- every applicable persistence output and checksum: `before` for every run;
+  normal `after` for a no-rollback completion path; `reentry` after
+  interruption; and `failure-pre-rollback` plus `post-rollback` for any rollback
+  path, including the numeric pre-rollback capture, checksum, and comparison
+  results or an explicit reason the attempt was unavailable;
 - every command exit, stop, deviation, unexpected observation, and rollback
   action; and
-- explicit confirmation that no deployment, database, upload, application,
-  container, Tailscale, SSH, provider-firewall, or pilot mutation occurred.
+- explicit confirmation that Gate D performed no Docker, database, migration,
+  upload, backup, or restore mutation, and that no deployment, container,
+  Tailscale, SSH, provider-firewall, or pilot mutation occurred.
 
-Do not include credentials, private/public key material, tokens, cookies,
-database URLs, environment values, complete public or tailnet addresses, full
-firewall dumps, raw Caddy configuration, unrelated DNS/configuration, or Caddy
-certificate/storage contents in repository evidence.
+The persistence record proves selected resource identity and, together with the
+command/deviation review, supports the conclusion that Gate D performed no
+Docker, database, migration, upload, backup, or restore mutation. It does not
+prove logical, row-level, or byte-for-byte database equality; normal application
+activity may change PostgreSQL contents. If media storage, external object
+storage, or another persistence mechanism is implemented later, this procedure
+requires a new persistence baseline and relevant re-audit before reuse.
+
+Do not capture or include credentials, private/public key material, tokens,
+cookies, database URLs, environment values, raw mount sources, volume
+mountpoints, volume options, unrestricted labels, unrestricted Docker inspect
+output, complete public or tailnet addresses, full firewall dumps, raw Caddy
+configuration, unrelated DNS/configuration, or Caddy certificate/storage
+contents in repository evidence.
 
 ## Governance Boundary
 
