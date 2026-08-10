@@ -1,0 +1,5 @@
+# Gate D leaves Caddy's local administration endpoint available for graceful
+# reloads but defines no HTTP servers or public NAM route.
+{
+	admin localhost:2019
+}
