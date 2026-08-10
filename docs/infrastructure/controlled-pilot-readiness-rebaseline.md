@@ -30,20 +30,20 @@ baseline. No current executable access, deployment, migration, or recovery
 runbook is approved. The Operational Pilot Runbook may become pilot
 orchestration and execution authority only after its stale procedure blocks are
 replaced or revalidated and independently accepted. Security-sensitive gates
-may also require focused execution procedures. All such authority requires
-separate approval before Gate D or any later mutation.
+may also require focused execution procedures. All later mutation authority
+requires separate approval.
 
 ## Repository And Application Identity
 
 | Item | Authority |
 | --- | --- |
 | Branch | `main` |
-| Repository revision | Resolve from clean synchronized local `main` at the start of each readiness review; no revision recorded here is Gate D execution authority. |
+| Repository revision | Resolve from clean synchronized local `main` at the start of each later readiness review; Gate D execution authority was limited to the separately accepted revision below. |
 | Prospective Gate D readiness revision | The exact committed revision inspected by a readiness task; it remains evidence only and may be superseded by later documentation commits. |
-| Authorized Gate D execution revision | Unassigned. A separate execution authorization must name an exact committed revision containing the reviewed procedure. |
+| Authorized Gate D execution revision | `977483f985f26d080ad80d59cfc8c6abed3c122a` |
 | Gate B closure evidence revision | `efdea5402401437d9e962b3aa8421a49931e6189` |
 | Application-bearing revision | `4eba24fb97abac61c6511258ad4e97aebd4ea6a2` |
-| Latest accepted completed gate | [Gate C immutable deployment candidate evidence](gate-c-immutable-deployment-candidate-evidence.md) |
+| Latest accepted completed gate | [Gate D public exposure cutover evidence](gate-d-public-exposure-cutover-evidence.md) |
 | Production dependency audit | Zero known vulnerabilities at the accepted verification point |
 | Repository migrations | 20 |
 | Day View contributors | 11 |
@@ -104,14 +104,19 @@ database mutation.
 
 - The application remains published on host loopback at port `3000` only.
 - PostgreSQL is not published to the host or public network.
-- Caddy publicly exposes NAM on TCP `80` and `443` and UDP `443` for HTTP/3.
-- Public IPv4 access succeeds. The host also has public IPv6, and a direct IPv6
-  request with NAM hostname/SNI reaches Caddy even without a DNS `AAAA` record.
-  DNS removal alone therefore cannot close public access.
+- The public NAM Caddy route has been removed through graceful reload.
+- Public UFW TCP `80` and `443` allowances have been removed while public SSH
+  on TCP `22` remains allowed.
+- Independent Windows-client checks confirmed that public HTTP and HTTPS time
+  out without a response.
+- The `dev.alemany.me` `A` record for `217.76.49.214` has been removed. The
+  unrelated `nam.alemany.me` record was not changed.
 - NAM has no application authentication or authorization.
 - Tailscale is installed, connected, tagged for pilot use, and configured to
   Serve `127.0.0.1:3000`; Funnel is disabled. Approved Windows and iPad clients
-  passed private HTTPS, health, and Day View checks without bypassing TLS.
+  passed private HTTPS, health, and Day View checks without bypassing TLS. The
+  Windows client passed a fresh post-cutover NAM Dashboard and Day View check
+  without a certificate warning.
 - Prior accepted tailnet-administration evidence records identity-provider MFA,
   Device Approval, the `tag:nam-pilot` assignment, and an explicit owner-to-tag
   TCP `443` access rule.
@@ -120,8 +125,8 @@ database mutation.
 
 Gate B is accepted for private access and independent administrator recovery;
 see the [Gate B evidence](gate-b-private-access-administrator-recovery-evidence.md).
-ADR-019 remains partially implemented as the complete operational-pilot
-boundary because public NAM exposure and later pilot gates remain open.
+ADR-019 remains incomplete as the complete operational-pilot boundary because
+later pilot gates remain open.
 
 ## Administrator Recovery State
 
@@ -153,6 +158,10 @@ hardening mutation. This document neither authorizes nor supplies that change.
 - `nam-app:latest` is mutable and is not deployment or rollback authority.
 - The Gate C immutable image is an accepted pre-pilot deployment candidate but
   is not deployed and is not rollback authority for the current live schema.
+- The retained Gate D rollback backup is
+  `/home/alain/backups/nam/gate-d-20260810T002019Z-9oL76K`. It contains the
+  prior Caddy and UFW state defined by the Gate D procedure; automatic rollback
+  was not required. It is not an application-data or PostgreSQL backup.
 
 A dump file, mutable tag, or retained local image is not recovery proof without
 identity, checksum, compatibility, and restore evidence.
@@ -178,9 +187,9 @@ Gate; correctness and pilot suitability still require review.
 
 | Gate | Status | Reason |
 | --- | --- | --- |
-| Repository identity | REVALIDATE | Gate B closure proved clean synchronized `main` at `efdea54`; every later readiness or execution task must record its own exact clean synchronized revision. No prior or prospective readiness revision authorizes Gate D execution. |
+| Repository identity | REVALIDATE | Gate D was authorized and executed at `977483f985f26d080ad80d59cfc8c6abed3c122a`; every later readiness or execution task must record its own exact clean synchronized revision. |
 | Private network access | PASS | Approved Windows and iPad clients passed tailnet-only HTTPS, health, and Day View checks; current Serve/Funnel state remains coherent with the [Gate B evidence](gate-b-private-access-administrator-recovery-evidence.md). |
-| Public exposure removal | OPEN | Public Caddy paths remain reachable over IPv4 and direct IPv6/SNI. |
+| Public exposure removal | PASS | The public NAM Caddy route and public UFW TCP `80`/`443` allowances were removed; independent Windows checks confirmed public HTTP and HTTPS denial. See the [Gate D evidence](gate-d-public-exposure-cutover-evidence.md). |
 | Administrator recovery | PASS | Independent Windows public-key recovery to non-root sudo administrator `alain` passed; current server-side state does not contradict the accepted evidence. |
 | Immutable deployment candidate | PASS | Gate C accepted the labeled immutable image recorded in the [Gate C evidence](gate-c-immutable-deployment-candidate-evidence.md). |
 | Deployment parity | OPEN | The healthy runtime remains at `76cdba9`, Next.js `15.5.19`, and ten contributors. |
@@ -189,7 +198,7 @@ Gate; correctness and pilot suitability still require review.
 | Current-schema recovery | NOT YET EXECUTABLE | It follows separately authorized migration and deployment parity. |
 | Reference data | OPEN | Aggregate data exists, but required reference sets are incomplete and no suitability review is accepted. |
 | Pilot scope and support | OPEN | User, device, data, support, rollback, and exit authorization remain incomplete. |
-| Confidential operational use | FAILED | The public unauthenticated route remains active and prerequisite gates are open. |
+| Confidential operational use | FAILED | Public exposure is closed, but later deployment, recovery, reference-data, and pilot-scope gates remain open. |
 
 ## Approved Ordered Readiness Direction
 
@@ -221,24 +230,19 @@ protection checks. It remains undeployed. See the
 
 ### D. Public Exposure Cutover
 
-**Next unresolved gate; not authorized.** Only under a separate authorization,
-remove NAM's public Caddy exposure, remove public DNS where appropriate, close
-public NAM TCP
-`80`/`443` and UDP `443` over IPv4 and IPv6, and prove public NAM paths fail
-while the separately approved SSH recovery path remains available.
+**Complete.** The cutover executed successfully at
+`977483f985f26d080ad80d59cfc8c6abed3c122a`. All prechecks passed, the public
+NAM Caddy route and public UFW TCP `80`/`443` allowances were removed, public
+SSH remained available, and the loopback application remained healthy.
+Independent Windows-client checks proved public HTTP and HTTPS denial and
+successful private Tailscale access. The `dev.alemany.me` `A` record for
+`217.76.49.214` was then deleted without changing `nam.alemany.me`. See the
+[Gate D evidence](gate-d-public-exposure-cutover-evidence.md).
 
-Public exposure must be removed before the live database/application
-transition. The older Checkpoint D ordering is not current authority.
-The [Gate D Public Exposure Cutover Procedure](gate-d-public-exposure-cutover-procedure.md)
-is designed for separate review; it has not been executed or authorized and is
-not Gate D acceptance evidence.
-
-Gate D's approved persistence-proof boundary is unchanged container, volume,
-mount, network, restart, and port-binding identities together with no Gate D
-database, upload, migration, backup, restore, or Docker mutation. This proves
-resource continuity only; it does not claim logical, row-level, or byte-for-byte
-database equality. Any unexpected upload store, application persistent mount,
-or changed persistence topology requires a new baseline and procedure re-audit.
+The private rollback backup remains retained, and automatic rollback was not
+required. Gate D did not change Docker, PostgreSQL, uploads, application code,
+SSH configuration, Tailscale configuration, or DNS through the script. Gate D
+completion does not authorize Gate E or any later gate.
 
 ### E. Pre-migration Recovery Gate
 
@@ -272,6 +276,20 @@ rollback plan, and exit criteria for a bounded pilot.
 
 Enter real operational data only after every preceding gate is accepted and a
 separate pilot-execution authorization is recorded.
+
+## Post-Gate D Project Direction
+
+Infrastructure work is paused. Near-term priority returns to developing and
+perfecting NAM Dashboard. Additional infrastructure work should occur only
+when strictly necessary to unblock development or correct a critical
+operational or security problem.
+
+Comprehensive production-style infrastructure hardening and senior security
+review are intentionally deferred until the application is substantially
+complete. Current access is private and intended only for the sole operator
+through the approved Tailscale path. This is not a production deployment, does
+not establish production readiness, and does not authorize or assign a new
+development phase.
 
 ## Authorization Boundary And Stop Conditions
 
