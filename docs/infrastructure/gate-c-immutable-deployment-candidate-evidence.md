@@ -212,25 +212,40 @@ image or Docker resource was removed.
 
 ### Review verdict and authority
 
-**CANDIDATE CREATED — READY FOR INDEPENDENT RE-REVIEW.** The successor image was
-built from exact clean, synchronized revision
+**APPROVED — EVIDENCE COMMITTED AND PUSHED.** The successor image was built from
+exact clean, synchronized revision
 `8a6c652b57f0b1b528d8965e8aa720f28f71008c`. Retained provenance and current
 metadata identify the completed image; isolated runtime outcomes are retained
 as executor-recorded results because their primary transcripts were not kept.
-The candidate remains local and undeployed. This execution does not accept the
-candidate, authorize deployment, publish an image, authorize confidential
-operational use, grant new Gate D authority, or start Phase 29.
+The independent Gate C review accepted those results with their documented
+limitations. The exact approved six-file documentation/artifact set was
+committed and pushed in `63c7a1d75821aabd1948564197e9a3d066363308`.
+Gate C evidence is no longer awaiting independent review.
+
+Commit `63c7a1d` contains documentation and deployment artifacts only. It
+changes no application source and requires no new candidate build. The
+candidate remains local and undeployed. Gate C approval and the evidence commit
+do not authorize deployment, image publication, confidential operational use,
+new Gate D work, or Phase 29.
 
 This `8a6c652` Gate C re-baseline performed no new Gate D execution and did not
 revalidate Gate D. The repository's
 [historical Gate D execution/PASS evidence](gate-d-public-exposure-cutover-evidence.md)
-remains preserved as historical truth. This Gate C evidence grants no new Gate
-D, deployment, public-exposure, or controlled-pilot authorization. Whether the
-historical Gate D evidence remains sufficient for a future deployment decision
-must be determined separately and is not decided here.
+remains preserved as historical truth. The later deployment-readiness
+assessment found that evidence sufficient for consideration of this
+application-only candidate because it changes no infrastructure, access,
+authentication, public exposure, media, ports, DNS, Caddy, Tailscale, or
+migrations. No new Gate D execution is currently required. Immediate
+public/private binding checks and approved-client verification would still be
+required after any future separately authorized deployment. This assessment
+grants no Gate D, deployment, public-exposure, or controlled-pilot authority.
 
 Gate B private-access evidence was not freshly revalidated, re-performed, or
 re-accepted by this Gate C execution.
+
+The subsequent independent deployment-readiness verdict was **REMEDIATION OR
+REVALIDATION REQUIRED**. This documentation correction must be independently
+re-reviewed before deployment authorization may be requested.
 
 ### Starting state
 
@@ -240,6 +255,9 @@ re-accepted by this Gate C execution.
 | Repository and application-bearing revision | `8a6c652b57f0b1b528d8965e8aa720f28f71008c` |
 | `origin/main` | Synchronized to the same full revision by live remote read |
 | Initial working tree | Clean |
+| Approved Gate C evidence commit | `63c7a1d75821aabd1948564197e9a3d066363308` |
+| Evidence commit scope | Exactly the approved three documentation files and three digest-pinned Compose/checksum artifacts; no application change |
+| Pre-remediation repository baseline | Clean `main` synchronized with `origin/main` at exact `63c7a1d75821aabd1948564197e9a3d066363308` |
 | Deployed parent revision | `0e57e1e1d5082bb2d2b08528bf0082e2337a80da` |
 | Commit relationship | Deployed revision is the direct parent of the candidate revision |
 | Deployed / rollback image ID | `sha256:88c4353c6a79a1f29f76adfdab94136a31bf11168814081db187168281994efc` |
@@ -247,6 +265,13 @@ re-accepted by this Gate C execution.
 The deployed-to-candidate range changes only the Equipment State and Mine Type
 implementation and its focused tests. It changes no Prisma schema, migration,
 Dockerfile, Compose production configuration, or dependency manifest.
+
+The `main`/`origin/main` value at `8a6c652` above is the historical Gate C
+execution baseline. `63c7a1d` is the approved evidence commit and the clean,
+synchronized baseline observed before this remediation, not a permanently
+current branch tip. A later approved documentation-only correction commit can
+move `main` beyond `63c7a1d` without changing the candidate application
+revision or requiring a rebuild.
 
 ### Immutable image provenance
 
@@ -318,6 +343,11 @@ support that the live containers were neither replaced nor restarted. Retained
 evidence cannot independently prove the absence of every transient connection,
 query, attachment, inspection, or mutation. No live application-health result
 or live database-content inspection is claimed.
+
+Independent Gate C approval accepted the executor-recorded results with these
+limitations. Approval did not transform them into independently retained
+primary evidence. The disclosed transcript limitation does not independently
+block consideration of a narrowly bounded application-only deployment.
 
 ### Build result
 
@@ -445,19 +475,26 @@ candidate override to the local repository-digest/OCI index reference and the
 rollback override to the exact rollback image. The overrides were not executed
 and do not authorize a deployment or rollback.
 
+The candidate is unpublished and local. It is acceptable only for a tightly
+controlled same-host deployment while the exact top-level digest remains
+present. It is not durable against host loss, image pruning, or local
+image-store corruption. Any later deployment procedure must recheck local
+presence and exact identity; this limitation does not authorize deployment.
+
 ### Required immediate sequence
 
 1. Complete this documentation repair without committing.
-2. Obtain independent read-only re-review and approval of the complete
-   uncommitted six-file Gate C scope.
-3. If approved, perform a separately controlled commit and push containing only
-   those six Gate C evidence/artifact files.
-4. Only afterward consider a separate deployment-readiness or
-   deployment-authorization request.
+2. Obtain independent read-only re-review from the same deployment-readiness
+   authority.
+3. If approved, separately authorize a focused commit and push containing only
+   these three corrected documentation files.
+4. Prepare and independently review the exact candidate deployment/rollback
+   procedure.
+5. Only then consider a separate explicit deployment authorization.
 
 Independent re-review must not rerun the candidate or generate replacement
 runtime evidence. Any evidence-generating re-execution requires separate
-authorization.
+authorization. This task does not create the deployment procedure.
 
 ### Migration determination and remaining boundaries
 
@@ -472,19 +509,38 @@ case-insensitive reference lookup inside serializable transactions passed the
 isolated reuse checks. The existing case-sensitive database constraints cannot
 provide absolute protection against two concurrent case-variant creates;
 closing that narrow race would require a separately designed schema migration
-or reference-data redesign. No migration was required or authorized for this
+or reference-data redesign. Gate C approval accepts this only as a known
+residual limitation. No migration was required or authorized for this
 candidate.
 
-Gate B was not freshly revalidated. UFW, Tailscale, Caddy, DNS, SSH, TLS,
-public-denial, external-client, registry, and privileged host-security checks
-were not refreshed. The prior
+Gate B was not freshly revalidated. Device-denial testing, device revocation
+and re-enrollment, and emergency-disablement exercises remain deferred. Current
+privileged UFW, Tailscale, effective `sshd`, and Fail2ban outputs were not fully
+refreshed during the deployment-readiness assessment because non-interactive
+sudo was unavailable. The prior
 [Gate B evidence](gate-b-private-access-administrator-recovery-evidence.md)
-continues to record deferred unapproved-device denial, revocation,
-re-enrollment, and emergency-disablement exercises plus the known
-world-writable `/etc/ssh/ssh_config.d/20-systemd-ssh-proxy.conf` outbound client
-fragment. This Gate C task did not inspect, correct, refresh, or accept away
-those prior findings.
+remains the historical source for those limitations.
+
+Read-only inspection on `2026-08-11` corrected a separate interpretation: the
+path `/etc/ssh/ssh_config.d/20-systemd-ssh-proxy.conf` is a root-owned symlink
+with mode `0777` to a root-owned regular file with mode `0644`, with relevant
+root-owned `0755` parent directories. The symlink permission bits do not make
+the target world-writable on this system. No operational vulnerability or host
+remediation is required, and the earlier finding is closed as a documentation
+and interpretation correction. The successful Git push is not evidence for
+this conclusion; the read-only symlink, target, and parent inspection is.
+
+The remaining Gate B limitations may be temporarily accepted for consideration
+of a narrowly bounded application-only deployment. They remain prerequisites
+for separate revalidation before confidential operational use or
+controlled-pilot authorization. The broader pilot recovery gate remains open,
+and older pilot or disaster-recovery material is not current deployment
+authority.
 
 This re-baseline performed no new Gate D execution and did not revalidate the
-historical Gate D PASS. It grants no new Gate D, deployment, public-exposure,
-controlled-pilot, confidential-operational-use, or Phase 29 authorization.
+historical Gate D PASS. The later readiness assessment found that historical
+evidence sufficient for this application-only candidate; no new Gate D
+execution is currently required. Immediate public/private binding and
+approved-client verification would still be required after any future
+deployment. Deployment, controlled-pilot use, confidential operational use,
+and Phase 29 remain unauthorized.

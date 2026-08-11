@@ -118,13 +118,50 @@ disablement. These are accepted deferred exercises, not Gate B failures. No
 device was approved, revoked, removed, re-enrolled, or disabled during formal
 closure.
 
-## Known Separate Hardening Finding
+## Historical Finding As Originally Recorded
 
-`/etc/ssh/ssh_config.d/20-systemd-ssh-proxy.conf` remains owned by `root:root`
-with mode `0777`. It is an outbound OpenSSH client fragment, not an inbound
-`sshd` authentication source, and it did not affect the independently proven
-Windows recovery login. Its correction remains a separately authorized host
-hardening action; this report neither fixes it nor claims it is resolved.
+At Gate B closure, this document recorded the following finding:
+
+> `/etc/ssh/ssh_config.d/20-systemd-ssh-proxy.conf` remains owned by
+> `root:root` with mode `0777`. It is an outbound OpenSSH client fragment, not
+> an inbound `sshd` authentication source, and it did not affect the
+> independently proven Windows recovery login. Its correction remains a
+> separately authorized host hardening action; this report neither fixes it
+> nor claims it is resolved.
+
+### 2026-08-11 Erratum — interpretation finding closed
+
+Read-only host inspection established that the referenced path is a root-owned
+symbolic link with mode `0777`, not a world-writable regular file. It points to
+`/usr/lib/systemd/ssh_config.d/20-systemd-ssh-proxy.conf`, a root-owned regular
+file with mode `0644`. Relevant parent directories on both paths are root-owned
+with mode `0755`. On this system, the symlink permission bits do not make the
+target world-writable.
+
+No operational vulnerability requiring host remediation was found. The earlier
+finding is closed as a documentation and interpretation correction; no host
+file was modified. The successful Git push is not evidence for this security
+conclusion. The evidence is the read-only inspection of the symlink, resolved
+target, and parent-directory ownership and modes.
+
+## Current Readiness Carry-Forward — 2026-08-11
+
+This correction does not freshly revalidate Gate B or weaken its separate open
+limitations:
+
+- unapproved-device denial testing remains deferred;
+- device revocation and re-enrollment exercises remain deferred;
+- emergency-disablement exercises remain deferred; and
+- current privileged UFW, Tailscale, effective `sshd`, and Fail2ban outputs
+  were not fully refreshed during the deployment-readiness assessment because
+  non-interactive sudo was unavailable.
+
+The deployment-readiness authority classified these limitations as temporarily
+acceptable for consideration of a narrowly bounded application-only deployment.
+They remain prerequisites for separate revalidation before confidential
+operational use or controlled-pilot authorization. The broader pilot recovery
+gate remains open. Older pilot and disaster-recovery material must not be
+treated as current deployment authority.
 
 ## State Protection
 
@@ -143,9 +180,10 @@ Only this evidence document and the minimal readiness-authority status update
 were created or modified. No host, access, application, database, deployment,
 or other repository mutation occurred.
 
-## Gate D Boundary
+## Gate D Boundary At Gate B Closure
 
-Gate D is the next unresolved readiness gate but remains unauthorized. A later
+At the time of Gate B closure, Gate D was the next unresolved readiness gate
+and remained unauthorized. A later
 separately approved task must preserve public TCP `22` recovery while removing
 only public NAM application exposure through Caddy, DNS, TCP `80`/`443`, and
 UDP `443` across IPv4 and IPv6. It must prove public NAM paths fail without
@@ -155,3 +193,12 @@ later authorization.
 
 Gate B completion does not authorize Gate D, and Gate D completion would not
 implicitly authorize Gate E or any later gate.
+
+Subsequent preserved historical evidence records Gate D execution and PASS.
+The 2026-08-11 deployment-readiness assessment found that historical evidence
+sufficient for consideration of the application-only `8a6c652` candidate
+because it changes no infrastructure or access surface. No new Gate D execution
+is currently required, but immediate public/private binding checks and
+approved-client verification would still be required after any future
+separately authorized deployment. This status update neither authorizes
+deployment nor controlled-pilot or confidential operational use.
