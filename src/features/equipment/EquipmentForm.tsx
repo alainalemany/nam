@@ -3,9 +3,11 @@
 import { useActionState } from "react";
 
 import {
+  cityStateOptions,
   equipmentCategoryOptions,
   equipmentInstrumentationTypeOptions,
   equipmentPowerTypeOptions,
+  mineTypeOptions,
   recordStatusOptions,
 } from "./constants";
 import { emptyEquipmentFormState, type EquipmentFormField, type EquipmentFormState } from "./validation";
@@ -57,6 +59,14 @@ export function EquipmentForm({
   submitLabel,
 }: EquipmentFormProps) {
   const [state, formAction, pending] = useActionState(action, emptyEquipmentFormState);
+  const initialCityState = initialValues ? (initialValues.cityState ?? "") : "FL";
+  const initialMineType = initialValues ? (initialValues.mineType ?? "") : "Quarry";
+  const hasLegacyCityState = !cityStateOptions.some(
+    (option) => option.value === initialCityState,
+  );
+  const hasLegacyMineType = !mineTypeOptions.some(
+    (option) => option.value === initialMineType,
+  );
 
   return (
     <form action={formAction} className="form-stack">
@@ -81,12 +91,29 @@ export function EquipmentForm({
 
           <label>
             <span>State</span>
-            <input
+            <select
+              aria-describedby={hasLegacyCityState ? "city-state-help" : undefined}
+              aria-label="State"
               name="cityState"
-              defaultValue={initialValues?.cityState ?? ""}
-              autoComplete="off"
-              placeholder="FL"
-            />
+              defaultValue={initialCityState}
+            >
+              {hasLegacyCityState ? (
+                <option value={initialCityState}>
+                  {initialCityState || "Not set"} (stored shared value)
+                </option>
+              ) : null}
+              {cityStateOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {hasLegacyCityState ? (
+              <span className="field-help" id="city-state-help">
+                This stored shared City value is preserved for unrelated Equipment changes.
+                Correct it only through the controlled reference-data process.
+              </span>
+            ) : null}
             {fieldError(state, "cityState")}
           </label>
 
@@ -102,12 +129,29 @@ export function EquipmentForm({
 
           <label>
             <span>Mine type</span>
-            <input
+            <select
+              aria-describedby={hasLegacyMineType ? "mine-type-help" : undefined}
+              aria-label="Mine type"
               name="mineType"
-              defaultValue={initialValues?.mineType ?? ""}
-              autoComplete="off"
-              placeholder="Quarry"
-            />
+              defaultValue={initialMineType}
+            >
+              {hasLegacyMineType ? (
+                <option value={initialMineType}>
+                  {initialMineType || "Not set"} (stored shared value)
+                </option>
+              ) : null}
+              {mineTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {hasLegacyMineType ? (
+              <span className="field-help" id="mine-type-help">
+                This stored shared Mine value is preserved for unrelated Equipment changes.
+                Correct it only through the controlled reference-data process.
+              </span>
+            ) : null}
             {fieldError(state, "mineType")}
           </label>
         </div>
