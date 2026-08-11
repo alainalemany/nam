@@ -1,322 +1,238 @@
 # Controlled Pilot Readiness Re-baseline
 
-This document is the current authority for NAM Dashboard deployment identity,
-controlled-pilot readiness status, and the order in which remaining readiness
-gates may later be addressed. It records an accepted read-only observation of
-the repository, deployed runtime, live migration state, access boundary, and
-recovery posture. It is not an executable runbook and does not authorize any
-mutation.
+This document is the current authority for NAM Dashboard repository,
+deployment-candidate, deployed-runtime, and readiness-gate identity. It records
+only the current verified baseline and governance boundary. Historical
+checkpoint and gate evidence remains historical truth in its own documents.
 
 This is an **unnumbered readiness effort**. Phase 29 has not been assigned.
-Confidential operational use remains prohibited. No gate below authorizes the
-next gate automatically. Host, network, deployment, and database mutations
-require separate approval before execution.
+Nothing in this document authorizes deployment, registry publication, database
+mutation, public exposure, confidential operational use, or controlled-pilot
+execution.
+
+## Current Verdict
+
+**Gate C candidate created — evidence repair awaiting independent re-review.**
+The local candidate for revision
+`8a6c652b57f0b1b528d8965e8aa720f28f71008c` has retained provenance and
+metadata plus executor-recorded isolated results documented in
+[Gate C Immutable Deployment Candidate Evidence](gate-c-immutable-deployment-candidate-evidence.md).
+It is not deployed and is not yet accepted for deployment.
+
+This `8a6c652` Gate C re-baseline performed no new Gate D execution and did not
+revalidate Gate D. The repository's
+[historical Gate D evidence](gate-d-public-exposure-cutover-evidence.md)
+continues to record its authorized execution and PASS at revision `977483f`.
+This Gate C work grants no new Gate D, deployment, public-exposure, or
+controlled-pilot authorization. Whether the historical Gate D evidence remains
+sufficient for a future deployment decision requires separate determination
+and is not decided here.
+
+Gate B private-access and administrator-recovery evidence was not freshly
+revalidated, re-performed, or extended by this Gate C work.
 
 ## Classification And Authority
 
 | Classification | Meaning |
 | --- | --- |
-| Confirmed | Observed current state or an approved governance boundary. |
-| Approved direction | Ordered future work that may be prepared but not executed without separate authorization. |
-| Open gate | Required evidence or work that has not been accepted. |
+| Independently inspectable | Retained evidence or current read-only state available to a reviewer. |
+| Executor-recorded | A result recorded by the executor without a retained primary transcript sufficient for independent reproduction. |
+| Historical | Valid evidence for the revision and execution it records, but not current execution authority. |
+| Awaiting review | Evidence exists but has not received the separate acceptance required for the next mutation. |
+| Open | Required work or authorization has not been completed. |
 
-This document supersedes Checkpoint D documents as the **current-state and
-sequencing authority**. The Checkpoint D documents remain immutable historical
-evidence for the `76cdba9` application and 16-migration deployment generation.
-The [Operational Pilot Runbook](operational-pilot-runbook.md) remains the
-authority for durable pilot requirements, scope, support, and exit review, but
-its mutation procedures are suspended until they are revalidated against this
-baseline. No current executable access, deployment, migration, or recovery
-runbook is approved. The Operational Pilot Runbook may become pilot
-orchestration and execution authority only after its stale procedure blocks are
-replaced or revalidated and independently accepted. Security-sensitive gates
-may also require focused execution procedures. All later mutation authority
-requires separate approval.
+This document supersedes stale current-state statements elsewhere. It does not
+rewrite historical evidence. The
+[Operational Pilot Runbook](operational-pilot-runbook.md) remains a durable
+requirements reference, not current mutation authority. Every later mutation
+requires a separately approved, identity-bound procedure.
 
-## Repository And Application Identity
+## Repository And Revision Identity
 
-| Item | Authority |
+| Item | Recorded or currently inspectable value |
 | --- | --- |
 | Branch | `main` |
-| Repository revision | Resolve from clean synchronized local `main` at the start of each later readiness review; Gate D execution authority was limited to the separately accepted revision below. |
-| Prospective Gate D readiness revision | The exact committed revision inspected by a readiness task; it remains evidence only and may be superseded by later documentation commits. |
-| Authorized Gate D execution revision | `977483f985f26d080ad80d59cfc8c6abed3c122a` |
-| Gate B closure evidence revision | `efdea5402401437d9e962b3aa8421a49931e6189` |
-| Application-bearing revision | `4eba24fb97abac61c6511258ad4e97aebd4ea6a2` |
-| Latest accepted completed gate | [Gate D public exposure cutover evidence](gate-d-public-exposure-cutover-evidence.md) |
-| Production dependency audit | Zero known vulnerabilities at the accepted verification point |
-| Repository migrations | 20 |
-| Day View contributors | 11 |
-| Supply Requests V1 | Implemented and accepted |
-| Knowledge Base V1 | Implemented, accepted, and canonically closed |
+| Candidate source revision | `8a6c652b57f0b1b528d8965e8aa720f28f71008c` |
+| Application-bearing revision | `8a6c652b57f0b1b528d8965e8aa720f28f71008c` |
+| `origin/main` at Gate C start | Synchronized to the same full revision by live remote read |
+| Initial source tree | Clean |
+| Deployed source revision | `0e57e1e1d5082bb2d2b08528bf0082e2337a80da` |
+| Revision relationship | The deployed revision is the direct parent of the candidate revision |
+| Committed range purpose | Equipment State and Mine Type correction plus focused tests |
 
-The root dashboard still presents the historical Phase 3.2 label and does not
-link to Supply Requests or Knowledge Base. That is known UI debt, not evidence
-that those repository capabilities are absent, and it is not authorized for
-correction by this readiness effort.
+The one-commit range changes seven Equipment implementation/test files. It
+does not change Prisma schema or migrations, dependency manifests, Dockerfile,
+or production Compose configuration.
 
 ## Current Deployed Identity
 
-| Item | Observed deployed state |
+The executor recorded matching pre-state and post-state values. Current
+read-only inspection corroborates the recorded post-state:
+
+| Item | Currently inspectable post-state |
 | --- | --- |
-| Application source revision | `76cdba9530e49334e775009a811ae5ae74305c65` |
-| Application image | `nam-app:checkpoint-d-git-76cdba9530e49334e775009a811ae5ae74305c65` |
-| Immutable image ID | `sha256:c7a00e60735fe8d54e64886226cfeaaec799765efa62028d8b541b3628fa3092` |
-| Next.js | `15.5.19` |
-| Day View contributors | 10 |
-| Supply Requests | Not present |
-| Knowledge Base | Not present |
-| Health | Healthy at the read-only observation point |
+| Container ID | `da91da2bb5538875af5abf10db87e2c4b3a847efefcf450ec60132a51e11e859` |
+| Image reference | `nam-app:typography-git-0e57e1e1d5082bb2d2b08528bf0082e2337a80da` |
+| Immutable image ID | `sha256:88c4353c6a79a1f29f76adfdab94136a31bf11168814081db187168281994efc` |
+| Embedded source/application revision | `0e57e1e1d5082bb2d2b08528bf0082e2337a80da` |
+| State | Running; restart count `0` |
+| Start time | `2026-08-10T18:26:54.583013641Z` |
+| Mounts | None |
+| Network | `nam-network`; ID `e2eddeccb2bae37f48db1fcc69c5c4a7f6166cb32a9bf8fa720a9f79c0514a80` |
+| Host binding | `127.0.0.1:3000` to container TCP 3000 |
 
-The deployed application is healthy but stale. Its tag and image ID prove the
-Checkpoint D generation; they do not prove parity with repository HEAD. No
-deployment has occurred. Gate C produced and accepted the immutable local
-pre-pilot candidate `nam-app:pre-pilot-candidate-git-130a7fe6` at
-`sha256:20623c0354b224d641be8e95f20034e9db5ff2c73e01fe12edaf63a6a1597da7`,
-with complete repository revision `130a7fe6` and application-bearing revision
-`4eba24f` embedded as separate labels. The
-[Gate C evidence](gate-c-immutable-deployment-candidate-evidence.md) is image
-authority. The accepted image is also preserved in the private registry at
-`docker.io/alainalemany/nam-app@sha256:20623c0354b224d641be8e95f20034e9db5ff2c73e01fe12edaf63a6a1597da7`;
-this digest-qualified reference is its authoritative registry retrieval
-identity. Registry preservation does not make the candidate deployed or
-pilot-ready and does not preserve or back up PostgreSQL data or application
-uploads.
+Current inspection also finds the live PostgreSQL container at container ID
+`0d074cabe133c4b05d97705f21199b583b19a3eeecece28b8acc6322f97d2ce1`,
+image ID
+`sha256:4aabea78cf39b90e834caf3af7d602a18565f6fe2508705c8d01aa63245c2e20`,
+restart count zero, healthy running state, volume `postgres-data`, the same
+`nam-network` identity, and no published PostgreSQL port.
 
-## Current Live Migration Identity
+The retained start times and zero restart counts strongly support the
+executor-recorded result that neither live container was replaced or restarted.
+They do not independently prove the absence of every transient network
+attachment, database connection, query, inspection, migration, or mutation.
+The executor recorded that none occurred. This evidence makes no live
+application-health claim and includes no live database-content inspection.
 
-The live PostgreSQL `18.4` database is `nam_dashboard`. It records 16 successful
-Prisma migrations and no failed migrations. The first 16 live migration
-checksums match the repository. Repository HEAD contains 20 migrations, so live
-deployment parity is open.
+## Current Gate C Candidate
 
-The four repository migrations not applied live are:
+| Item | Independently retained or currently inspectable value |
+| --- | --- |
+| Local tag | `nam-app:pre-pilot-candidate-git-8a6c652` |
+| Docker top-level ID / OCI index digest | `sha256:258615a34224279016499423a23351a022e6a65f54df0fe8b17b26926696af70` |
+| Local repository-digest / OCI index reference | `nam-app@sha256:258615a34224279016499423a23351a022e6a65f54df0fe8b17b26926696af70` |
+| `linux/amd64` manifest digest | `sha256:39557fa4c75c2a27993325a3313902d7ccda51eb267e168a21e98c20668126b3` |
+| Image config digest | `sha256:b94d1f372db519ca0bdd73b63b3a078b05c8e0a62aae3e3e6e0d3e7be52faa2b` |
+| Registry digest | None; the candidate is unpublished |
+| OCI creation label | `2026-08-11T14:31:32Z` |
+| Image-config creation timestamp | `2026-08-11T14:35:14.242247139Z` |
+| Architecture | `linux/amd64` |
+| Resolved base | `node:24-bookworm-slim@sha256:b31e7a42fdf8b8aa5f5ed477c72d694301273f1069c5a2f71d53c6482e99a2fc` |
+| Runtime | Non-root `nextjs` (`uid=1001`, `gid=1001`) |
+| Entrypoint and command | `docker-entrypoint.sh`; `node server.js` |
+| Source/application labels | Exact full `8a6c652b57f0b1b528d8965e8aa720f28f71008c` |
+| Classification label | Gate `C`; `gate-c-deployment-candidate` |
+| Deployment state | Not deployed |
 
-1. `20260729000100_add_supply_request_persistence_foundation`
-2. `20260731000100_supply_request_daily_log_links`
-3. `20260801000100_knowledge_base_foundation`
-4. `20260802000100_knowledge_base_daily_log_defect_links`
+Retained BuildKit attestation and provenance independently support the exact
+VCS revision, Dockerfile identity, no-cache property, base-image material and
+digest, and successful completed image. Current inspection independently
+supports the candidate metadata above, current live-container post-state, and
+successful cleanup. The Compose overrides and checksums are retained and
+currently inspectable.
 
-This observation does not authorize `prisma migrate deploy` or any other live
-database mutation.
+The executor recorded the exact frozen-lockfile console result, disposable
+database migration result, HTTP statuses and bodies, Equipment persistence and
+rejection outcomes, candidate log scan, temporary resource cardinality, and
+complete before/after inventories. Primary transcripts for those results were
+not retained, so they remain executor-recorded results rather than
+independently verified evidence. Current inspection corroborates the recorded
+post-state and successful cleanup but cannot independently prove every
+transient execution-state claim.
 
-## Current Access And Security State
+## Migration Determination
 
-- The application remains published on host loopback at port `3000` only.
-- PostgreSQL is not published to the host or public network.
-- The public NAM Caddy route has been removed through graceful reload.
-- Public UFW TCP `80` and `443` allowances have been removed while public SSH
-  on TCP `22` remains allowed.
-- Independent Windows-client checks confirmed that public HTTP and HTTPS time
-  out without a response.
-- The `dev.alemany.me` `A` record for `217.76.49.214` has been removed. The
-  unrelated `nam.alemany.me` record was not changed.
-- NAM has no application authentication or authorization.
-- Tailscale is installed, connected, tagged for pilot use, and configured to
-  Serve `127.0.0.1:3000`; Funnel is disabled. Approved Windows and iPad clients
-  passed private HTTPS, health, and Day View checks without bypassing TLS. The
-  Windows client passed a fresh post-cutover NAM Dashboard and Day View check
-  without a certificate warning.
-- Prior accepted tailnet-administration evidence records identity-provider MFA,
-  Device Approval, the `tag:nam-pilot` assignment, and an explicit owner-to-tag
-  TCP `443` access rule.
-- Unapproved-device denial, revocation, re-enrollment, and emergency-disablement
-  exercises are intentionally deferred rather than failed.
+The deployed-to-candidate range contains no Prisma schema or migration change.
+No live migration is included or required for this application correction.
+This is a no-migration determination only; it neither recommends nor authorizes
+deployment. Any later deployment-readiness question must occur only after the
+required immediate sequence below is complete and under its own authorization.
 
-Gate B is accepted for private access and independent administrator recovery;
-see the [Gate B evidence](gate-b-private-access-administrator-recovery-evidence.md).
-ADR-019 remains incomplete as the complete operational-pilot boundary because
-later pilot gates remain open.
+The executor recorded that the Gate C disposable database applied all 20
+repository migrations from an empty schema. The retained six-file evidence
+does not include a primary migration transcript. This is an executor-recorded
+isolated result, not a claim about live migration state. The executor also
+recorded that the live database was not inspected or mutated, but retained
+evidence cannot independently prove the absence of every transient connection,
+query, inspection, or mutation.
 
-## Administrator Recovery State
+## Rollback And Provenance Authority
 
-- Public SSH is available over IPv4 and IPv6.
-- Effective configuration is key-only and disables root login.
-- Two authorized ED25519 administrator keys are present.
-- A dedicated Windows recovery key completed an accepted independent external
-  key-authenticated session to the non-root `alain` sudo administrator.
-- The Fail2ban SSH jail passed prior accepted verification and the service
-  remains active.
-- `/etc/ssh/ssh_config.d/20-systemd-ssh-proxy.conf` is world-writable. This is a
-  separate outbound-client security defect and has interfered with normal
-  Git-over-SSH verification; it does not participate in inbound `sshd`
-  authentication or invalidate the accepted recovery proof.
+The exact current rollback image is:
 
-Correcting the SSH client-fragment permissions is a separately authorized host
-hardening mutation. This document neither authorizes nor supplies that change.
+`sha256:88c4353c6a79a1f29f76adfdab94136a31bf11168814081db187168281994efc`
 
-## Current Backup, Restore, And Rollback State
+Evidence-only immutable Compose overrides and their checksum manifest are
+stored at:
 
-- Two historical Phase 2A PostgreSQL dumps exist. Neither represents the live
-  16-migration database or the repository's 20-migration schema.
-- No accepted current 16-migration live backup exists.
-- No accepted 20-migration current-schema backup exists.
-- No accepted disposable restore proof exists for either current generation.
-- The historical Checkpoint D runtime and V17 rollback authority remain valid
-  only for the unchanged 16-migration deployment generation.
-- V17 compatibility after migrations 17 through 20 is unproven.
-- `nam-app:latest` is mutable and is not deployment or rollback authority.
-- The Gate C immutable image is an accepted pre-pilot deployment candidate but
-  is not deployed and is not rollback authority for the current live schema.
-- The retained Gate D rollback backup is
-  `/home/alain/backups/nam/gate-d-20260810T002019Z-9oL76K`. It contains the
-  prior Caddy and UFW state defined by the Gate D procedure; automatic rollback
-  was not required. It is not an application-data or PostgreSQL backup.
+- `infrastructure/server-config/docker/gate-c-8a6c652-candidate.compose.yaml`
+- `infrastructure/server-config/docker/gate-c-8a6c652-rollback.compose.yaml`
+- `infrastructure/server-config/docker/gate-c-8a6c652-compose.sha256`
 
-A dump file, mutable tag, or retained local image is not recovery proof without
-identity, checksum, compatibility, and restore evidence.
+The candidate override checksum is
+`5e42c3abcb9f7277b785267f67fac51b367d9f3d37d22e3ac9da4e779d205284`.
+The rollback override checksum is
+`ad36dc5d18cbb061ad89a0797c1fcac2f0329b43e19bd91887831242e5710cd0`.
+These artifacts are evidence, not an executable authorization.
 
-## Reference-Data Observation
+The historical `130a7fe6` Gate C candidate and registry record remain
+historical truth. They do not represent `8a6c652` and were not retagged,
+rewritten, or removed.
 
-The read-only investigation recorded aggregate counts only:
+## Current Readiness-Gate Status
 
-| Reference group | Count |
-| --- | ---: |
-| Cities | 3 |
-| Mines | 3 |
-| Equipment | 7 |
-| Timesheet Work Codes | 0 |
-| Timesheet Work Orders | 0 |
-| Timesheet Support Personnel | 0 |
-| Fuel Service Personnel | 0 |
-
-No record contents were inspected. These counts do not pass the Reference-Data
-Gate; correctness and pilot suitability still require review.
-
-## Current Pilot-Gate Status
-
-| Gate | Status | Reason |
+| Gate | Status | Current authority |
 | --- | --- | --- |
-| Repository identity | REVALIDATE | Gate D was authorized and executed at `977483f985f26d080ad80d59cfc8c6abed3c122a`; every later readiness or execution task must record its own exact clean synchronized revision. |
-| Private network access | PASS | Approved Windows and iPad clients passed tailnet-only HTTPS, health, and Day View checks; current Serve/Funnel state remains coherent with the [Gate B evidence](gate-b-private-access-administrator-recovery-evidence.md). |
-| Public exposure removal | PASS | The public NAM Caddy route and public UFW TCP `80`/`443` allowances were removed; independent Windows checks confirmed public HTTP and HTTPS denial. See the [Gate D evidence](gate-d-public-exposure-cutover-evidence.md). |
-| Administrator recovery | PASS | Independent Windows public-key recovery to non-root sudo administrator `alain` passed; current server-side state does not contradict the accepted evidence. |
-| Immutable deployment candidate | PASS | Gate C accepted the labeled immutable image recorded in the [Gate C evidence](gate-c-immutable-deployment-candidate-evidence.md). |
-| Deployment parity | OPEN | The healthy runtime remains at `76cdba9`, Next.js `15.5.19`, and ten contributors. |
-| Database migration parity | OPEN | Live has 16 successful migrations; repository has 20. |
-| Pre-migration recovery | OPEN | No current 16-migration backup and disposable restore proof exists. |
-| Current-schema recovery | NOT YET EXECUTABLE | It follows separately authorized migration and deployment parity. |
-| Reference data | OPEN | Aggregate data exists, but required reference sets are incomplete and no suitability review is accepted. |
-| Pilot scope and support | OPEN | User, device, data, support, rollback, and exit authorization remain incomplete. |
-| Confidential operational use | FAILED | Public exposure is closed, but later deployment, recovery, reference-data, and pilot-scope gates remain open. |
+| Repository identity | CURRENTLY CONFIRMED | Current `main` and `origin/main` are synchronized at exact `8a6c652`; retained provenance identifies it as candidate source. |
+| Gate B private access and administrator recovery | PRIOR EVIDENCE; NOT REVALIDATED | Prior unresolved and deferred findings remain; this task did not refresh Gate B. |
+| Gate C immutable candidate | AWAITING INDEPENDENT RE-REVIEW | Candidate and retained metadata exist locally; executor-recorded runtime results require the stated evidence-strength qualification. |
+| Gate D public exposure | HISTORICAL PASS; NOT REVALIDATED | Historical execution/PASS evidence remains preserved. This Gate C task performed no new Gate D work and grants no new Gate D authority. |
+| Deployment parity | OPEN | Live remains at parent revision `0e57e1e`; candidate `8a6c652` is undeployed. |
+| Database migration for this correction | NOT REQUIRED | The one-commit range contains no schema or migration change. |
+| Rollback identity | RECORDED | Current live image `sha256:88c435...` is captured in a checksummed override. |
+| Controlled-pilot authorization | OPEN | No users, devices, data, support, or execution scope was authorized here. |
+| Confidential operational use | PROHIBITED | Gate C candidate evidence does not authorize operational use. |
+| Phase 29 | NOT STARTED | No phase assignment or work is authorized. |
 
-## Approved Ordered Readiness Direction
+## Security And Evidence Boundaries
 
-Each gate requires its own preconditions, evidence, independent review, and
-explicit owner authorization. Completion of one does not authorize the next.
+This Gate C task did not freshly revalidate Gate B. It did not refresh UFW,
+Tailscale, Caddy, DNS, SSH, TLS, public-denial, external-client, registry, or
+host-hardening checks. The prior Gate B findings remain unresolved or deferred:
 
-### A. Current Documentation And Runbook Authority Re-baseline
+- unapproved-device denial, revocation, re-enrollment, and emergency-disablement
+  exercises remain deferred; and
+- `/etc/ssh/ssh_config.d/20-systemd-ssh-proxy.conf` remains documented as a
+  world-writable outbound SSH client fragment requiring separate host-hardening
+  authorization.
 
-**Complete.** Current-state authority was reconciled while preserving
-Checkpoint D as historical evidence. Gate A changed documentation authority
-only; it did not change deployment or pilot status.
-
-### B. Private Access And Administrator-Recovery Preparation
-
-**Complete.** Approved Windows and iPad devices passed private HTTPS checks,
-tailnet MFA/approval/tag/grant evidence was accepted, Funnel remains disabled,
-and independent external key-only SSH recovery passed. The declined disposable
-device exercises are accepted deferrals, not failures. The world-writable
-outbound SSH client fragment remains separately authorized hardening and was
-not changed. See the
+See the
 [Gate B evidence](gate-b-private-access-administrator-recovery-evidence.md).
+This Gate C task did not inspect or correct either finding and does not claim
+that prior Gate B evidence was refreshed or accepted away.
 
-### C. Immutable Deployment Candidate
+The executor recorded that the candidate's migration-free case-insensitive
+reference resolution passed the isolated reuse checks. Existing case-sensitive
+database constraints do not eliminate the narrow race between concurrent
+case-variant creates; absolute protection would require a separately designed
+schema migration or reference-data redesign. That migration was neither
+required nor authorized for this correction.
 
-**Complete.** The labeled immutable pre-pilot candidate was built and passed
-focused dependency, migration, runtime, feature, isolation, and live-state
-protection checks. It remains undeployed. See the
-[Gate C evidence](gate-c-immutable-deployment-candidate-evidence.md).
+## Required Immediate Sequence
 
-### D. Public Exposure Cutover
+1. Complete this documentation repair without committing.
+2. Obtain independent read-only re-review and approval of the complete
+   uncommitted six-file Gate C scope.
+3. If approved, perform a separately controlled commit and push containing only
+   those six Gate C evidence/artifact files.
+4. Only afterward consider a separate deployment-readiness or
+   deployment-authorization request.
 
-**Complete.** The cutover executed successfully at
-`977483f985f26d080ad80d59cfc8c6abed3c122a`. All prechecks passed, the public
-NAM Caddy route and public UFW TCP `80`/`443` allowances were removed, public
-SSH remained available, and the loopback application remained healthy.
-Independent Windows-client checks proved public HTTP and HTTPS denial and
-successful private Tailscale access. The `dev.alemany.me` `A` record for
-`217.76.49.214` was then deleted without changing `nam.alemany.me`. See the
-[Gate D evidence](gate-d-public-exposure-cutover-evidence.md).
-
-The private rollback backup remains retained, and automatic rollback was not
-required. Gate D did not change Docker, PostgreSQL, uploads, application code,
-SSH configuration, Tailscale configuration, or DNS through the script. Gate D
-completion does not authorize Gate E or any later gate.
-
-### E. Pre-migration Recovery Gate
-
-Create an identity-bound backup of the current 16-migration live database,
-produce a manifest and checksums, prove a disposable restore, and establish
-rollback compatibility before changing the live database.
-
-### F. Database And Application Parity
-
-Separately authorize migrations 17 through 20 and deployment of the immutable
-current application candidate. Verify 20 migrations, Supply Requests,
-Knowledge Base, the eleven-contributor Day View, health, and representative
-workflows.
-
-### G. Current-schema Recovery Gate
-
-Create a 20-migration backup, produce a manifest and checksums, prove a
-disposable restore, and establish current rollback/recovery authority.
-
-### H. Reference-Data Review
-
-Review the required location, Equipment, Timesheet, fuel, and snapshot-name
-data without fabricating facts.
-
-### I. Pilot-Scope Authorization
-
-Approve the users, devices, data classes, entry workflow, support path,
-rollback plan, and exit criteria for a bounded pilot.
-
-### J. Controlled Pilot Execution
-
-Enter real operational data only after every preceding gate is accepted and a
-separate pilot-execution authorization is recorded.
-
-## Post-Gate D Project Direction
-
-Infrastructure work is paused. Near-term priority returns to developing and
-perfecting NAM Dashboard. Additional infrastructure work should occur only
-when strictly necessary to unblock development or correct a critical
-operational or security problem.
-
-Comprehensive production-style infrastructure hardening and senior security
-review are intentionally deferred until the application is substantially
-complete. Current access is private and intended only for the sole operator
-through the approved Tailscale path. This is not a production deployment, does
-not establish production readiness, and does not authorize or assign a new
-development phase.
+The independent re-review must not deploy, publish, retag, restart, rerun the
+candidate, generate replacement runtime evidence, or execute either Compose
+override. Any evidence-generating re-execution requires separate authorization.
 
 ## Authorization Boundary And Stop Conditions
 
-This document authorizes no command or mutation. Stop and seek a separate
-approval before any action that would:
+Stop and obtain separate approval before any action that would:
 
-- change Tailscale, Caddy, firewall, DNS, SSH, device policy, or host files;
-- build, retag, start, stop, replace, or deploy an application image;
-- create or restore a backup;
-- apply a migration or otherwise mutate the live database;
-- inspect or enter confidential operational record contents;
-- authorize a pilot, application authentication, media, or another feature;
-- assign Phase 29 or another implementation phase.
-
-If current identity, access, recovery, or rollback evidence differs from this
-baseline, stop and perform a new read-only assessment before using a later
-execution procedure.
-
-## Historical Evidence Boundary
-
-These documents remain evidence of the old `76cdba9`/16-migration generation;
-they are not current execution authority:
-
-- [Checkpoint D Application Deployment Correction](checkpoint-d-application-deployment-correction.md)
-- [Checkpoint D Existing-Candidate Recovery](checkpoint-d-existing-candidate-recovery.md)
-- [Checkpoint D Private Validator Recovery](checkpoint-d-private-validator-recovery.md)
-
-Do not rewrite their historical SHAs, image identities, migration counts,
-panel counts, commands, or results. Future execution procedures must use fresh
-immutable identities and the current ordered readiness direction above.
+- commit or push the current evidence changes;
+- push, publish, pull, retag, rebuild, remove, or replace the candidate image;
+- deploy, restart, or replace the live application;
+- inspect, migrate, back up, restore, backfill, or mutate live data;
+- change Tailscale, Caddy, UFW, firewall, DNS, TLS, SSH, or authentication;
+- execute Gate D or enable public exposure;
+- correct existing City State or Mine Type reference values;
+- authorize controlled-pilot or confidential operational use;
+- assign or begin Phase 29 or unrelated feature work.

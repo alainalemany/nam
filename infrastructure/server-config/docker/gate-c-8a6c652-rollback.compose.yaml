@@ -1,0 +1,8 @@
+# Gate C evidence artifact for independent review only.
+# This file identifies the exact currently deployed rollback image. It does
+# not authorize rollback, deployment, restart, or any database operation.
+services:
+  app:
+    image: nam-app@sha256:88c4353c6a79a1f29f76adfdab94136a31bf11168814081db187168281994efc
+    build: !reset null
+    pull_policy: never

@@ -1,0 +1,8 @@
+# Gate C evidence artifact for independent review only.
+# This file does not authorize deployment. Use only with the exact base
+# compose.yaml and a separately approved, revision-verified procedure.
+services:
+  app:
+    image: nam-app@sha256:258615a34224279016499423a23351a022e6a65f54df0fe8b17b26926696af70
+    build: !reset null
+    pull_policy: never
