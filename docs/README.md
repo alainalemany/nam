@@ -127,6 +127,7 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Run the application foundation | [Development Guide](development.md) |
 | Operate infrastructure | [Infrastructure Operations](infrastructure.md) |
 | Understand current controlled-pilot readiness identity and gate order | [Controlled Pilot Readiness Re-baseline](infrastructure/controlled-pilot-readiness-rebaseline.md) |
+| Review the hardened, non-authorized Gate C candidate deployment and rollback procedure | [Gate C `8a6c652` Deployment And Rollback Procedure](infrastructure/gate-c-8a6c652-deployment-rollback-procedure.md) |
 | Review controlled operational pilot requirements and future execution flow | [Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md) |
 | Review historical Checkpoint D application-deployment evidence | [Checkpoint D Application Deployment Correction](infrastructure/checkpoint-d-application-deployment-correction.md) |
 | Review historical Checkpoint D candidate-recovery evidence | [Checkpoint D Existing-Candidate Recovery](infrastructure/checkpoint-d-existing-candidate-recovery.md) |

@@ -16,6 +16,32 @@ execution.
 REQUIRED.** This documentation correction is required before deployment
 authorization may be requested.
 
+### Post-attempt recovery and evidence closure
+
+Confirmed after the first separately authorized candidate attempt:
+
+- The candidate was not accepted and is not running. Loss of the execution
+  shell prevented the required client evidence from being proven within the
+  15-minute window.
+- A separately authorized recovery restored the exact approved application
+  image
+  `sha256:88c4353c6a79a1f29f76adfdab94136a31bf11168814081db187168281994efc`.
+- Recovery rollback and server/client checks passed. The recovery's combined
+  final evidence-sealing operation returned nonzero; a separate authorized
+  evidence-closure operation subsequently verified and sealed the retained
+  recovery record with verdict `RECOVERY EVIDENCE CLOSURE VERIFIED`.
+- Repository closure was clean `main` at
+  `cc567ec95ba9a645d79791b7b2e0e8aa3b6a0cd8`, synchronized with
+  `origin/main` at divergence `0/0`.
+
+The repository does not contain the recovery execution transcript or its
+sealed evidence directory, so it cannot independently reconstruct the precise
+low-level cause of the nonzero sealing operation. The earlier application
+container ID below is pre-attempt historical evidence, not current runtime
+identity. A future deployment authorization must bind freshly reviewed current
+application, PostgreSQL, and network identities; this document does not invent
+or authorize those values.
+
 Gate C received independent approval. Its exact approved six-file evidence and
 artifact set was committed and pushed in
 `63c7a1d75821aabd1948564197e9a3d066363308`. The candidate application revision
@@ -77,12 +103,14 @@ The one-commit range changes seven Equipment implementation/test files. It
 does not change Prisma schema or migrations, dependency manifests, Dockerfile,
 or production Compose configuration.
 
-## Current Deployed Identity
+## Pre-attempt Deployed Identity (Historical)
 
-The executor recorded matching pre-state and post-state values. Current
-read-only inspection corroborates the recorded post-state:
+Before the failed candidate attempt and authorized recovery, the executor
+recorded matching pre-state and post-state values. The following table is
+preserved as historical evidence and must not be used as current execution
+identity:
 
-| Item | Currently inspectable post-state |
+| Item | Historical pre-attempt value |
 | --- | --- |
 | Container ID | `da91da2bb5538875af5abf10db87e2c4b3a847efefcf450ec60132a51e11e859` |
 | Image reference | `nam-app:typography-git-0e57e1e1d5082bb2d2b08528bf0082e2337a80da` |
@@ -94,7 +122,8 @@ read-only inspection corroborates the recorded post-state:
 | Network | `nam-network`; ID `e2eddeccb2bae37f48db1fcc69c5c4a7f6166cb32a9bf8fa720a9f79c0514a80` |
 | Host binding | `127.0.0.1:3000` to container TCP 3000 |
 
-Current inspection also finds the live PostgreSQL container at container ID
+The same pre-attempt inspection found the live PostgreSQL container at
+container ID
 `0d074cabe133c4b05d97705f21199b583b19a3eeecece28b8acc6322f97d2ce1`,
 image ID
 `sha256:4aabea78cf39b90e834caf3af7d602a18565f6fe2508705c8d01aa63245c2e20`,
@@ -108,9 +137,9 @@ attachment, database connection, query, inspection, migration, or mutation.
 The executor recorded that none occurred. This evidence makes no live
 application-health claim and includes no live database-content inspection.
 
-## Current Gate C Candidate
+## Gate C Candidate Identity (Not Accepted)
 
-| Item | Independently retained or currently inspectable value |
+| Item | Independently retained or pre-attempt inspectable value |
 | --- | --- |
 | Local tag | `nam-app:pre-pilot-candidate-git-8a6c652` |
 | Docker top-level ID / OCI index digest | `sha256:258615a34224279016499423a23351a022e6a65f54df0fe8b17b26926696af70` |
@@ -130,18 +159,19 @@ application-health claim and includes no live database-content inspection.
 
 Retained BuildKit attestation and provenance independently support the exact
 VCS revision, Dockerfile identity, no-cache property, base-image material and
-digest, and successful completed image. Current inspection independently
-supports the candidate metadata above, current live-container post-state, and
-successful cleanup. The Compose overrides and checksums are retained and
-currently inspectable.
+digest, and successful completed image. Pre-attempt inspection supported the
+candidate metadata above, the then-live container post-state, and successful
+cleanup. The Compose overrides and checksums remain in the repository. A future
+procedure must freshly prove local candidate availability and exact identity;
+this record does not claim the candidate still exists in the image store.
 
 The executor recorded the exact frozen-lockfile console result, disposable
 database migration result, HTTP statuses and bodies, Equipment persistence and
 rejection outcomes, candidate log scan, temporary resource cardinality, and
 complete before/after inventories. Primary transcripts for those results were
 not retained, so they remain executor-recorded results rather than
-independently verified evidence. Current inspection corroborates the recorded
-post-state and successful cleanup but cannot independently prove every
+independently verified evidence. The pre-attempt inspection corroborated the
+recorded post-state and successful cleanup but cannot independently prove every
 transient execution-state claim.
 
 ## Migration Determination
@@ -255,19 +285,26 @@ required nor authorized for this correction.
 
 ## Required Immediate Sequence
 
-1. Complete this documentation repair without committing.
-2. Obtain independent read-only re-review from the same deployment-readiness
-   authority.
-3. If approved, separately authorize a focused commit and push containing only
-   these three corrected documentation files.
-4. Prepare and independently review the exact candidate deployment/rollback
-   procedure.
-5. Only then consider a separate explicit deployment authorization.
+1. Complete the procedure-hardening implementation without committing.
+2. Complete an independent audit of that implementation.
+3. Correct every confirmed audit finding without discarding passing controls.
+4. Obtain an independent re-audit of the complete corrected six-file change.
+5. Only after that re-audit passes, separately authorize a focused commit and
+   push containing exactly:
+   `docs/README.md`,
+   `docs/infrastructure/controlled-pilot-readiness-rebaseline.md`,
+   `docs/infrastructure/gate-c-8a6c652-deployment-rollback-procedure.md`,
+   `infrastructure/server-config/README.md`,
+   `infrastructure/server-config/scripts/gate-c-evidence.sh`, and
+   `tests/infrastructure/gate-c-evidence-synthetic.sh`.
+6. Any future deployment requires a separate explicit authorization naming the
+   exact independently re-audited commit.
 
 The independent re-review must not deploy, publish, retag, restart, rerun the
 candidate, generate replacement runtime evidence, or execute either Compose
-override. This task does not create the deployment procedure. Any
-evidence-generating re-execution requires separate authorization.
+override. The hardened deployment procedure now exists for review, but neither
+its existence nor a future commit authorizes execution. Any evidence-generating
+re-execution requires separate authorization.
 
 ## Authorization Boundary And Stop Conditions
 

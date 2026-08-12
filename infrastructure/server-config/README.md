@@ -53,6 +53,14 @@ separately approved procedure. The current Gate C artifacts are:
 - `docker/gate-c-8a6c652-rollback.compose.yaml`
 - `docker/gate-c-8a6c652-compose.sha256`
 
+The Gate C procedure sources
+`scripts/gate-c-evidence.sh` only after proving that helper is the exact blob
+from the separately authorized procedure commit. The helper owns exclusive
+evidence capture, restart checkpoints, deadline validation, and deterministic
+inventory/manifest sealing. It contains no Docker, PostgreSQL, network, or host
+mutation. Its nonproduction test is
+`tests/infrastructure/gate-c-evidence-synthetic.sh`.
+
 The `8a6c652` candidate identity uses these distinct terms:
 
 - local tag: `nam-app:pre-pilot-candidate-git-8a6c652`;
@@ -73,7 +81,11 @@ it does not imply a published registry digest. Runtime outcomes described in
 the
 [Gate C evidence](../../docs/infrastructure/gate-c-immutable-deployment-candidate-evidence.md)
 remain executor-recorded where primary transcripts were not retained. The
-immediate sequence is documentation repair, independent read-only re-review and
-approval, then a separately controlled commit and push of only the six Gate C
-evidence/artifact files. Only after that sequence may a separate
-deployment-readiness or deployment-authorization request be considered.
+earlier six-file evidence/artifact set is already retained in Git. The current
+hardening sequence is implementation, independent audit, correction of audit
+findings, independent re-audit, and only then a separately authorized commit
+of exactly `docs/README.md`, the controlled-pilot readiness re-baseline, the
+Gate C procedure, this README, `scripts/gate-c-evidence.sh`, and its synthetic
+test. Any future deployment requires a separate authorization naming that
+exact reviewed commit. None of these repository artifacts authorizes
+execution, Gate D, Phase 29, or pilot expansion.
