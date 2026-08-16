@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useMemo, useRef, useState } from "react";
 
 import {
   dailyAssignmentStatusOptions,
@@ -10,6 +10,7 @@ import {
 } from "./constants";
 import type {
   WorkScheduleFormInitialValues,
+  WorkScheduleEmployeeOption,
   WorkScheduleSelectOption,
 } from "./types";
 import {
@@ -27,9 +28,11 @@ type WorkScheduleFormProps = {
     formData: FormData,
   ) => Promise<WeeklyScheduleFormState>;
   cancelHref: string;
+  employeeOptions: WorkScheduleEmployeeOption[];
   equipmentOptions: WorkScheduleSelectOption[];
   initialValues: WorkScheduleFormInitialValues;
   submitLabel: string;
+  supervisorOptions: WorkScheduleEmployeeOption[];
 };
 
 function fieldError(state: WeeklyScheduleFormState, field: WeeklyScheduleFormField) {
@@ -52,16 +55,20 @@ function assignmentRows(initialValues: WorkScheduleFormInitialValues, weekStartD
   );
 
   return buildWeekDates(parseDateOnly(weekStartDate)).map((day) => ({
-    plannedStatus: "UNKNOWN" as const,
+    plannedStatus: "SCHEDULED" as const,
     plannedShift: "UNKNOWN" as const,
     plannedEquipmentId: "",
-    actualStatus: "UNKNOWN" as const,
+    actualStatus: "SCHEDULED" as const,
     actualShift: "UNKNOWN" as const,
     actualEquipmentId: "",
+    plannedPrimaryEmployeeId: initialValues.primaryEmployeeId ?? "",
     plannedPrimaryDisplayName: "",
+    plannedPartnerEmployeeId: "",
     plannedPartnerDisplayName: "",
     plannedPartnerUnknown: false,
+    actualPrimaryEmployeeId: initialValues.primaryEmployeeId ?? "",
     actualPrimaryDisplayName: "",
+    actualPartnerEmployeeId: "",
     actualPartnerDisplayName: "",
     actualPartnerUnknown: false,
     changeReason: "",
@@ -75,12 +82,34 @@ function assignmentRows(initialValues: WorkScheduleFormInitialValues, weekStartD
 export function WorkScheduleForm({
   action,
   cancelHref,
+  employeeOptions,
   equipmentOptions,
   initialValues,
   submitLabel,
+  supervisorOptions,
 }: WorkScheduleFormProps) {
   const [state, formAction, pending] = useActionState(action, emptyWeeklyScheduleFormState);
   const [weekStartDate, setWeekStartDate] = useState(initialValues.weekStartDate);
+  const [primaryEmployeeId, setPrimaryEmployeeId] = useState(
+    initialValues.primaryEmployeeId ?? "",
+  );
+  const [personnel, setPersonnel] = useState(() =>
+    assignmentRows(initialValues, initialValues.weekStartDate).map((assignment) => ({
+      plannedPrimaryEmployeeId: assignment.plannedPrimaryEmployeeId ?? "",
+      actualPrimaryEmployeeId: assignment.actualPrimaryEmployeeId ?? "",
+      plannedPartnerEmployeeId: assignment.plannedPartnerEmployeeId ?? "",
+      actualPartnerEmployeeId: assignment.actualPartnerEmployeeId ?? "",
+    })),
+  );
+  const plannedPrimaryOverridden = useRef(
+    initialValues.assignments.map(() => !initialValues.isNew),
+  );
+  const actualPrimaryOverridden = useRef(
+    initialValues.assignments.map(() => !initialValues.isNew),
+  );
+  const actualPartnerOverridden = useRef(
+    initialValues.assignments.map(() => !initialValues.isNew),
+  );
   const assignments = useMemo(
     () => assignmentRows(initialValues, weekStartDate),
     [initialValues, weekStartDate],
@@ -94,7 +123,7 @@ export function WorkScheduleForm({
 
       <section className="form-section" aria-labelledby="schedule-header-heading">
         <h2 id="schedule-header-heading">Weekly Schedule</h2>
-        <div className="form-grid">
+        <div className="form-grid work-schedule-header-grid">
           <label>
             <span>Week starting Monday</span>
             <input
@@ -118,22 +147,51 @@ export function WorkScheduleForm({
 
           <label>
             <span>Primary employee</span>
-            <input
-              name="primaryEmployeeDisplayName"
-              defaultValue={initialValues.primaryEmployeeDisplayName}
-              placeholder="Name on the schedule"
-            />
-            {fieldError(state, "primaryEmployeeDisplayName")}
+            <select
+              name="primaryEmployeeId"
+              value={primaryEmployeeId}
+              onChange={(event) => {
+                const employeeId = event.target.value;
+                setPrimaryEmployeeId(employeeId);
+                setPersonnel((current) =>
+                  current.map((row, index) => {
+                    if (plannedPrimaryOverridden.current[index]) return row;
+                    return {
+                      ...row,
+                      plannedPrimaryEmployeeId: employeeId,
+                      actualPrimaryEmployeeId: actualPrimaryOverridden.current[index]
+                        ? row.actualPrimaryEmployeeId
+                        : employeeId,
+                    };
+                  }),
+                );
+              }}
+            >
+              <option value="" disabled={initialValues.isNew}>
+                {initialValues.primaryEmployeeDisplayName && !initialValues.primaryEmployeeId
+                  ? `Historical: ${initialValues.primaryEmployeeDisplayName} (not linked)`
+                  : "Select employee"}
+              </option>
+              {employeeOptions.map((option) => (
+                <option disabled={!option.isActive && option.id !== primaryEmployeeId} key={option.id} value={option.id}>{option.label}</option>
+              ))}
+            </select>
+            {fieldError(state, "primaryEmployeeId")}
           </label>
 
           <label>
             <span>Assigned By</span>
-            <input
-              name="assignedByDisplayName"
-              defaultValue={initialValues.assignedByDisplayName}
-              placeholder="Supervisor or schedule source"
-            />
-            {fieldError(state, "assignedByDisplayName")}
+            <select name="assignedByEmployeeId" defaultValue={initialValues.assignedByEmployeeId ?? ""}>
+              <option value="" disabled={initialValues.isNew}>
+                {initialValues.assignedByDisplayName && !initialValues.assignedByEmployeeId
+                  ? `Historical: ${initialValues.assignedByDisplayName} (not linked)`
+                  : "Select supervisor"}
+              </option>
+              {supervisorOptions.map((option) => (
+                <option disabled={!option.isActive && option.id !== initialValues.assignedByEmployeeId} key={option.id} value={option.id}>{option.label}</option>
+              ))}
+            </select>
+            {fieldError(state, "assignedByEmployeeId")}
           </label>
 
           <label>
@@ -239,40 +297,119 @@ export function WorkScheduleForm({
 
                 <label>
                   <span>Planned primary</span>
-                  <input
-                    name="plannedPrimaryDisplayName"
-                    defaultValue={assignment.plannedPrimaryDisplayName ?? ""}
-                    placeholder="Defaults to primary employee"
-                  />
-                  {assignmentFieldError(state, index, "plannedPrimaryDisplayName")}
+                  <select
+                    name="plannedPrimaryEmployeeId"
+                    value={personnel[index]?.plannedPrimaryEmployeeId ?? ""}
+                    onChange={(event) => {
+                      const employeeId = event.target.value;
+                      plannedPrimaryOverridden.current[index] = true;
+                      setPersonnel((current) => current.map((row, rowIndex) =>
+                        rowIndex === index
+                          ? {
+                              ...row,
+                              plannedPrimaryEmployeeId: employeeId,
+                              actualPrimaryEmployeeId: actualPrimaryOverridden.current[index]
+                                ? row.actualPrimaryEmployeeId
+                                : employeeId,
+                            }
+                          : row,
+                      ));
+                    }}
+                  >
+                    <option value="" disabled={initialValues.isNew}>
+                      {assignment.plannedPrimaryDisplayName && !assignment.plannedPrimaryEmployeeId
+                        ? `Historical: ${assignment.plannedPrimaryDisplayName} (not linked)`
+                        : "Select employee"}
+                    </option>
+                    {employeeOptions.map((option) => (
+                      <option disabled={!option.isActive && option.id !== personnel[index]?.plannedPrimaryEmployeeId} key={option.id} value={option.id}>{option.label}</option>
+                    ))}
+                  </select>
+                  {assignmentFieldError(state, index, "plannedPrimaryEmployeeId")}
                 </label>
 
                 <label>
                   <span>Actual primary</span>
-                  <input
-                    name="actualPrimaryDisplayName"
-                    defaultValue={assignment.actualPrimaryDisplayName ?? ""}
-                    placeholder="Defaults to primary employee"
-                  />
-                  {assignmentFieldError(state, index, "actualPrimaryDisplayName")}
+                  <select
+                    name="actualPrimaryEmployeeId"
+                    value={personnel[index]?.actualPrimaryEmployeeId ?? ""}
+                    onChange={(event) => {
+                      actualPrimaryOverridden.current[index] = true;
+                      setPersonnel((current) => current.map((row, rowIndex) =>
+                        rowIndex === index
+                          ? { ...row, actualPrimaryEmployeeId: event.target.value }
+                          : row,
+                      ));
+                    }}
+                  >
+                    <option value="" disabled={initialValues.isNew}>
+                      {assignment.actualPrimaryDisplayName && !assignment.actualPrimaryEmployeeId
+                        ? `Historical: ${assignment.actualPrimaryDisplayName} (not linked)`
+                        : "Select employee"}
+                    </option>
+                    {employeeOptions.map((option) => (
+                      <option disabled={!option.isActive && option.id !== personnel[index]?.actualPrimaryEmployeeId} key={option.id} value={option.id}>{option.label}</option>
+                    ))}
+                  </select>
+                  {assignmentFieldError(state, index, "actualPrimaryEmployeeId")}
                 </label>
 
                 <label>
                   <span>Planned partner</span>
-                  <input
-                    name="plannedPartnerDisplayName"
-                    defaultValue={assignment.plannedPartnerDisplayName ?? ""}
-                  />
-                  {assignmentFieldError(state, index, "plannedPartnerDisplayName")}
+                  <select
+                    name="plannedPartnerEmployeeId"
+                    value={personnel[index]?.plannedPartnerEmployeeId ?? ""}
+                    onChange={(event) => {
+                      const employeeId = event.target.value;
+                      setPersonnel((current) => current.map((row, rowIndex) =>
+                        rowIndex === index
+                          ? {
+                              ...row,
+                              plannedPartnerEmployeeId: employeeId,
+                              actualPartnerEmployeeId: actualPartnerOverridden.current[index]
+                                ? row.actualPartnerEmployeeId
+                                : employeeId,
+                            }
+                          : row,
+                      ));
+                    }}
+                  >
+                    <option value="">
+                      {assignment.plannedPartnerDisplayName && !assignment.plannedPartnerEmployeeId
+                        ? `Historical: ${assignment.plannedPartnerDisplayName} (not linked)`
+                        : "Select partner (optional)"}
+                    </option>
+                    {employeeOptions.map((option) => (
+                      <option disabled={!option.isActive && option.id !== personnel[index]?.plannedPartnerEmployeeId} key={option.id} value={option.id}>{option.label}</option>
+                    ))}
+                  </select>
+                  {assignmentFieldError(state, index, "plannedPartnerEmployeeId")}
                 </label>
 
                 <label>
                   <span>Actual partner</span>
-                  <input
-                    name="actualPartnerDisplayName"
-                    defaultValue={assignment.actualPartnerDisplayName ?? ""}
-                  />
-                  {assignmentFieldError(state, index, "actualPartnerDisplayName")}
+                  <select
+                    name="actualPartnerEmployeeId"
+                    value={personnel[index]?.actualPartnerEmployeeId ?? ""}
+                    onChange={(event) => {
+                      actualPartnerOverridden.current[index] = true;
+                      setPersonnel((current) => current.map((row, rowIndex) =>
+                        rowIndex === index
+                          ? { ...row, actualPartnerEmployeeId: event.target.value }
+                          : row,
+                      ));
+                    }}
+                  >
+                    <option value="">
+                      {assignment.actualPartnerDisplayName && !assignment.actualPartnerEmployeeId
+                        ? `Historical: ${assignment.actualPartnerDisplayName} (not linked)`
+                        : "Select partner (optional)"}
+                    </option>
+                    {employeeOptions.map((option) => (
+                      <option disabled={!option.isActive && option.id !== personnel[index]?.actualPartnerEmployeeId} key={option.id} value={option.id}>{option.label}</option>
+                    ))}
+                  </select>
+                  {assignmentFieldError(state, index, "actualPartnerEmployeeId")}
                 </label>
 
                 <label className="checkbox-row">

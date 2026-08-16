@@ -20,6 +20,14 @@ export type EquipmentSnapshotSource = {
   };
 };
 
+export type EmployeeSnapshotSource = {
+  id: string;
+  employeeCode: string | null;
+  displayName: string;
+  isActive: boolean;
+  isSupervisor: boolean;
+};
+
 type EquipmentSnapshot = {
   equipmentDisplayName: string | null;
   equipmentNumber: string | null;
@@ -44,6 +52,28 @@ export type ExistingAssignmentSnapshot = {
   actualMineName: string | null;
   actualCityName: string | null;
   actualCityState: string | null;
+  crewMembers: ExistingCrewMemberSnapshot[];
+};
+
+export type ExistingCrewMemberSnapshot = {
+  phase: "PLANNED" | "ACTUAL";
+  role: "PRIMARY_EMPLOYEE" | "PARTNER";
+  employeeId: string | null;
+  displayName: string | null;
+  isUnknown: boolean;
+};
+
+export type ExistingWeeklyScheduleSnapshot = {
+  primaryEmployeeId: string | null;
+  primaryEmployeeDisplayName: string;
+  primaryEmployeeKey: string;
+  assignedByEmployeeId: string | null;
+  assignedByDisplayName: string;
+};
+
+type PersonSnapshot = {
+  employeeId: string | null;
+  displayName: string | null;
 };
 
 export function equipmentSnapshot(
@@ -147,57 +177,120 @@ function actualSnapshotForAssignment(
   return emptySnapshot();
 }
 
+function existingCrewMember(
+  existing: ExistingAssignmentSnapshot | undefined,
+  phase: "PLANNED" | "ACTUAL",
+  role: "PRIMARY_EMPLOYEE" | "PARTNER",
+) {
+  return existing?.crewMembers.find(
+    (member) => member.phase === phase && member.role === role,
+  );
+}
+
+function personSnapshot(
+  employeeId: string | undefined,
+  employeeById: Map<string, EmployeeSnapshotSource>,
+  existing: ExistingCrewMemberSnapshot | undefined,
+  fallback?: PersonSnapshot,
+): PersonSnapshot {
+  if (employeeId) {
+    if (existing?.employeeId === employeeId) {
+      return {
+        employeeId,
+        displayName: existing.displayName,
+      };
+    }
+
+    const employee = employeeById.get(employeeId);
+    return {
+      employeeId,
+      displayName: employee?.displayName ?? null,
+    };
+  }
+
+  if (existing) {
+    if (existing.employeeId) {
+      return fallback ?? { employeeId: null, displayName: null };
+    }
+
+    return {
+      employeeId: null,
+      displayName: existing.displayName,
+    };
+  }
+
+  return fallback ?? { employeeId: null, displayName: null };
+}
+
 function crewMember(
   phase: "PLANNED" | "ACTUAL",
   role: "PRIMARY_EMPLOYEE" | "PARTNER",
-  displayName: string | undefined,
+  person: PersonSnapshot,
   isUnknown = false,
 ) {
-  if (!displayName && !isUnknown) {
+  if (!person.employeeId && !person.displayName && !isUnknown) {
     return null;
   }
 
   return {
     phase,
     role,
-    displayName: asNullable(displayName),
+    employeeId: person.employeeId,
+    displayName: person.displayName,
     isUnknown,
   };
 }
 
 export function buildAssignmentCrewMembers(
   assignment: AssignmentFormInput,
-  primaryEmployeeDisplayName: string,
+  primaryEmployee: PersonSnapshot,
+  employeeById: Map<string, EmployeeSnapshotSource>,
+  existing?: ExistingAssignmentSnapshot,
 ) {
   const hasActualCrew =
     assignment.actualStatus === "SCHEDULED" ||
-    Boolean(assignment.actualPrimaryDisplayName) ||
-    Boolean(assignment.actualPartnerDisplayName) ||
+    Boolean(assignment.actualPrimaryEmployeeId) ||
+    Boolean(assignment.actualPartnerEmployeeId) ||
     assignment.actualPartnerUnknown;
 
+  const plannedPrimary = personSnapshot(
+    assignment.plannedPrimaryEmployeeId,
+    employeeById,
+    existingCrewMember(existing, "PLANNED", "PRIMARY_EMPLOYEE"),
+    primaryEmployee,
+  );
+  const plannedPartner = personSnapshot(
+    assignment.plannedPartnerEmployeeId,
+    employeeById,
+    existingCrewMember(existing, "PLANNED", "PARTNER"),
+  );
+  const actualPrimary = personSnapshot(
+    assignment.actualPrimaryEmployeeId,
+    employeeById,
+    existingCrewMember(existing, "ACTUAL", "PRIMARY_EMPLOYEE"),
+    plannedPrimary,
+  );
+  const actualPartner = personSnapshot(
+    assignment.actualPartnerEmployeeId,
+    employeeById,
+    existingCrewMember(existing, "ACTUAL", "PARTNER"),
+  );
+
   return [
-    crewMember(
-      "PLANNED",
-      "PRIMARY_EMPLOYEE",
-      assignment.plannedPrimaryDisplayName ?? primaryEmployeeDisplayName,
-    ),
+    crewMember("PLANNED", "PRIMARY_EMPLOYEE", plannedPrimary),
     crewMember(
       "PLANNED",
       "PARTNER",
-      assignment.plannedPartnerDisplayName,
+      plannedPartner,
       assignment.plannedPartnerUnknown,
     ),
     ...(hasActualCrew
       ? [
-          crewMember(
-            "ACTUAL",
-            "PRIMARY_EMPLOYEE",
-            assignment.actualPrimaryDisplayName ?? primaryEmployeeDisplayName,
-          ),
+          crewMember("ACTUAL", "PRIMARY_EMPLOYEE", actualPrimary),
           crewMember(
             "ACTUAL",
             "PARTNER",
-            assignment.actualPartnerDisplayName,
+            actualPartner,
             assignment.actualPartnerUnknown,
           ),
         ]
@@ -207,8 +300,9 @@ export function buildAssignmentCrewMembers(
 
 export function buildDailyAssignmentWriteData(
   assignment: AssignmentFormInput,
-  primaryEmployeeDisplayName: string,
+  primaryEmployee: PersonSnapshot,
   equipmentById: Map<string, EquipmentSnapshotSource>,
+  employeeById: Map<string, EmployeeSnapshotSource>,
   existing?: ExistingAssignmentSnapshot,
 ) {
   const plannedSnapshot = plannedSnapshotForAssignment(assignment, equipmentById, existing);
@@ -239,7 +333,12 @@ export function buildDailyAssignmentWriteData(
     plannedNotes: asNullable(assignment.plannedNotes),
     actualNotes: asNullable(assignment.actualNotes),
     crewMembers: {
-      create: buildAssignmentCrewMembers(assignment, primaryEmployeeDisplayName),
+      create: buildAssignmentCrewMembers(
+        assignment,
+        primaryEmployee,
+        employeeById,
+        existing,
+      ),
     },
   };
 }
@@ -247,17 +346,43 @@ export function buildDailyAssignmentWriteData(
 export function buildWeeklyScheduleWriteData(
   input: WeeklyScheduleFormInput,
   equipmentById: Map<string, EquipmentSnapshotSource>,
+  employeeById: Map<string, EmployeeSnapshotSource>,
+  existing?: ExistingWeeklyScheduleSnapshot,
 ) {
   const weekStartDate = new Date(`${input.weekStartDate}T00:00:00.000Z`);
   const weekEndDate = new Date(weekStartDate.getTime() + 6 * 24 * 60 * 60 * 1000);
+  const selectedPrimary = input.primaryEmployeeId
+    ? employeeById.get(input.primaryEmployeeId)
+    : undefined;
+  const selectedAssignedBy = input.assignedByEmployeeId
+    ? employeeById.get(input.assignedByEmployeeId)
+    : undefined;
+  const primaryEmployee =
+    selectedPrimary && selectedPrimary.id !== existing?.primaryEmployeeId
+      ? { employeeId: selectedPrimary.id, displayName: selectedPrimary.displayName }
+      : {
+          employeeId: selectedPrimary?.id ?? existing?.primaryEmployeeId ?? null,
+          displayName:
+            existing?.primaryEmployeeDisplayName ?? selectedPrimary?.displayName ?? null,
+        };
+  const primaryEmployeeKey =
+    existing && primaryEmployee.employeeId === existing.primaryEmployeeId
+      ? existing.primaryEmployeeKey
+      : normalizePrimaryEmployeeKey(primaryEmployee.displayName ?? "");
+  const assignedByDisplayName =
+    selectedAssignedBy && selectedAssignedBy.id !== existing?.assignedByEmployeeId
+      ? selectedAssignedBy.displayName
+      : existing?.assignedByDisplayName ?? selectedAssignedBy?.displayName ?? "";
 
   return {
     weekStartDate,
     weekEndDate,
     status: input.status,
-    primaryEmployeeDisplayName: input.primaryEmployeeDisplayName,
-    primaryEmployeeKey: normalizePrimaryEmployeeKey(input.primaryEmployeeDisplayName),
-    assignedByDisplayName: input.assignedByDisplayName,
+    primaryEmployeeId: primaryEmployee.employeeId,
+    primaryEmployeeDisplayName: primaryEmployee.displayName ?? "",
+    primaryEmployeeKey,
+    assignedByEmployeeId: selectedAssignedBy?.id ?? existing?.assignedByEmployeeId ?? null,
+    assignedByDisplayName,
     receivedAt: input.receivedAt ? new Date(input.receivedAt) : null,
     sourceNote: asNullable(input.sourceNote),
     scheduleNotes: asNullable(input.scheduleNotes),
@@ -265,8 +390,9 @@ export function buildWeeklyScheduleWriteData(
       create: input.assignments.map((assignment) =>
         buildDailyAssignmentWriteData(
           assignment,
-          input.primaryEmployeeDisplayName,
+          primaryEmployee,
           equipmentById,
+          employeeById,
         ),
       ),
     },

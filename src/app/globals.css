@@ -294,6 +294,16 @@ th {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.work-schedule-header-grid {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+}
+
+.work-schedule-header-grid > label,
+.work-schedule-header-grid input,
+.work-schedule-header-grid select {
+  min-width: 0;
+}
+
 label,
 .full-width-field {
   display: grid;

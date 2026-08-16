@@ -9,6 +9,12 @@ export type WorkScheduleSelectOption = {
   label: string;
 };
 
+export type WorkScheduleEmployeeOption = WorkScheduleSelectOption & {
+  employeeCode?: string;
+  isActive: boolean;
+  isSupervisor: boolean;
+};
+
 export type WorkScheduleAssignmentInitialValues = {
   assignmentDate: string;
   dayOfWeek: number;
@@ -18,10 +24,14 @@ export type WorkScheduleAssignmentInitialValues = {
   actualStatus: DailyAssignmentStatusValue;
   actualShift: ShiftValue;
   actualEquipmentId?: string;
+  plannedPrimaryEmployeeId?: string;
   plannedPrimaryDisplayName?: string;
+  plannedPartnerEmployeeId?: string;
   plannedPartnerDisplayName?: string;
   plannedPartnerUnknown?: boolean;
+  actualPrimaryEmployeeId?: string;
   actualPrimaryDisplayName?: string;
+  actualPartnerEmployeeId?: string;
   actualPartnerDisplayName?: string;
   actualPartnerUnknown?: boolean;
   changeReason?: string;
@@ -30,9 +40,12 @@ export type WorkScheduleAssignmentInitialValues = {
 };
 
 export type WorkScheduleFormInitialValues = {
+  isNew: boolean;
   weekStartDate: string;
   status: WeeklyScheduleStatusValue;
+  primaryEmployeeId?: string;
   primaryEmployeeDisplayName: string;
+  assignedByEmployeeId?: string;
   assignedByDisplayName: string;
   receivedAt?: string;
   sourceNote?: string;

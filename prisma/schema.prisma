@@ -659,13 +659,34 @@ model FuelServicePerson {
   @@index([displayName], map: "FuelServicePerson_displayName_idx")
 }
 
+model Employee {
+  id                    String                 @id @default(cuid())
+  employeeCode          String?                @unique
+  displayName           String
+  isActive              Boolean                @default(true)
+  isSupervisor          Boolean                @default(false)
+  primarySchedules      WeeklySchedule[]       @relation("WeeklySchedulePrimaryEmployee")
+  assignedSchedules     WeeklySchedule[]       @relation("WeeklyScheduleAssignedByEmployee")
+  assignmentCrewMembers AssignmentCrewMember[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@index([isActive])
+  @@index([isSupervisor, isActive])
+  @@index([displayName])
+}
+
 model WeeklySchedule {
   id                         String               @id @default(cuid())
   weekStartDate              DateTime             @db.Date
   weekEndDate                DateTime             @db.Date
   status                     WeeklyScheduleStatus @default(DRAFT)
+  primaryEmployeeId          String?
+  primaryEmployee            Employee?            @relation("WeeklySchedulePrimaryEmployee", fields: [primaryEmployeeId], references: [id], onDelete: SetNull)
   primaryEmployeeDisplayName String
   primaryEmployeeKey         String
+  assignedByEmployeeId       String?
+  assignedByEmployee         Employee?            @relation("WeeklyScheduleAssignedByEmployee", fields: [assignedByEmployeeId], references: [id], onDelete: SetNull)
   assignedByDisplayName      String
   receivedAt                 DateTime?
   sourceNote                 String?
@@ -674,10 +695,13 @@ model WeeklySchedule {
   createdAt                  DateTime             @default(now())
   updatedAt                  DateTime             @updatedAt
 
-  @@unique([weekStartDate, primaryEmployeeKey])
+  @@unique([weekStartDate, primaryEmployeeId])
   @@index([weekStartDate])
   @@index([weekEndDate])
   @@index([status])
+  @@index([primaryEmployeeKey])
+  @@index([primaryEmployeeId])
+  @@index([assignedByEmployeeId])
 }
 
 model DailyAssignment {
@@ -728,6 +752,8 @@ model AssignmentCrewMember {
   dailyAssignment   DailyAssignment     @relation(fields: [dailyAssignmentId], references: [id], onDelete: Cascade)
   phase             AssignmentCrewPhase
   role              AssignmentCrewRole
+  employeeId        String?
+  employee          Employee?           @relation(fields: [employeeId], references: [id], onDelete: SetNull)
   displayName       String?
   isUnknown         Boolean             @default(false)
   notes             String?
@@ -737,6 +763,7 @@ model AssignmentCrewMember {
   @@unique([dailyAssignmentId, phase, role])
   @@index([phase])
   @@index([role])
+  @@index([employeeId])
 }
 
 model WeeklyTimesheet {

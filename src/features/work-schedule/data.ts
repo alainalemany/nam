@@ -35,6 +35,8 @@ export async function getWeeklySchedule(id: string) {
   return prisma.weeklySchedule.findUnique({
     where: { id },
     include: {
+      primaryEmployee: true,
+      assignedByEmployee: true,
       assignments: {
         include: {
           plannedEquipment: true,
@@ -51,12 +53,10 @@ export async function getWeeklyScheduleForWeek(
   weekStartDate: string,
   primaryEmployeeDisplayName: string,
 ) {
-  return prisma.weeklySchedule.findUnique({
+  return prisma.weeklySchedule.findFirst({
     where: {
-      weekStartDate_primaryEmployeeKey: {
-        weekStartDate: parseDateOnly(weekStartDate),
-        primaryEmployeeKey: normalizePrimaryEmployeeKey(primaryEmployeeDisplayName),
-      },
+      weekStartDate: parseDateOnly(weekStartDate),
+      primaryEmployeeKey: normalizePrimaryEmployeeKey(primaryEmployeeDisplayName),
     },
     include: {
       assignments: {
@@ -298,17 +298,46 @@ export async function getWorkScheduleContextsForDate(date: string) {
   return workScheduleContextsFromAssignments(assignments);
 }
 
-export async function getWorkScheduleFormOptions() {
-  const equipment = await prisma.equipment.findMany({
-    include: { mine: { include: { city: true } } },
-    orderBy: [{ mine: { name: "asc" } }, { displayName: "asc" }],
-  });
+export async function getWorkScheduleFormOptions(
+  existingEmployeeIds: string[] = [],
+  existingAssignedByEmployeeId?: string,
+) {
+  const [equipment, employees] = await Promise.all([
+    prisma.equipment.findMany({
+      include: { mine: { include: { city: true } } },
+      orderBy: [{ mine: { name: "asc" } }, { displayName: "asc" }],
+    }),
+    prisma.employee.findMany({
+      where: {
+        OR: [
+          { isActive: true },
+          ...(existingEmployeeIds.length > 0 ? [{ id: { in: existingEmployeeIds } }] : []),
+        ],
+      },
+      orderBy: [{ displayName: "asc" }, { employeeCode: "asc" }],
+    }),
+  ]);
+
+  const employeeOptions = employees.map((employee) => ({
+    id: employee.id,
+    label: `${employee.displayName}${employee.employeeCode ? ` (${employee.employeeCode})` : ""}${employee.isActive ? "" : " — Inactive"}`,
+    employeeCode: employee.employeeCode ?? undefined,
+    isActive: employee.isActive,
+    isSupervisor: employee.isSupervisor,
+  }));
 
   return {
     equipmentOptions: equipment.map((item) => ({
       id: item.id,
       label: `${item.displayName}${item.equipmentNumber ? ` #${item.equipmentNumber}` : ""} (${item.mine.name})`,
     })),
+    employeeOptions,
+    supervisorOptions: employeeOptions.filter(
+      (employee) =>
+        employee.isSupervisor || employee.id === existingAssignedByEmployeeId,
+    ),
+    defaultPrimaryEmployeeId:
+      employees.find((employee) => employee.employeeCode === "911601" && employee.isActive)?.id ?? "",
   };
 }
 
@@ -373,27 +402,35 @@ function crewUnknown(
 
 export function defaultWorkScheduleInitialValues(
   weekStartDate = dateInputValue(nextMonday()),
+  primaryEmployeeId = "",
 ): WorkScheduleFormInitialValues {
   return {
+    isNew: true,
     weekStartDate,
-    status: "ACTIVE",
-    primaryEmployeeDisplayName: "",
+    status: "DRAFT",
+    primaryEmployeeId,
+    primaryEmployeeDisplayName: "Alain Alemany Arana",
+    assignedByEmployeeId: "",
     assignedByDisplayName: "",
     receivedAt: "",
     sourceNote: "",
     scheduleNotes: "",
     assignments: buildWeekDates(parseDateOnly(weekStartDate)).map((day) => ({
       ...day,
-      plannedStatus: "UNKNOWN",
+      plannedStatus: "SCHEDULED",
       plannedShift: "UNKNOWN",
       plannedEquipmentId: "",
-      actualStatus: "UNKNOWN",
+      actualStatus: "SCHEDULED",
       actualShift: "UNKNOWN",
       actualEquipmentId: "",
+      plannedPrimaryEmployeeId: primaryEmployeeId,
       plannedPrimaryDisplayName: "",
+      plannedPartnerEmployeeId: "",
       plannedPartnerDisplayName: "",
       plannedPartnerUnknown: false,
+      actualPrimaryEmployeeId: primaryEmployeeId,
       actualPrimaryDisplayName: "",
+      actualPartnerEmployeeId: "",
       actualPartnerDisplayName: "",
       actualPartnerUnknown: false,
       changeReason: "",
@@ -417,9 +454,12 @@ export function workScheduleInitialValuesFromRecord(
   const defaultValues = defaultWorkScheduleInitialValues(weekStartDate);
 
   return {
+    isNew: false,
     weekStartDate,
     status: schedule.status,
+    primaryEmployeeId: schedule.primaryEmployeeId ?? "",
     primaryEmployeeDisplayName: schedule.primaryEmployeeDisplayName,
+    assignedByEmployeeId: schedule.assignedByEmployeeId ?? "",
     assignedByDisplayName: schedule.assignedByDisplayName,
     receivedAt: schedule.receivedAt
       ? new Date(schedule.receivedAt.getTime() - schedule.receivedAt.getTimezoneOffset() * 60000)
@@ -444,13 +484,29 @@ export function workScheduleInitialValuesFromRecord(
         actualStatus: assignment.actualStatus,
         actualShift: assignment.actualShift,
         actualEquipmentId: assignment.actualEquipmentId ?? "",
+        plannedPrimaryEmployeeId:
+          assignment.crewMembers.find(
+            (member) => member.phase === "PLANNED" && member.role === "PRIMARY_EMPLOYEE",
+          )?.employeeId ?? "",
         plannedPrimaryDisplayName:
           crewDisplayName(assignment.crewMembers, "PLANNED", "PRIMARY_EMPLOYEE") ?? "",
+        plannedPartnerEmployeeId:
+          assignment.crewMembers.find(
+            (member) => member.phase === "PLANNED" && member.role === "PARTNER",
+          )?.employeeId ?? "",
         plannedPartnerDisplayName:
           crewDisplayName(assignment.crewMembers, "PLANNED", "PARTNER") ?? "",
         plannedPartnerUnknown: crewUnknown(assignment.crewMembers, "PLANNED", "PARTNER"),
+        actualPrimaryEmployeeId:
+          assignment.crewMembers.find(
+            (member) => member.phase === "ACTUAL" && member.role === "PRIMARY_EMPLOYEE",
+          )?.employeeId ?? "",
         actualPrimaryDisplayName:
           crewDisplayName(assignment.crewMembers, "ACTUAL", "PRIMARY_EMPLOYEE") ?? "",
+        actualPartnerEmployeeId:
+          assignment.crewMembers.find(
+            (member) => member.phase === "ACTUAL" && member.role === "PARTNER",
+          )?.employeeId ?? "",
         actualPartnerDisplayName:
           crewDisplayName(assignment.crewMembers, "ACTUAL", "PARTNER") ?? "",
         actualPartnerUnknown: crewUnknown(assignment.crewMembers, "ACTUAL", "PARTNER"),

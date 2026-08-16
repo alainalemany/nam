@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import {
   buildDailyAssignmentWriteData,
   buildWeeklyScheduleWriteData,
+  type EmployeeSnapshotSource,
   type EquipmentSnapshotSource,
   type ExistingAssignmentSnapshot,
 } from "./persistence";
@@ -22,6 +23,15 @@ import {
 
 function errorState(message: string): WeeklyScheduleFormState {
   return { ...emptyWeeklyScheduleFormState, status: "error", message };
+}
+
+function requiredEmployeeState(field: "primaryEmployeeId" | "assignedByEmployeeId") {
+  return {
+    ...errorState("Select the required employees and try again."),
+    fieldErrors: {
+      [field]: [field === "primaryEmployeeId" ? "Primary employee is required." : "Assigned By is required."],
+    },
+  };
 }
 
 function validationErrorState(error: {
@@ -80,12 +90,12 @@ function parseAssignments(formData: FormData) {
     actualStatus: formValues(formData, "actualStatus")[index],
     actualShift: formValues(formData, "actualShift")[index],
     actualEquipmentId: formValues(formData, "actualEquipmentId")[index],
-    plannedPrimaryDisplayName: formValues(formData, "plannedPrimaryDisplayName")[index],
-    plannedPartnerDisplayName: formValues(formData, "plannedPartnerDisplayName")[index],
+    plannedPrimaryEmployeeId: formValues(formData, "plannedPrimaryEmployeeId")[index],
+    plannedPartnerEmployeeId: formValues(formData, "plannedPartnerEmployeeId")[index],
     plannedPartnerUnknown:
       formData.get(`plannedPartnerUnknown-${index}`) === "on" ? "on" : "",
-    actualPrimaryDisplayName: formValues(formData, "actualPrimaryDisplayName")[index],
-    actualPartnerDisplayName: formValues(formData, "actualPartnerDisplayName")[index],
+    actualPrimaryEmployeeId: formValues(formData, "actualPrimaryEmployeeId")[index],
+    actualPartnerEmployeeId: formValues(formData, "actualPartnerEmployeeId")[index],
     actualPartnerUnknown: formData.get(`actualPartnerUnknown-${index}`) === "on" ? "on" : "",
     changeReason: formValues(formData, "changeReason")[index],
     plannedNotes: formValues(formData, "plannedNotes")[index],
@@ -99,8 +109,8 @@ function parseFormData(formData: FormData):
   const parsed = weeklyScheduleFormSchema.safeParse({
     weekStartDate: formData.get("weekStartDate"),
     status: formData.get("status"),
-    primaryEmployeeDisplayName: formData.get("primaryEmployeeDisplayName"),
-    assignedByDisplayName: formData.get("assignedByDisplayName"),
+    primaryEmployeeId: formData.get("primaryEmployeeId"),
+    assignedByEmployeeId: formData.get("assignedByEmployeeId"),
     receivedAt: formData.get("receivedAt"),
     sourceNote: formData.get("sourceNote"),
     scheduleNotes: formData.get("scheduleNotes"),
@@ -141,6 +151,106 @@ async function equipmentMapFor(input: WeeklyScheduleFormInput) {
   return new Map(equipment.map((item) => [item.id, item]));
 }
 
+function selectedEmployeeIds(input: WeeklyScheduleFormInput) {
+  return Array.from(
+    new Set(
+      [
+        input.primaryEmployeeId,
+        input.assignedByEmployeeId,
+        ...input.assignments.flatMap((assignment) => [
+          assignment.plannedPrimaryEmployeeId,
+          assignment.actualPrimaryEmployeeId,
+          assignment.plannedPartnerEmployeeId,
+          assignment.actualPartnerEmployeeId,
+        ]),
+      ].filter((id): id is string => Boolean(id)),
+    ),
+  );
+}
+
+async function employeeMapFor(input: WeeklyScheduleFormInput) {
+  const ids = selectedEmployeeIds(input);
+  if (ids.length === 0) return new Map<string, EmployeeSnapshotSource>();
+
+  const employees = await prisma.employee.findMany({ where: { id: { in: ids } } });
+  return new Map(employees.map((employee) => [employee.id, employee]));
+}
+
+function employeeSelectionError(
+  input: WeeklyScheduleFormInput,
+  employeeById: Map<string, EmployeeSnapshotSource>,
+  existingEmployeeIds = new Set<string>(),
+) {
+  const missing = selectedEmployeeIds(input).some((id) => !employeeById.has(id));
+  if (missing) return "One or more selected employee records could not be found.";
+
+  const newlySelectedInactive = selectedEmployeeIds(input).some(
+    (id) => !employeeById.get(id)?.isActive && !existingEmployeeIds.has(id),
+  );
+  if (newlySelectedInactive) return "Inactive employees cannot be selected for new assignments.";
+
+  if (
+    input.assignedByEmployeeId &&
+    !employeeById.get(input.assignedByEmployeeId)?.isSupervisor &&
+    !existingEmployeeIds.has(input.assignedByEmployeeId)
+  ) {
+    return "Assigned By must be an eligible supervisor.";
+  }
+
+  return null;
+}
+
+function unchangedEmployeeIds(
+  input: WeeklyScheduleFormInput,
+  existingSchedule: {
+    primaryEmployeeId: string | null;
+    assignedByEmployeeId: string | null;
+    assignments: {
+      assignmentDate: Date;
+      crewMembers: {
+        phase: "PLANNED" | "ACTUAL";
+        role: "PRIMARY_EMPLOYEE" | "PARTNER";
+        employeeId: string | null;
+      }[];
+    }[];
+  },
+) {
+  const unchanged = new Set<string>();
+  if (input.primaryEmployeeId === existingSchedule.primaryEmployeeId && input.primaryEmployeeId) {
+    unchanged.add(input.primaryEmployeeId);
+  }
+  if (input.assignedByEmployeeId === existingSchedule.assignedByEmployeeId && input.assignedByEmployeeId) {
+    unchanged.add(input.assignedByEmployeeId);
+  }
+
+  const existingByDate = new Map(
+    existingSchedule.assignments.map((assignment) => [
+      assignment.assignmentDate.toISOString().slice(0, 10),
+      assignment,
+    ]),
+  );
+  const fields = [
+    ["plannedPrimaryEmployeeId", "PLANNED", "PRIMARY_EMPLOYEE"],
+    ["plannedPartnerEmployeeId", "PLANNED", "PARTNER"],
+    ["actualPrimaryEmployeeId", "ACTUAL", "PRIMARY_EMPLOYEE"],
+    ["actualPartnerEmployeeId", "ACTUAL", "PARTNER"],
+  ] as const;
+
+  for (const assignment of input.assignments) {
+    const existing = existingByDate.get(assignment.assignmentDate);
+    if (!existing) continue;
+    for (const [field, phase, role] of fields) {
+      const selectedId = assignment[field];
+      const existingId = existing.crewMembers.find(
+        (member) => member.phase === phase && member.role === role,
+      )?.employeeId;
+      if (selectedId && selectedId === existingId) unchanged.add(selectedId);
+    }
+  }
+
+  return unchanged;
+}
+
 function missingEquipmentIds(
   input: WeeklyScheduleFormInput,
   equipmentById: Map<string, EquipmentSnapshotSource>,
@@ -172,17 +282,25 @@ export async function createWeeklyScheduleAction(
     return input.state;
   }
 
-  const equipmentById = await equipmentMapFor(input.data);
+  if (!input.data.primaryEmployeeId) return requiredEmployeeState("primaryEmployeeId");
+  if (!input.data.assignedByEmployeeId) return requiredEmployeeState("assignedByEmployeeId");
+
+  const [equipmentById, employeeById] = await Promise.all([
+    equipmentMapFor(input.data),
+    employeeMapFor(input.data),
+  ]);
   if (missingEquipmentIds(input.data, equipmentById).length > 0) {
     return errorState("One or more selected equipment records could not be found.");
   }
+  const employeeError = employeeSelectionError(input.data, employeeById);
+  if (employeeError) return errorState(employeeError);
 
   let scheduleId: string;
 
   try {
     const schedule = await prisma.$transaction((tx) =>
       tx.weeklySchedule.create({
-        data: buildWeeklyScheduleWriteData(input.data, equipmentById),
+        data: buildWeeklyScheduleWriteData(input.data, equipmentById, employeeById),
       }),
     );
     scheduleId = schedule.id;
@@ -210,25 +328,40 @@ export async function updateWeeklyScheduleAction(
     return input.state;
   }
 
-  const equipmentById = await equipmentMapFor(input.data);
+  const existingSchedule = await prisma.weeklySchedule.findUnique({
+    where: { id: scheduleId },
+    include: { assignments: { include: { crewMembers: true } } },
+  });
+  if (!existingSchedule) return errorState("Work Schedule could not be found.");
+  if (!input.data.primaryEmployeeId && existingSchedule.primaryEmployeeId) {
+    return requiredEmployeeState("primaryEmployeeId");
+  }
+  if (!input.data.assignedByEmployeeId && existingSchedule.assignedByEmployeeId) {
+    return requiredEmployeeState("assignedByEmployeeId");
+  }
+
+  const [equipmentById, employeeById] = await Promise.all([
+    equipmentMapFor(input.data),
+    employeeMapFor(input.data),
+  ]);
   if (missingEquipmentIds(input.data, equipmentById).length > 0) {
     return errorState("One or more selected equipment records could not be found.");
   }
+  const existingEmployeeIds = unchangedEmployeeIds(input.data, existingSchedule);
+  const employeeError = employeeSelectionError(
+    input.data,
+    employeeById,
+    existingEmployeeIds,
+  );
+  if (employeeError) return errorState(employeeError);
 
   try {
     await prisma.$transaction(async (tx) => {
-      const existingSchedule = await tx.weeklySchedule.findUnique({
-        where: { id: scheduleId },
-        include: { assignments: true },
-      });
-
-      if (!existingSchedule) {
-        throw new Error("Work Schedule not found.");
-      }
-
       const { assignments: _assignments, ...scheduleData } = buildWeeklyScheduleWriteData(
         input.data,
         equipmentById,
+        employeeById,
+        existingSchedule,
       );
       await tx.weeklySchedule.update({
         where: { id: scheduleId },
@@ -249,8 +382,12 @@ export async function updateWeeklyScheduleAction(
         const existingAssignment = existingAssignmentsByDate.get(assignment.assignmentDate);
         const writeData = buildDailyAssignmentWriteData(
           assignment,
-          input.data.primaryEmployeeDisplayName,
+          {
+            employeeId: scheduleData.primaryEmployeeId,
+            displayName: scheduleData.primaryEmployeeDisplayName,
+          },
           equipmentById,
+          employeeById,
           existingAssignment as ExistingAssignmentSnapshot | undefined,
         );
         const { crewMembers, ...assignmentData } = writeData;

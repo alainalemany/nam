@@ -31,8 +31,10 @@ export default async function NewWorkSchedulePage() {
         <WorkScheduleForm
           action={createWeeklyScheduleAction}
           cancelHref="/work-schedule"
+          employeeOptions={options.employeeOptions}
           equipmentOptions={options.equipmentOptions}
-          initialValues={defaultWorkScheduleInitialValues()}
+          initialValues={defaultWorkScheduleInitialValues(undefined, options.defaultPrimaryEmployeeId)}
+          supervisorOptions={options.supervisorOptions}
           submitLabel="Save Work Schedule"
         />
       </section>

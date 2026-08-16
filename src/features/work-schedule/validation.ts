@@ -36,12 +36,6 @@ const optionalDateTime = z.preprocess(
     .optional(),
 );
 
-const requiredText = (label: string, max = 200) =>
-  z.preprocess(
-    (value) => (typeof value === "string" ? value.trim() : value),
-    z.string().min(1, `${label} is required.`).max(max, `${label} is too long.`),
-  );
-
 const checkboxBoolean = z.preprocess(
   (value) => value === "on" || value === "true" || value === true,
   z.boolean(),
@@ -50,6 +44,8 @@ const checkboxBoolean = z.preprocess(
 const dateOnlyString = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date.");
+
+const optionalIdentifier = optionalText(120);
 
 export function parseDateOnly(value: string) {
   return new Date(`${value}T00:00:00.000Z`);
@@ -114,11 +110,11 @@ export const assignmentFormSchema = z.object({
   actualStatus: z.enum(dailyAssignmentStatusValues),
   actualShift: z.enum(shiftValues),
   actualEquipmentId: optionalText(120),
-  plannedPrimaryDisplayName: optionalText(160),
-  plannedPartnerDisplayName: optionalText(160),
+  plannedPrimaryEmployeeId: optionalIdentifier,
+  plannedPartnerEmployeeId: optionalIdentifier,
   plannedPartnerUnknown: checkboxBoolean.default(false),
-  actualPrimaryDisplayName: optionalText(160),
-  actualPartnerDisplayName: optionalText(160),
+  actualPrimaryEmployeeId: optionalIdentifier,
+  actualPartnerEmployeeId: optionalIdentifier,
   actualPartnerUnknown: checkboxBoolean.default(false),
   changeReason: optionalText(500),
   plannedNotes: optionalText(1000),
@@ -129,8 +125,8 @@ export const weeklyScheduleFormSchema = z
   .object({
     weekStartDate: dateOnlyString,
     status: z.enum(weeklyScheduleStatusValues),
-    primaryEmployeeDisplayName: requiredText("Primary employee", 160),
-    assignedByDisplayName: requiredText("Assigned By", 160),
+    primaryEmployeeId: optionalIdentifier,
+    assignedByEmployeeId: optionalIdentifier,
     receivedAt: optionalDateTime,
     sourceNote: optionalText(2000),
     scheduleNotes: optionalText(2000),
@@ -215,47 +211,43 @@ export const weeklyScheduleFormSchema = z
         }
       }
 
-      const plannedPrimary =
-        assignment.plannedPrimaryDisplayName ?? value.primaryEmployeeDisplayName;
-      const actualPrimary =
-        assignment.actualPrimaryDisplayName ?? value.primaryEmployeeDisplayName;
+      const plannedPrimary = assignment.plannedPrimaryEmployeeId ?? value.primaryEmployeeId;
+      const actualPrimary = assignment.actualPrimaryEmployeeId ?? plannedPrimary;
 
       if (
-        assignment.plannedPartnerDisplayName &&
-        assignment.plannedPartnerDisplayName.toLocaleLowerCase() ===
-          plannedPrimary.toLocaleLowerCase()
+        assignment.plannedPartnerEmployeeId &&
+        assignment.plannedPartnerEmployeeId === plannedPrimary
       ) {
         context.addIssue({
           code: "custom",
-          path: ["assignments", index, "plannedPartnerDisplayName"],
+          path: ["assignments", index, "plannedPartnerEmployeeId"],
           message: `Assignment ${index + 1} has the same planned person twice.`,
         });
       }
 
-      if (assignment.plannedPartnerUnknown && assignment.plannedPartnerDisplayName) {
+      if (assignment.plannedPartnerUnknown && assignment.plannedPartnerEmployeeId) {
         context.addIssue({
           code: "custom",
-          path: ["assignments", index, "plannedPartnerDisplayName"],
+          path: ["assignments", index, "plannedPartnerEmployeeId"],
           message: `Assignment ${index + 1} cannot have a planned partner name when planned partner is unknown.`,
         });
       }
 
       if (
-        assignment.actualPartnerDisplayName &&
-        assignment.actualPartnerDisplayName.toLocaleLowerCase() ===
-          actualPrimary.toLocaleLowerCase()
+        assignment.actualPartnerEmployeeId &&
+        assignment.actualPartnerEmployeeId === actualPrimary
       ) {
         context.addIssue({
           code: "custom",
-          path: ["assignments", index, "actualPartnerDisplayName"],
+          path: ["assignments", index, "actualPartnerEmployeeId"],
           message: `Assignment ${index + 1} has the same actual person twice.`,
         });
       }
 
-      if (assignment.actualPartnerUnknown && assignment.actualPartnerDisplayName) {
+      if (assignment.actualPartnerUnknown && assignment.actualPartnerEmployeeId) {
         context.addIssue({
           code: "custom",
-          path: ["assignments", index, "actualPartnerDisplayName"],
+          path: ["assignments", index, "actualPartnerEmployeeId"],
           message: `Assignment ${index + 1} cannot have an actual partner name when actual partner is unknown.`,
         });
       }
@@ -265,8 +257,9 @@ export const weeklyScheduleFormSchema = z
         (assignment.actualStatus !== assignment.plannedStatus ||
           assignment.actualShift !== assignment.plannedShift ||
           (assignment.actualEquipmentId ?? "") !== (assignment.plannedEquipmentId ?? "") ||
-          (assignment.actualPartnerDisplayName ?? "") !==
-            (assignment.plannedPartnerDisplayName ?? "") ||
+          actualPrimary !== plannedPrimary ||
+          (assignment.actualPartnerEmployeeId ?? "") !==
+            (assignment.plannedPartnerEmployeeId ?? "") ||
           assignment.actualPartnerUnknown !== assignment.plannedPartnerUnknown);
 
       if (actualDiffers && !assignment.changeReason && !assignment.actualNotes) {

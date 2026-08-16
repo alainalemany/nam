@@ -19,14 +19,23 @@ export default async function EditWorkSchedulePage({
   params,
 }: EditWorkSchedulePageProps) {
   const { id } = await params;
-  const [schedule, options] = await Promise.all([
-    getWeeklySchedule(id),
-    getWorkScheduleFormOptions(),
-  ]);
+  const schedule = await getWeeklySchedule(id);
 
   if (!schedule) {
     notFound();
   }
+
+  const existingEmployeeIds = [
+    schedule.primaryEmployeeId,
+    schedule.assignedByEmployeeId,
+    ...schedule.assignments.flatMap((assignment) =>
+      assignment.crewMembers.map((member) => member.employeeId),
+    ),
+  ].filter((employeeId): employeeId is string => Boolean(employeeId));
+  const options = await getWorkScheduleFormOptions(
+    existingEmployeeIds,
+    schedule.assignedByEmployeeId ?? undefined,
+  );
 
   const action = updateWeeklyScheduleAction.bind(null, schedule.id);
 
@@ -47,9 +56,11 @@ export default async function EditWorkSchedulePage({
         <WorkScheduleForm
           action={action}
           cancelHref={`/work-schedule/${schedule.id}`}
+          employeeOptions={options.employeeOptions}
           equipmentOptions={options.equipmentOptions}
           initialValues={workScheduleInitialValuesFromRecord(schedule)}
           submitLabel="Update Work Schedule"
+          supervisorOptions={options.supervisorOptions}
         />
       </section>
     </main>
