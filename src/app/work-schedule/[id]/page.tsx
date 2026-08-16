@@ -22,28 +22,62 @@ type WorkScheduleDetailPageProps = {
   params: Promise<{ id: string }>;
 };
 
+type CrewMember = {
+  phase: string;
+  role: string;
+  employeeId?: string | null;
+  displayName: string | null;
+  isUnknown: boolean;
+};
+
+const inactiveAssignmentStatuses = new Set(["NON_WORKING", "CANCELLED"]);
+
+function meaningfulText(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
 function crewSummary(
-  crewMembers: {
-    phase: string;
-    role: string;
-    displayName: string | null;
-    isUnknown: boolean;
-  }[],
+  crewMembers: CrewMember[],
   phase: "PLANNED" | "ACTUAL",
 ) {
   const members = crewMembers.filter((member) => member.phase === phase);
+  const primary = members.find((member) => member.role === "PRIMARY_EMPLOYEE");
+  const partner = members.find((member) => member.role === "PARTNER");
+  const primaryName = primary?.isUnknown
+    ? "Unknown"
+    : meaningfulText(primary?.displayName);
+  const partnerName = partner?.isUnknown
+    ? "Unknown partner"
+    : meaningfulText(partner?.displayName);
 
-  if (members.length === 0) {
-    return "Not recorded";
-  }
+  return [primaryName, partnerName].filter(Boolean).join(" & ") || null;
+}
 
-  return members
-    .map((member) => {
-      const role = member.role === "PRIMARY_EMPLOYEE" ? "Primary" : "Partner";
-      const name = member.isUnknown ? "Unknown" : (member.displayName ?? "Not recorded");
-      return `${role}: ${name}`;
-    })
-    .join("; ");
+function crewsMatch(crewMembers: CrewMember[]) {
+  return ["PRIMARY_EMPLOYEE", "PARTNER"].every((role) => {
+    const planned = crewMembers.find(
+      (member) => member.phase === "PLANNED" && member.role === role,
+    );
+    const actual = crewMembers.find(
+      (member) => member.phase === "ACTUAL" && member.role === role,
+    );
+
+    if (!planned || !actual) {
+      return planned === actual;
+    }
+
+    if (planned.isUnknown || actual.isUnknown) {
+      return planned.isUnknown === actual.isUnknown;
+    }
+
+    if (planned.employeeId && actual.employeeId) {
+      return planned.employeeId === actual.employeeId;
+    }
+
+    return meaningfulText(planned.displayName)?.toLowerCase() ===
+      meaningfulText(actual.displayName)?.toLowerCase();
+  });
 }
 
 function equipmentSummary(
@@ -52,11 +86,85 @@ function equipmentSummary(
   mine: string | null,
   city: string | null,
 ) {
-  if (!name) {
-    return "Not selected";
+  const displayName = meaningfulText(name);
+
+  if (!displayName) {
+    return null;
   }
 
-  return `${name}${number ? ` #${number}` : ""}${mine ? ` - ${mine}` : ""}${city ? `, ${city}` : ""}`;
+  const identity = `${displayName}${meaningfulText(number) ? ` #${number?.trim()}` : ""}`;
+  const location = [meaningfulText(mine), meaningfulText(city)].filter(Boolean).join(", ");
+
+  return location ? `${identity} — ${location}` : identity;
+}
+
+function equipmentMatches(
+  plannedId: string | null,
+  actualId: string | null,
+  plannedSnapshots: (string | null)[],
+  actualSnapshots: (string | null)[],
+) {
+  if (plannedId && actualId) {
+    return plannedId === actualId;
+  }
+
+  return plannedSnapshots.every(
+    (value, index) => meaningfulText(value)?.toLowerCase() ===
+      meaningfulText(actualSnapshots[index])?.toLowerCase(),
+  );
+}
+
+function assignmentsMatch(assignment: {
+  plannedStatus: string;
+  plannedShift: string;
+  plannedEquipmentId: string | null;
+  plannedEquipmentDisplayName: string | null;
+  plannedEquipmentNumber: string | null;
+  plannedMineName: string | null;
+  plannedCityName: string | null;
+  actualStatus: string;
+  actualShift: string;
+  actualEquipmentId: string | null;
+  actualEquipmentDisplayName: string | null;
+  actualEquipmentNumber: string | null;
+  actualMineName: string | null;
+  actualCityName: string | null;
+}) {
+  return assignment.plannedStatus === assignment.actualStatus &&
+    assignment.plannedShift === assignment.actualShift &&
+    equipmentMatches(
+      assignment.plannedEquipmentId,
+      assignment.actualEquipmentId,
+      [
+      assignment.plannedEquipmentDisplayName,
+      assignment.plannedEquipmentNumber,
+      assignment.plannedMineName,
+      assignment.plannedCityName,
+      ],
+      [
+        assignment.actualEquipmentDisplayName,
+        assignment.actualEquipmentNumber,
+        assignment.actualMineName,
+        assignment.actualCityName,
+      ],
+    );
+}
+
+function hasActualAssignment(assignment: {
+  actualStatus: string;
+  actualShift: string;
+  actualEquipmentId: string | null;
+  actualEquipmentDisplayName: string | null;
+}) {
+  return assignment.actualStatus !== "UNKNOWN" ||
+    assignment.actualShift !== "UNKNOWN" ||
+    Boolean(assignment.actualEquipmentId) ||
+    Boolean(meaningfulText(assignment.actualEquipmentDisplayName));
+}
+
+function isActiveAssignment(assignment: { plannedStatus: string; actualStatus: string }) {
+  return !inactiveAssignmentStatuses.has(assignment.plannedStatus) &&
+    !inactiveAssignmentStatuses.has(assignment.actualStatus);
 }
 
 export default async function WorkScheduleDetailPage({
@@ -73,6 +181,7 @@ export default async function WorkScheduleDetailPage({
     schedule.weekStartDate,
     schedule.primaryEmployeeKey,
   );
+  const activeAssignments = schedule.assignments.filter(isActiveAssignment);
 
   return (
     <main className="page-stack">
@@ -117,10 +226,18 @@ export default async function WorkScheduleDetailPage({
             <dd>{schedule.assignedByDisplayName}</dd>
             <dt>Received</dt>
             <dd>{displayDateTime(schedule.receivedAt)}</dd>
-            <dt>Source note</dt>
-            <dd>{schedule.sourceNote ?? "Not recorded"}</dd>
-            <dt>Schedule notes</dt>
-            <dd>{schedule.scheduleNotes ?? "Not recorded"}</dd>
+            {meaningfulText(schedule.sourceNote) ? (
+              <>
+                <dt>Source note</dt>
+                <dd>{meaningfulText(schedule.sourceNote)}</dd>
+              </>
+            ) : null}
+            {meaningfulText(schedule.scheduleNotes) ? (
+              <>
+                <dt>Schedule notes</dt>
+                <dd>{meaningfulText(schedule.scheduleNotes)}</dd>
+              </>
+            ) : null}
           </dl>
         </div>
       </section>
@@ -128,49 +245,90 @@ export default async function WorkScheduleDetailPage({
       <section className="panel table-panel" aria-labelledby="assignments-heading">
         <div className="section-heading">
           <h2 id="assignments-heading">Daily assignments</h2>
-          <span className="count-pill">{schedule.assignments.length}</span>
+          <span className="count-pill">{activeAssignments.length}</span>
         </div>
 
         <div className="record-list">
-          {schedule.assignments.map((assignment) => (
-            <article className="record-card" key={assignment.id}>
-              <div>
-                <h3>{dayNames[assignment.dayOfWeek - 1]} - {displayDateOnly(assignment.assignmentDate)}</h3>
-                <dl className="meta-list">
-                  <dt>Planned</dt>
-                  <dd>
-                    {optionLabel(dailyAssignmentStatusOptions, assignment.plannedStatus)} / {displayShift(assignment.plannedShift)}
-                    <span className="subtle">
-                      {equipmentSummary(
-                        assignment.plannedEquipmentDisplayName,
-                        assignment.plannedEquipmentNumber,
-                        assignment.plannedMineName,
-                        assignment.plannedCityName,
-                      )}
-                    </span>
-                  </dd>
-                  <dt>Actual</dt>
-                  <dd>
-                    {optionLabel(dailyAssignmentStatusOptions, assignment.actualStatus)} / {displayShift(assignment.actualShift)}
-                    <span className="subtle">
-                      {equipmentSummary(
-                        assignment.actualEquipmentDisplayName,
-                        assignment.actualEquipmentNumber,
-                        assignment.actualMineName,
-                        assignment.actualCityName,
-                      )}
-                    </span>
-                  </dd>
-                  <dt>Planned crew</dt>
-                  <dd>{crewSummary(assignment.crewMembers, "PLANNED")}</dd>
-                  <dt>Actual crew</dt>
-                  <dd>{crewSummary(assignment.crewMembers, "ACTUAL")}</dd>
-                  <dt>Change reason</dt>
-                  <dd>{assignment.changeReason ?? "Not recorded"}</dd>
-                </dl>
-              </div>
-            </article>
-          ))}
+          {activeAssignments.map((assignment) => {
+            const plannedEquipment = equipmentSummary(
+              assignment.plannedEquipmentDisplayName,
+              assignment.plannedEquipmentNumber,
+              assignment.plannedMineName,
+              assignment.plannedCityName,
+            );
+            const actualEquipment = equipmentSummary(
+              assignment.actualEquipmentDisplayName,
+              assignment.actualEquipmentNumber,
+              assignment.actualMineName,
+              assignment.actualCityName,
+            );
+            const plannedCrew = crewSummary(assignment.crewMembers, "PLANNED");
+            const actualCrew = crewSummary(assignment.crewMembers, "ACTUAL");
+            const actualAssignmentRecorded = hasActualAssignment(assignment);
+            const matchingAssignments = actualAssignmentRecorded && assignmentsMatch(assignment);
+            const matchingCrews = plannedCrew && actualCrew && crewsMatch(assignment.crewMembers);
+            const changeReason = meaningfulText(assignment.changeReason);
+
+            const assignmentDetails = (
+              phase: "planned" | "actual",
+              equipment: string | null,
+            ) => (
+              <dd>
+                {optionLabel(
+                  dailyAssignmentStatusOptions,
+                  phase === "planned" ? assignment.plannedStatus : assignment.actualStatus,
+                )} / {displayShift(
+                  phase === "planned" ? assignment.plannedShift : assignment.actualShift,
+                )}
+                {equipment ? <span className="subtle">{equipment}</span> : null}
+              </dd>
+            );
+
+            return (
+              <article className="record-card" key={assignment.id}>
+                <div>
+                  <h3>{dayNames[assignment.dayOfWeek - 1]} — {displayDateOnly(assignment.assignmentDate)}</h3>
+                  <dl className="meta-list">
+                    <dt>{matchingAssignments || !actualAssignmentRecorded ? "Assignment" : "Planned"}</dt>
+                    {assignmentDetails("planned", plannedEquipment)}
+                    {actualAssignmentRecorded && !matchingAssignments ? (
+                      <>
+                        <dt>Actual</dt>
+                        {assignmentDetails("actual", actualEquipment)}
+                      </>
+                    ) : null}
+                    {plannedCrew && matchingCrews ? (
+                      <>
+                        <dt>Crew</dt>
+                        <dd>{plannedCrew}</dd>
+                      </>
+                    ) : (
+                      <>
+                        {plannedCrew ? (
+                          <>
+                            <dt>{actualCrew ? "Planned crew" : "Crew"}</dt>
+                            <dd>{plannedCrew}</dd>
+                          </>
+                        ) : null}
+                        {actualCrew ? (
+                          <>
+                            <dt>{plannedCrew ? "Actual crew" : "Crew"}</dt>
+                            <dd>{actualCrew}</dd>
+                          </>
+                        ) : null}
+                      </>
+                    )}
+                    {changeReason ? (
+                      <>
+                        <dt>Change reason</dt>
+                        <dd>{changeReason}</dd>
+                      </>
+                    ) : null}
+                  </dl>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
     </main>
