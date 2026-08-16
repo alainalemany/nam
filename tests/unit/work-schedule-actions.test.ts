@@ -9,7 +9,8 @@ import {
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   deleteMany: vi.fn(),
-  findMany: vi.fn(),
+  equipmentFindMany: vi.fn(),
+  employeeFindMany: vi.fn(),
   findUnique: vi.fn(),
   transaction: vi.fn(),
   update: vi.fn(),
@@ -29,7 +30,13 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     equipment: {
-      findMany: mocks.findMany,
+      findMany: mocks.equipmentFindMany,
+    },
+    employee: {
+      findMany: mocks.employeeFindMany,
+    },
+    weeklySchedule: {
+      findUnique: mocks.findUnique,
     },
     $transaction: mocks.transaction,
   },
@@ -49,6 +56,11 @@ const equipment = {
   },
 };
 
+const employees = [
+  { id: "employee-1", employeeCode: "100", displayName: "Alex Operator", isActive: true, isSupervisor: false },
+  { id: "supervisor-1", employeeCode: "200", displayName: "Sam Supervisor", isActive: true, isSupervisor: true },
+];
+
 function appendAssignment(formData: FormData, date: string, dayOfWeek: number) {
   formData.append("assignmentDate", date);
   formData.append("dayOfWeek", String(dayOfWeek));
@@ -58,10 +70,10 @@ function appendAssignment(formData: FormData, date: string, dayOfWeek: number) {
   formData.append("actualStatus", "UNKNOWN");
   formData.append("actualShift", "UNKNOWN");
   formData.append("actualEquipmentId", "");
-  formData.append("plannedPrimaryDisplayName", "");
-  formData.append("plannedPartnerDisplayName", "");
-  formData.append("actualPrimaryDisplayName", "");
-  formData.append("actualPartnerDisplayName", "");
+  formData.append("plannedPrimaryEmployeeId", "employee-1");
+  formData.append("plannedPartnerEmployeeId", "");
+  formData.append("actualPrimaryEmployeeId", "employee-1");
+  formData.append("actualPartnerEmployeeId", "");
   formData.append("changeReason", "");
   formData.append("plannedNotes", "");
   formData.append("actualNotes", "");
@@ -71,8 +83,8 @@ function validFormData() {
   const formData = new FormData();
   formData.set("weekStartDate", "2026-07-13");
   formData.set("status", "ACTIVE");
-  formData.set("primaryEmployeeDisplayName", "Alex Operator");
-  formData.set("assignedByDisplayName", "Sam Supervisor");
+  formData.set("primaryEmployeeId", "employee-1");
+  formData.set("assignedByEmployeeId", "supervisor-1");
   formData.set("receivedAt", "");
   formData.set("sourceNote", "");
   formData.set("scheduleNotes", "");
@@ -93,10 +105,16 @@ function validFormData() {
 describe("Work Schedule Server Actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.findMany.mockResolvedValue([equipment]);
+    mocks.equipmentFindMany.mockResolvedValue([equipment]);
+    mocks.employeeFindMany.mockResolvedValue(employees);
     mocks.create.mockResolvedValue({ id: "schedule-1" });
     mocks.findUnique.mockResolvedValue({
       id: "schedule-1",
+      primaryEmployeeId: "employee-1",
+      primaryEmployeeDisplayName: "Historic Alex Operator",
+      primaryEmployeeKey: "alex operator",
+      assignedByEmployeeId: "supervisor-1",
+      assignedByDisplayName: "Historic Sam Supervisor",
       assignments: [
         {
           assignmentDate: new Date("2026-07-13T00:00:00.000Z"),
@@ -114,6 +132,10 @@ describe("Work Schedule Server Actions", () => {
           actualMineName: "Historic Actual Mine",
           actualCityName: "Historic Actual City",
           actualCityState: "WY",
+          crewMembers: [
+            { phase: "PLANNED", role: "PRIMARY_EMPLOYEE", employeeId: "employee-1", displayName: "Historic Alex Operator", isUnknown: false },
+            { phase: "ACTUAL", role: "PRIMARY_EMPLOYEE", employeeId: "employee-1", displayName: "Historic Alex Operator", isUnknown: false },
+          ],
         },
       ],
     });
@@ -149,7 +171,9 @@ describe("Work Schedule Server Actions", () => {
         data: expect.objectContaining({
           primaryEmployeeDisplayName: "Alex Operator",
           primaryEmployeeKey: "alex operator",
+          primaryEmployeeId: "employee-1",
           assignedByDisplayName: "Sam Supervisor",
+          assignedByEmployeeId: "supervisor-1",
           assignments: {
             create: expect.arrayContaining([
               expect.objectContaining({
@@ -165,22 +189,22 @@ describe("Work Schedule Server Actions", () => {
     );
   });
 
-  it("normalizes owner identity before create", async () => {
-    const formData = validFormData();
-    formData.set("primaryEmployeeDisplayName", "  ALEX   Operator ");
-
+  it("snapshots canonical employee identity before create", async () => {
     await expect(
       createWeeklyScheduleAction(
         { status: "idle", message: "", fieldErrors: {}, assignmentErrors: {} },
-        formData,
+        validFormData(),
       ),
     ).rejects.toThrow("redirect:/work-schedule/schedule-1");
 
     expect(mocks.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          primaryEmployeeDisplayName: "ALEX   Operator",
+          primaryEmployeeId: "employee-1",
+          primaryEmployeeDisplayName: "Alex Operator",
           primaryEmployeeKey: "alex operator",
+          assignedByEmployeeId: "supervisor-1",
+          assignedByDisplayName: "Sam Supervisor",
         }),
       }),
     );
@@ -205,6 +229,22 @@ describe("Work Schedule Server Actions", () => {
     });
   });
 
+  it("rejects a non-supervisor Assigned By selection", async () => {
+    const formData = validFormData();
+    formData.set("assignedByEmployeeId", "employee-1");
+
+    const result = await createWeeklyScheduleAction(
+      { status: "idle", message: "", fieldErrors: {}, assignmentErrors: {} },
+      formData,
+    );
+
+    expect(result).toMatchObject({
+      status: "error",
+      message: "Assigned By must be an eligible supervisor.",
+    });
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
   it("updates daily assignments in place and preserves unchanged snapshots", async () => {
     await expect(
       updateWeeklyScheduleAction(
@@ -218,7 +258,11 @@ describe("Work Schedule Server Actions", () => {
     expect(mocks.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "schedule-1" },
-        data: expect.objectContaining({ primaryEmployeeKey: "alex operator" }),
+        data: expect.objectContaining({
+          primaryEmployeeId: "employee-1",
+          primaryEmployeeDisplayName: "Historic Alex Operator",
+          primaryEmployeeKey: "alex operator",
+        }),
       }),
     );
     expect(mocks.upsert).toHaveBeenCalledWith(
@@ -247,5 +291,77 @@ describe("Work Schedule Server Actions", () => {
         },
       },
     });
+  });
+
+  it("preserves legacy free-text identities when an old schedule remains unlinked", async () => {
+    mocks.findUnique.mockResolvedValue({
+      id: "schedule-legacy",
+      primaryEmployeeId: null,
+      primaryEmployeeDisplayName: "Legacy Operator",
+      primaryEmployeeKey: "legacy operator",
+      assignedByEmployeeId: null,
+      assignedByDisplayName: "Legacy Supervisor",
+      assignments: [
+        {
+          assignmentDate: new Date("2026-07-13T00:00:00.000Z"),
+          plannedEquipmentId: "equipment-1",
+          plannedEquipmentDisplayName: "Historic Planned Dragline",
+          plannedEquipmentNumber: "HP-1",
+          plannedEquipmentCategory: "DRAGLINE",
+          plannedMineName: "Historic Planned Mine",
+          plannedCityName: "Historic Planned City",
+          plannedCityState: "WY",
+          actualEquipmentId: null,
+          actualEquipmentDisplayName: null,
+          actualEquipmentNumber: null,
+          actualEquipmentCategory: null,
+          actualMineName: null,
+          actualCityName: null,
+          actualCityState: null,
+          crewMembers: [
+            { phase: "PLANNED", role: "PRIMARY_EMPLOYEE", employeeId: null, displayName: "Legacy Operator", isUnknown: false },
+            { phase: "PLANNED", role: "PARTNER", employeeId: null, displayName: "Legacy Partner", isUnknown: false },
+          ],
+        },
+      ],
+    });
+    mocks.employeeFindMany.mockResolvedValue([]);
+    const formData = validFormData();
+    formData.set("primaryEmployeeId", "");
+    formData.set("assignedByEmployeeId", "");
+    formData.set("plannedPrimaryEmployeeId", "");
+    formData.set("actualPrimaryEmployeeId", "");
+
+    await expect(
+      updateWeeklyScheduleAction(
+        "schedule-legacy",
+        { status: "idle", message: "", fieldErrors: {}, assignmentErrors: {} },
+        formData,
+      ),
+    ).rejects.toThrow("redirect:/work-schedule/schedule-legacy");
+
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          primaryEmployeeId: null,
+          primaryEmployeeDisplayName: "Legacy Operator",
+          primaryEmployeeKey: "legacy operator",
+          assignedByEmployeeId: null,
+          assignedByDisplayName: "Legacy Supervisor",
+        }),
+      }),
+    );
+    expect(mocks.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          crewMembers: expect.objectContaining({
+            create: expect.arrayContaining([
+              expect.objectContaining({ employeeId: null, displayName: "Legacy Operator" }),
+              expect.objectContaining({ employeeId: null, displayName: "Legacy Partner" }),
+            ]),
+          }),
+        }),
+      }),
+    );
   });
 });

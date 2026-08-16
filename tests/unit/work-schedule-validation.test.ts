@@ -4,6 +4,7 @@ import {
   buildAssignmentCrewMembers,
   buildDailyAssignmentWriteData,
   equipmentSnapshot,
+  type EmployeeSnapshotSource,
   type ExistingAssignmentSnapshot,
   type EquipmentSnapshotSource,
 } from "@/features/work-schedule/persistence";
@@ -44,6 +45,14 @@ const replacementEquipment: EquipmentSnapshotSource = {
   },
 };
 
+const employees = new Map<string, EmployeeSnapshotSource>([
+  ["employee-1", { id: "employee-1", employeeCode: "100", displayName: "Alex Operator", isActive: true, isSupervisor: false }],
+  ["employee-2", { id: "employee-2", employeeCode: "200", displayName: "Jordan Partner", isActive: true, isSupervisor: false }],
+  ["employee-3", { id: "employee-3", employeeCode: "300", displayName: "Casey Partner", isActive: true, isSupervisor: false }],
+]);
+
+const primaryEmployee = { employeeId: "employee-1", displayName: "Alex Operator" };
+
 const existingAssignment: ExistingAssignmentSnapshot = {
   plannedEquipmentId: "equipment-1",
   plannedEquipmentDisplayName: "Historic Planned Dragline",
@@ -59,6 +68,7 @@ const existingAssignment: ExistingAssignmentSnapshot = {
   actualMineName: "Historic Actual Mine",
   actualCityName: "Historic Actual City",
   actualCityState: "WY",
+  crewMembers: [],
 };
 
 function assignment(date: string, index: number) {
@@ -71,11 +81,11 @@ function assignment(date: string, index: number) {
     actualStatus: "UNKNOWN",
     actualShift: "UNKNOWN",
     actualEquipmentId: "",
-    plannedPrimaryDisplayName: "",
-    plannedPartnerDisplayName: "",
+    plannedPrimaryEmployeeId: "employee-1",
+    plannedPartnerEmployeeId: "",
     plannedPartnerUnknown: false,
-    actualPrimaryDisplayName: "",
-    actualPartnerDisplayName: "",
+    actualPrimaryEmployeeId: "employee-1",
+    actualPartnerEmployeeId: "",
     actualPartnerUnknown: false,
     changeReason: "",
     plannedNotes: "",
@@ -89,8 +99,8 @@ function validSchedule(overrides = {}) {
   return {
     weekStartDate,
     status: "ACTIVE",
-    primaryEmployeeDisplayName: "Alex Operator",
-    assignedByDisplayName: "Sam Supervisor",
+    primaryEmployeeId: "employee-1",
+    assignedByEmployeeId: "supervisor-1",
     receivedAt: "2026-07-10T16:30",
     sourceNote: "",
     scheduleNotes: "",
@@ -228,18 +238,37 @@ describe("weeklyScheduleFormSchema", () => {
     expect(weeklyScheduleFormSchema.safeParse(schedule).success).toBe(true);
   });
 
+  it("validates the effective Actual Primary against Planned Primary", () => {
+    const schedule = validSchedule();
+    schedule.assignments[0] = {
+      ...schedule.assignments[0],
+      plannedPrimaryEmployeeId: "employee-2",
+      actualPrimaryEmployeeId: "",
+      actualPartnerEmployeeId: "employee-2",
+    };
+
+    const parsed = weeklyScheduleFormSchema.safeParse(schedule);
+    expect(parsed.success).toBe(false);
+    expect(parsed.error?.issues).toContainEqual(
+      expect.objectContaining({
+        path: ["assignments", 0, "actualPartnerEmployeeId"],
+        message: "Assignment 1 has the same actual person twice.",
+      }),
+    );
+  });
+
   it("prevents the same person from appearing twice in the same crew", () => {
     const schedule = validSchedule();
     schedule.assignments[0] = {
       ...schedule.assignments[0],
-      plannedPartnerDisplayName: "alex operator",
+      plannedPartnerEmployeeId: "employee-1",
     };
     const parsed = weeklyScheduleFormSchema.safeParse(schedule);
 
     expect(parsed.success).toBe(false);
     expect(parsed.error?.issues).toContainEqual(
       expect.objectContaining({
-        path: ["assignments", 0, "plannedPartnerDisplayName"],
+        path: ["assignments", 0, "plannedPartnerEmployeeId"],
         message: "Assignment 1 has the same planned person twice.",
       }),
     );
@@ -250,17 +279,17 @@ describe("weeklyScheduleFormSchema", () => {
     schedule.assignments[0] = {
       ...schedule.assignments[0],
       plannedPartnerUnknown: true,
-      plannedPartnerDisplayName: "Jordan Partner",
+      plannedPartnerEmployeeId: "employee-2",
       actualPartnerUnknown: true,
-      actualPartnerDisplayName: "Casey Partner",
+      actualPartnerEmployeeId: "employee-3",
     };
     const parsed = weeklyScheduleFormSchema.safeParse(schedule);
 
     expect(parsed.success).toBe(false);
     expect(parsed.error?.issues).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ path: ["assignments", 0, "plannedPartnerDisplayName"] }),
-        expect.objectContaining({ path: ["assignments", 0, "actualPartnerDisplayName"] }),
+        expect.objectContaining({ path: ["assignments", 0, "plannedPartnerEmployeeId"] }),
+        expect.objectContaining({ path: ["assignments", 0, "actualPartnerEmployeeId"] }),
       ]),
     );
   });
@@ -270,7 +299,7 @@ describe("weeklyScheduleFormSchema", () => {
     schedule.assignments[0] = {
       ...schedule.assignments[0],
       plannedPartnerUnknown: true,
-      actualPartnerDisplayName: "Jordan Partner",
+      actualPartnerEmployeeId: "employee-2",
     };
 
     expect(weeklyScheduleFormSchema.safeParse(schedule).success).toBe(true);
@@ -312,8 +341,9 @@ describe("Work Schedule persistence helpers", () => {
 
     const writeData = buildDailyAssignmentWriteData(
       parsed.assignments[0],
-      parsed.primaryEmployeeDisplayName,
+      primaryEmployee,
       new Map([["equipment-1", equipment]]),
+      employees,
     );
 
     expect(writeData).toMatchObject({
@@ -348,8 +378,9 @@ describe("Work Schedule persistence helpers", () => {
 
     const writeData = buildDailyAssignmentWriteData(
       parsed.assignments[0],
-      parsed.primaryEmployeeDisplayName,
+      primaryEmployee,
       new Map([["equipment-1", equipment]]),
+      employees,
       existingAssignment,
     );
 
@@ -381,11 +412,12 @@ describe("Work Schedule persistence helpers", () => {
 
     const writeData = buildDailyAssignmentWriteData(
       parsed.assignments[0],
-      parsed.primaryEmployeeDisplayName,
+      primaryEmployee,
       new Map([
         ["equipment-1", equipment],
         ["equipment-2", replacementEquipment],
       ]),
+      employees,
       existingAssignment,
     );
 
@@ -406,8 +438,9 @@ describe("Work Schedule persistence helpers", () => {
     const parsed = weeklyScheduleFormSchema.parse(validSchedule());
     const writeData = buildDailyAssignmentWriteData(
       parsed.assignments[0],
-      parsed.primaryEmployeeDisplayName,
+      primaryEmployee,
       new Map(),
+      employees,
       existingWithDeletedEquipment,
     );
 
@@ -425,30 +458,33 @@ describe("Work Schedule persistence helpers", () => {
             ? {
                 ...item,
                 plannedPartnerUnknown: true,
-                actualPartnerDisplayName: "Jordan Partner",
+                actualPartnerEmployeeId: "employee-2",
               }
             : item,
         ),
       }),
     );
 
-    expect(buildAssignmentCrewMembers(parsed.assignments[0], "Alex Operator")).toEqual(
+    expect(buildAssignmentCrewMembers(parsed.assignments[0], primaryEmployee, employees)).toEqual(
       expect.arrayContaining([
         {
           phase: "PLANNED",
           role: "PRIMARY_EMPLOYEE",
+          employeeId: "employee-1",
           displayName: "Alex Operator",
           isUnknown: false,
         },
         {
           phase: "PLANNED",
           role: "PARTNER",
+          employeeId: null,
           displayName: null,
           isUnknown: true,
         },
         {
           phase: "ACTUAL",
           role: "PARTNER",
+          employeeId: "employee-2",
           displayName: "Jordan Partner",
           isUnknown: false,
         },
@@ -459,7 +495,9 @@ describe("Work Schedule persistence helpers", () => {
   it("does not create actual crew rows while actual assignment is unknown", () => {
     const parsed = weeklyScheduleFormSchema.parse(validSchedule());
 
-    expect(buildAssignmentCrewMembers(parsed.assignments[0], "Alex Operator")).not.toEqual(
+    parsed.assignments[0].actualStatus = "UNKNOWN";
+    parsed.assignments[0].actualPrimaryEmployeeId = undefined;
+    expect(buildAssignmentCrewMembers(parsed.assignments[0], primaryEmployee, employees)).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ phase: "ACTUAL", role: "PRIMARY_EMPLOYEE" }),
       ]),
@@ -473,25 +511,53 @@ describe("Work Schedule persistence helpers", () => {
           index === 0
             ? {
                 ...item,
-                actualPartnerDisplayName: "Replacement Partner",
+                actualPartnerEmployeeId: "employee-2",
               }
             : item,
         ),
       }),
     );
 
-    expect(buildAssignmentCrewMembers(parsed.assignments[0], "Alex Operator")).toEqual(
+    expect(buildAssignmentCrewMembers(parsed.assignments[0], primaryEmployee, employees)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           phase: "ACTUAL",
           role: "PRIMARY_EMPLOYEE",
           displayName: "Alex Operator",
+          employeeId: "employee-1",
         }),
         expect.objectContaining({
           phase: "ACTUAL",
           role: "PARTNER",
-          displayName: "Replacement Partner",
+          displayName: "Jordan Partner",
+          employeeId: "employee-2",
         }),
+      ]),
+    );
+  });
+
+  it("does not reapply a planned partner when actual partner is explicitly blank", () => {
+    const parsed = weeklyScheduleFormSchema.parse(
+      validSchedule({
+        assignments: validSchedule().assignments.map((item, index) =>
+          index === 0
+            ? {
+                ...item,
+                actualStatus: "SCHEDULED",
+                actualShift: "DAY",
+                actualEquipmentId: "equipment-1",
+                plannedPartnerEmployeeId: "employee-2",
+                actualPartnerEmployeeId: "",
+                changeReason: "Worked without the planned partner.",
+              }
+            : item,
+        ),
+      }),
+    );
+
+    expect(buildAssignmentCrewMembers(parsed.assignments[0], primaryEmployee, employees)).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ phase: "ACTUAL", role: "PARTNER" }),
       ]),
     );
   });
