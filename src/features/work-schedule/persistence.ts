@@ -247,6 +247,10 @@ export function buildAssignmentCrewMembers(
   employeeById: Map<string, EmployeeSnapshotSource>,
   existing?: ExistingAssignmentSnapshot,
 ) {
+  if (assignment.plannedStatus === "NON_WORKING") {
+    return [];
+  }
+
   const hasActualCrew =
     assignment.actualStatus === "SCHEDULED" ||
     Boolean(assignment.actualPrimaryEmployeeId) ||
@@ -257,7 +261,7 @@ export function buildAssignmentCrewMembers(
     assignment.plannedPrimaryEmployeeId,
     employeeById,
     existingCrewMember(existing, "PLANNED", "PRIMARY_EMPLOYEE"),
-    primaryEmployee,
+    assignment.plannedStatus === "CANCELLED" ? undefined : primaryEmployee,
   );
   const plannedPartner = personSnapshot(
     assignment.plannedPartnerEmployeeId,

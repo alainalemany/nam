@@ -175,6 +175,8 @@ export const weeklyScheduleFormSchema = z
       }
       seenDates.add(assignment.assignmentDate);
 
+      const inactive = assignment.plannedStatus === "NON_WORKING" || assignment.plannedStatus === "CANCELLED";
+
       if (assignment.plannedStatus === "SCHEDULED") {
         if (assignment.plannedShift === "UNKNOWN") {
           context.addIssue({
@@ -193,7 +195,7 @@ export const weeklyScheduleFormSchema = z
         }
       }
 
-      if (assignment.actualStatus === "SCHEDULED") {
+      if (!inactive && assignment.actualStatus === "SCHEDULED") {
         if (assignment.actualShift === "UNKNOWN") {
           context.addIssue({
             code: "custom",
@@ -215,6 +217,7 @@ export const weeklyScheduleFormSchema = z
       const actualPrimary = assignment.actualPrimaryEmployeeId ?? plannedPrimary;
 
       if (
+        !inactive &&
         assignment.plannedPartnerEmployeeId &&
         assignment.plannedPartnerEmployeeId === plannedPrimary
       ) {
@@ -225,7 +228,7 @@ export const weeklyScheduleFormSchema = z
         });
       }
 
-      if (assignment.plannedPartnerUnknown && assignment.plannedPartnerEmployeeId) {
+      if (!inactive && assignment.plannedPartnerUnknown && assignment.plannedPartnerEmployeeId) {
         context.addIssue({
           code: "custom",
           path: ["assignments", index, "plannedPartnerEmployeeId"],
@@ -234,6 +237,7 @@ export const weeklyScheduleFormSchema = z
       }
 
       if (
+        !inactive &&
         assignment.actualPartnerEmployeeId &&
         assignment.actualPartnerEmployeeId === actualPrimary
       ) {
@@ -244,7 +248,7 @@ export const weeklyScheduleFormSchema = z
         });
       }
 
-      if (assignment.actualPartnerUnknown && assignment.actualPartnerEmployeeId) {
+      if (!inactive && assignment.actualPartnerUnknown && assignment.actualPartnerEmployeeId) {
         context.addIssue({
           code: "custom",
           path: ["assignments", index, "actualPartnerEmployeeId"],
@@ -262,7 +266,7 @@ export const weeklyScheduleFormSchema = z
             (assignment.plannedPartnerEmployeeId ?? "") ||
           assignment.actualPartnerUnknown !== assignment.plannedPartnerUnknown);
 
-      if (actualDiffers && !assignment.changeReason && !assignment.actualNotes) {
+      if (!inactive && actualDiffers && !assignment.changeReason && !assignment.actualNotes) {
         context.addIssue({
           code: "custom",
           path: ["assignments", index, "changeReason"],
@@ -275,7 +279,46 @@ export const weeklyScheduleFormSchema = z
         });
       }
     });
-  });
+  })
+  .transform((value) => ({
+    ...value,
+    assignments: value.assignments.map((assignment) => {
+      if (assignment.plannedStatus === "NON_WORKING") {
+        return {
+          ...assignment,
+          actualStatus: "NON_WORKING" as const,
+          plannedShift: "UNKNOWN" as const,
+          actualShift: "UNKNOWN" as const,
+          plannedEquipmentId: undefined,
+          actualEquipmentId: undefined,
+          plannedPrimaryEmployeeId: undefined,
+          plannedPartnerEmployeeId: undefined,
+          plannedPartnerUnknown: false,
+          actualPrimaryEmployeeId: undefined,
+          actualPartnerEmployeeId: undefined,
+          actualPartnerUnknown: false,
+          changeReason: undefined,
+          plannedNotes: undefined,
+          actualNotes: undefined,
+        };
+      }
+
+      if (assignment.plannedStatus === "CANCELLED") {
+        return {
+          ...assignment,
+          actualStatus: "CANCELLED" as const,
+          actualShift: "UNKNOWN" as const,
+          actualEquipmentId: undefined,
+          actualPrimaryEmployeeId: undefined,
+          actualPartnerEmployeeId: undefined,
+          actualPartnerUnknown: false,
+          actualNotes: undefined,
+        };
+      }
+
+      return assignment;
+    }),
+  }));
 
 export type AssignmentFormInput = z.infer<typeof assignmentFormSchema>;
 export type WeeklyScheduleFormInput = z.infer<typeof weeklyScheduleFormSchema>;
@@ -291,6 +334,36 @@ export type WeeklyScheduleFormState = {
   message: string;
   fieldErrors: Partial<Record<WeeklyScheduleFormField, string[]>>;
   assignmentErrors: Record<number, Partial<Record<AssignmentFormField, string[]>>>;
+  submittedValues?: WeeklyScheduleSubmittedValues;
+};
+
+export type WeeklyScheduleSubmittedValues = {
+  weekStartDate: string;
+  status: string;
+  primaryEmployeeId: string;
+  assignedByEmployeeId: string;
+  receivedAt: string;
+  sourceNote: string;
+  scheduleNotes: string;
+  assignments: Array<{
+    assignmentDate: string;
+    dayOfWeek: string;
+    plannedStatus: string;
+    plannedShift: string;
+    plannedEquipmentId: string;
+    actualStatus: string;
+    actualShift: string;
+    actualEquipmentId: string;
+    plannedPrimaryEmployeeId: string;
+    plannedPartnerEmployeeId: string;
+    plannedPartnerUnknown: boolean;
+    actualPrimaryEmployeeId: string;
+    actualPartnerEmployeeId: string;
+    actualPartnerUnknown: boolean;
+    changeReason: string;
+    plannedNotes: string;
+    actualNotes: string;
+  }>;
 };
 
 export const emptyWeeklyScheduleFormState: WeeklyScheduleFormState = {

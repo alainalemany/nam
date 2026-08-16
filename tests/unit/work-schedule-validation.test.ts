@@ -304,6 +304,87 @@ describe("weeklyScheduleFormSchema", () => {
 
     expect(weeklyScheduleFormSchema.safeParse(schedule).success).toBe(true);
   });
+
+  it("normalizes NON_WORKING without requiring or retaining assignment fields", () => {
+    const schedule = validSchedule();
+    schedule.assignments[0] = {
+      ...schedule.assignments[0],
+      plannedStatus: "NON_WORKING",
+      plannedShift: "DAY",
+      plannedEquipmentId: "equipment-1",
+      actualStatus: "SCHEDULED",
+      actualShift: "NIGHT",
+      actualEquipmentId: "equipment-2",
+      plannedPrimaryEmployeeId: "employee-1",
+      plannedPartnerEmployeeId: "employee-1",
+      plannedPartnerUnknown: true,
+      actualPrimaryEmployeeId: "employee-1",
+      actualPartnerEmployeeId: "employee-1",
+      actualPartnerUnknown: true,
+      changeReason: "Not applicable",
+      plannedNotes: "Not applicable",
+      actualNotes: "Not applicable",
+    };
+
+    const parsed = weeklyScheduleFormSchema.parse(schedule);
+    expect(parsed.assignments[0]).toMatchObject({
+      plannedStatus: "NON_WORKING",
+      actualStatus: "NON_WORKING",
+      plannedShift: "UNKNOWN",
+      actualShift: "UNKNOWN",
+      plannedPartnerUnknown: false,
+      actualPartnerUnknown: false,
+    });
+    expect(parsed.assignments[0].plannedEquipmentId).toBeUndefined();
+    expect(parsed.assignments[0].actualEquipmentId).toBeUndefined();
+    expect(parsed.assignments[0].plannedPrimaryEmployeeId).toBeUndefined();
+    expect(parsed.assignments[0].changeReason).toBeUndefined();
+    expect(parsed.assignments[0].plannedNotes).toBeUndefined();
+    expect(parsed.assignments[0].actualNotes).toBeUndefined();
+
+    expect(buildAssignmentCrewMembers(
+      parsed.assignments[0],
+      primaryEmployee,
+      employees,
+    )).toEqual([]);
+  });
+
+  it("normalizes CANCELLED by preserving planned history and clearing actual execution", () => {
+    const schedule = validSchedule();
+    schedule.assignments[0] = {
+      ...schedule.assignments[0],
+      plannedStatus: "CANCELLED",
+      plannedShift: "DAY",
+      plannedEquipmentId: "equipment-1",
+      plannedPrimaryEmployeeId: "employee-1",
+      plannedPartnerEmployeeId: "employee-2",
+      plannedNotes: "Originally scheduled",
+      actualStatus: "SCHEDULED",
+      actualShift: "NIGHT",
+      actualEquipmentId: "equipment-2",
+      actualPrimaryEmployeeId: "employee-3",
+      actualPartnerEmployeeId: "employee-1",
+      actualNotes: "Must be cleared",
+      changeReason: "Weather cancellation",
+    };
+
+    const parsed = weeklyScheduleFormSchema.parse(schedule);
+    expect(parsed.assignments[0]).toMatchObject({
+      plannedStatus: "CANCELLED",
+      plannedShift: "DAY",
+      plannedEquipmentId: "equipment-1",
+      plannedPrimaryEmployeeId: "employee-1",
+      plannedPartnerEmployeeId: "employee-2",
+      plannedNotes: "Originally scheduled",
+      actualStatus: "CANCELLED",
+      actualShift: "UNKNOWN",
+      changeReason: "Weather cancellation",
+    });
+    expect(parsed.assignments[0].actualEquipmentId).toBeUndefined();
+    expect(parsed.assignments[0].actualPrimaryEmployeeId).toBeUndefined();
+    expect(parsed.assignments[0].actualPartnerEmployeeId).toBeUndefined();
+    expect(parsed.assignments[0].actualNotes).toBeUndefined();
+  });
 });
 
 describe("Work Schedule persistence helpers", () => {

@@ -229,6 +229,76 @@ describe("Work Schedule Server Actions", () => {
     });
   });
 
+  it("returns every submitted weekly and daily value with field-specific validation errors", async () => {
+    const formData = validFormData();
+    const replaceFirst = (field: string, value: string) => {
+      const values = formData.getAll(field).map(String);
+      values[0] = value;
+      formData.delete(field);
+      values.forEach((item) => formData.append(field, item));
+    };
+    formData.set("weekStartDate", "2026-07-14");
+    formData.set("status", "DRAFT");
+    formData.set("primaryEmployeeId", "employee-1");
+    formData.set("assignedByEmployeeId", "supervisor-1");
+    formData.set("receivedAt", "2026-07-12T16:45");
+    formData.set("sourceNote", "Original SMS");
+    formData.set("scheduleNotes", "Keep this weekly note");
+    replaceFirst("plannedStatus", "SCHEDULED");
+    replaceFirst("plannedShift", "DAY");
+    replaceFirst("plannedEquipmentId", "equipment-1");
+    replaceFirst("actualStatus", "SCHEDULED");
+    replaceFirst("actualShift", "UNKNOWN");
+    replaceFirst("actualEquipmentId", "equipment-1");
+    replaceFirst("plannedPrimaryEmployeeId", "employee-1");
+    replaceFirst("plannedPartnerEmployeeId", "");
+    formData.set("plannedPartnerUnknown-0", "on");
+    replaceFirst("actualPrimaryEmployeeId", "employee-1");
+    replaceFirst("actualPartnerEmployeeId", "");
+    formData.set("actualPartnerUnknown-0", "on");
+    replaceFirst("changeReason", "Submitted reason");
+    replaceFirst("plannedNotes", "Submitted plan");
+    replaceFirst("actualNotes", "Submitted actual");
+
+    const result = await createWeeklyScheduleAction(
+      { status: "idle", message: "", fieldErrors: {}, assignmentErrors: {} },
+      formData,
+    );
+
+    expect(result).toMatchObject({
+      status: "error",
+      message: "Check the highlighted fields and try again.",
+      fieldErrors: { weekStartDate: ["Week must start on Monday."] },
+      assignmentErrors: { 0: { actualShift: ["Assignment 1 needs an actual shift."] } },
+      submittedValues: expect.objectContaining({
+        weekStartDate: "2026-07-14",
+        status: "DRAFT",
+        primaryEmployeeId: "employee-1",
+        assignedByEmployeeId: "supervisor-1",
+        receivedAt: "2026-07-12T16:45",
+        sourceNote: "Original SMS",
+        scheduleNotes: "Keep this weekly note",
+      }),
+    });
+    expect(result.submittedValues?.assignments).toHaveLength(7);
+    expect(result.submittedValues?.assignments[0]).toMatchObject({
+      plannedStatus: "SCHEDULED",
+      plannedShift: "DAY",
+      plannedEquipmentId: "equipment-1",
+      actualStatus: "SCHEDULED",
+      actualShift: "UNKNOWN",
+      actualEquipmentId: "equipment-1",
+      plannedPrimaryEmployeeId: "employee-1",
+      plannedPartnerUnknown: true,
+      actualPrimaryEmployeeId: "employee-1",
+      actualPartnerUnknown: true,
+      changeReason: "Submitted reason",
+      plannedNotes: "Submitted plan",
+      actualNotes: "Submitted actual",
+    });
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
   it("rejects a non-supervisor Assigned By selection", async () => {
     const formData = validFormData();
     formData.set("assignedByEmployeeId", "employee-1");

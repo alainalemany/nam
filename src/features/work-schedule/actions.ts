@@ -19,15 +19,22 @@ import {
   type WeeklyScheduleFormInput,
   weeklyScheduleFormSchema,
   type WeeklyScheduleFormState,
+  type WeeklyScheduleSubmittedValues,
 } from "./validation";
 
-function errorState(message: string): WeeklyScheduleFormState {
-  return { ...emptyWeeklyScheduleFormState, status: "error", message };
+function errorState(
+  message: string,
+  submittedValues?: WeeklyScheduleSubmittedValues,
+): WeeklyScheduleFormState {
+  return { ...emptyWeeklyScheduleFormState, status: "error", message, submittedValues };
 }
 
-function requiredEmployeeState(field: "primaryEmployeeId" | "assignedByEmployeeId") {
+function requiredEmployeeState(
+  field: "primaryEmployeeId" | "assignedByEmployeeId",
+  submittedValues: WeeklyScheduleSubmittedValues,
+) {
   return {
-    ...errorState("Select the required employees and try again."),
+    ...errorState("Select the required employees and try again.", submittedValues),
     fieldErrors: {
       [field]: [field === "primaryEmployeeId" ? "Primary employee is required." : "Assigned By is required."],
     },
@@ -36,12 +43,13 @@ function requiredEmployeeState(field: "primaryEmployeeId" | "assignedByEmployeeI
 
 function validationErrorState(error: {
   issues: { path: PropertyKey[]; message: string }[];
-}): WeeklyScheduleFormState {
+}, submittedValues: WeeklyScheduleSubmittedValues): WeeklyScheduleFormState {
   const state: WeeklyScheduleFormState = {
     status: "error",
     message: "Check the highlighted fields and try again.",
     fieldErrors: {},
     assignmentErrors: {},
+    submittedValues,
   };
 
   for (const issue of error.issues) {
@@ -78,7 +86,7 @@ function formValues(formData: FormData, field: string) {
   return formData.getAll(field).map((value) => (typeof value === "string" ? value : ""));
 }
 
-function parseAssignments(formData: FormData) {
+function parseAssignments(formData: FormData): WeeklyScheduleSubmittedValues["assignments"] {
   const assignmentDates = formValues(formData, "assignmentDate");
 
   return assignmentDates.map((_, index) => ({
@@ -92,35 +100,44 @@ function parseAssignments(formData: FormData) {
     actualEquipmentId: formValues(formData, "actualEquipmentId")[index],
     plannedPrimaryEmployeeId: formValues(formData, "plannedPrimaryEmployeeId")[index],
     plannedPartnerEmployeeId: formValues(formData, "plannedPartnerEmployeeId")[index],
-    plannedPartnerUnknown:
-      formData.get(`plannedPartnerUnknown-${index}`) === "on" ? "on" : "",
+    plannedPartnerUnknown: formData.get(`plannedPartnerUnknown-${index}`) === "on",
     actualPrimaryEmployeeId: formValues(formData, "actualPrimaryEmployeeId")[index],
     actualPartnerEmployeeId: formValues(formData, "actualPartnerEmployeeId")[index],
-    actualPartnerUnknown: formData.get(`actualPartnerUnknown-${index}`) === "on" ? "on" : "",
+    actualPartnerUnknown: formData.get(`actualPartnerUnknown-${index}`) === "on",
     changeReason: formValues(formData, "changeReason")[index],
     plannedNotes: formValues(formData, "plannedNotes")[index],
     actualNotes: formValues(formData, "actualNotes")[index],
   }));
 }
 
+function submittedWorkScheduleValues(formData: FormData): WeeklyScheduleSubmittedValues {
+  const stringValue = (field: string) => {
+    const value = formData.get(field);
+    return typeof value === "string" ? value : "";
+  };
+
+  return {
+    weekStartDate: stringValue("weekStartDate"),
+    status: stringValue("status"),
+    primaryEmployeeId: stringValue("primaryEmployeeId"),
+    assignedByEmployeeId: stringValue("assignedByEmployeeId"),
+    receivedAt: stringValue("receivedAt"),
+    sourceNote: stringValue("sourceNote"),
+    scheduleNotes: stringValue("scheduleNotes"),
+    assignments: parseAssignments(formData),
+  };
+}
+
 function parseFormData(formData: FormData):
   | { ok: true; data: WeeklyScheduleFormInput }
   | { ok: false; state: WeeklyScheduleFormState } {
-  const parsed = weeklyScheduleFormSchema.safeParse({
-    weekStartDate: formData.get("weekStartDate"),
-    status: formData.get("status"),
-    primaryEmployeeId: formData.get("primaryEmployeeId"),
-    assignedByEmployeeId: formData.get("assignedByEmployeeId"),
-    receivedAt: formData.get("receivedAt"),
-    sourceNote: formData.get("sourceNote"),
-    scheduleNotes: formData.get("scheduleNotes"),
-    assignments: parseAssignments(formData),
-  });
+  const submittedValues = submittedWorkScheduleValues(formData);
+  const parsed = weeklyScheduleFormSchema.safeParse(submittedValues);
 
   if (!parsed.success) {
     return {
       ok: false,
-      state: validationErrorState(parsed.error),
+      state: validationErrorState(parsed.error, submittedValues),
     };
   }
 
@@ -282,18 +299,18 @@ export async function createWeeklyScheduleAction(
     return input.state;
   }
 
-  if (!input.data.primaryEmployeeId) return requiredEmployeeState("primaryEmployeeId");
-  if (!input.data.assignedByEmployeeId) return requiredEmployeeState("assignedByEmployeeId");
+  if (!input.data.primaryEmployeeId) return requiredEmployeeState("primaryEmployeeId", submittedWorkScheduleValues(formData));
+  if (!input.data.assignedByEmployeeId) return requiredEmployeeState("assignedByEmployeeId", submittedWorkScheduleValues(formData));
 
   const [equipmentById, employeeById] = await Promise.all([
     equipmentMapFor(input.data),
     employeeMapFor(input.data),
   ]);
   if (missingEquipmentIds(input.data, equipmentById).length > 0) {
-    return errorState("One or more selected equipment records could not be found.");
+    return errorState("One or more selected equipment records could not be found.", submittedWorkScheduleValues(formData));
   }
   const employeeError = employeeSelectionError(input.data, employeeById);
-  if (employeeError) return errorState(employeeError);
+  if (employeeError) return errorState(employeeError, submittedWorkScheduleValues(formData));
 
   let scheduleId: string;
 
@@ -306,10 +323,10 @@ export async function createWeeklyScheduleAction(
     scheduleId = schedule.id;
   } catch (error) {
     if (isUniqueConstraintError(error)) {
-      return errorState("A Work Schedule already exists for this employee and week.");
+      return errorState("A Work Schedule already exists for this employee and week.", submittedWorkScheduleValues(formData));
     }
 
-    return errorState("Work Schedule could not be created. Review the fields and try again.");
+    return errorState("Work Schedule could not be created. Review the fields and try again.", submittedWorkScheduleValues(formData));
   }
 
   revalidatePath("/");
@@ -334,10 +351,10 @@ export async function updateWeeklyScheduleAction(
   });
   if (!existingSchedule) return errorState("Work Schedule could not be found.");
   if (!input.data.primaryEmployeeId && existingSchedule.primaryEmployeeId) {
-    return requiredEmployeeState("primaryEmployeeId");
+    return requiredEmployeeState("primaryEmployeeId", submittedWorkScheduleValues(formData));
   }
   if (!input.data.assignedByEmployeeId && existingSchedule.assignedByEmployeeId) {
-    return requiredEmployeeState("assignedByEmployeeId");
+    return requiredEmployeeState("assignedByEmployeeId", submittedWorkScheduleValues(formData));
   }
 
   const [equipmentById, employeeById] = await Promise.all([
@@ -345,7 +362,7 @@ export async function updateWeeklyScheduleAction(
     employeeMapFor(input.data),
   ]);
   if (missingEquipmentIds(input.data, equipmentById).length > 0) {
-    return errorState("One or more selected equipment records could not be found.");
+    return errorState("One or more selected equipment records could not be found.", submittedWorkScheduleValues(formData));
   }
   const existingEmployeeIds = unchangedEmployeeIds(input.data, existingSchedule);
   const employeeError = employeeSelectionError(
@@ -353,7 +370,7 @@ export async function updateWeeklyScheduleAction(
     employeeById,
     existingEmployeeIds,
   );
-  if (employeeError) return errorState(employeeError);
+  if (employeeError) return errorState(employeeError, submittedWorkScheduleValues(formData));
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -424,10 +441,10 @@ export async function updateWeeklyScheduleAction(
     });
   } catch (error) {
     if (isUniqueConstraintError(error)) {
-      return errorState("A Work Schedule already exists for this employee and week.");
+      return errorState("A Work Schedule already exists for this employee and week.", submittedWorkScheduleValues(formData));
     }
 
-    return errorState("Work Schedule could not be updated. Review the fields and try again.");
+    return errorState("Work Schedule could not be updated. Review the fields and try again.", submittedWorkScheduleValues(formData));
   }
 
   revalidatePath("/");
