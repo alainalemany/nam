@@ -8,12 +8,14 @@ relationships, enums, and data modeling notes.
 - [STOP Card Entities](#stop-card-entities)
 - [Daily Inspection Entities](#daily-inspection-entities)
 - [Operational Safety Checklist Entities](#operational-safety-checklist-entities)
+- [Dragline Delay Report Concepts](#dragline-delay-report-concepts)
 - [Defect Tracking Entities](#defect-tracking-entities)
 - [Shift Report Entities](#shift-report-entities)
 - [Work Authorization Entities](#work-authorization-entities)
 - [Knowledge Base Entities](#knowledge-base-entities)
 - [Daily Log Entities](#daily-log-entities)
 - [Historical Search And Calendar Entities](#historical-search-and-calendar-entities)
+- [Employee Reference Entity](#employee-reference-entity)
 - [Work Schedule Entities](#work-schedule-entities)
 - [Timesheet Entities](#timesheet-entities)
 - [Payslip Repository Entities](#payslip-repository-entities)
@@ -174,6 +176,135 @@ and upload timestamp. Parent/sequence and parent/checksum are unique, and the
 parent owns metadata lifecycle. Image bytes remain outside PostgreSQL in the
 private storage approved by ADR-018. This conceptual entity is not yet a Prisma
 model, generic attachment model, or implemented schema.
+
+## Dragline Delay Report Concepts
+
+Status: Confirmed conceptual data authority. No concepts in this section exist
+in `prisma/schema.prisma` yet. Implementation is sequenced as DDR-1 through
+DDR-3 in `docs/roadmap.md` and governed by
+`docs/architecture/features/dragline-delay-reports.md`.
+
+### DraglineDelayReport
+
+Stable aggregate root for one Dragline Equipment, operational work date, and
+Day/Night shift.
+
+Conceptual fields and rules:
+
+- Durable report identity.
+- Lifecycle status: Draft or Completed.
+- Required date-only operational work date.
+- Required shift restricted by DDR validation to `DAY` or `NIGHT`; the global
+  `ShiftType` enum remains unchanged.
+- Required live Dragline Equipment reference at creation.
+- Limited Equipment display name, number, category, Mine name, City name, and
+  City state snapshots.
+- Starting and Ending Hour Meter values using source-verified precision that is
+  still open.
+- Optional live supervisor Employee reference plus limited display-name and
+  employee-code snapshots while Draft completion rules remain open.
+- DDR-2 production, progress, normalized station, measurement, Ground Check,
+  comment, and optional safety/action facts.
+- Server-derived integer downtime and runtime minutes.
+- Required positive integer `recordVersion` for optimistic concurrency.
+- Created and updated timestamps.
+
+The tuple `(equipmentId, operationalWorkDate, shift)` is unique. Mine and City
+derive through Equipment and are not independent inputs. The root owns ordered
+operator participants, timeline entries, Ground Check entries, and correction
+events.
+
+Exact database type and validation for Starting/Ending Hour Meter must remain
+open until the source artifact confirms precision. Lake ID format, Direction
+vocabulary, negative Advance validity, and final completion-requiredness also
+remain open.
+
+### DraglineDelayReportOperator
+
+Ordered report-owned operator participation.
+
+Conceptual fields:
+
+- Durable child identity.
+- Parent report reference.
+- Positive display sequence unique within the report.
+- Live canonical Employee reference when available.
+- Employee display-name and employee-code snapshots.
+
+The same Employee may appear at most once per report. New selection uses active
+Employees. These rows represent report participation, not Work Schedule crew
+ownership.
+
+### DraglineDelayReportTimelineEntry
+
+Stable ordered operational timeline child.
+
+Conceptual fields:
+
+- Durable child identity.
+- Parent report reference.
+- Stable sequence used to order entries with equal actual start times.
+- Actual local `HH:mm` start time at integer-minute precision.
+- Operational-day offset or deterministic equivalent for after-midnight
+  chronology under the report work date.
+- Delay Code catalog version.
+- Official code, exact description, and derived category snapshots.
+- Description/context.
+- Optional integer duration minutes.
+- Explicit downtime-causing boolean.
+- Created and updated timestamps.
+
+Equal start times are valid. If the entry causes downtime, a positive integer
+duration is required. Non-downtime duration never contributes to report
+downtime. The official code must resolve from the source-verified catalog; no
+free-text code or category is stored as user authority.
+
+### DraglineDelayReportGroundCheck
+
+Repeatable ordered Ground Check time owned by DDR-2.
+
+Conceptual fields:
+
+- Durable child identity.
+- Parent report reference.
+- Positive sequence unique within the report.
+- Actual local `HH:mm` time.
+- Operational-day offset or deterministic equivalent.
+
+The list has no paper-form-derived fixed maximum. It remains manually entered
+in DDR-2 even if a source-verified timeline code can also represent Ground
+Check activity.
+
+### DraglineDelayReportCorrection
+
+Lightweight immutable evidence that a Completed report was corrected.
+
+Conceptual fields:
+
+- Durable correction-event identity.
+- Parent report reference.
+- Nonblank correction reason.
+- Correction timestamp.
+- Positive from-version and to-version values.
+
+The correction updates the same stable report and appends this event in one
+transaction. This child is not a full aggregate version, approval record, or
+generic audit system.
+
+### Derived Data Rules
+
+- Timeline intervals use half-open integer-minute ranges.
+- Down Time is the union length of all downtime-causing intervals and must be
+  within `0..720`.
+- Run Time is `720 - Down Time`.
+- Client-entered totals are never authoritative.
+- Station input preserves normalized station number/offset or deterministic
+  absolute feet, not notation-only text.
+- Station offset is normally `00..99`.
+- Advance is ending absolute feet minus starting absolute feet and is
+  server-derived.
+- Depth, Cable Drag, and Hoist use feet; Fuel uses gallons.
+- DDR report Fuel remains independent from `EquipmentFuelEvent`.
 
 ## Defect Tracking Entities
 
@@ -692,6 +823,41 @@ from Day View.
 
 Day View queries should return both records dated on the selected day and contextual records whose date range contains the selected day.
 
+Dragline Delay Reports do not participate in Day View during DDR-1 through
+DDR-3. Any later contribution requires separate authorization and a
+feature-owned selected-date contract.
+
+## Employee Reference Entity
+
+### Employee
+
+Implemented canonical people reference used by Work Schedule and approved for
+future Dragline Delay Report operator/supervisor selection.
+
+Implemented fields:
+
+- id
+- optional unique employeeCode
+- displayName
+- isActive
+- isSupervisor
+- createdAt
+- updatedAt
+
+Implemented relationships:
+
+- May own WeeklySchedule primary-employee relations.
+- May own WeeklySchedule Assigned By relations.
+- May be referenced by AssignmentCrewMember.
+- Will be the canonical reference source for ordered DDR operators and the DDR
+  supervisor when DDR persistence is implemented.
+
+New Work Schedule choices use active Employees, and Assigned By choices require
+`isSupervisor`. Inactivation removes a person from normal new selection while
+existing live relations and historical display snapshots remain readable.
+Employee is reference data, not a User, authenticated actor, payroll account,
+approval identity, or enterprise workforce-management system.
+
 ## Work Schedule Entities
 
 The Work Schedule feature architecture is defined in
@@ -711,8 +877,10 @@ Implemented fields:
 - weekStartDate
 - weekEndDate
 - status
+- primaryEmployeeId
 - primaryEmployeeDisplayName
 - primaryEmployeeKey
+- assignedByEmployeeId
 - assignedByDisplayName
 - receivedAt
 - sourceNote
@@ -728,13 +896,16 @@ Statuses:
 
 Relationships:
 
+- References one canonical primary Employee for current implemented creation.
+- References one canonical Assigned By Employee eligible as supervisor for
+  current implemented creation.
 - Has many DailyAssignment records
 
-`primaryEmployeeDisplayName` is the display/history value entered by the
-operator. `primaryEmployeeKey` is derived server-side from the display name by
-trimming, normalizing internal whitespace, and lowercasing. The key is used with
-`weekStartDate` for uniqueness and is not an Employee, Supervisor, User,
-operator, owner, or workforce identity relation.
+`primaryEmployeeDisplayName` and `assignedByDisplayName` are historical
+snapshots taken from the selected Employees. `primaryEmployeeKey` remains a
+server-derived normalized compatibility/history key. Current uniqueness uses
+`weekStartDate` plus the canonical `primaryEmployeeId`. Live Employee relations
+use SetNull-style deletion behavior so snapshots remain readable.
 
 ### DailyAssignment
 
@@ -814,6 +985,7 @@ Implemented fields:
 - dailyAssignmentId
 - phase
 - role
+- employeeId
 - displayName
 - isUnknown
 - notes
@@ -833,11 +1005,11 @@ Roles:
 Relationships:
 
 - Belongs to one DailyAssignment
+- May reference one canonical Employee with SetNull-style deletion behavior
 
-V1 uses name snapshots only for crew participants. It does not introduce an
-Employee, Supervisor, User, operator, owner, or workforce identity relation.
-Unknown or not-yet-registered partners should be represented explicitly without
-creating fake reference records.
+Current Work Schedule uses canonical Employee references plus assignment-owned
+display-name snapshots for known crew participants. Unknown partners remain an
+explicit state and do not create fake Employee records.
 
 Actual crew rows may be absent while actual assignment or actual crew
 information is unknown. Unknown-partner flags are mutually exclusive with a
@@ -846,9 +1018,9 @@ populated partner display name for the same planned or actual phase.
 ### Deferred Work Schedule Entities
 
 Full schedule revision history, supervisor publishing records, imported SMS
-messages, AI parsing artifacts, and future Employee or Supervisor reference
-relationships are deferred until the manual schedule workflow proves reliable
-and the product owner approves the added scope.
+messages, and AI parsing artifacts remain deferred. The canonical Employee and
+supervisor-eligibility relationships are implemented and do not imply those
+broader workflows.
 
 ## Timesheet Entities
 

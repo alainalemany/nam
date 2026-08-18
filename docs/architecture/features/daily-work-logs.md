@@ -35,8 +35,9 @@ Related Documents:
 - `docs/engineering-quality-standards.md`
 - `docs/architecture/features/day-view.md`
 - `docs/architecture/features/equipment-fuel-events.md`
+- `docs/architecture/features/dragline-delay-reports.md`
 
-Last Reviewed: 2026-07-15
+Last Reviewed: 2026-08-18
 
 ## 1. Purpose
 
@@ -91,6 +92,8 @@ Remaining evolution:
 
 Daily Work Logs do not own:
 
+- Dragline Delay Report structured report, Delay Code, downtime/runtime,
+  production, station, completion, or correction behavior.
 - Shift Report structure.
 - Work Authorization workflow or permit completion logic.
 - Daily Inspection forms.
@@ -149,6 +152,9 @@ implemented feature has a real reuse need.
 
 Daily Work Logs should treat related modules as external owners:
 
+- Dragline Delay Reports own the structured report for one Dragline,
+  operational work date, and Day/Night shift. DDR implementation must not
+  rename, repurpose, or mutate `DailyLog` or `DailyLogActivity` behavior.
 - Shift Reports own structured shift records.
 - Work Authorizations own permit and completion workflow.
 - Defects own defect lifecycle.
@@ -292,6 +298,15 @@ Remaining evolution:
   implemented.
 - Add global cross-module search only as a separately approved capability.
 
+Confirmed separate future direction:
+
+- Daily Log may later become a richer date-centered personal operational
+  timeline answering "What did I do today?" by composing feature-owned records
+  and lightweight manual events.
+- That redesign is not part of DDR-1 through DDR-3. The current Daily Log
+  create/edit/list/detail, filtering, links, and Day View behavior remain
+  unchanged while Dragline Delay Reports are implemented independently.
+
 Candidate future evolution:
 
 - Richer cross-module global search.
@@ -305,6 +320,8 @@ Future evolution should not:
 
 - Promote deferred automation into V1 without explicit approval.
 - Replace structured module records with Daily Log-only text fields.
+- Treat Dragline Delay Reports as renamed Daily Logs or move DDR calculations
+  and lifecycle into this feature.
 - Add shared abstractions before at least one other feature proves the need.
 - Add attachments, authentication, or analytics under the Daily Work Logs
   architecture without a confirmed milestone.

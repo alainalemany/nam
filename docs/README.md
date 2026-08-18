@@ -120,6 +120,7 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Understand current architecture | [Architecture Overview](architecture.md) |
 | Understand Equipment Operations boundaries | [Equipment Operations Architecture Assessment](architecture/equipment-operations.md) |
 | Understand Equipment Fuel Events architecture | [Equipment Fuel Events Architecture](architecture/features/equipment-fuel-events.md) |
+| Understand Dragline Delay Reports architecture | [Dragline Delay Reports Architecture](architecture/features/dragline-delay-reports.md) |
 | Understand Supply Requests architecture | [Supply Requests Architecture](architecture/features/supply-requests.md) |
 | Understand Knowledge Base V1 architecture | [Knowledge Base V1 Architecture](architecture/features/knowledge-base.md) |
 | Review source-derived reference catalogs | [Reference Catalogs](reference/README.md) |
@@ -172,6 +173,7 @@ to that home but should not restate the same policy in detail.
 | Module definitions | `docs/modules.md` |
 | Database philosophy and entities | `docs/database.md` |
 | Source-derived field, item, ordering, and response catalogs | `docs/reference/` |
+| Dragline Delay Report implementation architecture | `docs/architecture/features/dragline-delay-reports.md` |
 | Architecture philosophy | `docs/architecture.md`, principles in `docs/philosophy.md` |
 | Architecture decisions | `docs/decisions/` |
 | Infrastructure philosophy | `docs/infrastructure.md`, durable decisions in `docs/decisions/` |

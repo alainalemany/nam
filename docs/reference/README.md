@@ -16,3 +16,20 @@ do not replace feature architecture, product requirements, or source artifacts.
 
 Feature behavior and boundaries are authoritative in the
 [Operational Safety Checklists Architecture](../architecture/features/operational-safety-checklists.md).
+
+## Dragline Delay Reports
+
+The intended source-derived catalog location is:
+
+```text
+docs/reference/dragline-delay-reports/delay-code-catalog-v1.md
+```
+
+Status: Blocked. The original Dragline Delay Report front and official Delay
+Code Legend are not committed. They must first be preserved under
+`source-forms/dragline-delay-report/` and visually verified. Do not create the
+catalog from memory, inference, Timesheet Work Codes, or rewritten
+descriptions.
+
+Feature behavior and source-closure rules are authoritative in the
+[Dragline Delay Reports Architecture](../architecture/features/dragline-delay-reports.md).

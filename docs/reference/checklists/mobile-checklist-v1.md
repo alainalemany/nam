@@ -121,8 +121,9 @@ typing, but prior responses must never be copied or preselected.
 
 The source displays the Operator as a person name and Supervisor as a
 selection-style person field. NAM V1 stores required operator and supervisor
-display-name snapshots. It does not introduce Employee, Supervisor, User,
-authentication, or workforce-management models.
+display-name snapshots. A canonical Employee reference model now exists, but
+the accepted checklist implementation does not use it and this catalog does not
+change checklist behavior, authentication, or workforce-management scope.
 
 ## 7. Meter Type
 

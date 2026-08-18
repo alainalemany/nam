@@ -21,6 +21,7 @@ future phases.
 - [Work Schedule Roadmap](#work-schedule-roadmap)
 - [Timesheet Roadmap](#timesheet-roadmap)
 - [Daily Log And Historical Search Roadmap](#daily-log-and-historical-search-roadmap)
+- [Dragline Delay Reports Roadmap](#dragline-delay-reports-roadmap)
 - [Knowledge Base Roadmap](#knowledge-base-roadmap)
 - [Payslip Repository Roadmap](#payslip-repository-roadmap)
 - [Equipment Fuel Events Roadmap](#equipment-fuel-events-roadmap)
@@ -341,10 +342,11 @@ Feature implementation architecture:
 
 Current status: Product discovery, feature architecture, and V1 foundation are
 complete. The implementation provides the weekly grid, independent daily
-assignments, planned-versus-actual preservation, crew participants, Assigned By
-source context, equipment-derived location context, and feature-owned
-validation described in the feature architecture. Day View participation is
-implemented through a Work Schedule-owned selected-date context helper.
+assignments, planned-versus-actual preservation, canonical Employee selection,
+crew participants and snapshots, supervisor-eligible Assigned By context,
+equipment-derived location context, and feature-owned validation described in
+the feature architecture. Day View participation is implemented through a Work
+Schedule-owned selected-date context helper.
 
 ### Phase 1: Requirements Definition (Complete)
 
@@ -377,6 +379,9 @@ implemented through a Work Schedule-owned selected-date context helper.
   Actions and Zod validation.
 - Preserve planned values when actual assignment values differ.
 - Capture planned and actual crew participants.
+- Use canonical Employee references for primary employee, planned/actual crew,
+  and supervisor-eligible Assigned By selection while retaining historical
+  display snapshots.
 - Capture Assigned By and optional schedule-level source metadata.
 - Preserve equipment-derived historical location display context.
 - Add proportional validation, query, and persistence tests.
@@ -532,6 +537,82 @@ planned or deferred as described below.
 - Add full historical timeline view for any selected date
 - Add Work Order module integration
 - Add advanced analytics from Daily Log activities
+
+## Dragline Delay Reports Roadmap
+
+Approved feature implementation architecture:
+
+`docs/architecture/features/dragline-delay-reports.md`
+
+Current status: Product direction and Level 2 documentation architecture are
+approved. Implementation has not started. The original Dragline Delay Report
+front and official Delay Code Legend are absent, so the official catalog and
+source-dependent validation remain blocked until source closure under
+`source-forms/dragline-delay-report/`.
+
+### DDR-1 — Independent Draft Report Foundation
+
+Target:
+
+- Additive Dragline Delay Report persistence and migration.
+- Source-verified, versioned official Delay Code catalog only after both source
+  artifacts exist.
+- Required active Dragline Equipment/date/Day-or-Night identity with derived
+  Mine/City and historical snapshots.
+- Canonical Employee operator and supervisor relationships with ordered
+  report-owned operator participation and historical snapshots.
+- Draft history, create, edit, and detail surfaces.
+- Stable timeline child identities, actual-time entry, concurrent equal-time
+  rows, and deterministic overnight chronology.
+- Explicit per-entry downtime meaning.
+- Integer-minute interval-union downtime and server-derived runtime from 720
+  minutes.
+- Station parser, normalization, absolute-feet, and Advance helpers with
+  focused tests; negative-Advance acceptance remains unresolved.
+- Optimistic stale-version protection for repeated Draft saves.
+
+Exclusions:
+
+- No Daily Log or `DailyLogActivity` change.
+- No existing Shift Report change.
+- No Day View participation.
+- No attachments, photos, or media infrastructure.
+- No global shift enum redesign.
+- No Work Schedule dependency.
+- No guessed official Delay Code catalog or source-dependent hour-meter
+  precision.
+
+### DDR-2 — Production / Progress / End-of-Shift Completion
+
+Target:
+
+- Source-verified production and end-of-shift fields.
+- Normal Digging Buckets and Benchfill Buckets.
+- Lake ID and Direction after format/vocabulary closure.
+- Station Start and End with server-derived Advance.
+- Derived Run Time and Down Time.
+- Manual Depth in feet.
+- Manual Fuel in gallons, independent from Equipment Fuel Events.
+- Optional Cable Drag and Hoist in feet.
+- Repeatable ordered manual Ground Check times.
+- Comments, optional Safety Items Found, and optional Action Taken.
+- Approved completion-requiredness validation.
+
+### DDR-3 — Completion / Correction
+
+Target:
+
+- Explicit `DRAFT -> COMPLETED` transition.
+- Completed read-only detail by default.
+- Explicit Correct Report workflow on the same stable identity.
+- Required correction reason.
+- Optimistic stale-version protection for completion and correction races.
+- Durable lightweight correction-event history sufficient to show each
+  correction occurred without generic revision infrastructure.
+
+Future Dragline Delay Report Day View participation requires separate
+authorization. Future Daily Log redesign remains a separate product and
+architecture milestone.
 
 ## Knowledge Base Roadmap
 

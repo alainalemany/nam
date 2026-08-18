@@ -21,6 +21,7 @@ Implementation standards for turning these modules into feature slices live in
 - [Daily Inspections](#daily-inspections)
 - [Operational Safety Checklists](#operational-safety-checklists)
 - [Daily Log](#daily-log)
+- [Dragline Delay Reports](#dragline-delay-reports)
 - [Knowledge Base](#knowledge-base-kb)
 - [Work Schedule](#work-schedule)
 - [Timesheet](#timesheet)
@@ -31,13 +32,10 @@ Implementation standards for turning these modules into feature slices live in
 
 ## Source Documents
 
-## Collected Forms
-
-- Dragline Delay Report
-- Delay Code Legend
-
 ## Pending Collection
 
+- Dragline Delay Report front/report artifact
+- Official Delay Code Legend artifact
 - STOP Card
 - Final approved Dragline and Mobile checklist item sets
 - Greasing Form
@@ -48,6 +46,11 @@ Implementation standards for turning these modules into feature slices live in
 Pending source-form collection does not mean the corresponding software module
 is unimplemented. STOP Cards and Daily Inspections currently use the approved V1
 fields documented in `docs/database.md` and their feature architecture documents.
+
+The Dragline Delay Report artifacts are not collected. Their intended durable
+location is `source-forms/dragline-delay-report/`. Do not create the official
+Delay Code catalog until the original report front and legend are committed and
+verified.
 
 ## Shift Reports
 
@@ -351,6 +354,70 @@ Version 1 should support manual Daily Log entries, activity categories, notes, d
 
 Future phases may add richer timelines, templates, analytics, or work order integration after those modules are defined.
 
+The current Daily Log remains the implemented personal/narrative workday layer
+and must not be renamed, repurposed, or rewritten as a Dragline Delay Report.
+Its later evolution toward a richer date-centered timeline answering "What did
+I do today?" is separate future product work, not part of DDR delivery.
+
+## Dragline Delay Reports
+
+Dragline Delay Reports are structured operational shift records. One report
+belongs to one canonical Dragline Equipment, one operational work date, and one
+Day or Night shift. The operator creates it near shift start, saves it
+throughout the shift as Draft, and completes it near shift end.
+
+Approved implementation architecture:
+
+`docs/architecture/features/dragline-delay-reports.md`
+
+### Owned Workflow
+
+The feature owns:
+
+- Stable report identity and `DRAFT -> COMPLETED` lifecycle.
+- Explicit Correct Report behavior with reason, stale-version protection, and
+  durable lightweight correction metadata.
+- Canonical Dragline Equipment context with derived Mine/City and historical
+  snapshots.
+- Multiple ordered operator participants and one supervisor selected from the
+  canonical Employee model with historical snapshots.
+- Starting and Ending Hour Meter report facts after source precision closes.
+- A stable concurrent timeline using one source-verified official code per
+  entry.
+- Explicit per-entry downtime meaning, integer-minute interval-union downtime,
+  and runtime derived from a 720-minute shift.
+- Production/progress fields, normalized stations and derived Advance, manual
+  Depth/Fuel/Cable facts, repeatable Ground Check times, comments, and optional
+  safety/action fields.
+
+### Boundaries
+
+Daily Log retains personal workday narrative and all current behavior.
+Existing Shift Reports retain generic shift coordination and Work Authorization
+parent context. Work Schedule may later supply convenience context but is not a
+DDR dependency. Equipment Fuel Events retain structured fueling occurrence
+ownership; DDR Fuel is a separate manual report fact.
+
+DDR does not own Daily Log links, Day View participation, attachments, photos,
+Operational Safety Checklist media, approval workflow, corporate submission,
+or a global shift redesign in DDR-1 through DDR-3.
+
+### Source Closure
+
+The official Delay Code catalog is a controlled, versioned application catalog
+with exactly Operational, Mechanical, and Electrical categories. The UI will
+use one searchable code/description dropdown and derive category. The catalog
+is blocked until the missing original report front and official legend are
+preserved in `source-forms/dragline-delay-report/`; official codes and
+descriptions must not be invented or rewritten.
+
+### Open Questions
+
+Open source/validation questions are exact hour-meter precision, Lake ID
+format, Direction vocabulary, negative Advance support, completion-required
+fields, future Ground Check derivation, and any precision finer than integer
+minutes.
+
 ## Knowledge Base (KB)
 
 The Knowledge Base module preserves reusable personal operational knowledge
@@ -467,7 +534,8 @@ The Work Schedule module tracks the operator's weekly employee-to-equipment
 assignments and schedule changes.
 
 Current implementation status: V1 foundation implemented with manual weekly
-schedule list, create, detail, edit workflows, and Day View participation.
+schedule list, canonical Employee reference management and schedule
+relationships, create, detail, edit workflows, and Day View participation.
 Timesheet reconciliation, SMS import, and automation remain deferred.
 
 ### Purpose
@@ -502,8 +570,10 @@ Schedule for the rest of the week: Saturday at 137 and Sunday remains off. Next 
 - Enter independent Daily Assignments for Monday through Sunday.
 - Preserve planned assignment details separately from actual assignment details.
 - Record the primary employee whose schedule is being entered.
+- Select known primary and planned/actual crew participants from active
+  canonical Employee references while preserving Work Schedule snapshots.
 - Record the supervisor or source who communicated the schedule using the
-  user-facing label "Assigned By".
+  user-facing label "Assigned By" and existing supervisor eligibility.
 - Mark days as scheduled, non-working, unknown, or cancelled.
 - Assign planned and actual equipment when known.
 - Derive normal mine and city context from Equipment while preserving

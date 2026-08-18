@@ -99,9 +99,9 @@ NAM Dashboard should:
 - Replace scattered notes and paperwork with structured, searchable records.
 - Preserve a permanent historical timeline by date, equipment, mine, and
   module.
-- Connect daily logs, shift reports, inspections, work authorizations, defects,
-  schedules, fuel records, Equipment inspection records, payslip records, and
-  related documents.
+- Connect daily logs, Dragline Delay Reports, shift reports, inspections, work
+  authorizations, defects, schedules, fuel records, Equipment inspection
+  records, payslip records, and related documents.
 - Reduce manual record-finding effort when reviewing past workdays.
 - Keep Version 1 focused on manual entry, clean workflows, and reliable
   historical records.
@@ -128,10 +128,10 @@ records are first-class concepts because the product value is historical lookup.
 
 ### Modules Should Connect Without Becoming One Large Form
 
-Daily logs, shift reports, inspections, work authorizations, schedules,
-timesheets, fuel records, Equipment inspections, and payslip records should
-remain distinct modules while linking to shared operational context where
-useful.
+Daily logs, Dragline Delay Reports, shift reports, inspections, work
+authorizations, schedules, timesheets, fuel records, Equipment inspections, and
+payslip records should remain distinct modules while linking to shared
+operational context where useful.
 
 ### Sensitive Financial Context Stays Separate
 
@@ -160,6 +160,8 @@ into confirmed requirements.
 - Record daily inspections and equipment findings.
 - Track defects from report through closure.
 - Enter and revise work schedules manually.
+- Maintain canonical Employee references used by Work Schedule, including
+  supervisor eligibility and historical schedule snapshots.
 - Track timesheet entries and weekly totals.
 - Record operational Equipment fueling history separately from future Fleet
   purchase history.
@@ -182,6 +184,8 @@ into confirmed requirements.
 
 ### Blocked
 
+- Implement the official Dragline Delay Report Delay Code catalog only after
+  the original report front and official legend are committed and verified.
 - Resolve Payslip Repository privacy, access, storage, extraction, redaction,
   and export decisions before feature architecture or implementation.
 - Keep optional checklist-level photo evidence blocked until ADR-018's access,
@@ -220,6 +224,8 @@ The current implemented product capabilities include:
   workflows.
 - Work Schedule and Timesheet weekly workflows with feature-owned Day View
   contributions.
+- Canonical Employee reference management and Work Schedule Employee
+  relationships for primary employee, Assigned By, and known crew participants.
 - Operational Safety Checklist history, create, detail, correction, canonical
   Dragline and Mobile templates, `HOURS`/`MILES` meters, NAM save confirmation,
   Create Another, feature-owned filtering, and Day View participation.
@@ -239,6 +245,10 @@ The current implemented product capabilities include:
 
 ### Future Product Work
 
+- Dragline Delay Reports are confirmed future product work with an Approved
+  Level 2 architecture and an additive DDR-1 through DDR-3 sequence. The
+  current Daily Log remains unchanged; its later evolution into a richer
+  date-centered personal operational timeline is a separate future milestone.
 - Payslip Repository remains conceptually planned but blocked from
   implementation by unresolved sensitive-data decisions and the absence of an
   accepted Level 2 feature architecture.
@@ -269,6 +279,8 @@ The MVP is a usable personal operations record system, not a prototype shell.
 For Version 1, the MVP should provide:
 
 - Reliable manual entry for the core operational records.
+- Structured Dragline Delay Reports that remain separate from the personal
+  Daily Log narrative.
 - Date-centered historical lookup.
 - Connections between records, equipment, mines, and modules.
 - Clean create, edit, list, and detail workflows for implemented modules.
@@ -284,9 +296,9 @@ support, or multi-user organizational workflows.
 ## Long-Term Product Vision
 
 NAM Dashboard should become a durable personal operations memory for mining
-work: a place where daily activity, equipment context, paperwork, schedules,
-timesheets, fuel activity, Equipment inspections, and payslip history can be
-reviewed across months and years.
+work: a place where daily activity, structured Dragline shift reports,
+equipment context, paperwork, schedules, timesheets, fuel activity, Equipment
+inspections, and payslip history can be reviewed across months and years.
 
 Long-term growth should preserve the product's core discipline:
 

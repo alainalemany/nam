@@ -10,6 +10,7 @@ Primary Feature: Work Schedule
 Depends On:
 
 - Operations reference data for equipment, mine, and city context
+- Canonical Employee reference data and supervisor eligibility
 - Manual Work Schedule entry decision in `docs/decisions/adr-004-manual-work-schedule-entry.md`
 - Date-aware Day View composition
 - `docs/product-roadmap.md`
@@ -38,7 +39,7 @@ Related Documents:
 - `docs/architecture/features/day-view.md`
 - `docs/decisions/adr-004-manual-work-schedule-entry.md`
 
-Last Reviewed: 2026-07-13
+Last Reviewed: 2026-08-18
 
 ## 1. Purpose
 
@@ -84,7 +85,7 @@ V1 foundation should include:
 
 - Manual weekly schedule entry.
 - Monday-through-Sunday weekly grid.
-- One Weekly Schedule per normalized primary employee display name and week.
+- One Weekly Schedule per canonical primary Employee and week.
 - Independent Daily Assignment records under the weekly schedule.
 - Planned and actual assignment fields preserved independently.
 - Planned and actual crew participants with primary employee and partner
@@ -97,6 +98,7 @@ V1 foundation should include:
 Implemented V1 foundation:
 
 - Work Schedule data model and migration.
+- Canonical Employee model, management surfaces, and Work Schedule relations.
 - Feature-owned list, create, detail, and edit routes.
 - Weekly grid entry for Monday-through-Sunday assignments.
 - Planned and actual assignment fields, crew snapshots, Assigned By, and
@@ -235,67 +237,53 @@ child records and still preserves the business distinction the product needs.
 
 ### Crew Modeling
 
-V1 should use assignment-owned crew participant records rather than a single
-free-text partner field.
+Work Schedule uses assignment-owned crew participant records rather than one
+free-text partner field. Current HEAD also has one canonical `Employee` model
+and Employee management surface.
 
-Work Schedule V1 uses name snapshots only for crew identity.
-
-Crew participant records should distinguish:
+Crew participant records distinguish:
 
 - Planned or actual crew phase.
-- Role, such as primary employee or partner.
-- Stored display name for historical readability.
-- Explicit unknown-partner state when the partner is not yet known.
+- Primary employee or partner role.
+- Live canonical Employee reference when the participant is known.
+- Stored display-name snapshot for historical readability.
+- Explicit unknown-partner state when the partner is not known.
 
-V1 does not introduce an Employee Prisma model, Supervisor Prisma model, User
-model, operator model, owner model, or workforce identity model. V1 also does
-not introduce Employee or Supervisor relations on Work Schedule records.
+Weekly Schedule references the canonical primary Employee. Planned and actual
+known crew participants reference Employees and preserve assignment-owned name
+snapshots. Actual crew may remain absent until actual assignment or crew
+information is known. Unknown partners remain explicit and must not create fake
+Employee records; an unknown-partner flag and populated partner identity are
+mutually exclusive for one phase.
 
-The personal schedule owner is persisted as a required display-name snapshot,
-such as `primaryEmployeeDisplayName`. V1 also derives a normalized owner key
-server-side from that display name for weekly uniqueness. The key is an
-implementation identity key, not an Employee, User, operator, or owner
-reference.
-
-Planned and actual crew participants are persisted as assignment-owned display
-name snapshots. Actual crew participants may be absent until actual assignment
-or actual crew information is explicitly known. Unknown partners must be
-represented without creating fake Employee records, and an unknown-partner flag
-must not be stored with a populated partner display name for the same phase.
-
-The current repository has no Employee or Supervisor Prisma model, and the
-product is still personal-entry oriented. Requiring workforce reference data
-would turn Work Schedule into a broader crew-management system before the need
-is proven.
-
-The primary employee is the person whose schedule is being recorded. Other crew
-members are assignment participants, not separate schedule owners. A future
-Employee or Supervisor relation may be considered later, but it is not a V1
-field or requirement. A future supervisor-published multi-employee schedule can
-revisit that boundary.
+The primary employee is the person whose schedule is being recorded. Other
+crew members are assignment participants, not separate schedule owners.
+Canonical Employee reference data does not create User accounts, authentication,
+supervisor publishing, approvals, payroll ownership, or enterprise crew
+management.
 
 ### Assigned By
 
 The Weekly Schedule records who communicated or assigned the schedule using the
 user-facing label "Assigned By".
 
-V1 should not imply that a supervisor logged into NAM Dashboard. It should
-record the source supervisor or communicator as entered by the operator.
+Work Schedule must not imply that a supervisor logged into NAM Dashboard. It
+records the source supervisor or communicator by selecting a canonical active
+Employee with `isSupervisor` eligibility.
 
-Work Schedule V1 persists Assigned By as a display-name snapshot, such as
-`assignedByDisplayName`. It does not introduce supervisor authentication, a
-Supervisor Prisma model, or a Supervisor relation. A future Supervisor relation
-may be considered later, but it is not a V1 field or requirement.
+The Weekly Schedule stores a live Assigned By Employee relation plus an
+`assignedByDisplayName` snapshot. This relation does not create supervisor
+authentication, approval, publishing, or a separate Supervisor model.
 
 V1 should include:
 
-- Assigned By display value.
+- Assigned By Employee and display snapshot.
 - Optional received date/time.
 - Optional schedule-level notes.
 
 Deferred:
 
-- Required supervisor account.
+- Supervisor account or authenticated actor.
 - Supervisor publishing workflow.
 - Automated source-channel ingestion.
 - Full original SMS storage as a default field.
@@ -439,6 +427,8 @@ Weekly Grid expectations:
 
 - Header with week range, previous week, current week, and next week controls.
 - Assigned By field in the schedule header.
+- Canonical Employee selectors for the primary employee, Assigned By, and
+  known planned/actual crew participants.
 - Optional received date/time and schedule-level notes when included in V1.
 - Monday through Sunday rows or cards.
 - Planned section for each day.
@@ -479,11 +469,14 @@ V1 validation should cover:
 - Employee cannot appear twice in the same planned crew or actual crew.
 - Unknown partners must be representable without forcing a fake Employee
   record.
-- Unknown partner flags and populated partner display names are mutually
+- Unknown partner flags and populated partner Employee identities are mutually
   exclusive for each planned or actual crew phase.
-- The normalized owner key must be derived server-side from the primary
-  employee display name and must not be user-entered.
-- Assigned By must be present when the Weekly Schedule is active.
+- New selected Employees must exist and be active; unchanged inactive
+  historical selections remain readable during edit.
+- The normalized owner key and display snapshots must be derived server-side
+  from the selected primary Employee and must not be user-entered.
+- Assigned By must be present for current creation and must reference an
+  eligible supervisor Employee.
 - Equipment IDs must refer to valid Equipment records when provided.
 - Night shifts are stored against the date they start.
 
@@ -508,8 +501,10 @@ V1 test priorities:
 - Unknown partner handling.
 - Actual crew remaining absent until actual assignment or actual crew
   information is explicitly known.
-- Normalized owner key uniqueness for equivalent display names.
+- Canonical Employee/week uniqueness and historical snapshot preservation.
 - Assigned By validation.
+- Active Employee and supervisor-eligibility validation, including unchanged
+  inactive historical selections.
 - Equipment ID validation.
 - Transaction behavior for weekly grid saves.
 - Feature-owned query helpers for week and date lookup.
@@ -536,7 +531,7 @@ Follow-up capabilities:
 
 Candidate future possibilities:
 
-- Supervisor login and publishing.
+- Supervisor login and publishing using a separately approved identity model.
 - Multi-employee organization-wide schedules.
 - Notifications and reminders.
 - SMS ingestion.
@@ -627,3 +622,5 @@ Work Schedule V1 architecture is successful when:
   integration remain deferred.
 - The feature continues to follow repository-wide delivery, dependency,
   feature, state, UI, testing, and quality standards.
+- Known primary, partner, and Assigned By people use canonical Employee
+  references while historical Work Schedule snapshots remain feature-owned.

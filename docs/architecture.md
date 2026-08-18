@@ -144,6 +144,7 @@ Confirmed deployment baseline:
 | Equipment Operations boundary assessment | `docs/architecture/equipment-operations.md` |
 | Operational Safety Checklists feature architecture | `docs/architecture/features/operational-safety-checklists.md` |
 | Equipment Fuel Events feature architecture | `docs/architecture/features/equipment-fuel-events.md` |
+| Dragline Delay Reports feature architecture | `docs/architecture/features/dragline-delay-reports.md` |
 | Architecture decisions | `docs/decisions/README.md` |
 | Development workflow | `docs/development.md` |
 | Infrastructure operations | `docs/infrastructure.md` |
@@ -166,6 +167,22 @@ checklist-photo upload and serving remain blocked until that boundary is
 implemented and verified and the remaining Phase 23.5 processing, storage,
 backup, and recovery prerequisites close. Photo metadata and storage remain
 Operational Safety Checklist-owned rather than a generic attachment platform.
+
+Current HEAD also includes canonical Employee reference data and Employee
+management. Work Schedule uses live Employee relationships plus historical
+snapshots for the primary employee, Assigned By supervisor, and assignment crew
+participants. Employee remains reference data rather than authentication or
+workforce-management infrastructure.
+
+Dragline Delay Reports are an approved future additive feature with Level 2
+architecture in
+`docs/architecture/features/dragline-delay-reports.md`. They will use canonical
+Dragline Equipment and Employee references, feature-owned versioned Delay Code
+data, stable Draft aggregates, integer-minute interval-union downtime, derived
+runtime, and explicit completion/correction. They do not repurpose existing
+Daily Logs or Shift Reports, and DDR-1 through DDR-3 do not participate in Day
+View or introduce media. Official Delay Code implementation remains blocked
+until the missing source artifacts are committed and verified.
 
 ## Architecture Decision Records
 

@@ -66,6 +66,7 @@ documentation architecture milestone explicitly approves that reorganization.
 | Feature | Document | Status |
 | --- | --- | --- |
 | Daily Work Logs | [Daily Work Logs Architecture](daily-work-logs.md) | Approved; V1 foundation, filtering, date navigation, and Day View participation implemented |
+| Dragline Delay Reports | [Dragline Delay Reports Architecture](dragline-delay-reports.md) | Approved documentation architecture; implementation not started; official source artifacts and Delay Code catalog remain open |
 | Day View | [Day View Architecture](day-view.md) | Approved; selected-date composition implemented with eleven feature-owned contributors, including Supply Requests |
 | STOP Cards | [STOP Cards Architecture](stop-cards.md) | Approved; V1 foundation, filtering, and Day View participation implemented |
 | Daily Inspections | [Daily Inspections Architecture](daily-inspections.md) | Approved; V1 foundation, current-schema filtering, and Day View participation implemented |

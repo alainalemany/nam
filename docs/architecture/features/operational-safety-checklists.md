@@ -39,7 +39,7 @@ Related Documents:
 - `docs/decisions/adr-018-private-operational-safety-checklist-photo-storage.md`
 - `docs/decisions/adr-019-managed-private-overlay-operational-pilot.md`
 
-Last Reviewed: 2026-07-17
+Last Reviewed: 2026-08-18
 
 Implementation Status: The V1 foundation is implemented with canonical
 Dragline and Mobile code-owned templates, complete-only submission, explicit
@@ -374,8 +374,9 @@ Mobile catalogs or the source PDFs.
 
 ## 12. Person Identity
 
-The repository has no Employee, User, or Supervisor identity model. V1 should
-use checklist-owned display-name snapshots:
+The repository now has a canonical Employee reference model and Employee
+management surface. The accepted checklist V1 implementation predates that
+model and continues to use checklist-owned display-name snapshots:
 
 - Operator display name.
 - Supervisor display name.
@@ -385,8 +386,10 @@ management, or supervisor participation in the application.
 
 Both display names are required, trimmed snapshots. No normalized operator key
 is required for record uniqueness. Operator and supervisor history filters may
-use normalized, case-insensitive input without introducing person-reference
-models.
+use normalized, case-insensitive input. This documentation correction does not
+add Employee relations to existing checklist persistence or change checklist
+behavior. Any future checklist adoption of canonical Employee references
+requires separate scope and migration review.
 
 ## 13. Historical Integrity
 
@@ -848,8 +851,9 @@ Deferred capabilities include:
   context.
 - The existing Daily Inspection summary record remains unchanged.
 - Equipment is the required reference anchor; Mine and City are derived.
-- Operator and supervisor are required display-name snapshots rather than
-  person-reference models.
+- Operator and supervisor remain required checklist-owned display-name
+  snapshots rather than canonical Employee relations in the accepted V1
+  implementation.
 - Templates are fixed, versioned, and feature-owned rather than configurable.
 - Canonical V1 catalogs preserve exact source wording, ordering, visible
   markers, and item-specific response sets.

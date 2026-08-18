@@ -25,6 +25,7 @@ roadmap governance is [Product Roadmap](product-roadmap.md).
 - [Operational Safety Checklist Requirements](#operational-safety-checklist-requirements)
 - [Historical Record And Search Requirements](#historical-record-and-search-requirements)
 - [Daily Log Requirements](#daily-log-requirements)
+- [Dragline Delay Report Requirements](#dragline-delay-report-requirements)
 - [Payslip Repository Requirements](#payslip-repository-requirements)
 - [Equipment Fuel Event Requirements](#equipment-fuel-event-requirements)
 - [Supply Request Requirements](#supply-request-requirements)
@@ -181,6 +182,14 @@ Potential fields:
 - Related Work Authorizations
 - Contractors or visitors escorted
 - Attachments or links
+
+### 4A. Dragline Delay Reports
+
+Record one structured Dragline operational report for one canonical Dragline
+Equipment, one operational work date, and one Day or Night shift. The report is
+created near shift start, saved throughout the shift as Draft, and completed
+near shift end. It is a separate concept from both Daily Log and the existing
+generic Shift Report module.
 
 ### 5. Defect Tracking
 
@@ -506,6 +515,12 @@ The system should preserve who worked together on a given date. Dragline crew
 or partner information may be known when the weekly schedule is entered,
 unknown until the employee arrives, or different from the original plan.
 
+Current HEAD provides one canonical Employee model and Employee management
+surface. Work Schedule uses active Employee references for its primary
+employee and known planned/actual crew, uses supervisor-eligible Employees for
+Assigned By, and preserves schedule-owned display snapshots for history.
+Unknown partners remain explicit and must not create fake Employee records.
+
 The schedule should record who communicated or assigned the schedule using the
 label "Assigned By" without implying that a supervisor logged into NAM
 Dashboard.
@@ -645,6 +660,159 @@ A mid-shift work truck or other Equipment replacement belongs in the Daily Log
 as operational narrative or an appropriate existing activity. It does not
 alter the original shift-start checklist, automatically create another
 checklist, or require a standalone truck log or Fleet assignment history.
+
+The current Daily Log implementation must remain operational and unchanged
+during Dragline Delay Report delivery. Daily Log is the personal/narrative
+workday layer; Dragline Delay Report is a structured Dragline shift operational
+record. A future Daily Log redesign may make it a richer date-centered personal
+timeline answering "What did I do today?", but that redesign is not part of
+DDR-1 through DDR-3.
+
+## Dragline Delay Report Requirements
+
+NAM Dashboard must support Dragline Delay Reports as an additive structured
+feature governed by
+`docs/architecture/features/dragline-delay-reports.md`.
+
+### Identity And Lifecycle
+
+- One report represents one canonical Dragline Equipment, one operational work
+  date, and one shift.
+- Accepted shifts are Day and Night only. Existing global `SWING`, `OTHER`, and
+  `UNKNOWN` values remain available to other features but are invalid for DDR.
+- Historical paper Shift 1 maps to Day and Shift 2 maps to Night. Paper Shift 3
+  is not modeled.
+- Lifecycle is `DRAFT -> COMPLETED`.
+- Draft reports may be saved and edited repeatedly throughout a shift.
+- Completed reports are read-only by default.
+- Post-completion change requires an explicit Correct Report workflow, a
+  nonblank reason, the same stable report identity, durable correction
+  metadata, and stale-version protection.
+- DDR must not add approval workflow or a heavyweight generic revision system.
+
+### Header And References
+
+The report header includes:
+
+- Equipment.
+- Operational Work Date.
+- Day or Night shift.
+- Starting Hour Meter.
+- Ending Hour Meter.
+- One or more ordered operators.
+- Supervisor.
+
+Equipment must be canonical Dragline Equipment. Mine and City derive through
+Equipment rather than separate selection. Operators and supervisor use the
+existing canonical Employee model. New supervisor selection uses existing
+supervisor eligibility. Report-owned name/code snapshots preserve historical
+meaning. Work Schedule may later provide convenience context, but it is not a
+creation, save, completion, or correction dependency.
+
+Exact hour-meter numeric precision remains an Open Question pending source
+verification. Implementation must not invent a precision or final database
+validation rule.
+
+### Official Delay Code Catalog
+
+The official Delay Code catalog must be a controlled, versioned application
+catalog derived from the authoritative legend. It is not an editable admin
+table, Timesheet Work Codes, free-text categories, or a React-only list.
+
+Official user-facing categories are exactly:
+
+- Operational.
+- Mechanical.
+- Electrical.
+
+The UI uses one searchable Delay Code dropdown grouped by those categories. It
+searches code and description, derives category from the selected code, and
+has no separate Category input. Official codes and descriptions must not be
+invented, inferred, renumbered, normalized, or rewritten.
+
+The original report front and Delay Code Legend are absent as of 2026-08-18.
+They remain required under `source-forms/dragline-delay-report/`; the official
+catalog must not be generated until both are committed and verified.
+
+### Operational Timeline And Calculations
+
+Each report owns a chronological timeline. Each entry records actual start
+time, one official code, description/context, duration when applicable, and an
+explicit semantic distinction indicating whether it causes machine downtime.
+
+- Actual integer-minute times are allowed; the digital workflow is not limited
+  to paper-style ten-minute rows.
+- Multiple entries may have the same start time.
+- Concurrent activities are valid.
+- Overnight chronology must remain deterministic across midnight while the
+  report keeps its original operational work date.
+- Downtime means unique minutes when the Dragline is stopped.
+- Total downtime is the interval union of all downtime-causing entries, not the
+  sum of every duration.
+- Overlapping downtime is counted once.
+- Concurrent non-downtime work adds no machine downtime.
+- Normal shift duration is 720 minutes.
+- Run Time is server-derived as `720 - Down Time`.
+- Client-entered runtime or downtime totals are never authoritative.
+
+### Station And Advance
+
+Station values use the operational 100-foot convention. Familiar notation may
+be used for input and display, but storage must preserve normalized numeric
+meaning.
+
+```text
+absolute feet = station number * 100 + offset feet
+advance = ending absolute feet - starting absolute feet
+```
+
+Offset is normally `00` through `99`. `50+30 -> 50+60` and
+`50+90 -> 51+20` both derive 30 feet of Advance. Advance is calculated by NAM
+and is not manually re-entered. Whether reverse movement or negative Advance
+is valid remains an Open Question.
+
+### Production And End-Of-Shift Facts
+
+The structured report includes:
+
+- Normal Digging Buckets.
+- Benchfill Buckets.
+- Lake ID and Direction.
+- Station Start and Station End with derived Advance.
+- Derived Run Time and Down Time.
+- Manual Depth in feet.
+- Manual Fuel in gallons.
+- Optional Cable Drag in feet.
+- Optional Hoist in feet.
+- Repeatable ordered Ground Check times.
+- Comments.
+- Optional Safety Items Found.
+- Optional Action Taken.
+
+Depth is manually entered; no automatic source is inferred. Fuel is manually
+entered at report level and remains independent from Equipment Fuel Events in
+the first implementation. Cable Drag and Hoist record optional feet cut off
+during a drag-cable or hoist-cable resocket; they do not create a maintenance
+or cable-lifecycle workflow.
+
+Every Ground Check time must be recordable. The digital model uses an unbounded
+repeatable ordered list rather than a fixed number of paper-form boxes. Ground
+Checks inspect whether cracking, crumbling toward or into the lake, unsafe
+deterioration, or acceptable ground conditions permit safe continued dragging.
+A Ground Check may also have an official timeline code, but automatic
+derivation of the repeated end-of-shift list is deferred.
+
+### Exclusions And Open Questions
+
+DDR-1 through DDR-3 exclude attachments, photos, media infrastructure, Daily
+Log changes, existing Shift Report changes, Day View participation, global
+shift redesign, and automatic relationships to Equipment Fuel Events or Work
+Schedule.
+
+Open Questions remain exact hour-meter precision, Lake ID format, Direction
+vocabulary, negative Advance support, end-of-shift completion requiredness,
+future Ground Check derivation, and any source-required time precision finer
+than integer minutes.
 
 ## Payslip Repository Requirements
 

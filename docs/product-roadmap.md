@@ -186,6 +186,11 @@ Implemented foundations and current Day View participation:
 
 Blocked or separately authorized work:
 
+- Dragline Delay Reports are the next approved additive structured-report
+  direction. Delivery follows DDR-1 through DDR-3 after official source
+  artifacts close the Delay Code catalog and source-dependent validation gaps.
+  The feature remains independent from the current Daily Log, existing Shift
+  Reports, Work Schedule, Day View, and attachment infrastructure.
 - Optional checklist-level photo evidence remains blocked; no implementation
   is authorized until ADR-018's access, processing, storage, and backup gates
   are satisfied and a separate implementation milestone is approved.
@@ -194,6 +199,9 @@ Blocked or separately authorized work:
 Success criteria:
 
 - Shift Reports can connect work activity, inspections, and related paperwork.
+- Dragline Delay Reports can preserve one Dragline/date/Day-or-Night report,
+  concurrent timeline activity, unique downtime, derived runtime, production
+  and progress facts, and explicit completion/correction history.
 - Work Authorizations are created from the correct shift context.
 - Inspections and defects can be reviewed historically with equipment and date
   context.
@@ -202,6 +210,9 @@ Dependency notes:
 
 - Work Authorizations depend on Shift Reports because a Work Authorization
   should not exist independently from the shift where the work occurred.
+- Dragline Delay Reports depend on canonical Dragline Equipment and Employee
+  reference data. The official Delay Code catalog additionally depends on the
+  original report front and legend; Work Schedule is not a dependency.
 - Defects and inspections benefit from equipment reference data and Day View,
   but their exact implementation order can be decided by immediate product
   need.
@@ -219,7 +230,9 @@ Business value:
 
 Capabilities:
 
-- Work Schedule, with V1 foundation and Day View participation implemented.
+- Work Schedule, with V1 foundation, canonical Employee relationships and
+  snapshots, supervisor-eligible Assigned By selection, and Day View
+  participation implemented.
 - Timesheet, with the V1 foundation, Day View participation, and URL-addressable
   Weekly Timesheet history filtering implemented. Structured filters support
   payroll-week overlap, status, Equipment, Work Code, Work Order, Support
@@ -362,6 +375,7 @@ MVP capabilities:
 - Manual data entry.
 - Daily Log.
 - Shift Reports.
+- Dragline Delay Reports after source closure.
 - Work Authorizations.
 - Work Schedule.
 - Timesheet.
@@ -399,6 +413,7 @@ The MVP should not require:
 | STOP Cards | Captures safety observations and corrective actions. | Day View context; feature architecture: `docs/architecture/features/stop-cards.md`. | V1 foundation, filtering, and Day View participation implemented |
 | Daily Inspections | Captures equipment inspection findings and condition context. | Equipment reference data and Day View context; feature architecture: `docs/architecture/features/daily-inspections.md`. | Daily Inspection and Operational Safety Checklist foundations, feature-owned filtering, and Day View participation implemented |
 | Shift Reports | Creates the parent structure for shift paperwork. | Daily/date context and equipment references. Feature architecture: `docs/architecture/features/shift-reports.md`. | V1 foundation, filtering, and Day View participation implemented |
+| Dragline Delay Reports | Preserves the structured operational shift report for one Dragline, operational work date, and Day/Night shift without replacing Daily Log or generic Shift Reports. | Canonical Dragline Equipment and Employee references; committed and verified report front and official Delay Code Legend; feature architecture: `docs/architecture/features/dragline-delay-reports.md`. | Approved and sequenced as DDR-1 through DDR-3; implementation not started; official source artifacts and catalog remain blocked |
 | Work Authorizations | Captures safety and maintenance work records. | Shift Reports. Feature architecture: `docs/architecture/features/work-authorizations.md`. | V1 foundation, filtering, and Day View participation implemented |
 | Defect Tracking | Captures equipment issue history from report through closure. | Equipment reference data and feature architecture: `docs/architecture/features/defect-tracking.md`; stronger value with Day View. | V1 foundation, filtering, and Day View participation implemented |
 | Work Schedule and Timesheet | Supports personal schedule and time reconciliation. | Reference data; stronger value with Day View. Work Schedule feature architecture: `docs/architecture/features/work-schedule.md`; Timesheet feature architecture: `docs/architecture/features/timesheets.md`. | Work Schedule and Timesheet V1 foundations and Day View participation implemented; Timesheet structured, URL-addressable Weekly Timesheet history filtering complete |

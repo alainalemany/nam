@@ -11,7 +11,7 @@ scope, architecture, infrastructure, and future implementation direction.
 
 - Replace scattered notes and paperwork with structured, searchable records.
 - Preserve a permanent historical timeline of work activity by date, equipment, mine, and module.
-- Connect daily logs, shift reports, inspections, work authorizations, defects, schedules, fuel records, and related documents.
+- Connect daily logs, Dragline Delay Reports, shift reports, inspections, work authorizations, defects, schedules, fuel records, and related documents.
 - Build a maintainable foundation that can grow from a personal tool into a more complete operations system.
 - Keep Version 1 focused on manual entry, clean workflows, and reliable historical records.
 
@@ -36,6 +36,7 @@ scope, architecture, infrastructure, and future implementation direction.
 | --- | --- |
 | Dashboard Home | High-level view of open items, recent activity, safety, maintenance, and operational stats. |
 | Daily Log | Full-day operator activity timeline with notes, linked records, equipment, contractors, and attachments. |
+| Dragline Delay Reports | Approved structured Draft-to-Completed operational reports for one Dragline, work date, and Day/Night shift; implementation awaits source closure. |
 | Shift Reports | Structured shift-level records that connect work activity, inspections, and related paperwork. |
 | Work Authorizations | Safety and maintenance work records tied to shift reports, including permits and completion checklists. |
 | Daily Inspections | Manual equipment and work-area inspection summaries. |
@@ -100,6 +101,10 @@ Inspections, Operational Safety Checklists, Shift Reports, Work Authorizations,
 Defect Tracking, Work Schedule, Timesheet, and Supply Requests V1 have been
 implemented and accepted.
 
+Current HEAD also includes canonical Employee reference management. Work
+Schedule uses Employee relationships and historical snapshots for its primary
+employee, Assigned By supervisor, and known crew participants.
+
 Equipment Fuel Events also record completed fueling occurrences with ordered
 Tank Fills, Equipment and location snapshots, an optional Fuel Service Person,
 and an optional Daily Work Log activity link. Supply Requests preserve records
@@ -128,6 +133,15 @@ blocked from implementation by unresolved sensitive-data decisions, while
 Fleet and the Equipment Activity Timeline remain deferred. Future work must
 continue to follow the documentation-first, vertical-slice approach.
 
+Dragline Delay Reports are now approved as an additive structured feature that
+remains separate from both the current Daily Log and the existing generic Shift
+Report. The Level 2 architecture and DDR-1 through DDR-3 sequence are canonical
+in [Dragline Delay Reports Architecture](docs/architecture/features/dragline-delay-reports.md).
+The original report front and official Delay Code Legend are not committed, so
+the official Delay Code catalog and source-dependent implementation remain
+blocked until those artifacts are preserved under
+`source-forms/dragline-delay-report/` and verified.
+
 Phase 23.4 implements Operational Safety Checklist `HOURS`/`MILES` meter units,
 editable category suggestions, explicit known-mismatch confirmation, signed
 NAM-only save results, and Create Another. Phase 23.4.2 adds monotonic
@@ -142,6 +156,7 @@ Version 1 should prioritize:
 
 - Manual data entry
 - Daily Log
+- Dragline Delay Reports
 - Shift Reports
 - Work Authorizations
 - Operational Safety Checklists
