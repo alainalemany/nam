@@ -1,6 +1,7 @@
 import {
   Prisma,
   type DraglineDelayCodeCategory,
+  type DraglineDelayReportStatus,
   type PrismaClient,
 } from "@prisma/client";
 
@@ -20,11 +21,14 @@ const reportInclude = {
   operators: true,
   timelineEntries: true,
   groundChecks: true,
+  corrections: true,
 } satisfies Prisma.DraglineDelayReportInclude;
 
 type ExistingReport = Prisma.DraglineDelayReportGetPayload<{
   include: typeof reportInclude;
 }>;
+
+type DraglineDelayReportMutation = "draft" | "complete" | "correct";
 
 export class DraglineDelayReportPersistenceError extends Error {
   constructor(
@@ -34,6 +38,16 @@ export class DraglineDelayReportPersistenceError extends Error {
   ) {
     super(message);
   }
+}
+
+function staleMessage(operation: DraglineDelayReportMutation) {
+  if (operation === "complete") {
+    return "This report changed elsewhere; reload before completing.";
+  }
+  if (operation === "correct") {
+    return "This report changed elsewhere; reload before saving the correction.";
+  }
+  return "This Draft was updated elsewhere. Reload it before saving again.";
 }
 
 function workDateToUtc(value: string) {
@@ -349,6 +363,8 @@ export async function persistDraglineDelayReportInTransaction(
   transaction: Prisma.TransactionClient,
   input: DraglineDelayReportSubmissionInput,
   reportId?: string,
+  operation: DraglineDelayReportMutation = "draft",
+  correctionReason?: string,
 ) {
   const loadedExisting = reportId
     ? await transaction.draglineDelayReport.findUnique({
@@ -365,16 +381,31 @@ export async function persistDraglineDelayReportInTransaction(
     );
   }
   const existing = loadedExisting ?? undefined;
-  if (existing?.status !== undefined && existing.status !== "DRAFT") {
+  if (!existing && operation !== "draft") {
     throw new DraglineDelayReportPersistenceError(
-      "Only Draft reports can be edited.",
+      "Save the Draft before completing or correcting it.",
+    );
+  }
+  const expectedStatus = operation === "correct" ? "COMPLETED" : "DRAFT";
+  if (existing && existing.status !== expectedStatus) {
+    throw new DraglineDelayReportPersistenceError(
+      operation === "correct"
+        ? "Only Completed reports can be corrected."
+        : "Only Draft reports can be saved or completed.",
     );
   }
   if (existing && input.recordVersion !== existing.recordVersion) {
     throw new DraglineDelayReportPersistenceError(
-      "This Draft was updated elsewhere. Reload it before saving again.",
+      staleMessage(operation),
       "recordVersion",
       "stale",
+    );
+  }
+  const normalizedCorrectionReason = correctionReason?.trim();
+  if (operation === "correct" && !normalizedCorrectionReason) {
+    throw new DraglineDelayReportPersistenceError(
+      "Correction Reason is required.",
+      "correctionReason",
     );
   }
   if (!existing && input.recordVersion !== undefined) {
@@ -461,8 +492,17 @@ export async function persistDraglineDelayReportInTransaction(
     existing && !equipmentChanged
       ? preservedEquipmentSnapshot(existing)
       : equipmentSnapshot(equipment);
+  const resultingStatus: DraglineDelayReportStatus =
+    operation === "draft" ? "DRAFT" : "COMPLETED";
+  const completedAt =
+    operation === "complete"
+      ? new Date()
+      : operation === "correct"
+        ? existing?.completedAt
+        : null;
   const parentData = {
-    status: "DRAFT" as const,
+    status: resultingStatus,
+    completedAt,
     operationalWorkDate: workDateToUtc(input.operationalWorkDate),
     shift: input.shift,
     equipmentId: equipment.id,
@@ -522,14 +562,14 @@ export async function persistDraglineDelayReportInTransaction(
   const updated = await transaction.draglineDelayReport.updateMany({
     where: {
       id: existing.id,
-      status: "DRAFT",
+      status: expectedStatus,
       recordVersion: input.recordVersion,
     },
     data: { ...parentData, recordVersion: { increment: 1 } },
   });
   if (updated.count !== 1) {
     throw new DraglineDelayReportPersistenceError(
-      "This Draft was updated elsewhere. Reload it before saving again.",
+      staleMessage(operation),
       "recordVersion",
       "stale",
     );
@@ -543,7 +583,52 @@ export async function persistDraglineDelayReportInTransaction(
   );
   await persistGroundChecks(transaction, existing.id, normalized.groundChecks);
 
+  if (operation === "correct") {
+    const sequence =
+      existing.corrections.reduce(
+        (maximum, correction) => Math.max(maximum, correction.sequence),
+        0,
+      ) + 1;
+    await transaction.draglineDelayReportCorrection.create({
+      data: {
+        reportId: existing.id,
+        sequence,
+        reason: normalizedCorrectionReason!,
+        previousRecordVersion: existing.recordVersion,
+        resultingRecordVersion: existing.recordVersion + 1,
+      },
+    });
+  }
+
   return { id: existing.id, recordVersion: existing.recordVersion + 1 };
+}
+
+export function completeDraglineDelayReportInTransaction(
+  transaction: Prisma.TransactionClient,
+  input: DraglineDelayReportSubmissionInput,
+  reportId: string,
+) {
+  return persistDraglineDelayReportInTransaction(
+    transaction,
+    input,
+    reportId,
+    "complete",
+  );
+}
+
+export function correctDraglineDelayReportInTransaction(
+  transaction: Prisma.TransactionClient,
+  input: DraglineDelayReportSubmissionInput,
+  reportId: string,
+  correctionReason: string,
+) {
+  return persistDraglineDelayReportInTransaction(
+    transaction,
+    input,
+    reportId,
+    "correct",
+    correctionReason,
+  );
 }
 
 export async function persistDraglineDelayReport(
@@ -553,5 +638,31 @@ export async function persistDraglineDelayReport(
 ) {
   return client.$transaction((transaction) =>
     persistDraglineDelayReportInTransaction(transaction, input, reportId),
+  );
+}
+
+export function completeDraglineDelayReport(
+  input: DraglineDelayReportSubmissionInput,
+  reportId: string,
+  client: PrismaClient = prisma,
+) {
+  return client.$transaction((transaction) =>
+    completeDraglineDelayReportInTransaction(transaction, input, reportId),
+  );
+}
+
+export function correctDraglineDelayReport(
+  input: DraglineDelayReportSubmissionInput,
+  reportId: string,
+  correctionReason: string,
+  client: PrismaClient = prisma,
+) {
+  return client.$transaction((transaction) =>
+    correctDraglineDelayReportInTransaction(
+      transaction,
+      input,
+      reportId,
+      correctionReason,
+    ),
   );
 }

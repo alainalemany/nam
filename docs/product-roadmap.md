@@ -187,9 +187,10 @@ Implemented foundations and current Day View participation:
 Remaining or separately authorized work:
 
 - Dragline Delay Reports are an approved additive structured-report direction.
-  DDR-1 and DDR-2 are implemented; DDR-3 remains separately sequenced. The
-  feature remains independent from the current Daily Log, existing Shift
-  Reports, Work Schedule, Day View, and attachment infrastructure.
+  DDR-1 through DDR-3 are implemented with Draft entry, explicit completion,
+  Completed read-only detail, and reasoned correction history. The feature
+  remains independent from the current Daily Log, existing Shift Reports, Work
+  Schedule, Day View, and attachment infrastructure.
 - Optional checklist-level photo evidence remains blocked; no implementation
   is authorized until ADR-018's access, processing, storage, and backup gates
   are satisfied and a separate implementation milestone is approved.
@@ -412,7 +413,7 @@ The MVP should not require:
 | STOP Cards | Captures safety observations and corrective actions. | Day View context; feature architecture: `docs/architecture/features/stop-cards.md`. | V1 foundation, filtering, and Day View participation implemented |
 | Daily Inspections | Captures equipment inspection findings and condition context. | Equipment reference data and Day View context; feature architecture: `docs/architecture/features/daily-inspections.md`. | Daily Inspection and Operational Safety Checklist foundations, feature-owned filtering, and Day View participation implemented |
 | Shift Reports | Creates the parent structure for shift paperwork. | Daily/date context and equipment references. Feature architecture: `docs/architecture/features/shift-reports.md`. | V1 foundation, filtering, and Day View participation implemented |
-| Dragline Delay Reports | Preserves the structured operational shift report for one Dragline, operational work date, and Day/Night shift without replacing Daily Log or generic Shift Reports. | Canonical Dragline Equipment and Employee references; Mine-owned Lake references; committed and verified report front, official Delay Code Legend, and [Delay Code Catalog V1](reference/dragline-delay-reports/delay-code-catalog-v1.md); feature architecture: `docs/architecture/features/dragline-delay-reports.md`. | DDR-1 Draft foundation and DDR-2 production/progress Draft entry are implemented; DDR-3 completion/correction remains pending |
+| Dragline Delay Reports | Preserves the structured operational shift report for one Dragline, operational work date, and Day/Night shift without replacing Daily Log or generic Shift Reports. | Canonical Dragline Equipment and Employee references; Mine-owned Lake references; committed and verified report front, official Delay Code Legend, and [Delay Code Catalog V1](reference/dragline-delay-reports/delay-code-catalog-v1.md); feature architecture: `docs/architecture/features/dragline-delay-reports.md`. | DDR-1 through DDR-3 implemented: Draft entry, production/progress facts, explicit completion, Completed read-only detail, and reasoned correction history |
 | Work Authorizations | Captures safety and maintenance work records. | Shift Reports. Feature architecture: `docs/architecture/features/work-authorizations.md`. | V1 foundation, filtering, and Day View participation implemented |
 | Defect Tracking | Captures equipment issue history from report through closure. | Equipment reference data and feature architecture: `docs/architecture/features/defect-tracking.md`; stronger value with Day View. | V1 foundation, filtering, and Day View participation implemented |
 | Work Schedule and Timesheet | Supports personal schedule and time reconciliation. | Reference data; stronger value with Day View. Work Schedule feature architecture: `docs/architecture/features/work-schedule.md`; Timesheet feature architecture: `docs/architecture/features/timesheets.md`. | Work Schedule and Timesheet V1 foundations and Day View participation implemented; Timesheet structured, URL-addressable Weekly Timesheet history filtering complete |

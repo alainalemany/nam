@@ -5,6 +5,7 @@ import {
   getDraglineDelayCode,
 } from "./catalog";
 import { calculateDraglineShiftTotals } from "./calculations";
+import { hasFinalShiftChangeEntry } from "./lifecycle";
 import { parseStationNotation } from "./station";
 import { normalizeEventStartTime, validateEventInterval } from "./time";
 
@@ -344,8 +345,64 @@ export const draglineDelayReportSubmissionSchema = z
     });
   });
 
+export const draglineDelayReportCompletionSchema =
+  draglineDelayReportSubmissionSchema.superRefine((value, context) => {
+    if (value.endingHourMeter == null) {
+      context.addIssue({
+        code: "custom",
+        path: ["endingHourMeter"],
+        message: "Ending Hour Meter is required to complete the report.",
+      });
+    }
+    if (!value.supervisorId) {
+      context.addIssue({
+        code: "custom",
+        path: ["supervisorId"],
+        message: "Supervisor is required to complete the report.",
+      });
+    }
+
+    const chronology = value.timelineEntries.flatMap((entry) => {
+      try {
+        return [{
+          startMinuteOffset: normalizeEventStartTime(entry.startTime, entry.dayOffset),
+          sequence: entry.sequence,
+          delayCode: entry.delayCode,
+        }];
+      } catch {
+        return [];
+      }
+    });
+    if (!hasFinalShiftChangeEntry(chronology)) {
+      context.addIssue({
+        code: "custom",
+        path: ["timelineEntries"],
+        message: "Final timeline entry must be 13 — Shift Change.",
+      });
+    }
+  });
+
+const correctionReasonSchema = z
+  .string({ message: "Correction Reason is required." })
+  .trim()
+  .min(1, "Correction Reason is required.")
+  .max(1000, "Correction Reason must be 1000 characters or fewer.");
+
+export const draglineDelayReportCorrectionSubmissionSchema = z.intersection(
+  draglineDelayReportCompletionSchema,
+  z.object({ correctionReason: correctionReasonSchema }),
+);
+
 export type DraglineDelayReportSubmissionInput = z.infer<
   typeof draglineDelayReportSubmissionSchema
+>;
+
+export type DraglineDelayReportCompletionInput = z.infer<
+  typeof draglineDelayReportCompletionSchema
+>;
+
+export type DraglineDelayReportCorrectionInput = z.infer<
+  typeof draglineDelayReportCorrectionSubmissionSchema
 >;
 
 export type DraglineDelayReportActionState = {

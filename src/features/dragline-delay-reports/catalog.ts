@@ -1,4 +1,5 @@
 export const DRAGLINE_DELAY_CODE_CATALOG_VERSION = 1 as const;
+export const DRAGLINE_SHIFT_CHANGE_DELAY_CODE = "13" as const;
 
 export const DRAGLINE_DELAY_CODE_CATEGORIES = [
   "OPERATIONAL",

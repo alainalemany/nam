@@ -2,9 +2,14 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 
 import {
+  completeDraglineDelayReportInTransaction,
+  correctDraglineDelayReportInTransaction,
   persistDraglineDelayReportInTransaction,
 } from "@/features/dragline-delay-reports/persistence";
-import { draglineDelayReportSubmissionSchema } from "@/features/dragline-delay-reports/validation";
+import {
+  draglineDelayReportCompletionSchema,
+  draglineDelayReportSubmissionSchema,
+} from "@/features/dragline-delay-reports/validation";
 import { guardedDraglineDelayReportDatabaseUrl } from "../helpers/dragline-delay-report-postgres-guard";
 
 const databaseUrl = guardedDraglineDelayReportDatabaseUrl();
@@ -230,7 +235,32 @@ function validInput(
   });
 }
 
-describePostgres("Dragline Delay Report DDR-1 and DDR-2 PostgreSQL workflow", () => {
+function validCompletionInput(
+  references: Awaited<ReturnType<typeof createReferences>>,
+  overrides: Record<string, unknown> = {},
+) {
+  const draft = validInput(references);
+  return draglineDelayReportCompletionSchema.parse({
+    ...draft,
+    endingHourMeter: 12012,
+    timelineEntries: [
+      ...draft.timelineEntries,
+      {
+        sequence: draft.timelineEntries.length + 1,
+        startTime: "04:59",
+        dayOffset: 1,
+        catalogVersion: 1,
+        delayCode: "13",
+        description: "Shift Change",
+        durationMinutes: "",
+        causesDowntime: false,
+      },
+    ],
+    ...overrides,
+  });
+}
+
+describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow", () => {
   it("creates and edits a Draft while preserving retained child IDs and authoritative totals", async () => {
     const client = new PrismaClient({ datasourceUrl: databaseUrl });
     try {
@@ -630,7 +660,320 @@ describePostgres("Dragline Delay Report DDR-1 and DDR-2 PostgreSQL workflow", ()
     }
   });
 
-  it("has the complete migration chain including DDR-1 and DDR-2", async () => {
+  it("completes explicitly, preserves child IDs, and keeps optional DDR-2 fields nullable", async () => {
+    const client = new PrismaClient({ datasourceUrl: databaseUrl });
+    try {
+      await withRollback(client, async (transaction, prefix) => {
+        const references = await createReferences(transaction, prefix);
+        const draftInput = validInput(references, {
+          lakeId: "",
+          normalDiggingBuckets: "",
+          benchfillBuckets: "",
+          stationStart: "",
+          stationEnd: "",
+          depthFeet: "",
+          fuelGallons: "",
+          cableDragFeet: "",
+          hoistFeet: "",
+          groundChecks: [],
+          comments: "",
+          safetyItemsFound: "",
+          actionTaken: "",
+        });
+        const created = await persistDraglineDelayReportInTransaction(
+          transaction,
+          draftInput,
+        );
+        const before = await transaction.draglineDelayReport.findUniqueOrThrow({
+          where: { id: created.id },
+          include: {
+            operators: { orderBy: { sequence: "asc" } },
+            timelineEntries: { orderBy: { sequence: "asc" } },
+          },
+        });
+        const completion = draglineDelayReportCompletionSchema.parse({
+          ...draftInput,
+          recordVersion: before.recordVersion,
+          endingHourMeter: 12012,
+          operators: draftInput.operators.map((operator, index) => ({
+            ...operator,
+            id: before.operators[index].id,
+          })),
+          timelineEntries: [
+            ...draftInput.timelineEntries.map((entry, index) => ({
+              ...entry,
+              id: before.timelineEntries[index].id,
+            })),
+            {
+              sequence: draftInput.timelineEntries.length + 1,
+              startTime: "04:59",
+              dayOffset: 1,
+              catalogVersion: 1,
+              delayCode: "13",
+              description: "Shift Change",
+              durationMinutes: "",
+              causesDowntime: false,
+            },
+          ],
+        });
+
+        const completed = await completeDraglineDelayReportInTransaction(
+          transaction,
+          completion,
+          before.id,
+        );
+        expect(completed).toEqual({ id: before.id, recordVersion: 2 });
+        const after = await transaction.draglineDelayReport.findUniqueOrThrow({
+          where: { id: before.id },
+          include: {
+            operators: { orderBy: { sequence: "asc" } },
+            timelineEntries: { orderBy: { sequence: "asc" } },
+            corrections: true,
+          },
+        });
+        expect(after).toMatchObject({
+          id: before.id,
+          status: "COMPLETED",
+          recordVersion: 2,
+          lakeId: null,
+          normalDiggingBuckets: null,
+          benchfillBuckets: null,
+          stationStartFeet: null,
+          stationEndFeet: null,
+          depthFeet: null,
+          fuelGallons: null,
+          cableDragFeet: null,
+          hoistFeet: null,
+        });
+        expect(after.completedAt).toBeInstanceOf(Date);
+        expect(after.operators[0].id).toBe(before.operators[0].id);
+        expect(after.timelineEntries.slice(0, -1).map((entry) => entry.id)).toEqual(
+          before.timelineEntries.map((entry) => entry.id),
+        );
+        expect(after.timelineEntries.at(-1)?.delayCode).toBe("13");
+        expect(after.corrections).toHaveLength(0);
+        await expect(
+          persistDraglineDelayReportInTransaction(
+            transaction,
+            { ...completion, recordVersion: 2 },
+            before.id,
+          ),
+        ).rejects.toThrow("Only Draft reports can be saved or completed");
+      });
+    } finally {
+      await client.$disconnect();
+    }
+  });
+
+  it("records ordered corrections with stable identity, stable children, and stale-write safety", async () => {
+    const client = new PrismaClient({ datasourceUrl: databaseUrl });
+    try {
+      await withRollback(client, async (transaction, prefix) => {
+        const references = await createReferences(transaction, prefix);
+        const created = await persistDraglineDelayReportInTransaction(
+          transaction,
+          validInput(references),
+        );
+        const draft = await transaction.draglineDelayReport.findUniqueOrThrow({
+          where: { id: created.id },
+          include: {
+            operators: { orderBy: { sequence: "asc" } },
+            timelineEntries: { orderBy: { sequence: "asc" } },
+            groundChecks: { orderBy: { sequence: "asc" } },
+          },
+        });
+        const completionBase = validCompletionInput(references, {
+          recordVersion: 1,
+        });
+        const completion = draglineDelayReportCompletionSchema.parse({
+          ...completionBase,
+          operators: completionBase.operators.map((operator, index) => ({
+            ...operator,
+            id: draft.operators[index].id,
+          })),
+          timelineEntries: completionBase.timelineEntries.map((entry, index) => ({
+            ...entry,
+            id: draft.timelineEntries[index]?.id,
+          })),
+          groundChecks: completionBase.groundChecks.map((groundCheck, index) => ({
+            ...groundCheck,
+            id: draft.groundChecks[index].id,
+          })),
+        });
+        await completeDraglineDelayReportInTransaction(
+          transaction,
+          completion,
+          draft.id,
+        );
+        const completed = await transaction.draglineDelayReport.findUniqueOrThrow({
+          where: { id: draft.id },
+          include: {
+            operators: { orderBy: { sequence: "asc" } },
+            timelineEntries: { orderBy: { sequence: "asc" } },
+            groundChecks: { orderBy: { sequence: "asc" } },
+          },
+        });
+        const correctionInput = draglineDelayReportCompletionSchema.parse({
+          ...completion,
+          recordVersion: 2,
+          endingHourMeter: 12013,
+          comments: "First corrected value",
+          operators: completion.operators.map((operator, index) => ({
+            ...operator,
+            id: completed.operators[index].id,
+          })),
+          timelineEntries: completion.timelineEntries.map((entry, index) => ({
+            ...entry,
+            id: completed.timelineEntries[index].id,
+          })),
+          groundChecks: completion.groundChecks.map((groundCheck, index) => ({
+            ...groundCheck,
+            id: completed.groundChecks[index].id,
+          })),
+        });
+        const first = await correctDraglineDelayReportInTransaction(
+          transaction,
+          correctionInput,
+          completed.id,
+          "Corrected Ending Hour Meter from signed shift paperwork.",
+        );
+        expect(first).toEqual({ id: completed.id, recordVersion: 3 });
+
+        const afterFirst = await transaction.draglineDelayReport.findUniqueOrThrow({
+          where: { id: completed.id },
+          include: {
+            timelineEntries: { orderBy: { sequence: "asc" } },
+            groundChecks: { orderBy: { sequence: "asc" } },
+            corrections: { orderBy: { sequence: "asc" } },
+          },
+        });
+        expect(afterFirst).toMatchObject({
+          id: completed.id,
+          status: "COMPLETED",
+          recordVersion: 3,
+          endingHourMeter: 12013,
+        });
+        expect(afterFirst.timelineEntries.map((entry) => entry.id)).toEqual(
+          completed.timelineEntries.map((entry) => entry.id),
+        );
+        expect(afterFirst.groundChecks.map((entry) => entry.id)).toEqual(
+          completed.groundChecks.map((entry) => entry.id),
+        );
+        expect(afterFirst.corrections[0]).toMatchObject({
+          sequence: 1,
+          reason: "Corrected Ending Hour Meter from signed shift paperwork.",
+          previousRecordVersion: 2,
+          resultingRecordVersion: 3,
+        });
+
+        const secondInput = draglineDelayReportCompletionSchema.parse({
+          ...correctionInput,
+          recordVersion: 3,
+          comments: "Second corrected value",
+        });
+        await correctDraglineDelayReportInTransaction(
+          transaction,
+          secondInput,
+          completed.id,
+          "Clarified the report comments.",
+        );
+        const afterSecond = await transaction.draglineDelayReport.findUniqueOrThrow({
+          where: { id: completed.id },
+          include: { corrections: { orderBy: { sequence: "asc" } } },
+        });
+        expect(afterSecond).toMatchObject({ status: "COMPLETED", recordVersion: 4 });
+        expect(afterSecond.corrections.map((correction) => ({
+          sequence: correction.sequence,
+          reason: correction.reason,
+          previous: correction.previousRecordVersion,
+          resulting: correction.resultingRecordVersion,
+        }))).toEqual([
+          {
+            sequence: 1,
+            reason: "Corrected Ending Hour Meter from signed shift paperwork.",
+            previous: 2,
+            resulting: 3,
+          },
+          {
+            sequence: 2,
+            reason: "Clarified the report comments.",
+            previous: 3,
+            resulting: 4,
+          },
+        ]);
+
+        await expect(
+          correctDraglineDelayReportInTransaction(
+            transaction,
+            correctionInput,
+            completed.id,
+            "Stale correction must not persist.",
+          ),
+        ).rejects.toMatchObject({ kind: "stale" });
+        expect(
+          await transaction.draglineDelayReportCorrection.count({
+            where: { reportId: completed.id },
+          }),
+        ).toBe(2);
+        await expect(
+          correctDraglineDelayReportInTransaction(
+            transaction,
+            { ...secondInput, recordVersion: 4 },
+            completed.id,
+            "   ",
+          ),
+        ).rejects.toMatchObject({ field: "correctionReason" });
+        expect(
+          await transaction.draglineDelayReportCorrection.count({
+            where: { reportId: completed.id },
+          }),
+        ).toBe(2);
+        expect(
+          await transaction.dailyLogActivity.findUnique({
+            where: { id: references.dailyLogActivity.id },
+          }),
+        ).toBeTruthy();
+      });
+    } finally {
+      await client.$disconnect();
+    }
+  });
+
+  it("rejects stale completion without changing Draft status", async () => {
+    const client = new PrismaClient({ datasourceUrl: databaseUrl });
+    try {
+      await withRollback(client, async (transaction, prefix) => {
+        const references = await createReferences(transaction, prefix);
+        const created = await persistDraglineDelayReportInTransaction(
+          transaction,
+          validInput(references),
+        );
+        await persistDraglineDelayReportInTransaction(
+          transaction,
+          validInput(references, { recordVersion: 1, comments: "Newer Draft" }),
+          created.id,
+        );
+        await expect(
+          completeDraglineDelayReportInTransaction(
+            transaction,
+            validCompletionInput(references, { recordVersion: 1 }),
+            created.id,
+          ),
+        ).rejects.toMatchObject({ kind: "stale" });
+        const after = await transaction.draglineDelayReport.findUniqueOrThrow({
+          where: { id: created.id },
+          include: { corrections: true },
+        });
+        expect(after).toMatchObject({ status: "DRAFT", recordVersion: 2 });
+        expect(after.completedAt).toBeNull();
+        expect(after.corrections).toHaveLength(0);
+      });
+    } finally {
+      await client.$disconnect();
+    }
+  });
+
+  it("has the complete migration chain including DDR-1 through DDR-3", async () => {
     const client = new PrismaClient({ datasourceUrl: databaseUrl });
     try {
       const rows = await client.$queryRaw<Array<{ migration_name: string }>>`
@@ -644,6 +987,9 @@ describePostgres("Dragline Delay Report DDR-1 and DDR-2 PostgreSQL workflow", ()
       );
       expect(rows.map((row) => row.migration_name)).toContain(
         "20260819000100_dragline_delay_reports_ddr2",
+      );
+      expect(rows.map((row) => row.migration_name)).toContain(
+        "20260819000200_dragline_delay_reports_ddr3",
       );
     } finally {
       await client.$disconnect();
@@ -677,6 +1023,32 @@ describePostgres("Dragline Delay Report DDR-1 and DDR-2 PostgreSQL workflow", ()
       expect(byName.get("Lake_mine_fkey")).toBe("r");
       expect(byName.get("DraglineDelayReport_lake_fkey")).toBe("n");
       expect(byName.get("DraglineDelayReportGroundCheck_report_fkey")).toBe("c");
+    } finally {
+      await client.$disconnect();
+    }
+  });
+
+  it("installs the DDR-3 completion and correction-history constraints", async () => {
+    const client = new PrismaClient({ datasourceUrl: databaseUrl });
+    try {
+      const constraints = await client.$queryRaw<
+        Array<{ conname: string; confdeltype: string }>
+      >`
+        SELECT conname, confdeltype::text
+        FROM pg_constraint
+        WHERE conname IN (
+          'DraglineDelayReport_completion_state_check',
+          'DraglineDelayReportCorrection_report_fkey',
+          'DraglineDelayReportCorrection_sequence_check',
+          'DraglineDelayReportCorrection_reason_check',
+          'DraglineDelayReportCorrection_version_check'
+        )
+      `;
+      const byName = new Map(
+        constraints.map((constraint) => [constraint.conname, constraint.confdeltype]),
+      );
+      expect([...byName.keys()]).toHaveLength(5);
+      expect(byName.get("DraglineDelayReportCorrection_report_fkey")).toBe("c");
     } finally {
       await client.$disconnect();
     }

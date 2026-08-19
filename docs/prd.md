@@ -693,6 +693,21 @@ feature governed by
   metadata, and stale-version protection.
 - DDR must not add approval workflow or a heavyweight generic revision system.
 
+Completion is an explicit operator action. It requires valid report identity
+and base data, Ending Hour Meter, at least one Operator, a Supervisor, and Code
+13 — Shift Change as the final normalized timeline event. For equal final start
+times, stable sequence is the tie-breaker and the highest-sequence final row
+must be Code 13. Code 13 never completes a report automatically and does not
+need to occur at an exact boundary minute beyond normal timeline-window
+validation.
+
+Normal Digging Buckets, Benchfill Buckets, Lake, Stations, Depth, Fuel, Cable
+Drag, Hoist, Ground Checks, Comments, Safety Items Found, and Action Taken
+remain optional at completion. Station Start and End still must be both present
+or both absent. Every successful correction keeps the report Completed,
+increments `recordVersion`, and appends a reason, timestamp, and previous/to
+version transition; it does not store full aggregate versions or field diffs.
+
 ### Header And References
 
 The report header includes:
@@ -817,9 +832,10 @@ Log changes, existing Shift Report changes, Day View participation, global
 shift redesign, and automatic relationships to Equipment Fuel Events or Work
 Schedule.
 
-Open Questions remain end-of-shift completion requiredness, future Ground
-Check derivation, and any source-required time precision finer than integer
-minutes. Direction is intentionally not part of the digital report.
+Open Questions remain future Ground Check derivation and any source-required
+time precision finer than integer minutes. Direction is intentionally not part
+of the digital report. Completion requiredness is confirmed and implemented as
+the minimal set documented under Identity And Lifecycle.
 
 ## Payslip Repository Requirements
 

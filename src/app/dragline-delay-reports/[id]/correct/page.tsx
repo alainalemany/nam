@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { updateDraglineDelayReportAction } from "@/features/dragline-delay-reports/actions";
+import { correctDraglineDelayReportAction } from "@/features/dragline-delay-reports/actions";
 import {
   draglineDelayReportToFormInitial,
   getDraglineDelayReportFormOptions,
@@ -10,7 +10,7 @@ import { DraglineDelayReportForm } from "@/features/dragline-delay-reports/Dragl
 
 export const dynamic = "force-dynamic";
 
-export default async function EditDraglineDelayReportPage({
+export default async function CorrectDraglineDelayReportPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -18,16 +18,17 @@ export default async function EditDraglineDelayReportPage({
   const { id } = await params;
   const { report, equipment, employees, supervisors, lakes } =
     await getDraglineDelayReportFormOptions(id);
-  if (!report || report.status !== "DRAFT") notFound();
+  if (!report || report.status !== "COMPLETED") notFound();
 
   return (
     <main className="page-stack">
       <section className="page-header with-actions">
         <div>
-          <p className="eyebrow">Draft · Version {report.recordVersion}</p>
-          <h1>Edit Dragline Delay Report</h1>
+          <p className="eyebrow">Completed · Version {report.recordVersion}</p>
+          <h1>Correct Dragline Delay Report</h1>
           <p className="summary">
-            Retained timeline rows keep stable identities; stale saves are rejected.
+            Correct the complete aggregate with a permanent reason. The report
+            keeps its identity and remains Completed.
           </p>
         </div>
         <Link className="button secondary" href={`/dragline-delay-reports/${id}`}>
@@ -35,14 +36,14 @@ export default async function EditDraglineDelayReportPage({
         </Link>
       </section>
       <DraglineDelayReportForm
-        action={updateDraglineDelayReportAction.bind(null, id)}
-        allowComplete
+        action={correctDraglineDelayReportAction.bind(null, id)}
         cancelHref={`/dragline-delay-reports/${id}`}
         employeeOptions={employees}
         equipmentOptions={equipment}
         initialValues={draglineDelayReportToFormInitial(report)}
         lakeOptions={lakes}
-        submitLabel="Save Draft Changes"
+        mode="correction"
+        submitLabel="Save Corrected Report"
         supervisorOptions={supervisors}
       />
     </main>

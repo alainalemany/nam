@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  draglineDelayReportCompletionSchema,
+  draglineDelayReportCorrectionSubmissionSchema,
   draglineDelayReportSubmissionSchema,
   normalizeDraglineDelayReportSubmission,
 } from "@/features/dragline-delay-reports/validation";
@@ -26,6 +28,26 @@ const validInput = {
     },
   ],
 };
+
+function completionInput(overrides: Record<string, unknown> = {}) {
+  return {
+    ...validInput,
+    endingHourMeter: "12356",
+    timelineEntries: [
+      validInput.timelineEntries[0],
+      {
+        ...validInput.timelineEntries[0],
+        sequence: 2,
+        startTime: "16:59",
+        delayCode: "13",
+        description: "Shift Change",
+        durationMinutes: "",
+        causesDowntime: false,
+      },
+    ],
+    ...overrides,
+  };
+}
 
 describe("Dragline Delay Report validation", () => {
   it("accepts a valid Draft with whole-number meters", () => {
@@ -243,6 +265,153 @@ describe("Dragline Delay Report validation", () => {
         groundChecks: [
           { sequence: 1, startTime: "05:00", dayOffset: 1 },
         ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("keeps Draft validation independent from the final Shift Change rule", () => {
+    expect(draglineDelayReportSubmissionSchema.safeParse(validInput).success).toBe(true);
+    expect(draglineDelayReportCompletionSchema.safeParse(validInput).success).toBe(false);
+  });
+
+  it("requires Ending Hour Meter, Supervisor, and a final Code 13 for completion", () => {
+    const missing = draglineDelayReportCompletionSchema.safeParse({
+      ...validInput,
+      supervisorId: "",
+      timelineEntries: [],
+    });
+    expect(missing.success).toBe(false);
+    if (!missing.success) {
+      const paths = missing.error.issues.map((issue) => issue.path.join("."));
+      expect(paths).toContain("endingHourMeter");
+      expect(paths).toContain("supervisorId");
+      expect(paths).toContain("timelineEntries");
+    }
+  });
+
+  it("rejects a present Code 13 when a later chronological event exists", () => {
+    expect(
+      draglineDelayReportCompletionSchema.safeParse(
+        completionInput({
+          timelineEntries: [
+            {
+              ...validInput.timelineEntries[0],
+              sequence: 1,
+              startTime: "16:30",
+              delayCode: "13",
+              durationMinutes: "",
+              causesDowntime: false,
+            },
+            {
+              ...validInput.timelineEntries[0],
+              sequence: 2,
+              startTime: "16:59",
+              delayCode: "34",
+              durationMinutes: "",
+              causesDowntime: false,
+            },
+          ],
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
+  it("uses stable sequence as the final-event tie breaker", () => {
+    const sameTime = [
+      {
+        ...validInput.timelineEntries[0],
+        sequence: 1,
+        startTime: "16:59",
+        delayCode: "34",
+        durationMinutes: "",
+        causesDowntime: false,
+      },
+      {
+        ...validInput.timelineEntries[0],
+        sequence: 2,
+        startTime: "16:59",
+        delayCode: "13",
+        durationMinutes: "",
+        causesDowntime: false,
+      },
+    ];
+    expect(
+      draglineDelayReportCompletionSchema.safeParse(
+        completionInput({ timelineEntries: sameTime }),
+      ).success,
+    ).toBe(true);
+    expect(
+      draglineDelayReportCompletionSchema.safeParse(
+        completionInput({
+          timelineEntries: sameTime.map((entry, index) => ({
+            ...entry,
+            sequence: index + 1,
+            delayCode: index === 0 ? "13" : "34",
+          })),
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
+  it("accepts final Code 13 for both Day and overnight Night reports", () => {
+    expect(draglineDelayReportCompletionSchema.safeParse(completionInput()).success).toBe(true);
+    expect(
+      draglineDelayReportCompletionSchema.safeParse(
+        completionInput({
+          shift: "NIGHT",
+          timelineEntries: [
+            {
+              ...validInput.timelineEntries[0],
+              sequence: 1,
+              startTime: "23:30",
+            },
+            {
+              ...validInput.timelineEntries[0],
+              sequence: 2,
+              startTime: "04:59",
+              dayOffset: 1,
+              delayCode: "13",
+              durationMinutes: "",
+              causesDowntime: false,
+            },
+          ],
+        }),
+      ).success,
+    ).toBe(true);
+  });
+
+  it("allows every DDR-2 end-of-shift field to remain blank at completion", () => {
+    const result = draglineDelayReportCompletionSchema.safeParse(
+      completionInput({
+        lakeId: "",
+        normalDiggingBuckets: "",
+        benchfillBuckets: "",
+        stationStart: "",
+        stationEnd: "",
+        depthFeet: "",
+        fuelGallons: "",
+        cableDragFeet: "",
+        hoistFeet: "",
+        groundChecks: [],
+        comments: "",
+        safetyItemsFound: "",
+        actionTaken: "",
+      }),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("requires a bounded nonblank Correction Reason", () => {
+    expect(
+      draglineDelayReportCorrectionSubmissionSchema.safeParse({
+        ...completionInput(),
+        correctionReason: "Meter reading corrected from shift notes.",
+      }).success,
+    ).toBe(true);
+    expect(
+      draglineDelayReportCorrectionSubmissionSchema.safeParse({
+        ...completionInput(),
+        correctionReason: "   ",
       }).success,
     ).toBe(false);
   });

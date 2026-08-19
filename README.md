@@ -36,7 +36,7 @@ scope, architecture, infrastructure, and future implementation direction.
 | --- | --- |
 | Dashboard Home | High-level view of open items, recent activity, safety, maintenance, and operational stats. |
 | Daily Log | Full-day operator activity timeline with notes, linked records, equipment, contractors, and attachments. |
-| Dragline Delay Reports | DDR-1/DDR-2 Draft workflow implemented with canonical Dragline, Employee, and Mine-owned Lake references; Catalog V1 timeline, production/progress facts, repeatable Ground Checks, absolute Advance, and derived runtime/downtime; completion/correction remains DDR-3. |
+| Dragline Delay Reports | DDR-1 through DDR-3 implemented with Draft entry, explicit completion, Completed read-only detail, reasoned correction history, canonical references, Catalog V1 timeline, production/progress facts, and derived runtime/downtime/Advance. |
 | Shift Reports | Structured shift-level records that connect work activity, inspections, and related paperwork. |
 | Work Authorizations | Safety and maintenance work records tied to shift reports, including permits and completion checklists. |
 | Daily Inspections | Manual equipment and work-area inspection summaries. |
@@ -134,10 +134,10 @@ Fleet and the Equipment Activity Timeline remain deferred. Future work must
 continue to follow the documentation-first, vertical-slice approach.
 
 Dragline Delay Reports are an additive structured feature that remains separate
-from both the current Daily Log and the existing generic Shift Report. DDR-1 is
-implemented with independent Draft persistence, list/create/detail/edit routes,
-stable timeline rows, optimistic concurrency, and feature-owned calculation
-helpers. The Level 2 architecture and DDR-1 through DDR-3 sequence are canonical
+from both the current Daily Log and the existing generic Shift Report. DDR-1
+through DDR-3 implement independent Draft persistence, production/progress
+entry, explicit completion, Completed read-only detail, and reasoned correction
+history with optimistic concurrency. The Level 2 architecture is canonical
 in [Dragline Delay Reports Architecture](docs/architecture/features/dragline-delay-reports.md).
 The original report front and official Delay Code Legend are preserved under
 `source-forms/dragline-delay-report/` and visually verified. Their canonical
@@ -146,6 +146,9 @@ The original report front and official Delay Code Legend are preserved under
 Starting and Ending Hour Meter values use confirmed nonnegative whole numbers;
 Ending Hour Meter may remain blank while Draft. This is approved digital product
 behavior rather than a precision inferred from the handwritten source example.
+Completion requires Ending Hour Meter, at least one Operator, a Supervisor, and
+Code 13 — Shift Change as the final normalized timeline event; other DDR-2
+end-of-shift facts remain optional.
 
 Phase 23.4 implements Operational Safety Checklist `HOURS`/`MILES` meter units,
 editable category suggestions, explicit known-mismatch confirmation, signed

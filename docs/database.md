@@ -179,10 +179,10 @@ model, generic attachment model, or implemented schema.
 
 ## Dragline Delay Report Concepts
 
-Status: DDR-1 root, ordered Operator, and stable Timeline Entry persistence and
+Status: DDR-1 root, ordered Operator, and stable Timeline Entry persistence;
 DDR-2 Lake, Ground Check, production/progress, measurement, and closing-note
-persistence are implemented in `prisma/schema.prisma`. DDR-3 correction history
-remains conceptual and sequenced in `docs/roadmap.md`. The feature is governed by
+persistence; and DDR-3 completion/correction persistence are implemented in
+`prisma/schema.prisma`. The feature is governed by
 `docs/architecture/features/dragline-delay-reports.md`.
 
 ### DraglineDelayReport
@@ -202,8 +202,9 @@ Conceptual fields and rules:
   City state snapshots.
 - Required nonnegative integer Starting Hour Meter and optional nonnegative
   integer Ending Hour Meter while Draft.
-- Optional live supervisor Employee reference plus limited display-name and
-  employee-code snapshots while Draft completion rules remain open.
+- Optional-while-Draft live supervisor Employee reference plus limited
+  display-name and employee-code snapshots; Supervisor is required for
+  completion and correction.
 - Optional live Lake reference plus Lake display-name snapshot.
 - Optional nonnegative integer Normal Digging and Benchfill bucket counts.
 - Optional paired normalized `stationStartFeet` and `stationEndFeet` values.
@@ -212,25 +213,31 @@ Conceptual fields and rules:
 - Optional Comments, Safety Items Found, and Action Taken text.
 - Server-derived integer downtime and runtime minutes.
 - Required positive integer `recordVersion` for optimistic concurrency.
+- Nullable `completedAt` while Draft and required completion timestamp when
+  status is Completed.
 - Created and updated timestamps.
 
-DDR-1 stores lifecycle in `DraglineDelayReportStatus` (`DRAFT`, `COMPLETED`) but
-only creates and edits `DRAFT` records. It stores Delay Code category snapshots
-in `DraglineDelayCodeCategory` (`OPERATIONAL`, `MECHANICAL`, `ELECTRICAL`). The
-global `ShiftType` enum remains unchanged; feature validation and a database
-check restrict this aggregate to `DAY` and `NIGHT`.
+Lifecycle uses `DraglineDelayReportStatus` (`DRAFT`, `COMPLETED`). Ordinary
+editing applies only to Draft; explicit completion sets `completedAt`, and
+explicit correction retains Completed status and the original completion
+timestamp. Delay Code category snapshots use `DraglineDelayCodeCategory`
+(`OPERATIONAL`, `MECHANICAL`, `ELECTRICAL`). The global `ShiftType` enum remains
+unchanged; feature validation and a database check restrict this aggregate to
+`DAY` and `NIGHT`.
 
 The tuple `(equipmentId, operationalWorkDate, shift)` is unique. Mine and City
 derive through Equipment and are not independent inputs. The root owns ordered
-operator participants, timeline entries, implemented Ground Check entries, and
-future correction events.
+operator participants, timeline entries, Ground Check entries, and immutable
+lightweight correction events.
 
 The source front does not itself establish meter precision, but confirmed
 digital product direction now requires nonnegative whole numbers and rejects
 decimals. `startingHourMeter` is an `Int`; `endingHourMeter` is a nullable
 `Int` during Draft. DDR-2 uses whole-unit nonnegative `Int` values for its
-implemented measurements. Final completion-requiredness remains open;
-Direction is intentionally not stored.
+implemented measurements. Completion additionally requires Ending Hour Meter,
+at least one Operator, a Supervisor, and final normalized Code 13 — Shift
+Change. Other DDR-2 facts remain nullable; Direction is intentionally not
+stored.
 
 ### Lake
 
@@ -314,19 +321,23 @@ Check activity.
 
 ### DraglineDelayReportCorrection
 
-Lightweight immutable evidence that a Completed report was corrected.
+Implemented lightweight immutable evidence that a Completed report was
+corrected.
 
-Conceptual fields:
+Fields and rules:
 
 - Durable correction-event identity.
 - Parent report reference.
 - Nonblank correction reason.
+- Positive sequence unique within the report.
 - Correction timestamp.
-- Positive from-version and to-version values.
+- Positive previous and resulting record versions, with resulting version
+  exactly one greater than previous.
 
 The correction updates the same stable report and appends this event in one
 transaction. This child is not a full aggregate version, approval record, or
-generic audit system.
+generic audit system. It cascades with the owned report and stores no actor
+identity because NAM Dashboard has no reliable authenticated-user concept.
 
 ### Derived Data Rules
 

@@ -37,6 +37,8 @@ type Props = {
   lakeOptions: DraglineLakeOption[];
   supervisorOptions: DraglineEmployeeOption[];
   initialValues: DraglineDelayReportFormInitialValues;
+  mode?: "draft" | "correction";
+  allowComplete?: boolean;
   submitLabel: string;
 };
 
@@ -226,6 +228,8 @@ export function DraglineDelayReportForm({
   lakeOptions,
   supervisorOptions,
   initialValues,
+  mode = "draft",
+  allowComplete = false,
   submitLabel,
 }: Props) {
   const [state, formAction, pending] = useActionState(
@@ -263,6 +267,10 @@ export function DraglineDelayReportForm({
     initialValues.safetyItemsFound,
   );
   const [actionTaken, setActionTaken] = useState(initialValues.actionTaken);
+  const [correctionReason, setCorrectionReason] = useState("");
+  const [pendingIntent, setPendingIntent] = useState<
+    "draft" | "complete" | "correct"
+  >(mode === "correction" ? "correct" : "draft");
   const [operators, setOperators] = useState(
     initialValues.operators.length ? initialValues.operators : [emptyOperator()],
   );
@@ -342,6 +350,7 @@ export function DraglineDelayReportForm({
     comments,
     safetyItemsFound,
     actionTaken,
+    correctionReason,
     recordVersion: initialValues.recordVersion,
     operators: operators.map((operator, index) => ({
       id: operator.id,
@@ -396,7 +405,14 @@ export function DraglineDelayReportForm({
       className="form-stack ddr-form"
       onSubmit={(event) => {
         event.preventDefault();
+        const submitter = (event.nativeEvent as SubmitEvent)
+          .submitter as HTMLButtonElement | null;
+        const intent =
+          (submitter?.value as "draft" | "complete" | "correct" | undefined) ??
+          (mode === "correction" ? "correct" : "draft");
+        setPendingIntent(intent);
         const formData = new FormData(event.currentTarget);
+        formData.set("intent", intent);
         startTransition(() => formAction(formData));
       }}
     >
@@ -409,7 +425,9 @@ export function DraglineDelayReportForm({
 
       <section className="panel form-section" aria-labelledby="ddr-header-heading">
         <div className="full-width-field">
-          <p className="eyebrow">Draft report identity</p>
+          <p className="eyebrow">
+            {mode === "correction" ? "Completed report correction" : "Draft report identity"}
+          </p>
           <h2 id="ddr-header-heading">Shift context</h2>
         </div>
         <div className="form-grid full-width-field">
@@ -510,7 +528,11 @@ export function DraglineDelayReportForm({
             {firstError(state, "startingHourMeter")}
           </label>
           <label>
-            <span>Ending Hour Meter (optional in Draft)</span>
+            <span>
+              {mode === "correction"
+                ? "Ending Hour Meter"
+                : "Ending Hour Meter (optional in Draft)"}
+            </span>
             <input
               {...errorAttributes(state, "endingHourMeter")}
               inputMode="numeric"
@@ -618,7 +640,11 @@ export function DraglineDelayReportForm({
             state={state}
             value={supervisorId}
           />
-          <p className="subtle">Supervisor may remain blank while the report is Draft.</p>
+          <p className="subtle">
+            {mode === "correction"
+              ? "A Supervisor is required for the corrected Completed report."
+              : "Supervisor may remain blank while Draft but is required to complete."}
+          </p>
         </div>
       </section>
 
@@ -769,7 +795,9 @@ export function DraglineDelayReportForm({
 
       <section className="panel form-section" aria-labelledby="ddr-production-heading">
         <div className="full-width-field">
-          <p className="eyebrow">End-of-shift Draft data</p>
+          <p className="eyebrow">
+            {mode === "correction" ? "Corrected end-of-shift data" : "End-of-shift Draft data"}
+          </p>
           <h2 id="ddr-production-heading">Production</h2>
         </div>
         <div className="form-grid full-width-field">
@@ -822,7 +850,9 @@ export function DraglineDelayReportForm({
               onChange={(event) => setLakeId(event.target.value)}
             >
               <option value="">
-                {selectedEquipment ? "Not recorded in Draft" : "Select Equipment first"}
+                {selectedEquipment
+                  ? mode === "correction" ? "Not recorded" : "Not recorded in Draft"
+                  : "Select Equipment first"}
               </option>
               {visibleLakes.map((lake) => (
                 <option
@@ -964,7 +994,9 @@ export function DraglineDelayReportForm({
         {firstError(state, "groundChecks")}
         <div className="ddr-operator-list full-width-field">
           {groundChecks.length === 0 ? (
-            <p className="subtle">No Ground Checks recorded in this Draft.</p>
+            <p className="subtle">
+              No Ground Checks recorded{mode === "draft" ? " in this Draft" : ""}.
+            </p>
           ) : null}
           {groundChecks.map((groundCheck, index) => (
             <fieldset className="ddr-operator-row" key={groundCheck.clientId}>
@@ -1048,7 +1080,9 @@ export function DraglineDelayReportForm({
 
       <section className="panel form-section" aria-labelledby="ddr-closing-heading">
         <div className="full-width-field">
-          <p className="eyebrow">Optional Draft notes</p>
+          <p className="eyebrow">
+            {mode === "correction" ? "Corrected closing notes" : "Optional Draft notes"}
+          </p>
           <h2 id="ddr-closing-heading">Closing Notes</h2>
         </div>
         <div className="form-grid full-width-field">
@@ -1088,13 +1122,69 @@ export function DraglineDelayReportForm({
         </div>
       </section>
 
+      {mode === "correction" ? (
+        <section className="panel form-section" aria-labelledby="ddr-correction-reason-heading">
+          <div className="full-width-field">
+            <p className="eyebrow">Permanent correction history</p>
+            <h2 id="ddr-correction-reason-heading">Correction Reason</h2>
+            <p className="subtle">
+              Explain why the Completed report is changing. It remains Completed,
+              and this reason is stored with the report version transition.
+            </p>
+          </div>
+          <label className="full-width-field">
+            <span>Correction Reason</span>
+            <textarea
+              {...errorAttributes(state, "correctionReason")}
+              aria-label="Correction Reason"
+              maxLength={1000}
+              rows={4}
+              value={correctionReason}
+              onChange={(event) => setCorrectionReason(event.target.value)}
+            />
+            {firstError(state, "correctionReason")}
+          </label>
+        </section>
+      ) : null}
+
       <div className="form-actions">
         <a className="button secondary" href={cancelHref}>
           Cancel
         </a>
-        <button className="button primary" disabled={pending} type="submit">
-          {pending ? "Saving Draft..." : submitLabel}
-        </button>
+        {mode === "correction" ? (
+          <button
+            className="button primary"
+            disabled={pending}
+            name="intent"
+            type="submit"
+            value="correct"
+          >
+            {pending && pendingIntent === "correct" ? "Correcting..." : submitLabel}
+          </button>
+        ) : (
+          <>
+            <button
+              className={allowComplete ? "button secondary" : "button primary"}
+              disabled={pending}
+              name="intent"
+              type="submit"
+              value="draft"
+            >
+              {pending && pendingIntent === "draft" ? "Saving Draft..." : submitLabel}
+            </button>
+            {allowComplete ? (
+              <button
+                className="button primary"
+                disabled={pending}
+                name="intent"
+                type="submit"
+                value="complete"
+              >
+                {pending && pendingIntent === "complete" ? "Completing..." : "Complete Report"}
+              </button>
+            ) : null}
+          </>
+        )}
       </div>
     </form>
   );

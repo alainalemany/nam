@@ -23,12 +23,19 @@ export default async function DraglineDelayReportDetailPage({
   const { saved } = await searchParams;
   const report = await getDraglineDelayReportById(id);
   if (!report) notFound();
+  const missingLabel = report.status === "DRAFT" ? "Not recorded in Draft" : "Not recorded";
 
   return (
     <main className="page-stack">
-      {saved === "created" || saved === "updated" ? (
+      {saved === "created" || saved === "updated" || saved === "completed" || saved === "corrected" ? (
         <div className="success-confirmation" role="status">
-          <p>Draft report saved successfully.</p>
+          <p>
+            {saved === "completed"
+              ? "Report completed successfully."
+              : saved === "corrected"
+                ? "Report corrected successfully."
+                : "Draft report saved successfully."}
+          </p>
         </div>
       ) : null}
       <section className="page-header with-actions">
@@ -52,7 +59,14 @@ export default async function DraglineDelayReportDetailPage({
             >
               Edit Draft
             </Link>
-          ) : null}
+          ) : (
+            <Link
+              className="button primary"
+              href={`/dragline-delay-reports/${id}/correct`}
+            >
+              Correct Report
+            </Link>
+          )}
         </div>
       </section>
 
@@ -61,25 +75,25 @@ export default async function DraglineDelayReportDetailPage({
         <div className="detail-grid full-width-field">
           <div>
             <p className="eyebrow">Normal Digging Buckets</p>
-            <p>{report.normalDiggingBuckets ?? "Not recorded in Draft"}</p>
+            <p>{report.normalDiggingBuckets ?? missingLabel}</p>
           </div>
           <div>
             <p className="eyebrow">Benchfill Buckets</p>
-            <p>{report.benchfillBuckets ?? "Not recorded in Draft"}</p>
+            <p>{report.benchfillBuckets ?? missingLabel}</p>
           </div>
           <div>
             <p className="eyebrow">Lake</p>
             <p>
               {report.lakeDisplayNameSnapshot
                 ? `${report.mineName} · ${report.lakeDisplayNameSnapshot}`
-                : "Not recorded in Draft"}
+                : missingLabel}
             </p>
           </div>
           <div>
             <p className="eyebrow">Station Start</p>
             <p>
               {report.stationStartFeet == null
-                ? "Not recorded in Draft"
+                ? missingLabel
                 : formatStationNotation(report.stationStartFeet)}
             </p>
           </div>
@@ -87,7 +101,7 @@ export default async function DraglineDelayReportDetailPage({
             <p className="eyebrow">Station End</p>
             <p>
               {report.stationEndFeet == null
-                ? "Not recorded in Draft"
+                ? missingLabel
                 : formatStationNotation(report.stationEndFeet)}
             </p>
           </div>
@@ -95,25 +109,25 @@ export default async function DraglineDelayReportDetailPage({
             <p className="eyebrow">Advance</p>
             <p>
               {report.stationStartFeet == null || report.stationEndFeet == null
-                ? "Not calculated in Draft"
+                ? report.status === "DRAFT" ? "Not calculated in Draft" : "Not calculated"
                 : `${calculateStationAdvance(report.stationStartFeet, report.stationEndFeet)} ft`}
             </p>
           </div>
           <div>
             <p className="eyebrow">Depth</p>
-            <p>{report.depthFeet == null ? "Not recorded in Draft" : `${report.depthFeet} ft`}</p>
+            <p>{report.depthFeet == null ? missingLabel : `${report.depthFeet} ft`}</p>
           </div>
           <div>
             <p className="eyebrow">Fuel</p>
-            <p>{report.fuelGallons == null ? "Not recorded in Draft" : `${report.fuelGallons} gal`}</p>
+            <p>{report.fuelGallons == null ? missingLabel : `${report.fuelGallons} gal`}</p>
           </div>
           <div>
             <p className="eyebrow">Cable Drag</p>
-            <p>{report.cableDragFeet == null ? "Not recorded in Draft" : `${report.cableDragFeet} ft`}</p>
+            <p>{report.cableDragFeet == null ? missingLabel : `${report.cableDragFeet} ft`}</p>
           </div>
           <div>
             <p className="eyebrow">Hoist</p>
-            <p>{report.hoistFeet == null ? "Not recorded in Draft" : `${report.hoistFeet} ft`}</p>
+            <p>{report.hoistFeet == null ? missingLabel : `${report.hoistFeet} ft`}</p>
           </div>
         </div>
       </section>
@@ -130,7 +144,7 @@ export default async function DraglineDelayReportDetailPage({
             ))}
           </ol>
         ) : (
-          <p className="subtle">No Ground Checks recorded in this Draft.</p>
+          <p className="subtle">No Ground Checks recorded.</p>
         )}
       </section>
 
@@ -139,15 +153,15 @@ export default async function DraglineDelayReportDetailPage({
         <div className="detail-grid full-width-field">
           <div>
             <p className="eyebrow">Comments</p>
-            <p>{report.comments ?? "Not recorded in Draft"}</p>
+            <p>{report.comments ?? missingLabel}</p>
           </div>
           <div>
             <p className="eyebrow">Safety Items Found</p>
-            <p>{report.safetyItemsFound ?? "Not recorded in Draft"}</p>
+            <p>{report.safetyItemsFound ?? missingLabel}</p>
           </div>
           <div>
             <p className="eyebrow">Action Taken</p>
-            <p>{report.actionTaken ?? "Not recorded in Draft"}</p>
+            <p>{report.actionTaken ?? missingLabel}</p>
           </div>
         </div>
       </section>
@@ -174,7 +188,7 @@ export default async function DraglineDelayReportDetailPage({
             <p className="eyebrow">Ending Hour Meter</p>
             <p>
               {report.endingHourMeter == null
-                ? "Not recorded in Draft"
+                ? missingLabel
                 : report.endingHourMeter.toLocaleString()}
             </p>
           </div>
@@ -188,7 +202,15 @@ export default async function DraglineDelayReportDetailPage({
           </div>
           <div>
             <p className="eyebrow">Supervisor</p>
-            <p>{report.supervisorDisplayName ?? "Not recorded in Draft"}</p>
+            <p>{report.supervisorDisplayName ?? missingLabel}</p>
+          </div>
+          <div>
+            <p className="eyebrow">Completed</p>
+            <p>
+              {report.completedAt
+                ? report.completedAt.toLocaleString("en-US")
+                : "Not completed"}
+            </p>
           </div>
           <div>
             <p className="eyebrow">Down Time</p>
@@ -200,6 +222,43 @@ export default async function DraglineDelayReportDetailPage({
           </div>
         </div>
       </section>
+
+      {report.status === "COMPLETED" ? (
+        <section className="panel table-panel" aria-labelledby="ddr-correction-history-heading">
+          <div className="section-heading">
+            <h2 id="ddr-correction-history-heading">Correction History</h2>
+            <span className="count-pill">{report.corrections.length}</span>
+          </div>
+          {report.corrections.length ? (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Correction</th>
+                    <th>Corrected</th>
+                    <th>Version</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.corrections.map((correction) => (
+                    <tr key={correction.id}>
+                      <td>{correction.sequence}</td>
+                      <td>{correction.correctedAt.toLocaleString("en-US")}</td>
+                      <td>
+                        {correction.previousRecordVersion} → {correction.resultingRecordVersion}
+                      </td>
+                      <td>{correction.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="subtle">This Completed report has not been corrected.</p>
+          )}
+        </section>
+      ) : null}
 
       <section className="panel table-panel" aria-labelledby="ddr-timeline-detail-heading">
         <div className="section-heading">

@@ -176,17 +176,18 @@ workforce-management infrastructure.
 
 Dragline Delay Reports are an approved additive feature with Level 2
 architecture in
-`docs/architecture/features/dragline-delay-reports.md`. DDR-1 implements
-canonical Dragline Equipment and Employee references, feature-owned versioned
-Delay Code data, stable Draft aggregates, integer-minute interval-union
-downtime, derived runtime, and optimistic concurrency. DDR-3 will add explicit
-completion/correction. Dragline Delay Reports do not repurpose existing
+`docs/architecture/features/dragline-delay-reports.md`. DDR-1 through DDR-3
+implement canonical Dragline Equipment and Employee references, feature-owned
+versioned Delay Code data, stable Draft aggregates, production/progress entry,
+explicit completion, Completed read-only detail, reasoned correction history,
+integer-minute interval-union downtime, derived runtime, and optimistic
+concurrency. Dragline Delay Reports do not repurpose existing
 Daily Logs or Shift Reports, and DDR-1 through DDR-3 do not participate in Day
 View or introduce media. Source closure and the Catalog V1 application
-definition are complete. DDR-2 adds canonical Mine-owned Lakes, optional Draft
-production/progress measurements, normalized station pairs with absolute
-Advance, stable repeatable Ground Checks, and closing notes. DDR-3 remains the
-completion/correction boundary.
+definition are complete. Completion requires the minimal header/people fields
+and final chronological Code 13 while DDR-2 production/progress facts remain
+optional. Correction keeps the stable report identity and Completed status and
+appends lightweight reason/version history.
 
 ## Architecture Decision Records
 

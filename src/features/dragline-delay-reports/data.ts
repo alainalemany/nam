@@ -28,6 +28,7 @@ const detailInclude = {
       { id: "asc" as const },
     ],
   },
+  corrections: { orderBy: [{ sequence: "asc" as const }, { id: "asc" as const }] },
 } satisfies Prisma.DraglineDelayReportInclude;
 
 export async function getDraglineDelayReports() {

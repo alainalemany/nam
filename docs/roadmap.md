@@ -549,8 +549,9 @@ foundation. The original Dragline Delay Report front and official Delay Code
 Legend are preserved and visually verified. The
 [Delay Code Catalog V1](reference/dragline-delay-reports/delay-code-catalog-v1.md)
 is the canonical source-derived 66-entry transcription and is implemented as a
-feature-owned application catalog. DDR-2 Draft production/progress entry is
-implemented; DDR-3 completion/correction remains pending.
+feature-owned application catalog. DDR-1 through DDR-3 are implemented,
+including production/progress Draft entry, explicit completion, Completed
+read-only detail, and reasoned correction history.
 
 ### DDR-1 — Independent Draft Report Foundation
 
@@ -607,9 +608,12 @@ Target:
 - Failure-state preservation for every header, timeline, DDR-2 field, and
   repeated row, with clear pending/error/success feedback.
 
-Completion-requiredness and the explicit status transition remain DDR-3 work.
+Completion-requiredness was closed for DDR-3 without making optional DDR-2
+production/progress fields mandatory.
 
 ### DDR-3 — Completion / Correction
+
+Status: Implemented
 
 Target:
 
@@ -620,6 +624,13 @@ Target:
 - Optimistic stale-version protection for completion and correction races.
 - Durable lightweight correction-event history sufficient to show each
   correction occurred without generic revision infrastructure.
+- Completion requires Ending Hour Meter, at least one Operator, Supervisor,
+  and final chronological Code 13 — Shift Change; equal-time events use stable
+  sequence as the tie-breaker.
+- Optional DDR-2 fields remain optional at completion.
+- Failed completion and correction preserve all header, timeline, production,
+  Ground Check, closing-note, and correction-reason form state with clear
+  validation/persistence feedback.
 
 Future Dragline Delay Report Day View participation requires separate
 authorization. Future Daily Log redesign remains a separate product and

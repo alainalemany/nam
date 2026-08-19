@@ -394,6 +394,10 @@ The feature owns:
   safety/action fields.
 - Canonical Mine-owned Lake reference management and report selection limited
   to active Lakes belonging to the selected Equipment's Mine.
+- Explicit Complete Report behavior requiring Ending Hour Meter, at least one
+  Operator, a Supervisor, and final chronological Code 13 — Shift Change.
+- Completed read-only detail and an explicit correction form that revalidates
+  the complete aggregate while keeping status and stable report identity.
 
 ### Boundaries
 
@@ -419,16 +423,17 @@ official codes and descriptions must not be invented or rewritten.
 
 ### Implementation Status And Open Questions
 
-DDR-1 and DDR-2 are implemented as an independent Draft workflow with history,
-create/detail/edit surfaces, stable ordered timeline and Ground Check children,
-Catalog V1 validation, Mine-filtered Lake selection, production/progress facts,
-absolute derived Advance, overnight chronology, derived runtime/downtime,
-stale-write protection, and failure-state preservation. It does not participate
-in Daily Log, Day View, Work Schedule, attachments, or completion.
+DDR-1 through DDR-3 are implemented as an independent workflow with Draft
+history/create/edit/detail, explicit completion, Completed read-only detail,
+explicit reasoned correction, stable ordered children, Catalog V1 validation,
+Mine-filtered Lake selection, production/progress facts, absolute Advance,
+derived runtime/downtime, optimistic concurrency, and complete failure-state
+preservation. It does not participate in Daily Log, Day View, Work Schedule,
+attachments, or photos.
 
-Open validation questions are completion-required fields, future Ground Check
-derivation, and any precision finer than integer minutes. Direction is not a
-digital DDR field.
+Completion does not require optional DDR-2 production/progress facts. Open
+questions are future Ground Check derivation and any precision finer than
+integer minutes. Direction is not a digital DDR field.
 
 ## Knowledge Base (KB)
 

@@ -743,9 +743,11 @@ model DraglineDelayReport {
   downTimeMinutes         Int                                @default(0)
   runTimeMinutes          Int                                @default(720)
   recordVersion           Int                                @default(1)
+  completedAt             DateTime?
   operators               DraglineDelayReportOperator[]
   timelineEntries         DraglineDelayReportTimelineEntry[]
   groundChecks            DraglineDelayReportGroundCheck[]
+  corrections             DraglineDelayReportCorrection[]
   createdAt               DateTime                           @default(now())
   updatedAt               DateTime                           @updatedAt
 
@@ -754,6 +756,20 @@ model DraglineDelayReport {
   @@index([status], map: "DraglineDelayReport_status_idx")
   @@index([supervisorId], map: "DraglineDelayReport_supervisor_idx")
   @@index([lakeId], map: "DraglineDelayReport_lake_idx")
+}
+
+model DraglineDelayReportCorrection {
+  id                     String              @id @default(cuid())
+  reportId               String
+  report                 DraglineDelayReport @relation(fields: [reportId], references: [id], onDelete: Cascade, map: "DraglineDelayReportCorrection_report_fkey")
+  sequence               Int
+  reason                 String
+  previousRecordVersion  Int
+  resultingRecordVersion Int
+  correctedAt            DateTime            @default(now())
+
+  @@unique([reportId, sequence], map: "DraglineDelayReportCorrection_report_sequence_key")
+  @@unique([reportId, resultingRecordVersion], map: "DraglineDelayReportCorrection_report_version_key")
 }
 
 model DraglineDelayReportGroundCheck {

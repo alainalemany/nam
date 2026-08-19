@@ -243,12 +243,12 @@ The current implemented product capabilities include:
 
 ### Future Product Work
 
-- Dragline Delay Reports have an Approved Level 2 architecture and an additive
-  DDR-1 through DDR-3 sequence. DDR-1 and DDR-2 provide the independent usable
-  Draft, production/progress, Lake, Ground Check, and closing-notes workflow;
-  DDR-3 completion/correction remains future work. The current Daily Log remains
-  unchanged; its later evolution into a richer date-centered personal
-  operational timeline is a separate future milestone.
+- Dragline Delay Reports have an Approved Level 2 architecture and implemented
+  DDR-1 through DDR-3 workflow: Draft entry, production/progress facts,
+  explicit completion, Completed read-only detail, and reasoned correction
+  history. The current Daily Log remains unchanged; its later evolution into a
+  richer date-centered personal operational timeline is a separate future
+  milestone.
 - Payslip Repository remains conceptually planned but blocked from
   implementation by unresolved sensitive-data decisions and the absence of an
   accepted Level 2 feature architecture.

@@ -34,12 +34,12 @@ Related Documents:
 
 Last Reviewed: 2026-08-19
 
-Implementation Status: DDR-1 and DDR-2 are implemented as an independent usable
-Draft workflow. The aggregate now includes canonical Mine-owned Lake selection,
-production/progress measurements, paired normalized stations with absolute
-Advance, stable repeatable Ground Checks, closing notes, complete failure-state
-preservation, and explicit mutation feedback. DDR-3 completion/correction
-remains pending.
+Implementation Status: DDR-1 through DDR-3 are implemented as an independent
+usable Draft, completion, and correction workflow. The aggregate includes
+canonical references, production/progress facts, normalized calculations,
+stable repeated children, explicit completion, Completed read-only detail,
+reasoned correction history, optimistic concurrency, complete failure-state
+preservation, and explicit mutation feedback.
 
 ## 1. Purpose
 
@@ -83,13 +83,12 @@ implementation sequencing in `docs/roadmap.md`.
 
 ### Open Questions
 
-- Which end-of-shift fields are required before completion.
 - Whether a future release should derive Ground Check times from timeline
   codes.
 - Whether source evidence requires time precision finer than integer minutes.
 
-These questions do not block documentation closure. They must not be answered
-by guesswork during implementation.
+These questions do not block the implemented lifecycle and must not be answered
+by guesswork during future work.
 
 ### Deferred
 
@@ -312,8 +311,11 @@ derived from the selected code and is never a separate editable input.
 
 ## 10. Timeline Model
 
-One report owns zero or more timeline entries while Draft. Completion rules for
-minimum entry count remain part of the open completion-validation question.
+One report owns zero or more timeline entries while Draft. Completion requires
+at least one entry and requires the final normalized chronological entry to be
+official Code 13 — Shift Change. Chronology sorts by `startMinuteOffset` and
+then stable sequence; when rows share the final time, the highest-sequence row
+must be Code 13.
 
 Each saved entry has:
 
@@ -482,6 +484,15 @@ DRAFT -> COMPLETED
 - Completion is an explicit Server Action, not a side effect of ordinary save.
 - The server reloads the full aggregate, applies the approved completion
   validation, recalculates derived facts, and transitions atomically.
+- Completion requires Ending Hour Meter, at least one Operator, a Supervisor,
+  a valid timeline, and final normalized Code 13 — Shift Change.
+- Normal Digging Buckets, Benchfill Buckets, Lake, paired-or-blank Stations,
+  Depth, Fuel, Cable Drag, Hoist, Ground Checks, Comments, Safety Items Found,
+  and Action Taken remain optional.
+- Code 13 does not complete a report automatically and is not required at an
+  exact boundary minute beyond the normal shift-window rules.
+- Successful completion records `completedAt` and increments `recordVersion`
+  once.
 - Completed detail is read-only by default.
 - An ordinary edit action cannot mutate a Completed report.
 
@@ -498,8 +509,9 @@ DRAFT -> COMPLETED
   full immutable aggregate versions, approval workflow, or generic audit
   infrastructure.
 
-Exact completion requiredness must be closed before DDR-3 implements the
-transition. It is intentionally not guessed in this architecture.
+The correction event stores no authenticated actor because the current
+single-user application has no reliable authentication identity. It does not
+store full aggregate snapshots or field-level diffs.
 
 ## 16. Data Flow And Mutation Boundaries
 
@@ -525,7 +537,7 @@ catalog administrator, or generic audit system is required.
 
 ## 17. UI Composition
 
-Implemented DDR-1/DDR-2 feature-owned surfaces:
+Implemented DDR-1 through DDR-3 feature-owned surfaces:
 
 - Report history.
 - New Draft report.
@@ -533,11 +545,8 @@ Implemented DDR-1/DDR-2 feature-owned surfaces:
 - Minimal Lake reference list/create/edit surface.
 - Production, work-area/progress, operational-context, Ground Check, and
   closing-note Draft sections.
-
-Future DDR-3 surfaces:
-
 - Completed read-only detail.
-- Explicit Correct Report workflow and correction-event summary.
+- Explicit Correct Report workflow and ordered correction-event summary.
 
 The DDR-1 Draft workspace groups:
 
@@ -545,9 +554,10 @@ The DDR-1 Draft workspace groups:
 - Chronological timeline with stable repeatable rows.
 - Runtime/downtime summary.
 
-The Draft workspace preserves every controlled field and repeated child row
-when server validation, stale-version checks, or persistence fails. Pending,
-error, field-validation, stale-write, and successful-save states are explicit;
+The Draft completion and Completed correction workspaces preserve every
+controlled field, repeated child row, and Correction Reason when server
+validation, stale-version checks, or persistence fails. Pending, error,
+field-validation, stale-write, and successful mutation states are explicit;
 raw database or framework errors are never shown.
 
 The timeline code control is one searchable dropdown grouped by Operational,
@@ -587,9 +597,13 @@ DDR-specific server validation includes:
 - Expected `recordVersion` on every existing-report mutation.
 - Draft-only ordinary editing and explicit completion/correction commands.
 - Required correction reason and immutable correction event.
+- Completion-only Ending Hour Meter and Supervisor requirements plus final
+  chronological Code 13 — Shift Change using stable sequence as the equal-time
+  tie-breaker.
 
-Finer-than-minute time precision and final completion-requiredness rules remain
-open and must be resolved before their own implementation boundary is finalized.
+Finer-than-minute time precision remains open. Completion-requiredness is
+closed by the minimal implemented rule above; optional DDR-2 fields remain
+optional.
 
 Validation errors should map to the report section and repeated row where
 practical. Stale writes should instruct the operator to reload and reconcile;
@@ -696,6 +710,8 @@ Completion validation rules remain DDR-3 work once requiredness is confirmed.
 
 ### DDR-3 — Completion / Correction
 
+Status: Implemented
+
 Target:
 
 - Explicit `DRAFT -> COMPLETED` transition.
@@ -704,6 +720,9 @@ Target:
 - Required correction reason.
 - Optimistic stale-version protection.
 - Durable lightweight correction-event history.
+- Minimal completion requiredness and final chronological Code 13 validation.
+- Completed timestamp and ordered reason/version correction summary.
+- Complete failure-state preservation and clear lifecycle mutation feedback.
 
 Any Day View contribution requires separate product and architecture approval.
 Future Daily Log redesign remains a separate future milestone.
@@ -712,8 +731,8 @@ Future Daily Log redesign remains a separate future milestone.
 
 The architecture is successful when:
 
-- A future implementation can build DDR-1 from repository truth without chat
-  memory.
+- The implemented DDR-1 through DDR-3 workflow remains reproducible from
+  repository truth without chat memory.
 - The implemented catalog remains traceable to the canonical source-derived V1
   reference without invented codes or rewritten descriptions.
 - Report identity, Draft saves, stable timeline rows, concurrency, and

@@ -84,6 +84,11 @@ function renderForm(
     message: "",
     fieldErrors: {},
   })),
+  options: {
+    allowComplete?: boolean;
+    mode?: "draft" | "correction";
+    submitLabel?: string;
+  } = {},
 ) {
   return render(
     <DraglineDelayReportForm
@@ -93,7 +98,9 @@ function renderForm(
       equipmentOptions={equipmentOptions}
       initialValues={initialValues}
       lakeOptions={lakeOptions}
-      submitLabel="Save Draft Report"
+      allowComplete={options.allowComplete}
+      mode={options.mode}
+      submitLabel={options.submitLabel ?? "Save Draft Report"}
       supervisorOptions={employeeOptions.filter((employee) => employee.isSupervisor)}
     />,
   );
@@ -296,5 +303,166 @@ describe("DraglineDelayReportForm", () => {
       "Keep this after a server error",
     );
     expect(screen.getByLabelText("Lake")).toHaveValue("lake-12");
+  });
+
+  it("offers distinct Save Draft and Complete Report actions", () => {
+    renderForm(undefined, { allowComplete: true });
+    expect(screen.getByRole("button", { name: "Save Draft Report" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Complete Report" })).toBeInTheDocument();
+  });
+
+  it("preserves complete form state when Ending Hour Meter blocks completion", async () => {
+    const action = vi.fn(async () => ({
+      status: "error" as const,
+      message: "Cannot complete report yet. Required or invalid fields need attention. Your entered values were preserved.",
+      fieldErrors: {
+        endingHourMeter: ["Ending Hour Meter is required to complete the report."],
+      },
+    }));
+    renderForm(action, { allowComplete: true });
+    fireEvent.change(screen.getByLabelText("Comments"), {
+      target: { value: "Preserve completion notes" },
+    });
+    fireEvent.change(screen.getByLabelText("Start time for row 1"), {
+      target: { value: "16:59" },
+    });
+    fireEvent.change(screen.getByLabelText("Delay Code for row 1"), {
+      target: { value: "13" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add Ground Check" }));
+    fireEvent.change(screen.getByLabelText("Ground Check time 1"), {
+      target: { value: "10:00" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Complete Report" }));
+
+    expect(await screen.findByText(/Ending Hour Meter is required/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Comments")).toHaveValue("Preserve completion notes");
+    expect(screen.getByLabelText("Delay Code for row 1")).toHaveValue("13");
+    expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("10:00");
+    expect(screen.getByLabelText("Lake")).toHaveValue("lake-12");
+  });
+
+  it("preserves all rows when Supervisor or final Shift Change validation fails", async () => {
+    const action = vi.fn(async () => ({
+      status: "error" as const,
+      message: "Cannot complete report yet.",
+      fieldErrors: {
+        supervisorId: ["Supervisor is required to complete the report."],
+        timelineEntries: ["Final timeline entry must be 13 — Shift Change."],
+      },
+    }));
+    renderForm(action, { allowComplete: true });
+    fireEvent.change(screen.getByLabelText("Supervisor"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Start time for row 1"), {
+      target: { value: "16:59" },
+    });
+    fireEvent.change(screen.getByLabelText("Delay Code for row 1"), {
+      target: { value: "34" },
+    });
+    fireEvent.change(screen.getByLabelText("Safety Items Found"), {
+      target: { value: "Preserve safety observation" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Complete Report" }));
+
+    expect(await screen.findByText(/Supervisor is required/)).toBeInTheDocument();
+    expect(screen.getByText("Final timeline entry must be 13 — Shift Change.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Delay Code for row 1")).toHaveValue("34");
+    expect(screen.getByLabelText("Safety Items Found")).toHaveValue(
+      "Preserve safety observation",
+    );
+  });
+
+  it("preserves invalid station input and unsaved rows on failed completion", async () => {
+    const action = vi.fn(async () => ({
+      status: "error" as const,
+      message: "Cannot complete report yet.",
+      fieldErrors: { stationEnd: ["Station must use notation such as 50+30."] },
+    }));
+    renderForm(action, { allowComplete: true });
+    fireEvent.change(screen.getByLabelText("Station End"), {
+      target: { value: "invalid" },
+    });
+    fireEvent.change(screen.getByLabelText("Normal Digging Buckets"), {
+      target: { value: "77" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Complete Report" }));
+
+    expect(await screen.findByText(/Station must use notation/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Station End/)).toHaveValue("invalid");
+    expect(screen.getByLabelText("Normal Digging Buckets")).toHaveValue(77);
+  });
+
+  it("shows stale completion without discarding unsaved values", async () => {
+    const action = vi.fn(async () => ({
+      status: "error" as const,
+      message: "This report changed elsewhere; reload before completing.",
+      fieldErrors: {
+        recordVersion: ["This report changed elsewhere; reload before completing."],
+      },
+    }));
+    renderForm(action, { allowComplete: true });
+    fireEvent.change(screen.getByLabelText(/Ending Hour Meter/), {
+      target: { value: "12356" },
+    });
+    fireEvent.change(screen.getByLabelText("Action Taken"), {
+      target: { value: "Preserve stale completion edits" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Complete Report" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("changed elsewhere");
+    expect(screen.getByLabelText(/Ending Hour Meter/)).toHaveValue(12356);
+    expect(screen.getByLabelText("Action Taken")).toHaveValue(
+      "Preserve stale completion edits",
+    );
+  });
+
+  it("requires a Correction Reason while preserving corrected values", async () => {
+    const action = vi.fn(async () => ({
+      status: "error" as const,
+      message: "Cannot correct report yet.",
+      fieldErrors: { correctionReason: ["Correction Reason is required."] },
+    }));
+    renderForm(action, {
+      mode: "correction",
+      submitLabel: "Save Corrected Report",
+    });
+    fireEvent.change(screen.getByLabelText("Fuel (gallons)"), {
+      target: { value: "525" },
+    });
+    fireEvent.change(screen.getByLabelText("Comments"), {
+      target: { value: "Corrected report comment" },
+    });
+    fireEvent.submit(screen.getByRole("button", { name: "Save Corrected Report" }).closest("form")!);
+
+    expect(await screen.findByText("Correction Reason is required.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Fuel (gallons)")).toHaveValue(525);
+    expect(screen.getByLabelText("Comments")).toHaveValue("Corrected report comment");
+  });
+
+  it("preserves the Correction Reason and edits after a stale correction", async () => {
+    const action = vi.fn(async () => ({
+      status: "error" as const,
+      message: "This report changed elsewhere; reload before saving the correction.",
+      fieldErrors: {
+        recordVersion: ["This report changed elsewhere; reload before saving the correction."],
+      },
+    }));
+    renderForm(action, {
+      mode: "correction",
+      submitLabel: "Save Corrected Report",
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Correction Reason" }), {
+      target: { value: "Corrected meter from signed shift paperwork." },
+    });
+    fireEvent.change(screen.getByLabelText(/Ending Hour Meter/), {
+      target: { value: "12358" },
+    });
+    fireEvent.submit(screen.getByRole("button", { name: "Save Corrected Report" }).closest("form")!);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("changed elsewhere");
+    expect(screen.getByRole("textbox", { name: "Correction Reason" })).toHaveValue(
+      "Corrected meter from signed shift paperwork.",
+    );
+    expect(screen.getByLabelText(/Ending Hour Meter/)).toHaveValue(12358);
   });
 });
