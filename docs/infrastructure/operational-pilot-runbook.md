@@ -23,7 +23,11 @@ remains governed by [Server Identity Disaster Recovery](disaster-recovery.md).
 
 ## Current Baseline
 
-The accepted read-only re-baseline established:
+The accepted read-only re-baseline established the historical snapshot below.
+The later [Pre-DDR `0639e4f` Deployment And Recovery Evidence](pre-ddr-0639e4f-deployment-recovery-evidence.md)
+supersedes its deployed-revision, migration-count, backup-existence, and
+access-verification values. The durable pilot requirements in this runbook are
+unchanged.
 
 - Repository `main` is at
   `4eba24fb97abac61c6511258ad4e97aebd4ea6a2`, contains 20 migrations and
@@ -45,9 +49,11 @@ The accepted read-only re-baseline established:
   Timesheet Work Codes, Work Orders, Support Personnel, and Fuel Service
   Personnel each have an aggregate count of 0. No record contents were
   inspected, and the Reference-Data Gate remains open.
-- Only two historical Phase 2A dumps exist. No accepted current 16-migration
-  backup, 20-migration backup, or current-schema disposable restore proof
-  exists.
+- The earlier snapshot found only two historical Phase 2A dumps. A later
+  pre-DDR custom-format archive of live `nam_dashboard` was created,
+  checksummed, and structurally verified before deploying `0639e4f`. It has not
+  been disposable-restored, and no post-DDR current-schema backup with restore
+  proof is recorded. The Recovery Gate therefore remains open.
 - Photo evidence remains unavailable and blocked by ADR-018 prerequisites.
 
 This runbook does not authorize execution. Its existing mutation procedures

@@ -7,7 +7,7 @@
 | Confirmed | NAM Dashboard server identity must be recoverable from GitHub. |
 | Confirmed | `/etc/nam/environment` and the NAM MOTD are required identity assets for a rebuilt server. |
 | Recommended | Keep reusable host configuration under `infrastructure/server-config/`, bootstrap entry points under `infrastructure/bootstrap/`, verification scripts under `infrastructure/checks/`, and operational runbooks under `docs/infrastructure/`. |
-| Open Question | Live application-data restore procedures are not accepted; current backup and disposable-restore evidence is incomplete. |
+| Open Question | Live application-data restore procedures are not accepted; the pre-DDR archive is structurally verified, but disposable-restore and current post-DDR recovery evidence remain incomplete. |
 
 ## Scenario
 
@@ -26,27 +26,32 @@ deployment restore require separate runbooks as those systems mature. The
 [Operational Pilot Runbook](operational-pilot-runbook.md) now defines the
 non-destructive current-schema PostgreSQL backup and disposable-restore evidence
 required before a controlled pilot; it does not authorize a live restore.
-Current deployment, backup, restore, and rollback evidence is governed by the
+Current readiness governance remains in the
 [Controlled Pilot Readiness Re-baseline](controlled-pilot-readiness-rebaseline.md).
+The focused evidence for the live DDR deployment is recorded in
+[Pre-DDR `0639e4f` Deployment And Recovery Evidence](pre-ddr-0639e4f-deployment-recovery-evidence.md).
 
 ## Current Recovery Evidence
 
-The accepted read-only re-baseline found only two historical Phase 2A
-PostgreSQL dumps. They do not represent either the live 16-migration database
-or the repository's 20-migration schema. No accepted current 16-migration live
-backup, 20-migration current-schema backup, or disposable restore proof exists.
+In addition to the two historical Phase 2A dumps found by the earlier
+re-baseline, a custom-format backup of live `nam_dashboard` was created
+immediately before the three DDR migrations and deployment of `0639e4f`. Its
+external path, SHA-256, `pg_restore -l` metadata, rollback-image identity,
+migration results, health checks, route checks, and preserved network boundary
+are recorded in the focused DDR deployment evidence.
 
-The historical Checkpoint D V17 rollback remains valid only for the unchanged
-16-migration deployment generation. Its compatibility after migrations 17
-through 20 is unproven. A mutable image tag, retained local image, or existing
-dump is not current rollback/recovery authority without immutable identity,
-schema compatibility, checksums, and successful restore evidence.
+That pre-DDR archive was structurally readable and checksummed. It has not been
+restored into a disposable database. The preserved application image and the
+archive have not been tested together as a rollback set. No current post-DDR
+schema backup with disposable-restore proof has been recorded. Therefore the
+archive is evidence of a pre-migration rollback point, not accepted end-to-end
+rollback or disaster-recovery authority.
 
-The approved future order requires a separately authorized 16-migration backup,
-manifest, checksums, and disposable restore before live migrations. After the
-20-migration application/database transition, a second separately authorized
-current-schema backup and disposable restore must establish the new recovery
-authority. Neither recovery gate is authorized by this document.
+A future recovery acceptance step must use a separately authorized disposable
+restore and verify the appropriate application/database compatibility. Current
+post-DDR recovery authority additionally requires a post-DDR current-schema
+backup and disposable-restore proof. This document authorizes neither a live
+restore nor that future test.
 
 ## Minimum Recovery Inputs
 

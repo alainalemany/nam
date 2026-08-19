@@ -1,9 +1,18 @@
 # Controlled Pilot Readiness Re-baseline
 
-This document is the current authority for NAM Dashboard repository,
-deployment-candidate, deployed-runtime, and readiness-gate identity. It records
-only the current verified baseline and governance boundary. Historical
-checkpoint and gate evidence remains historical truth in its own documents.
+This document records the earlier NAM Dashboard repository,
+deployment-candidate, deployed-runtime, and readiness-gate re-baseline and its
+governance boundary. Historical checkpoint and gate evidence remains
+historical truth in its own documents.
+
+The later live DDR deployment, including the pre-migration backup, rollback
+image, three applied migrations, application replacement, health and route
+checks, and preserved private boundary, is recorded in
+[Pre-DDR `0639e4f` Deployment And Recovery Evidence](pre-ddr-0639e4f-deployment-recovery-evidence.md).
+That focused record supersedes the older deployed-revision, migration-count,
+backup-existence, and access-verification values below. It does not establish a
+successful disposable restore, combined rollback compatibility, full disaster
+recovery, or controlled-pilot recovery acceptance.
 
 This is an **unnumbered readiness effort**. Phase 29 has not been assigned.
 Nothing in this document authorizes deployment, registry publication, database

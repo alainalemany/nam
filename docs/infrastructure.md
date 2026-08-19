@@ -201,17 +201,22 @@ Development PostgreSQL backups should be written to:
 
 The [Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md)
 records the durable backup and restore requirements. Its existing command
-blocks predate the 20-migration repository model and are suspended. The
-[Controlled Pilot Readiness Re-baseline](infrastructure/controlled-pilot-readiness-rebaseline.md)
-requires a separately authorized 16-migration pre-migration procedure and a
-later 20-migration current-schema procedure, each with private permissions,
-custom-format `pg_dump`, failure-safe partial-file handling, a manifest,
-migration and aggregate-count context, SHA-256 validation, and a mandatory
-disposable restore.
+blocks predate the current repository model and remain suspended as execution
+authority.
 
-The two existing Phase 2A archives and archive listings are not current
-recovery evidence. No pilot backup or restore is considered proven until the
-applicable separately approved procedure is executed and accepted.
+A pre-DDR custom-format archive of live `nam_dashboard` was created before the
+three DDR migrations and deployment of `0639e4f`. Its exact external path,
+SHA-256, archive metadata, rollback image, migration results, deployment
+verification, and evidence boundary are recorded in
+[Pre-DDR `0639e4f` Deployment And Recovery Evidence](infrastructure/pre-ddr-0639e4f-deployment-recovery-evidence.md).
+The payload remains outside Git.
+
+That archive passed `pg_restore -l` structural listing and checksum
+verification, but it has not been restored into a disposable database. The
+application image and archive have not been exercised together as a rollback
+set, and no post-DDR current-schema backup with disposable-restore proof is
+recorded. The broader Recovery Gate and disaster-recovery acceptance therefore
+remain open.
 
 ## Planned Operational Safety Checklist Media Storage
 

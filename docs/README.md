@@ -127,7 +127,8 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Understand why decisions were made | [ADR Index](decisions/README.md) |
 | Run the application foundation | [Development Guide](development.md) |
 | Operate infrastructure | [Infrastructure Operations](infrastructure.md) |
-| Understand current controlled-pilot readiness identity and gate order | [Controlled Pilot Readiness Re-baseline](infrastructure/controlled-pilot-readiness-rebaseline.md) |
+| Understand controlled-pilot readiness governance and the earlier re-baseline | [Controlled Pilot Readiness Re-baseline](infrastructure/controlled-pilot-readiness-rebaseline.md) |
+| Review the pre-DDR `0639e4f` backup, rollback-image, migration, and deployment evidence | [Pre-DDR `0639e4f` Deployment And Recovery Evidence](infrastructure/pre-ddr-0639e4f-deployment-recovery-evidence.md) |
 | Review the hardened, non-authorized Gate C candidate deployment and rollback procedure | [Gate C `8a6c652` Deployment And Rollback Procedure](infrastructure/gate-c-8a6c652-deployment-rollback-procedure.md) |
 | Review controlled operational pilot requirements and future execution flow | [Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md) |
 | Review historical Checkpoint D application-deployment evidence | [Checkpoint D Application Deployment Correction](infrastructure/checkpoint-d-application-deployment-correction.md) |
@@ -141,10 +142,11 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Review unapproved future concepts | [Ideas Backlog](ideas.md) |
 | Follow documentation formatting rules | [Documentation Style Guide](documentation-style.md) |
 
-Current infrastructure readiness authority is the
+Controlled-pilot readiness governance remains in the
 [Controlled Pilot Readiness Re-baseline](infrastructure/controlled-pilot-readiness-rebaseline.md).
-The Checkpoint D documents linked above are historical evidence only and are
-not current execution authority.
+The focused `0639e4f` record linked above supplies the later DDR deployment and
+recovery evidence. The Checkpoint D documents are historical evidence only and
+are not current execution authority.
 
 ## Authoritative Sources
 
@@ -177,7 +179,8 @@ to that home but should not restate the same policy in detail.
 | Architecture philosophy | `docs/architecture.md`, principles in `docs/philosophy.md` |
 | Architecture decisions | `docs/decisions/` |
 | Infrastructure philosophy | `docs/infrastructure.md`, durable decisions in `docs/decisions/` |
-| Current controlled-pilot deployment identity, gate status, and readiness order | `docs/infrastructure/controlled-pilot-readiness-rebaseline.md` |
+| Controlled-pilot readiness governance and earlier re-baseline | `docs/infrastructure/controlled-pilot-readiness-rebaseline.md` |
+| Pre-DDR `0639e4f` backup, rollback-image, live-migration, and deployment evidence | `docs/infrastructure/pre-ddr-0639e4f-deployment-recovery-evidence.md` |
 | Operational pilot requirements, future execution, and exit review | `docs/infrastructure/operational-pilot-runbook.md` |
 | Historical Checkpoint D application deployment, candidate recovery, and private-validator evidence | `docs/infrastructure/checkpoint-d-application-deployment-correction.md`, `docs/infrastructure/checkpoint-d-existing-candidate-recovery.md`, `docs/infrastructure/checkpoint-d-private-validator-recovery.md` |
 | Controlled-pilot private-access architecture | `docs/decisions/adr-019-managed-private-overlay-operational-pilot.md` |
