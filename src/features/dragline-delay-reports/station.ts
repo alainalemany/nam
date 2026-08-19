@@ -41,10 +41,5 @@ export function calculateStationAdvance(startAbsoluteFeet: number, endAbsoluteFe
     throw new Error("Station values must be nonnegative whole feet.");
   }
 
-  const advanceFeet = endAbsoluteFeet - startAbsoluteFeet;
-  if (advanceFeet < 0) {
-    throw new Error("Reverse station movement is not supported.");
-  }
-
-  return advanceFeet;
+  return Math.abs(endAbsoluteFeet - startAbsoluteFeet);
 }

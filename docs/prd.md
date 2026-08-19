@@ -771,13 +771,13 @@ meaning.
 
 ```text
 absolute feet = station number * 100 + offset feet
-advance = ending absolute feet - starting absolute feet
+advance = absolute value of (ending absolute feet - starting absolute feet)
 ```
 
 Offset is normally `00` through `99`. `50+30 -> 50+60` and
 `50+90 -> 51+20` both derive 30 feet of Advance. Advance is calculated by NAM
-and is not manually re-entered. Whether reverse movement or negative Advance
-is valid remains an Open Question.
+and is not manually re-entered. Increasing and decreasing station order both
+produce the positive distance progressed; no Direction value is inferred.
 
 ### Production And End-Of-Shift Facts
 
@@ -785,7 +785,7 @@ The structured report includes:
 
 - Normal Digging Buckets.
 - Benchfill Buckets.
-- Lake ID and Direction.
+- Canonical Lake selected from active Lakes belonging to the Equipment's Mine.
 - Station Start and Station End with derived Advance.
 - Derived Run Time and Down Time.
 - Manual Depth in feet.
@@ -817,9 +817,9 @@ Log changes, existing Shift Report changes, Day View participation, global
 shift redesign, and automatic relationships to Equipment Fuel Events or Work
 Schedule.
 
-Open Questions remain Lake ID format, Direction vocabulary, negative Advance
-support, end-of-shift completion requiredness, future Ground Check derivation,
-and any source-required time precision finer than integer minutes.
+Open Questions remain end-of-shift completion requiredness, future Ground
+Check derivation, and any source-required time precision finer than integer
+minutes. Direction is intentionally not part of the digital report.
 
 ## Payslip Repository Requirements
 

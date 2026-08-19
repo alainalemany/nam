@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DraglineDelayReportForm } from "@/features/dragline-delay-reports/DraglineDelayReportForm";
@@ -9,6 +9,7 @@ afterEach(cleanup);
 const equipmentOptions = [
   {
     id: "dragline-1",
+    mineId: "mine-a",
     label: "Dragline 1 #DL-1 · Mine A",
     displayName: "Dragline 1",
     equipmentNumber: "DL-1",
@@ -16,6 +17,20 @@ const equipmentOptions = [
     mineName: "Mine A",
     cityName: "City A",
     cityState: "FL",
+  },
+];
+const lakeOptions = [
+  {
+    id: "lake-12",
+    mineId: "mine-a",
+    name: "Lake 12",
+    status: "ACTIVE" as const,
+  },
+  {
+    id: "other-lake",
+    mineId: "mine-b",
+    name: "Other Mine Lake",
+    status: "ACTIVE" as const,
   },
 ];
 const employeeOptions = [
@@ -43,8 +58,21 @@ const initialValues = {
   startingHourMeter: "12345",
   endingHourMeter: "",
   supervisorId: "supervisor-1",
+  lakeId: "lake-12",
+  normalDiggingBuckets: "10",
+  benchfillBuckets: "2",
+  stationStart: "50+30",
+  stationEnd: "50+60",
+  depthFeet: "65",
+  fuelGallons: "500",
+  cableDragFeet: "",
+  hoistFeet: "",
+  comments: "Draft comment",
+  safetyItemsFound: "",
+  actionTaken: "",
   operators: [{ clientId: "operator-row-1", employeeId: "operator-1" }],
   timelineEntries: [],
+  groundChecks: [],
 };
 
 function renderForm(
@@ -64,6 +92,7 @@ function renderForm(
       employeeOptions={employeeOptions}
       equipmentOptions={equipmentOptions}
       initialValues={initialValues}
+      lakeOptions={lakeOptions}
       submitLabel="Save Draft Report"
       supervisorOptions={employeeOptions.filter((employee) => employee.isSupervisor)}
     />,
@@ -71,6 +100,32 @@ function renderForm(
 }
 
 describe("DraglineDelayReportForm", () => {
+  it("associates required-header errors while preserving the rest of the Draft", async () => {
+    const action = vi.fn(async () => ({
+      status: "error" as const,
+      message: "Required or invalid fields need attention. Your entered values were preserved.",
+      fieldErrors: { equipmentId: ["Dragline Equipment is required."] },
+    }));
+    renderForm(action);
+    fireEvent.change(screen.getByLabelText("Starting Hour Meter"), {
+      target: { value: "12399" },
+    });
+    expect(screen.getByLabelText("Lake")).toHaveValue("lake-12");
+    fireEvent.submit(screen.getByRole("button", { name: "Save Draft Report" }).closest("form")!);
+
+    expect(await screen.findByText("Dragline Equipment is required.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: /Dragline Equipment/ }),
+    ).toHaveAttribute("aria-invalid", "true");
+    await waitFor(() => {
+      expect(screen.getByLabelText("Starting Hour Meter")).toHaveValue(12399);
+      expect(
+        screen.getByRole("combobox", { name: /Dragline Equipment/ }),
+      ).toHaveValue("dragline-1");
+      expect(screen.getByLabelText("Lake")).toHaveValue("lake-12");
+    });
+  });
+
   it("provides one searchable, category-grouped official Delay Code control", () => {
     const { container } = renderForm();
     fireEvent.change(screen.getByLabelText("Find Delay Code for row 1"), {
@@ -110,8 +165,39 @@ describe("DraglineDelayReportForm", () => {
     expect(screen.getAllByDisplayValue("08:30")).toHaveLength(2);
     expect(screen.getByLabelText("Causes machine downtime for row 1")).toBeChecked();
     expect(screen.getByLabelText("Causes machine downtime for row 2")).not.toBeChecked();
-    expect(screen.getByText("20 min")).toBeInTheDocument();
-    expect(screen.getByText("700 min")).toBeInTheDocument();
+    expect(screen.getAllByText("20 min").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("700 min").length).toBeGreaterThan(0);
+  });
+
+  it("renders DDR-2 fields, filters Lakes by Mine, and previews absolute Advance", () => {
+    renderForm();
+    expect(screen.getByLabelText("Lake")).toHaveValue("lake-12");
+    expect(screen.getByRole("option", { name: "Lake 12" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Other Mine Lake" })).not.toBeInTheDocument();
+    expect(screen.getByText("30 ft")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Station Start"), {
+      target: { value: "50+60" },
+    });
+    fireEvent.change(screen.getByLabelText("Station End"), {
+      target: { value: "50+30" },
+    });
+    expect(screen.getByText("30 ft")).toBeInTheDocument();
+  });
+
+  it("supports repeatable Ground Check rows without coupling them to timeline rows", () => {
+    renderForm();
+    fireEvent.click(screen.getByRole("button", { name: "Add Ground Check" }));
+    fireEvent.change(screen.getByLabelText("Ground Check time 1"), {
+      target: { value: "10:00" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add Ground Check" }));
+    fireEvent.change(screen.getByLabelText("Ground Check time 2"), {
+      target: { value: "12:00" },
+    });
+    expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("10:00");
+    expect(screen.getByLabelText("Ground Check time 2")).toHaveValue("12:00");
+    expect(screen.getAllByText(/Ground Check \d/)).toHaveLength(2);
   });
 
   it("preserves entered rows when field errors return", async () => {
@@ -129,6 +215,16 @@ describe("DraglineDelayReportForm", () => {
     fireEvent.change(screen.getByLabelText("Description for row 1"), {
       target: { value: "preserve this context" },
     });
+    fireEvent.change(screen.getByLabelText("Normal Digging Buckets"), {
+      target: { value: "99" },
+    });
+    fireEvent.change(screen.getByLabelText("Station End"), {
+      target: { value: "bad station" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add Ground Check" }));
+    fireEvent.change(screen.getByLabelText("Ground Check time 1"), {
+      target: { value: "10:00" },
+    });
     fireEvent.submit(screen.getByRole("button", { name: "Save Draft Report" }).closest("form")!);
 
     expect(
@@ -137,6 +233,32 @@ describe("DraglineDelayReportForm", () => {
     expect(screen.getByLabelText("Description for row 1")).toHaveValue(
       "preserve this context",
     );
+    expect(screen.getByLabelText("Normal Digging Buckets")).toHaveValue(99);
+    expect(screen.getByLabelText("Station End")).toHaveValue("bad station");
+    expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("10:00");
+  });
+
+  it("preserves dynamic rows when a Ground Check validation error returns", async () => {
+    const action = vi.fn(async () => ({
+      status: "error" as const,
+      message: "Required or invalid fields need attention.",
+      fieldErrors: {
+        "groundChecks.0.startTime": ["Ground Check must start within the Day shift window."],
+      },
+    }));
+    renderForm(action);
+    fireEvent.change(screen.getByLabelText("Start time for row 1"), {
+      target: { value: "08:30" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add Ground Check" }));
+    fireEvent.change(screen.getByLabelText("Ground Check time 1"), {
+      target: { value: "04:00" },
+    });
+    fireEvent.submit(screen.getByRole("button", { name: "Save Draft Report" }).closest("form")!);
+
+    expect(await screen.findByText(/Ground Check must start/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Start time for row 1")).toHaveValue("08:30");
+    expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("04:00");
   });
 
   it("shows a clear stale-write result without replacing local input", async () => {
@@ -155,5 +277,24 @@ describe("DraglineDelayReportForm", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("updated elsewhere");
     expect(screen.getByLabelText("Starting Hour Meter")).toHaveValue(12346);
+  });
+
+  it("shows a top-level persistence error while preserving Draft values", async () => {
+    const action = vi.fn(async () => ({
+      status: "error" as const,
+      message: "The Draft report could not be saved. Review the fields and try again.",
+      fieldErrors: {},
+    }));
+    renderForm(action);
+    fireEvent.change(screen.getByLabelText("Comments"), {
+      target: { value: "Keep this after a server error" },
+    });
+    fireEvent.submit(screen.getByRole("button", { name: "Save Draft Report" }).closest("form")!);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("could not be saved");
+    expect(screen.getByLabelText("Comments")).toHaveValue(
+      "Keep this after a server error",
+    );
+    expect(screen.getByLabelText("Lake")).toHaveValue("lake-12");
   });
 });

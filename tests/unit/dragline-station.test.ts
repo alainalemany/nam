@@ -28,7 +28,7 @@ describe("Dragline station helpers", () => {
     (value) => expect(() => parseStationNotation(value)).toThrow(),
   );
 
-  it("keeps unresolved reverse movement unsupported", () => {
-    expect(() => calculateStationAdvance(5060, 5030)).toThrow(/Reverse/);
+  it("uses absolute distance when station order decreases", () => {
+    expect(calculateStationAdvance(5060, 5030)).toBe(30);
   });
 });

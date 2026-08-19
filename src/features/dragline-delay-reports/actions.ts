@@ -32,7 +32,7 @@ function inputState(formData: FormData) {
     ok: false as const,
     state: {
       status: "error" as const,
-      message: "Check the highlighted report fields and try again.",
+      message: "Required or invalid fields need attention. Your entered values were preserved.",
       fieldErrors: draglineDelayReportFieldErrors(parsed.error),
     },
   };
@@ -78,7 +78,7 @@ export async function createDraglineDelayReportAction(
   }
 
   revalidatePath("/dragline-delay-reports");
-  redirect(`/dragline-delay-reports/${id}`);
+  redirect(`/dragline-delay-reports/${id}?saved=created`);
 }
 
 export async function updateDraglineDelayReportAction(
@@ -97,5 +97,5 @@ export async function updateDraglineDelayReportAction(
 
   revalidatePath("/dragline-delay-reports");
   revalidatePath(`/dragline-delay-reports/${reportId}`);
-  redirect(`/dragline-delay-reports/${reportId}`);
+  redirect(`/dragline-delay-reports/${reportId}?saved=updated`);
 }

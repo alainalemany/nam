@@ -36,7 +36,7 @@ scope, architecture, infrastructure, and future implementation direction.
 | --- | --- |
 | Dashboard Home | High-level view of open items, recent activity, safety, maintenance, and operational stats. |
 | Daily Log | Full-day operator activity timeline with notes, linked records, equipment, contractors, and attachments. |
-| Dragline Delay Reports | DDR-1 Draft workflow implemented for one Dragline, work date, and Day/Night shift with whole-number hour meters, ordered Employees, Catalog V1 timeline entries, and derived runtime/downtime; completion and end-of-shift fields remain sequenced in DDR-2/DDR-3. |
+| Dragline Delay Reports | DDR-1/DDR-2 Draft workflow implemented with canonical Dragline, Employee, and Mine-owned Lake references; Catalog V1 timeline, production/progress facts, repeatable Ground Checks, absolute Advance, and derived runtime/downtime; completion/correction remains DDR-3. |
 | Shift Reports | Structured shift-level records that connect work activity, inspections, and related paperwork. |
 | Work Authorizations | Safety and maintenance work records tied to shift reports, including permits and completion checklists. |
 | Daily Inspections | Manual equipment and work-area inspection summaries. |

@@ -312,11 +312,28 @@ model Mine {
   shiftReports       ShiftReport[]
   workAuthorizations WorkAuthorization[]
   knowledgeRevisions KnowledgeRecordRevision[] @relation("KnowledgeRevisionMine")
+  lakes              Lake[]
   createdAt          DateTime                  @default(now())
   updatedAt          DateTime                  @updatedAt
 
   @@unique([cityId, name])
   @@index([status])
+}
+
+model Lake {
+  id                   String                @id @default(cuid())
+  mineId               String
+  mine                 Mine                  @relation(fields: [mineId], references: [id], onDelete: Restrict, map: "Lake_mine_fkey")
+  name                 String
+  status               RecordStatus          @default(ACTIVE)
+  notes                String?
+  draglineDelayReports DraglineDelayReport[] @relation("DraglineDelayReportLake")
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  @@unique([mineId, name], map: "Lake_mine_name_key")
+  @@index([mineId], map: "Lake_mine_idx")
+  @@index([status], map: "Lake_status_idx")
 }
 
 model Equipment {
@@ -691,36 +708,65 @@ model Employee {
 }
 
 model DraglineDelayReport {
-  id                     String                             @id @default(cuid())
-  status                 DraglineDelayReportStatus          @default(DRAFT)
-  operationalWorkDate    DateTime                           @db.Date
-  shift                  ShiftType
-  equipmentId            String?
-  equipment              Equipment?                         @relation("DraglineDelayReportEquipment", fields: [equipmentId], references: [id], onDelete: SetNull, map: "DraglineDelayReport_equipment_fkey")
-  equipmentDisplayName   String
-  equipmentNumber        String?
-  equipmentCategory      EquipmentCategory
-  mineName               String
-  cityName               String
-  cityState              String?
-  startingHourMeter      Int
-  endingHourMeter        Int?
-  supervisorId           String?
-  supervisor             Employee?                          @relation("DraglineDelayReportSupervisor", fields: [supervisorId], references: [id], onDelete: SetNull, map: "DraglineDelayReport_supervisor_fkey")
-  supervisorDisplayName  String?
-  supervisorEmployeeCode String?
-  downTimeMinutes        Int                                @default(0)
-  runTimeMinutes         Int                                @default(720)
-  recordVersion          Int                                @default(1)
-  operators              DraglineDelayReportOperator[]
-  timelineEntries        DraglineDelayReportTimelineEntry[]
-  createdAt              DateTime                           @default(now())
-  updatedAt              DateTime                           @updatedAt
+  id                      String                             @id @default(cuid())
+  status                  DraglineDelayReportStatus          @default(DRAFT)
+  operationalWorkDate     DateTime                           @db.Date
+  shift                   ShiftType
+  equipmentId             String?
+  equipment               Equipment?                         @relation("DraglineDelayReportEquipment", fields: [equipmentId], references: [id], onDelete: SetNull, map: "DraglineDelayReport_equipment_fkey")
+  equipmentDisplayName    String
+  equipmentNumber         String?
+  equipmentCategory       EquipmentCategory
+  mineName                String
+  cityName                String
+  cityState               String?
+  startingHourMeter       Int
+  endingHourMeter         Int?
+  supervisorId            String?
+  supervisor              Employee?                          @relation("DraglineDelayReportSupervisor", fields: [supervisorId], references: [id], onDelete: SetNull, map: "DraglineDelayReport_supervisor_fkey")
+  supervisorDisplayName   String?
+  supervisorEmployeeCode  String?
+  lakeId                  String?
+  lake                    Lake?                              @relation("DraglineDelayReportLake", fields: [lakeId], references: [id], onDelete: SetNull, map: "DraglineDelayReport_lake_fkey")
+  lakeDisplayNameSnapshot String?
+  normalDiggingBuckets    Int?
+  benchfillBuckets        Int?
+  stationStartFeet        Int?
+  stationEndFeet          Int?
+  depthFeet               Int?
+  fuelGallons             Int?
+  cableDragFeet           Int?
+  hoistFeet               Int?
+  comments                String?
+  safetyItemsFound        String?
+  actionTaken             String?
+  downTimeMinutes         Int                                @default(0)
+  runTimeMinutes          Int                                @default(720)
+  recordVersion           Int                                @default(1)
+  operators               DraglineDelayReportOperator[]
+  timelineEntries         DraglineDelayReportTimelineEntry[]
+  groundChecks            DraglineDelayReportGroundCheck[]
+  createdAt               DateTime                           @default(now())
+  updatedAt               DateTime                           @updatedAt
 
   @@unique([equipmentId, operationalWorkDate, shift], map: "DraglineDelayReport_equipment_date_shift_key")
   @@index([operationalWorkDate], map: "DraglineDelayReport_workDate_idx")
   @@index([status], map: "DraglineDelayReport_status_idx")
   @@index([supervisorId], map: "DraglineDelayReport_supervisor_idx")
+  @@index([lakeId], map: "DraglineDelayReport_lake_idx")
+}
+
+model DraglineDelayReportGroundCheck {
+  id                String              @id @default(cuid())
+  reportId          String
+  report            DraglineDelayReport @relation(fields: [reportId], references: [id], onDelete: Cascade, map: "DraglineDelayReportGroundCheck_report_fkey")
+  sequence          Int
+  startMinuteOffset Int
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@unique([reportId, sequence], map: "DraglineDelayReportGroundCheck_report_sequence_key")
+  @@index([reportId, startMinuteOffset, sequence], map: "DraglineDelayReportGroundCheck_chronology_idx")
 }
 
 model DraglineDelayReportOperator {

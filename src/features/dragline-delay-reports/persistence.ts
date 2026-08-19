@@ -19,6 +19,7 @@ import {
 const reportInclude = {
   operators: true,
   timelineEntries: true,
+  groundChecks: true,
 } satisfies Prisma.DraglineDelayReportInclude;
 
 type ExistingReport = Prisma.DraglineDelayReportGetPayload<{
@@ -148,6 +149,48 @@ async function resolveEmployees(
   };
 }
 
+async function resolveLake(
+  transaction: Prisma.TransactionClient,
+  lakeId: string | undefined,
+  mineId: string,
+  existing?: ExistingReport,
+) {
+  if (!lakeId) {
+    return {
+      lakeId: null,
+      lakeDisplayNameSnapshot:
+        existing?.lakeId == null ? existing?.lakeDisplayNameSnapshot ?? null : null,
+    };
+  }
+
+  const lake = await transaction.lake.findUnique({ where: { id: lakeId } });
+  if (!lake) {
+    throw new DraglineDelayReportPersistenceError(
+      "The selected Lake could not be found.",
+      "lakeId",
+    );
+  }
+  if (lake.mineId !== mineId) {
+    throw new DraglineDelayReportPersistenceError(
+      "Select a Lake belonging to the Equipment's Mine.",
+      "lakeId",
+    );
+  }
+  const unchanged = existing?.lakeId === lake.id;
+  if (!unchanged && lake.status !== "ACTIVE") {
+    throw new DraglineDelayReportPersistenceError(
+      "Select an active Lake.",
+      "lakeId",
+    );
+  }
+  return {
+    lakeId: lake.id,
+    lakeDisplayNameSnapshot: unchanged
+      ? existing.lakeDisplayNameSnapshot
+      : lake.name,
+  };
+}
+
 function assertOwnedChildIds(
   submittedIds: Array<string | undefined>,
   existingIds: Set<string>,
@@ -262,6 +305,46 @@ async function persistTimelineEntries(
   }
 }
 
+async function persistGroundChecks(
+  transaction: Prisma.TransactionClient,
+  reportId: string,
+  groundChecks: Array<{
+    id?: string;
+    sequence: number;
+    startMinuteOffset: number;
+  }>,
+) {
+  const retainedIds = groundChecks.flatMap((groundCheck) =>
+    groundCheck.id ? [groundCheck.id] : [],
+  );
+  await transaction.draglineDelayReportGroundCheck.deleteMany({
+    where: { reportId, id: { notIn: retainedIds } },
+  });
+  if (retainedIds.length) {
+    await transaction.draglineDelayReportGroundCheck.updateMany({
+      where: { reportId, id: { in: retainedIds } },
+      data: { sequence: { increment: 1000 } },
+    });
+  }
+
+  for (const groundCheck of groundChecks) {
+    const data = {
+      sequence: groundCheck.sequence,
+      startMinuteOffset: groundCheck.startMinuteOffset,
+    };
+    if (groundCheck.id) {
+      await transaction.draglineDelayReportGroundCheck.update({
+        where: { id: groundCheck.id },
+        data,
+      });
+    } else {
+      await transaction.draglineDelayReportGroundCheck.create({
+        data: { reportId, ...data },
+      });
+    }
+  }
+}
+
 export async function persistDraglineDelayReportInTransaction(
   transaction: Prisma.TransactionClient,
   input: DraglineDelayReportSubmissionInput,
@@ -284,7 +367,7 @@ export async function persistDraglineDelayReportInTransaction(
   const existing = loadedExisting ?? undefined;
   if (existing?.status !== undefined && existing.status !== "DRAFT") {
     throw new DraglineDelayReportPersistenceError(
-      "Only Draft reports can be edited in DDR-1.",
+      "Only Draft reports can be edited.",
     );
   }
   if (existing && input.recordVersion !== existing.recordVersion) {
@@ -307,6 +390,9 @@ export async function persistDraglineDelayReportInTransaction(
   const existingTimelineIds = new Set(
     existing?.timelineEntries.map((entry) => entry.id),
   );
+  const existingGroundCheckIds = new Set(
+    existing?.groundChecks.map((groundCheck) => groundCheck.id),
+  );
   assertOwnedChildIds(
     input.operators.map((operator) => operator.id),
     existingOperatorIds,
@@ -317,6 +403,11 @@ export async function persistDraglineDelayReportInTransaction(
     existingTimelineIds,
     "Timeline row",
   );
+  assertOwnedChildIds(
+    input.groundChecks.map((groundCheck) => groundCheck.id),
+    existingGroundCheckIds,
+    "Ground Check row",
+  );
   if (!existing && input.operators.some((operator) => operator.id)) {
     throw new DraglineDelayReportPersistenceError(
       "New Operator rows must not include IDs.",
@@ -325,6 +416,11 @@ export async function persistDraglineDelayReportInTransaction(
   if (!existing && input.timelineEntries.some((entry) => entry.id)) {
     throw new DraglineDelayReportPersistenceError(
       "New timeline rows must not include IDs.",
+    );
+  }
+  if (!existing && input.groundChecks.some((groundCheck) => groundCheck.id)) {
+    throw new DraglineDelayReportPersistenceError(
+      "New Ground Check rows must not include IDs.",
     );
   }
 
@@ -355,6 +451,12 @@ export async function persistDraglineDelayReportInTransaction(
   const normalized = normalizeDraglineDelayReportSubmission(input);
   const totals = calculateDraglineShiftTotals(input.shift, normalized.timelineEntries);
   const people = await resolveEmployees(transaction, input, existing);
+  const lake = await resolveLake(
+    transaction,
+    input.lakeId,
+    equipment.mineId,
+    existing,
+  );
   const snapshot =
     existing && !equipmentChanged
       ? preservedEquipmentSnapshot(existing)
@@ -368,6 +470,18 @@ export async function persistDraglineDelayReportInTransaction(
     startingHourMeter: input.startingHourMeter,
     endingHourMeter: input.endingHourMeter ?? null,
     ...people.supervisor,
+    ...lake,
+    normalDiggingBuckets: input.normalDiggingBuckets ?? null,
+    benchfillBuckets: input.benchfillBuckets ?? null,
+    stationStartFeet: normalized.stationStartFeet ?? null,
+    stationEndFeet: normalized.stationEndFeet ?? null,
+    depthFeet: input.depthFeet ?? null,
+    fuelGallons: input.fuelGallons ?? null,
+    cableDragFeet: input.cableDragFeet ?? null,
+    hoistFeet: input.hoistFeet ?? null,
+    comments: input.comments ?? null,
+    safetyItemsFound: input.safetyItemsFound ?? null,
+    actionTaken: input.actionTaken ?? null,
     ...totals,
   };
 
@@ -393,6 +507,12 @@ export async function persistDraglineDelayReportInTransaction(
               causesDowntime: entry.causesDowntime,
             };
           }),
+        },
+        groundChecks: {
+          create: normalized.groundChecks.map((groundCheck) => ({
+            sequence: groundCheck.sequence,
+            startMinuteOffset: groundCheck.startMinuteOffset,
+          })),
         },
       },
       select: { id: true, recordVersion: true },
@@ -421,6 +541,7 @@ export async function persistDraglineDelayReportInTransaction(
     existing.id,
     normalized.timelineEntries,
   );
+  await persistGroundChecks(transaction, existing.id, normalized.groundChecks);
 
   return { id: existing.id, recordVersion: existing.recordVersion + 1 };
 }

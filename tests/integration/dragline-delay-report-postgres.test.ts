@@ -49,6 +49,23 @@ async function createReferences(
   const mine = await transaction.mine.create({
     data: { id: `${prefix}-mine`, cityId: city.id, name: `${prefix} Mine` },
   });
+  const otherMine = await transaction.mine.create({
+    data: { id: `${prefix}-other-mine`, cityId: city.id, name: `${prefix} Other Mine` },
+  });
+  const lake = await transaction.lake.create({
+    data: { id: `${prefix}-lake`, mineId: mine.id, name: "Lake 12" },
+  });
+  const inactiveLake = await transaction.lake.create({
+    data: {
+      id: `${prefix}-inactive-lake`,
+      mineId: mine.id,
+      name: "Inactive Lake",
+      status: "INACTIVE",
+    },
+  });
+  const otherMineLake = await transaction.lake.create({
+    data: { id: `${prefix}-other-lake`, mineId: otherMine.id, name: "Other Lake" },
+  });
   const dragline = await transaction.equipment.create({
     data: {
       id: `${prefix}-dragline`,
@@ -132,6 +149,10 @@ async function createReferences(
   return {
     city,
     mine,
+    otherMine,
+    lake,
+    inactiveLake,
+    otherMineLake,
     dragline,
     otherEquipment,
     inactiveDragline,
@@ -156,6 +177,18 @@ function validInput(
     startingHourMeter: 12000,
     endingHourMeter: "",
     supervisorId: references.supervisor.id,
+    lakeId: references.lake.id,
+    normalDiggingBuckets: 120,
+    benchfillBuckets: 15,
+    stationStart: "50+60",
+    stationEnd: "50+30",
+    depthFeet: 65,
+    fuelGallons: 500,
+    cableDragFeet: 12,
+    hoistFeet: 8,
+    comments: "End-of-shift Draft comment",
+    safetyItemsFound: "Ground crack monitored",
+    actionTaken: "Kept dragline outside marked boundary",
     operators: [{ sequence: 1, employeeId: references.operator.id }],
     timelineEntries: [
       {
@@ -189,11 +222,15 @@ function validInput(
         causesDowntime: false,
       },
     ],
+    groundChecks: [
+      { sequence: 1, startTime: "23:00", dayOffset: 0 },
+      { sequence: 2, startTime: "02:00", dayOffset: 1 },
+    ],
     ...overrides,
   });
 }
 
-describePostgres("Dragline Delay Report DDR-1 PostgreSQL workflow", () => {
+describePostgres("Dragline Delay Report DDR-1 and DDR-2 PostgreSQL workflow", () => {
   it("creates and edits a Draft while preserving retained child IDs and authoritative totals", async () => {
     const client = new PrismaClient({ datasourceUrl: databaseUrl });
     try {
@@ -205,7 +242,11 @@ describePostgres("Dragline Delay Report DDR-1 PostgreSQL workflow", () => {
         );
         const initial = await transaction.draglineDelayReport.findUniqueOrThrow({
           where: { id: created.id },
-          include: { operators: true, timelineEntries: { orderBy: { sequence: "asc" } } },
+          include: {
+            operators: true,
+            timelineEntries: { orderBy: { sequence: "asc" } },
+            groundChecks: { orderBy: { sequence: "asc" } },
+          },
         });
         expect(initial).toMatchObject({
           status: "DRAFT",
@@ -218,7 +259,18 @@ describePostgres("Dragline Delay Report DDR-1 PostgreSQL workflow", () => {
           equipmentDisplayName: references.dragline.displayName,
           mineName: references.mine.name,
           supervisorDisplayName: references.supervisor.displayName,
+          lakeId: references.lake.id,
+          lakeDisplayNameSnapshot: references.lake.name,
+          normalDiggingBuckets: 120,
+          benchfillBuckets: 15,
+          stationStartFeet: 5060,
+          stationEndFeet: 5030,
+          depthFeet: 65,
+          fuelGallons: 500,
+          cableDragFeet: 12,
+          hoistFeet: 8,
         });
+        expect(initial.groundChecks.map((groundCheck) => groundCheck.startMinuteOffset)).toEqual([1380, 1560]);
         expect(initial.timelineEntries.map((entry) => entry.startMinuteOffset)).toEqual([
           1410,
           1440,
@@ -234,6 +286,8 @@ describePostgres("Dragline Delay Report DDR-1 PostgreSQL workflow", () => {
         const retainedOperatorId = initial.operators[0].id;
         const retainedTimelineId = initial.timelineEntries[0].id;
         const removedTimelineId = initial.timelineEntries[1].id;
+        const retainedGroundCheckId = initial.groundChecks[0].id;
+        const removedGroundCheckId = initial.groundChecks[1].id;
         const updatedInput = validInput(references, {
           recordVersion: 1,
           endingHourMeter: 12011,
@@ -268,6 +322,15 @@ describePostgres("Dragline Delay Report DDR-1 PostgreSQL workflow", () => {
               causesDowntime: false,
             },
           ],
+          groundChecks: [
+            {
+              id: retainedGroundCheckId,
+              sequence: 1,
+              startTime: "23:30",
+              dayOffset: 0,
+            },
+            { sequence: 2, startTime: "03:00", dayOffset: 1 },
+          ],
         });
         const updated = await persistDraglineDelayReportInTransaction(
           transaction,
@@ -281,6 +344,7 @@ describePostgres("Dragline Delay Report DDR-1 PostgreSQL workflow", () => {
           include: {
             operators: { orderBy: { sequence: "asc" } },
             timelineEntries: { orderBy: { sequence: "asc" } },
+            groundChecks: { orderBy: { sequence: "asc" } },
           },
         });
         expect(after).toMatchObject({
@@ -294,6 +358,9 @@ describePostgres("Dragline Delay Report DDR-1 PostgreSQL workflow", () => {
         expect(after.timelineEntries).toHaveLength(2);
         expect(after.timelineEntries[0].id).toBe(retainedTimelineId);
         expect(after.timelineEntries.map((entry) => entry.id)).not.toContain(removedTimelineId);
+        expect(after.groundChecks).toHaveLength(2);
+        expect(after.groundChecks[0].id).toBe(retainedGroundCheckId);
+        expect(after.groundChecks.map((entry) => entry.id)).not.toContain(removedGroundCheckId);
         expect(
           await transaction.dailyLogActivity.findUnique({
             where: { id: references.dailyLogActivity.id },
@@ -346,6 +413,18 @@ describePostgres("Dragline Delay Report DDR-1 PostgreSQL workflow", () => {
             validInput(references, { supervisorId: references.nonsupervisor.id }),
           ),
         ).rejects.toMatchObject({ field: "supervisorId" });
+        await expect(
+          persistDraglineDelayReportInTransaction(
+            transaction,
+            validInput(references, { lakeId: references.otherMineLake.id }),
+          ),
+        ).rejects.toMatchObject({ field: "lakeId" });
+        await expect(
+          persistDraglineDelayReportInTransaction(
+            transaction,
+            validInput(references, { lakeId: references.inactiveLake.id }),
+          ),
+        ).rejects.toMatchObject({ field: "lakeId" });
       });
     } finally {
       await client.$disconnect();
@@ -359,6 +438,10 @@ describePostgres("Dragline Delay Report DDR-1 PostgreSQL workflow", () => {
         const references = await createReferences(transaction, prefix);
         const dayInput = validInput(references, {
           shift: "DAY",
+          groundChecks: [
+            { sequence: 1, startTime: "05:00", dayOffset: 0 },
+            { sequence: 2, startTime: "16:59", dayOffset: 0 },
+          ],
           timelineEntries: [
             {
               sequence: 1,
@@ -507,6 +590,7 @@ describePostgres("Dragline Delay Report DDR-1 PostgreSQL workflow", () => {
         await transaction.equipment.delete({ where: { id: references.dragline.id } });
         await transaction.employee.delete({ where: { id: references.operator.id } });
         await transaction.employee.delete({ where: { id: references.supervisor.id } });
+        await transaction.lake.delete({ where: { id: references.lake.id } });
         const historical = await transaction.draglineDelayReport.findUniqueOrThrow({
           where: { id: created.id },
           include: { operators: true },
@@ -516,6 +600,8 @@ describePostgres("Dragline Delay Report DDR-1 PostgreSQL workflow", () => {
           equipmentDisplayName: references.dragline.displayName,
           supervisorId: null,
           supervisorDisplayName: references.supervisor.displayName,
+          lakeId: null,
+          lakeDisplayNameSnapshot: references.lake.name,
         });
         expect(historical.operators[0]).toMatchObject({
           employeeId: null,
@@ -533,13 +619,18 @@ describePostgres("Dragline Delay Report DDR-1 PostgreSQL workflow", () => {
             where: { reportId: created.id },
           }),
         ).toBe(0);
+        expect(
+          await transaction.draglineDelayReportGroundCheck.count({
+            where: { reportId: created.id },
+          }),
+        ).toBe(0);
       });
     } finally {
       await client.$disconnect();
     }
   });
 
-  it("has the complete migration chain including DDR-1", async () => {
+  it("has the complete migration chain including DDR-1 and DDR-2", async () => {
     const client = new PrismaClient({ datasourceUrl: databaseUrl });
     try {
       const rows = await client.$queryRaw<Array<{ migration_name: string }>>`
@@ -551,6 +642,41 @@ describePostgres("Dragline Delay Report DDR-1 PostgreSQL workflow", () => {
       expect(rows.map((row) => row.migration_name)).toContain(
         "20260818000100_dragline_delay_reports_ddr1",
       );
+      expect(rows.map((row) => row.migration_name)).toContain(
+        "20260819000100_dragline_delay_reports_ddr2",
+      );
+    } finally {
+      await client.$disconnect();
+    }
+  });
+
+  it("installs the DDR-2 constraints and intended deletion behavior", async () => {
+    const client = new PrismaClient({ datasourceUrl: databaseUrl });
+    try {
+      const constraints = await client.$queryRaw<
+        Array<{ conname: string; confdeltype: string }>
+      >`
+        SELECT conname, confdeltype::text
+        FROM pg_constraint
+        WHERE conname IN (
+          'Lake_mine_fkey',
+          'DraglineDelayReport_lake_fkey',
+          'DraglineDelayReportGroundCheck_report_fkey',
+          'DraglineDelayReport_station_pair_check',
+          'DraglineDelayReport_normal_buckets_check',
+          'DraglineDelayReport_depth_check',
+          'DraglineDelayReport_fuel_check',
+          'DraglineDelayReportGroundCheck_sequence_check',
+          'DraglineDelayReportGroundCheck_start_check'
+        )
+      `;
+      const byName = new Map(
+        constraints.map((constraint) => [constraint.conname, constraint.confdeltype]),
+      );
+      expect([...byName.keys()]).toHaveLength(9);
+      expect(byName.get("Lake_mine_fkey")).toBe("r");
+      expect(byName.get("DraglineDelayReport_lake_fkey")).toBe("n");
+      expect(byName.get("DraglineDelayReportGroundCheck_report_fkey")).toBe("c");
     } finally {
       await client.$disconnect();
     }

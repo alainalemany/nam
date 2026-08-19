@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { draglineDelayReportSubmissionSchema } from "@/features/dragline-delay-reports/validation";
+import {
+  draglineDelayReportSubmissionSchema,
+  normalizeDraglineDelayReportSubmission,
+} from "@/features/dragline-delay-reports/validation";
 
 const validInput = {
   operationalWorkDate: "2026-08-18",
@@ -150,6 +153,96 @@ describe("Dragline Delay Report validation", () => {
       draglineDelayReportSubmissionSchema.safeParse({
         ...validInput,
         operators: [],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("validates optional whole-number production measurements", () => {
+    const parsed = draglineDelayReportSubmissionSchema.parse({
+      ...validInput,
+      normalDiggingBuckets: "120",
+      benchfillBuckets: "15",
+      depthFeet: "65",
+      fuelGallons: "500",
+      cableDragFeet: "12",
+      hoistFeet: "8",
+    });
+    expect(parsed).toMatchObject({
+      normalDiggingBuckets: 120,
+      benchfillBuckets: 15,
+      depthFeet: 65,
+      fuelGallons: 500,
+      cableDragFeet: 12,
+      hoistFeet: 8,
+    });
+
+    for (const field of [
+      "normalDiggingBuckets",
+      "benchfillBuckets",
+      "depthFeet",
+      "fuelGallons",
+      "cableDragFeet",
+      "hoistFeet",
+    ]) {
+      expect(
+        draglineDelayReportSubmissionSchema.safeParse({
+          ...validInput,
+          [field]: "-1",
+        }).success,
+      ).toBe(false);
+    }
+  });
+
+  it("requires a valid station pair and normalizes both directions", () => {
+    expect(
+      draglineDelayReportSubmissionSchema.safeParse({
+        ...validInput,
+        stationStart: "50+30",
+        stationEnd: "",
+      }).success,
+    ).toBe(false);
+    expect(
+      draglineDelayReportSubmissionSchema.safeParse({
+        ...validInput,
+        stationStart: "50+30",
+        stationEnd: "50+100",
+      }).success,
+    ).toBe(false);
+
+    const parsed = draglineDelayReportSubmissionSchema.parse({
+      ...validInput,
+      stationStart: "50+60",
+      stationEnd: "50+30",
+    });
+    expect(normalizeDraglineDelayReportSubmission(parsed)).toMatchObject({
+      stationStartFeet: 5060,
+      stationEndFeet: 5030,
+    });
+  });
+
+  it("normalizes ordered Ground Check times and enforces the report shift window", () => {
+    const parsed = draglineDelayReportSubmissionSchema.parse({
+      ...validInput,
+      shift: "NIGHT",
+      timelineEntries: [],
+      groundChecks: [
+        { sequence: 1, startTime: "23:30", dayOffset: 0 },
+        { sequence: 2, startTime: "00:20", dayOffset: 1 },
+        { sequence: 3, startTime: "04:59", dayOffset: 1 },
+      ],
+    });
+    expect(
+      normalizeDraglineDelayReportSubmission(parsed).groundChecks.map(
+        (groundCheck) => groundCheck.startMinuteOffset,
+      ),
+    ).toEqual([1410, 1460, 1739]);
+    expect(
+      draglineDelayReportSubmissionSchema.safeParse({
+        ...validInput,
+        shift: "NIGHT",
+        groundChecks: [
+          { sequence: 1, startTime: "05:00", dayOffset: 1 },
+        ],
       }).success,
     ).toBe(false);
   });

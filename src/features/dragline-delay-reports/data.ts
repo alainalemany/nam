@@ -3,16 +3,25 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 import { getDraglineDelayCode } from "./catalog";
+import { formatStationNotation } from "./station";
 import { splitEventStartMinute } from "./time";
 import type {
   DraglineDelayReportFormInitialValues,
   DraglineEmployeeOption,
   DraglineEquipmentOption,
+  DraglineLakeOption,
 } from "./types";
 
 const detailInclude = {
   operators: { orderBy: [{ sequence: "asc" as const }, { id: "asc" as const }] },
   timelineEntries: {
+    orderBy: [
+      { startMinuteOffset: "asc" as const },
+      { sequence: "asc" as const },
+      { id: "asc" as const },
+    ],
+  },
+  groundChecks: {
     orderBy: [
       { startMinuteOffset: "asc" as const },
       { sequence: "asc" as const },
@@ -56,6 +65,7 @@ export async function getDraglineEquipmentOptions(selectedEquipmentId?: string |
   return equipment.map(
     (item): DraglineEquipmentOption => ({
       id: item.id,
+      mineId: item.mineId,
       label: `${item.displayName}${item.equipmentNumber ? ` #${item.equipmentNumber}` : ""} · ${item.mine.name}`,
       displayName: item.displayName,
       equipmentNumber: item.equipmentNumber,
@@ -63,6 +73,27 @@ export async function getDraglineEquipmentOptions(selectedEquipmentId?: string |
       mineName: item.mine.name,
       cityName: item.mine.city.name,
       cityState: item.mine.city.state,
+    }),
+  );
+}
+
+export async function getDraglineLakeOptions(selectedLakeId?: string | null) {
+  const lakes = await prisma.lake.findMany({
+    where: {
+      OR: [
+        { status: "ACTIVE" },
+        ...(selectedLakeId ? [{ id: selectedLakeId }] : []),
+      ],
+    },
+    orderBy: [{ name: "asc" }, { id: "asc" }],
+  });
+
+  return lakes.map(
+    (lake): DraglineLakeOption => ({
+      id: lake.id,
+      mineId: lake.mineId,
+      name: lake.name,
+      status: lake.status,
     }),
   );
 }
@@ -100,15 +131,17 @@ export async function getDraglineDelayReportFormOptions(reportId?: string) {
         ...(report.supervisorId ? [report.supervisorId] : []),
       ]
     : [];
-  const [equipment, employees] = await Promise.all([
+  const [equipment, employees, lakes] = await Promise.all([
     getDraglineEquipmentOptions(report?.equipmentId),
     getDraglineEmployeeOptions(selectedEmployeeIds),
+    getDraglineLakeOptions(report?.lakeId),
   ]);
 
   return {
     report,
     equipment,
     employees,
+    lakes,
     supervisors: employees.filter(
       (employee) =>
         employee.isSupervisor || employee.id === report?.supervisorId,
@@ -129,6 +162,30 @@ export function draglineDelayReportToFormInitial(
     endingHourMeter:
       report.endingHourMeter == null ? "" : String(report.endingHourMeter),
     supervisorId: report.supervisorId ?? "",
+    lakeId: report.lakeId ?? "",
+    normalDiggingBuckets:
+      report.normalDiggingBuckets == null
+        ? ""
+        : String(report.normalDiggingBuckets),
+    benchfillBuckets:
+      report.benchfillBuckets == null ? "" : String(report.benchfillBuckets),
+    stationStart:
+      report.stationStartFeet == null
+        ? ""
+        : formatStationNotation(report.stationStartFeet),
+    stationEnd:
+      report.stationEndFeet == null
+        ? ""
+        : formatStationNotation(report.stationEndFeet),
+    depthFeet: report.depthFeet == null ? "" : String(report.depthFeet),
+    fuelGallons:
+      report.fuelGallons == null ? "" : String(report.fuelGallons),
+    cableDragFeet:
+      report.cableDragFeet == null ? "" : String(report.cableDragFeet),
+    hoistFeet: report.hoistFeet == null ? "" : String(report.hoistFeet),
+    comments: report.comments ?? "",
+    safetyItemsFound: report.safetyItemsFound ?? "",
+    actionTaken: report.actionTaken ?? "",
     recordVersion: report.recordVersion,
     operators: report.operators.map((operator) => ({
       clientId: operator.id,
@@ -148,6 +205,17 @@ export function draglineDelayReportToFormInitial(
           entry.durationMinutes == null ? "" : String(entry.durationMinutes),
         causesDowntime: entry.causesDowntime,
         category: getDraglineDelayCode(entry.delayCode)?.category,
+      };
+    }),
+    groundChecks: report.groundChecks.map((groundCheck) => {
+      const { clockTime, dayOffset } = splitEventStartMinute(
+        groundCheck.startMinuteOffset,
+      );
+      return {
+        clientId: groundCheck.id,
+        id: groundCheck.id,
+        startTime: clockTime,
+        dayOffset,
       };
     }),
   };

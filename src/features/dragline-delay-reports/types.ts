@@ -3,6 +3,7 @@ import type { DraglineDelayReportShift } from "./time";
 
 export type DraglineEquipmentOption = {
   id: string;
+  mineId: string;
   label: string;
   displayName: string;
   equipmentNumber: string | null;
@@ -10,6 +11,13 @@ export type DraglineEquipmentOption = {
   mineName: string;
   cityName: string;
   cityState: string | null;
+};
+
+export type DraglineLakeOption = {
+  id: string;
+  mineId: string;
+  name: string;
+  status: "ACTIVE" | "INACTIVE" | "ARCHIVED";
 };
 
 export type DraglineEmployeeOption = {
@@ -39,6 +47,13 @@ export type DraglineDelayReportTimelineFormRow = {
   category?: DraglineDelayCodeCategory;
 };
 
+export type DraglineDelayReportGroundCheckFormRow = {
+  clientId: string;
+  id?: string;
+  startTime: string;
+  dayOffset: 0 | 1;
+};
+
 export type DraglineDelayReportFormInitialValues = {
   operationalWorkDate: string;
   shift: DraglineDelayReportShift;
@@ -46,7 +61,20 @@ export type DraglineDelayReportFormInitialValues = {
   startingHourMeter: string;
   endingHourMeter: string;
   supervisorId: string;
+  lakeId: string;
+  normalDiggingBuckets: string;
+  benchfillBuckets: string;
+  stationStart: string;
+  stationEnd: string;
+  depthFeet: string;
+  fuelGallons: string;
+  cableDragFeet: string;
+  hoistFeet: string;
+  comments: string;
+  safetyItemsFound: string;
+  actionTaken: string;
   recordVersion?: number;
   operators: DraglineDelayReportOperatorFormRow[];
   timelineEntries: DraglineDelayReportTimelineFormRow[];
+  groundChecks: DraglineDelayReportGroundCheckFormRow[];
 };

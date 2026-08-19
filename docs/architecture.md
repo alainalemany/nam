@@ -183,7 +183,10 @@ downtime, derived runtime, and optimistic concurrency. DDR-3 will add explicit
 completion/correction. Dragline Delay Reports do not repurpose existing
 Daily Logs or Shift Reports, and DDR-1 through DDR-3 do not participate in Day
 View or introduce media. Source closure and the Catalog V1 application
-definition are complete.
+definition are complete. DDR-2 adds canonical Mine-owned Lakes, optional Draft
+production/progress measurements, normalized station pairs with absolute
+Advance, stable repeatable Ground Checks, and closing notes. DDR-3 remains the
+completion/correction boundary.
 
 ## Architecture Decision Records
 

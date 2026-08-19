@@ -32,15 +32,14 @@ Related Documents:
 - `docs/reference/README.md`
 - `docs/reference/dragline-delay-reports/delay-code-catalog-v1.md`
 
-Last Reviewed: 2026-08-18
+Last Reviewed: 2026-08-19
 
-Implementation Status: DDR-1 is implemented as an independent usable Draft
-workflow. Additive Prisma persistence, one migration, list/create/detail/edit
-routes, feature-owned Server Actions and validation, Catalog V1 application
-data, stable repeated rows, overnight chronology, interval-union downtime,
-derived runtime, station helpers, optimistic concurrency, navigation, and
-focused tests exist. DDR-2 production/end-of-shift fields and DDR-3
-completion/correction remain pending.
+Implementation Status: DDR-1 and DDR-2 are implemented as an independent usable
+Draft workflow. The aggregate now includes canonical Mine-owned Lake selection,
+production/progress measurements, paired normalized stations with absolute
+Advance, stable repeatable Ground Checks, closing notes, complete failure-state
+preservation, and explicit mutation feedback. DDR-3 completion/correction
+remains pending.
 
 ## 1. Purpose
 
@@ -76,14 +75,14 @@ implementation sequencing in `docs/roadmap.md`.
 - Starting and Ending Hour Meter values are nonnegative whole numbers. Starting
   is required in Draft; Ending may remain blank while Draft.
 - Station values have normalized numeric meaning and Advance is derived.
+- Lake is canonical Mine-owned reference data; DDR exposes no Direction field.
+- Advance is the absolute distance between normalized Station Start and End,
+  regardless of increasing or decreasing station order.
 - No attachments, photos, Day View contribution, Daily Log redesign, or global
   shift redesign belongs to DDR-1 through DDR-3.
 
 ### Open Questions
 
-- Exact Lake ID format.
-- Exact Direction vocabulary.
-- Whether reverse station movement and negative Advance are valid.
 - Which end-of-shift fields are required before completion.
 - Whether a future release should derive Ground Check times from timeline
   codes.
@@ -199,6 +198,7 @@ Dragline Delay Reports do not own:
 - Work Schedule assignments, schedule inference, or crew planning.
 - Employee management or supervisor eligibility administration.
 - Equipment, Mine, or City reference-data management.
+- Generic location management beyond the feature-owned minimal Lake reference.
 - Timesheet Work Codes or Work Allocations.
 - Equipment Fuel Event quantities or lifecycle.
 - Operational Safety Checklist responses, meters, corrections, or photos.
@@ -243,6 +243,13 @@ Equipment is the required operational anchor.
   correction.
 - An intentional Equipment change refreshes the complete Equipment/location
   snapshot group and rechecks uniqueness and Dragline eligibility.
+
+Lake is a minimal canonical reference owned by Mine. DDR owns the small
+list/create/edit/inactivate surface needed to maintain Lakes. New report
+selection shows only active Lakes whose `mineId` matches the selected
+Equipment's Mine. The root stores a nullable live Lake relation plus the
+selected Lake display-name snapshot. The operator never selects Mine
+independently, and DDR stores no Direction value.
 - Historical detail remains readable if the live Equipment relationship later
   becomes unavailable.
 
@@ -398,17 +405,17 @@ The normalized representation must preserve station number and offset feet, or
 an equivalent deterministic absolute-feet value. Offset is normally `00`
 through `99`. The server derives Advance; the operator does not re-enter it.
 
-Whether a negative result is operationally valid remains open. DDR-1's pure
-helper reports reverse movement as unsupported; this is not a final DDR-2
-product decision and no value is silently clamped or reversed.
+Advance is `abs(stationEndFeet - stationStartFeet)`. Both `50+30 -> 50+60`
+and `50+60 -> 50+30` therefore produce 30 feet. Reverse station order is valid
+input and does not create Direction semantics.
 
 ## 13. Production And End-Of-Shift Facts
 
-DDR-2 adds source-verified structured/manual fields:
+DDR-2 implements source-verified structured/manual Draft fields:
 
 - Normal Digging Buckets.
 - Benchfill Buckets.
-- Lake ID and Direction.
+- Canonical Lake selected from the Equipment's Mine.
 - Station Start and Station End, with derived Advance in feet.
 - Derived Run Time and Down Time in minutes.
 - Manual Depth in feet.
@@ -429,6 +436,11 @@ subsystem.
 
 Depth is a manually entered numeric measurement in feet. It is not calculated
 or derived from another feature.
+
+All DDR-2 fields remain optional while Draft except that Station Start and End
+must be supplied as a valid pair when either is entered. Completion-requiredness
+is deferred to DDR-3. Bucket and measurement storage uses nonnegative whole
+units in the implemented schema.
 
 ## 14. Ground Checks
 
@@ -486,7 +498,7 @@ DRAFT -> COMPLETED
   full immutable aggregate versions, approval workflow, or generic audit
   infrastructure.
 
-Exact DDR-2 completion requiredness must be closed before DDR-3 implements the
+Exact completion requiredness must be closed before DDR-3 implements the
 transition. It is intentionally not guessed in this architecture.
 
 ## 16. Data Flow And Mutation Boundaries
@@ -513,13 +525,16 @@ catalog administrator, or generic audit system is required.
 
 ## 17. UI Composition
 
-Implemented DDR-1 feature-owned surfaces:
+Implemented DDR-1/DDR-2 feature-owned surfaces:
 
 - Report history.
 - New Draft report.
 - Draft detail/edit workspace.
+- Minimal Lake reference list/create/edit surface.
+- Production, work-area/progress, operational-context, Ground Check, and
+  closing-note Draft sections.
 
-Future DDR-2/DDR-3 surfaces:
+Future DDR-3 surfaces:
 
 - Completed read-only detail.
 - Explicit Correct Report workflow and correction-event summary.
@@ -530,8 +545,10 @@ The DDR-1 Draft workspace groups:
 - Chronological timeline with stable repeatable rows.
 - Runtime/downtime summary.
 
-Production/progress, Station entry, Ground Checks, and end-of-shift notes remain
-DDR-2 work.
+The Draft workspace preserves every controlled field and repeated child row
+when server validation, stale-version checks, or persistence fails. Pending,
+error, field-validation, stale-write, and successful-save states are explicit;
+raw database or framework errors are never shown.
 
 The timeline code control is one searchable dropdown grouped by Operational,
 Mechanical, and Electrical. It searches code and description, displays derived
@@ -562,13 +579,17 @@ DDR-specific server validation includes:
 - Required positive integer duration for a downtime-causing entry.
 - Interval-union result and runtime within `0..720`.
 - Station notation parsing, offset normalization, and server-derived Advance.
+- Optional Lake membership in the selected Equipment's Mine and active status
+  for a newly selected Lake.
+- Optional nonnegative bucket/measurement values and bounded closing text.
+- Valid paired station inputs with absolute derived Advance.
+- Ordered Ground Check identities and times within the report shift window.
 - Expected `recordVersion` on every existing-report mutation.
 - Draft-only ordinary editing and explicit completion/correction commands.
 - Required correction reason and immutable correction event.
 
-Lake/Direction format, negative Advance, finer-than-minute time precision, and
-final completion-requiredness rules remain open and must be resolved before
-their own implementation boundary is finalized.
+Finer-than-minute time precision and final completion-requiredness rules remain
+open and must be resolved before their own implementation boundary is finalized.
 
 Validation errors should map to the report section and repeated row where
 practical. Stale writes should instruct the operator to reload and reconcile;
@@ -654,20 +675,24 @@ Exclusions:
 - No decimal hour-meter storage or inferred precision.
 - No production/end-of-shift completion surface.
 
-### DDR-2 — Production / Progress / End-of-Shift Completion
+### DDR-2 — Production / Progress / End-of-Shift Draft Entry
+
+Status: Implemented
 
 Target:
 
 - Source-verified production and end-of-shift fields.
 - Normal Digging and Benchfill Buckets.
-- Lake ID and Direction.
+- Canonical Mine-owned Lake reference and snapshot; no Direction field.
 - Station Start and End with derived Advance.
 - Depth in feet.
 - Fuel in gallons, independent from Equipment Fuel Events.
 - Optional Cable Drag and Hoist in feet.
 - Repeatable ordered Ground Check times.
 - Comments, optional Safety Items Found, and optional Action Taken.
-- Completion validation rules, once their requiredness is confirmed.
+- Complete Draft form-state preservation and clear mutation feedback.
+
+Completion validation rules remain DDR-3 work once requiredness is confirmed.
 
 ### DDR-3 — Completion / Correction
 

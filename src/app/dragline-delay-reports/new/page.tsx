@@ -9,7 +9,7 @@ import type { DraglineDelayReportFormInitialValues } from "@/features/dragline-d
 export const dynamic = "force-dynamic";
 
 export default async function NewDraglineDelayReportPage() {
-  const { equipment, employees, supervisors } =
+  const { equipment, employees, supervisors, lakes } =
     await getDraglineDelayReportFormOptions();
   const initialValues: DraglineDelayReportFormInitialValues = {
     operationalWorkDate: localOperationalDateValue(),
@@ -18,15 +18,28 @@ export default async function NewDraglineDelayReportPage() {
     startingHourMeter: "",
     endingHourMeter: "",
     supervisorId: "",
+    lakeId: "",
+    normalDiggingBuckets: "",
+    benchfillBuckets: "",
+    stationStart: "",
+    stationEnd: "",
+    depthFeet: "",
+    fuelGallons: "",
+    cableDragFeet: "",
+    hoistFeet: "",
+    comments: "",
+    safetyItemsFound: "",
+    actionTaken: "",
     operators: [],
     timelineEntries: [],
+    groundChecks: [],
   };
 
   return (
     <main className="page-stack">
       <section className="page-header with-actions">
         <div>
-          <p className="eyebrow">DDR-1 · Draft</p>
+          <p className="eyebrow">Dragline operations · Draft</p>
           <h1>Create Dragline Delay Report</h1>
           <p className="summary">
             Start one report for one Dragline, operational work date, and Day or
@@ -43,6 +56,7 @@ export default async function NewDraglineDelayReportPage() {
         employeeOptions={employees}
         equipmentOptions={equipment}
         initialValues={initialValues}
+        lakeOptions={lakes}
         submitLabel="Save Draft Report"
         supervisorOptions={supervisors}
       />

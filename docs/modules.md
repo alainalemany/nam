@@ -392,6 +392,8 @@ The feature owns:
 - Production/progress fields, normalized stations and derived Advance, manual
   Depth/Fuel/Cable facts, repeatable Ground Check times, comments, and optional
   safety/action fields.
+- Canonical Mine-owned Lake reference management and report selection limited
+  to active Lakes belonging to the selected Equipment's Mine.
 
 ### Boundaries
 
@@ -417,15 +419,16 @@ official codes and descriptions must not be invented or rewritten.
 
 ### Implementation Status And Open Questions
 
-DDR-1 is implemented as an independent Draft workflow with history,
-create/detail/edit surfaces, stable ordered children, Catalog V1 validation,
-overnight chronology, interval-union downtime, derived runtime, station
-helpers, and stale-write protection. It does not participate in Daily Log, Day
-View, Work Schedule, attachments, or completion.
+DDR-1 and DDR-2 are implemented as an independent Draft workflow with history,
+create/detail/edit surfaces, stable ordered timeline and Ground Check children,
+Catalog V1 validation, Mine-filtered Lake selection, production/progress facts,
+absolute derived Advance, overnight chronology, derived runtime/downtime,
+stale-write protection, and failure-state preservation. It does not participate
+in Daily Log, Day View, Work Schedule, attachments, or completion.
 
-Open validation questions are Lake ID format, Direction vocabulary, negative
-Advance support, completion-required fields, future Ground Check derivation,
-and any precision finer than integer minutes.
+Open validation questions are completion-required fields, future Ground Check
+derivation, and any precision finer than integer minutes. Direction is not a
+digital DDR field.
 
 ## Knowledge Base (KB)
 

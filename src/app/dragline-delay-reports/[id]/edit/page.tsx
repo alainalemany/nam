@@ -16,7 +16,7 @@ export default async function EditDraglineDelayReportPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { report, equipment, employees, supervisors } =
+  const { report, equipment, employees, supervisors, lakes } =
     await getDraglineDelayReportFormOptions(id);
   if (!report || report.status !== "DRAFT") notFound();
 
@@ -40,6 +40,7 @@ export default async function EditDraglineDelayReportPage({
         employeeOptions={employees}
         equipmentOptions={equipment}
         initialValues={draglineDelayReportToFormInitial(report)}
+        lakeOptions={lakes}
         submitLabel="Save Draft Changes"
         supervisorOptions={supervisors}
       />

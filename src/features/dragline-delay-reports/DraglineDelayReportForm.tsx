@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { startTransition, useActionState, useMemo, useState } from "react";
 
 import {
   DRAGLINE_DELAY_CODE_CATALOG_VERSION,
@@ -9,13 +9,17 @@ import {
   searchDraglineDelayCodes,
 } from "./catalog";
 import { calculateDraglineShiftTotals } from "./calculations";
+import { filterDraglineLakesForMine } from "./lakes";
+import { calculateStationAdvance, parseStationNotation } from "./station";
 import { normalizeEventStartTime } from "./time";
 import type {
   DraglineDelayReportFormInitialValues,
+  DraglineDelayReportGroundCheckFormRow,
   DraglineDelayReportOperatorFormRow,
   DraglineDelayReportTimelineFormRow,
   DraglineEmployeeOption,
   DraglineEquipmentOption,
+  DraglineLakeOption,
 } from "./types";
 import {
   emptyDraglineDelayReportActionState,
@@ -30,6 +34,7 @@ type Props = {
   cancelHref: string;
   equipmentOptions: DraglineEquipmentOption[];
   employeeOptions: DraglineEmployeeOption[];
+  lakeOptions: DraglineLakeOption[];
   supervisorOptions: DraglineEmployeeOption[];
   initialValues: DraglineDelayReportFormInitialValues;
   submitLabel: string;
@@ -58,9 +63,23 @@ function emptyTimelineEntry(): DraglineDelayReportTimelineFormRow {
   };
 }
 
+function emptyGroundCheck(): DraglineDelayReportGroundCheckFormRow {
+  return {
+    clientId: clientRowId("ground-check"),
+    startTime: "",
+    dayOffset: 0,
+  };
+}
+
 function firstError(state: DraglineDelayReportActionState, path: string) {
   const message = state.fieldErrors[path]?.[0];
   return message ? <p className="field-error">{message}</p> : null;
+}
+
+function errorAttributes(state: DraglineDelayReportActionState, path: string) {
+  return state.fieldErrors[path]?.length
+    ? { "aria-invalid": true as const }
+    : {};
 }
 
 function moveItem<T>(items: T[], index: number, offset: -1 | 1) {
@@ -107,6 +126,7 @@ function DelayCodeField({
       <label>
         <span>Delay Code</span>
         <select
+          {...errorAttributes(state, `timelineEntries.${index}.delayCode`)}
           aria-label={`Delay Code for row ${index + 1}`}
           value={entry.delayCode}
           onChange={(event) => {
@@ -176,6 +196,7 @@ function EmployeeField({
       <label>
         <span>{label}</span>
         <select
+          {...errorAttributes(state, errorPath)}
           aria-label={`${label}${suffix}`}
           value={value}
           onChange={(event) => onChange(event.target.value)}
@@ -202,6 +223,7 @@ export function DraglineDelayReportForm({
   cancelHref,
   equipmentOptions,
   employeeOptions,
+  lakeOptions,
   supervisorOptions,
   initialValues,
   submitLabel,
@@ -223,6 +245,24 @@ export function DraglineDelayReportForm({
     initialValues.endingHourMeter,
   );
   const [supervisorId, setSupervisorId] = useState(initialValues.supervisorId);
+  const [lakeId, setLakeId] = useState(initialValues.lakeId);
+  const [normalDiggingBuckets, setNormalDiggingBuckets] = useState(
+    initialValues.normalDiggingBuckets,
+  );
+  const [benchfillBuckets, setBenchfillBuckets] = useState(
+    initialValues.benchfillBuckets,
+  );
+  const [stationStart, setStationStart] = useState(initialValues.stationStart);
+  const [stationEnd, setStationEnd] = useState(initialValues.stationEnd);
+  const [depthFeet, setDepthFeet] = useState(initialValues.depthFeet);
+  const [fuelGallons, setFuelGallons] = useState(initialValues.fuelGallons);
+  const [cableDragFeet, setCableDragFeet] = useState(initialValues.cableDragFeet);
+  const [hoistFeet, setHoistFeet] = useState(initialValues.hoistFeet);
+  const [comments, setComments] = useState(initialValues.comments);
+  const [safetyItemsFound, setSafetyItemsFound] = useState(
+    initialValues.safetyItemsFound,
+  );
+  const [actionTaken, setActionTaken] = useState(initialValues.actionTaken);
   const [operators, setOperators] = useState(
     initialValues.operators.length ? initialValues.operators : [emptyOperator()],
   );
@@ -231,6 +271,7 @@ export function DraglineDelayReportForm({
       ? initialValues.timelineEntries
       : [emptyTimelineEntry()],
   );
+  const [groundChecks, setGroundChecks] = useState(initialValues.groundChecks);
 
   const selectedEquipment = equipmentOptions.find(
     (option) => option.id === equipmentId,
@@ -239,6 +280,11 @@ export function DraglineDelayReportForm({
     (option) =>
       option.id === equipmentId ||
       option.label.toLowerCase().includes(equipmentQuery.trim().toLowerCase()),
+  );
+  const visibleLakes = filterDraglineLakesForMine(
+    lakeOptions,
+    selectedEquipment?.mineId,
+    lakeId,
   );
   const submittedTimeline = timelineEntries.filter(
     (entry) =>
@@ -265,6 +311,17 @@ export function DraglineDelayReportForm({
       return null;
     }
   }, [shift, submittedTimeline]);
+  const advanceFeet = useMemo(() => {
+    if (!stationStart.trim() || !stationEnd.trim()) return null;
+    try {
+      return calculateStationAdvance(
+        parseStationNotation(stationStart).absoluteFeet,
+        parseStationNotation(stationEnd).absoluteFeet,
+      );
+    } catch {
+      return null;
+    }
+  }, [stationEnd, stationStart]);
 
   const payload = JSON.stringify({
     operationalWorkDate,
@@ -273,6 +330,18 @@ export function DraglineDelayReportForm({
     startingHourMeter,
     endingHourMeter,
     supervisorId,
+    lakeId,
+    normalDiggingBuckets,
+    benchfillBuckets,
+    stationStart,
+    stationEnd,
+    depthFeet,
+    fuelGallons,
+    cableDragFeet,
+    hoistFeet,
+    comments,
+    safetyItemsFound,
+    actionTaken,
     recordVersion: initialValues.recordVersion,
     operators: operators.map((operator, index) => ({
       id: operator.id,
@@ -290,6 +359,14 @@ export function DraglineDelayReportForm({
       durationMinutes: entry.durationMinutes,
       causesDowntime: entry.causesDowntime,
     })),
+    groundChecks: groundChecks
+      .filter((groundCheck) => groundCheck.id || groundCheck.startTime)
+      .map((groundCheck, index) => ({
+        id: groundCheck.id,
+        sequence: index + 1,
+        startTime: groundCheck.startTime,
+        dayOffset: groundCheck.dayOffset,
+      })),
   });
 
   function updateOperator(
@@ -315,7 +392,14 @@ export function DraglineDelayReportForm({
   }
 
   return (
-    <form action={formAction} className="form-stack ddr-form">
+    <form
+      className="form-stack ddr-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        startTransition(() => formAction(formData));
+      }}
+    >
       <input name="payload" type="hidden" value={payload} />
       {state.status === "error" ? (
         <div className="form-alert" role="alert">
@@ -332,6 +416,7 @@ export function DraglineDelayReportForm({
           <label>
             <span>Operational Work Date</span>
             <input
+              {...errorAttributes(state, "operationalWorkDate")}
               type="date"
               value={operationalWorkDate}
               onChange={(event) => setOperationalWorkDate(event.target.value)}
@@ -341,6 +426,7 @@ export function DraglineDelayReportForm({
           <label>
             <span>Shift</span>
             <select
+              {...errorAttributes(state, "shift")}
               value={shift}
               onChange={(event) => {
                 const next = event.target.value as "DAY" | "NIGHT";
@@ -348,6 +434,12 @@ export function DraglineDelayReportForm({
                 if (next === "DAY") {
                   setTimelineEntries((current) =>
                     current.map((entry) => ({ ...entry, dayOffset: 0 })),
+                  );
+                  setGroundChecks((current) =>
+                    current.map((groundCheck) => ({
+                      ...groundCheck,
+                      dayOffset: 0,
+                    })),
                   );
                 }
               }}
@@ -370,8 +462,22 @@ export function DraglineDelayReportForm({
           <label>
             <span>Dragline Equipment</span>
             <select
+              {...errorAttributes(state, "equipmentId")}
               value={equipmentId}
-              onChange={(event) => setEquipmentId(event.target.value)}
+              onChange={(event) => {
+                const nextEquipmentId = event.target.value;
+                const nextMineId = equipmentOptions.find(
+                  (equipment) => equipment.id === nextEquipmentId,
+                )?.mineId;
+                setEquipmentId(nextEquipmentId);
+                setLakeId((current) =>
+                  lakeOptions.some(
+                    (lake) => lake.id === current && lake.mineId === nextMineId,
+                  )
+                    ? current
+                    : "",
+                );
+              }}
             >
               <option value="">Select Dragline Equipment</option>
               {visibleEquipment.map((equipment) => (
@@ -393,6 +499,7 @@ export function DraglineDelayReportForm({
           <label>
             <span>Starting Hour Meter</span>
             <input
+              {...errorAttributes(state, "startingHourMeter")}
               inputMode="numeric"
               min="0"
               step="1"
@@ -405,6 +512,7 @@ export function DraglineDelayReportForm({
           <label>
             <span>Ending Hour Meter (optional in Draft)</span>
             <input
+              {...errorAttributes(state, "endingHourMeter")}
               inputMode="numeric"
               min="0"
               step="1"
@@ -544,6 +652,7 @@ export function DraglineDelayReportForm({
                 <label>
                   <span>Start time</span>
                   <input
+                    {...errorAttributes(state, `timelineEntries.${index}.startTime`)}
                     aria-label={`Start time for row ${index + 1}`}
                     type="time"
                     value={entry.startTime}
@@ -579,6 +688,7 @@ export function DraglineDelayReportForm({
                 <label>
                   <span>Duration (minutes, optional)</span>
                   <input
+                    {...errorAttributes(state, `timelineEntries.${index}.durationMinutes`)}
                     aria-label={`Duration for row ${index + 1}`}
                     inputMode="numeric"
                     min="1"
@@ -654,6 +764,327 @@ export function DraglineDelayReportForm({
               </div>
             </fieldset>
           ))}
+        </div>
+      </section>
+
+      <section className="panel form-section" aria-labelledby="ddr-production-heading">
+        <div className="full-width-field">
+          <p className="eyebrow">End-of-shift Draft data</p>
+          <h2 id="ddr-production-heading">Production</h2>
+        </div>
+        <div className="form-grid full-width-field">
+          <label>
+            <span>Normal Digging Buckets</span>
+            <input
+              {...errorAttributes(state, "normalDiggingBuckets")}
+              inputMode="numeric"
+              min="0"
+              step="1"
+              type="number"
+              value={normalDiggingBuckets}
+              onChange={(event) => setNormalDiggingBuckets(event.target.value)}
+            />
+            {firstError(state, "normalDiggingBuckets")}
+          </label>
+          <label>
+            <span>Benchfill Buckets</span>
+            <input
+              {...errorAttributes(state, "benchfillBuckets")}
+              inputMode="numeric"
+              min="0"
+              step="1"
+              type="number"
+              value={benchfillBuckets}
+              onChange={(event) => setBenchfillBuckets(event.target.value)}
+            />
+            {firstError(state, "benchfillBuckets")}
+          </label>
+        </div>
+      </section>
+
+      <section className="panel form-section" aria-labelledby="ddr-progress-heading">
+        <div className="section-heading full-width-field">
+          <div>
+            <p className="eyebrow">Equipment Mine context</p>
+            <h2 id="ddr-progress-heading">Work Area and Progress</h2>
+          </div>
+          <a className="button secondary" href="/dragline-delay-reports/lakes">
+            Manage Lakes
+          </a>
+        </div>
+        <div className="form-grid full-width-field">
+          <label>
+            <span>Lake</span>
+            <select
+              {...errorAttributes(state, "lakeId")}
+              disabled={!selectedEquipment}
+              value={lakeId}
+              onChange={(event) => setLakeId(event.target.value)}
+            >
+              <option value="">
+                {selectedEquipment ? "Not recorded in Draft" : "Select Equipment first"}
+              </option>
+              {visibleLakes.map((lake) => (
+                <option
+                  disabled={lake.status !== "ACTIVE" && lake.id !== initialValues.lakeId}
+                  key={lake.id}
+                  value={lake.id}
+                >
+                  {lake.name}{lake.status !== "ACTIVE" ? " (inactive)" : ""}
+                </option>
+              ))}
+            </select>
+            {firstError(state, "lakeId")}
+            {selectedEquipment && visibleLakes.length === 0 ? (
+              <p className="subtle">No active Lakes exist for this Mine.</p>
+            ) : null}
+          </label>
+          <label>
+            <span>Station Start</span>
+            <input
+              {...errorAttributes(state, "stationStart")}
+              inputMode="numeric"
+              placeholder="50+30"
+              value={stationStart}
+              onChange={(event) => setStationStart(event.target.value)}
+            />
+            {firstError(state, "stationStart")}
+          </label>
+          <label>
+            <span>Station End</span>
+            <input
+              {...errorAttributes(state, "stationEnd")}
+              inputMode="numeric"
+              placeholder="50+60"
+              value={stationEnd}
+              onChange={(event) => setStationEnd(event.target.value)}
+            />
+            {firstError(state, "stationEnd")}
+          </label>
+          <div>
+            <span>Advance</span>
+            <p>
+              <strong>{advanceFeet == null ? "Enter valid Start and End" : `${advanceFeet} ft`}</strong>
+            </p>
+            <p className="subtle">Absolute distance; calculated by NAM.</p>
+          </div>
+          <label>
+            <span>Depth (feet)</span>
+            <input
+              {...errorAttributes(state, "depthFeet")}
+              inputMode="numeric"
+              min="0"
+              step="1"
+              type="number"
+              value={depthFeet}
+              onChange={(event) => setDepthFeet(event.target.value)}
+            />
+            {firstError(state, "depthFeet")}
+          </label>
+        </div>
+      </section>
+
+      <section className="panel form-section" aria-labelledby="ddr-operational-heading">
+        <div className="full-width-field">
+          <p className="eyebrow">Totals and measurements</p>
+          <h2 id="ddr-operational-heading">Operational Context</h2>
+        </div>
+        <div className="checklist-derived-context full-width-field" aria-live="polite">
+          <div>
+            <span>Down Time</span>
+            <strong>{totals ? `${totals.downTimeMinutes} min` : "Check timeline"}</strong>
+          </div>
+          <div>
+            <span>Run Time</span>
+            <strong>{totals ? `${totals.runTimeMinutes} min` : "Check timeline"}</strong>
+          </div>
+        </div>
+        <div className="form-grid full-width-field">
+          <label>
+            <span>Fuel (gallons)</span>
+            <input
+              {...errorAttributes(state, "fuelGallons")}
+              inputMode="numeric"
+              min="0"
+              step="1"
+              type="number"
+              value={fuelGallons}
+              onChange={(event) => setFuelGallons(event.target.value)}
+            />
+            {firstError(state, "fuelGallons")}
+          </label>
+          <label>
+            <span>Cable Drag (feet cut off)</span>
+            <input
+              {...errorAttributes(state, "cableDragFeet")}
+              inputMode="numeric"
+              min="0"
+              step="1"
+              type="number"
+              value={cableDragFeet}
+              onChange={(event) => setCableDragFeet(event.target.value)}
+            />
+            {firstError(state, "cableDragFeet")}
+          </label>
+          <label>
+            <span>Hoist (feet cut off)</span>
+            <input
+              {...errorAttributes(state, "hoistFeet")}
+              inputMode="numeric"
+              min="0"
+              step="1"
+              type="number"
+              value={hoistFeet}
+              onChange={(event) => setHoistFeet(event.target.value)}
+            />
+            {firstError(state, "hoistFeet")}
+          </label>
+        </div>
+      </section>
+
+      <section className="panel form-section" aria-labelledby="ddr-ground-check-heading">
+        <div className="section-heading full-width-field">
+          <div>
+            <p className="eyebrow">Manual inspection times</p>
+            <h2 id="ddr-ground-check-heading">Ground Checks</h2>
+          </div>
+          <button
+            className="button secondary"
+            disabled={groundChecks.length >= 100}
+            type="button"
+            onClick={() => setGroundChecks((current) => [...current, emptyGroundCheck()])}
+          >
+            Add Ground Check
+          </button>
+        </div>
+        <p className="subtle full-width-field">
+          Record every physical ground-condition inspection. These times are not
+          derived from timeline codes.
+        </p>
+        {firstError(state, "groundChecks")}
+        <div className="ddr-operator-list full-width-field">
+          {groundChecks.length === 0 ? (
+            <p className="subtle">No Ground Checks recorded in this Draft.</p>
+          ) : null}
+          {groundChecks.map((groundCheck, index) => (
+            <fieldset className="ddr-operator-row" key={groundCheck.clientId}>
+              <legend>Ground Check {index + 1}</legend>
+              <label>
+                <span>Time</span>
+                <input
+                  {...errorAttributes(state, `groundChecks.${index}.startTime`)}
+                  aria-label={`Ground Check time ${index + 1}`}
+                  type="time"
+                  value={groundCheck.startTime}
+                  onChange={(event) =>
+                    setGroundChecks((current) =>
+                      current.map((item, itemIndex) =>
+                        itemIndex === index
+                          ? { ...item, startTime: event.target.value }
+                          : item,
+                      ),
+                    )
+                  }
+                />
+                {firstError(state, `groundChecks.${index}.startTime`)}
+              </label>
+              {shift === "NIGHT" ? (
+                <label>
+                  <span>Calendar day</span>
+                  <select
+                    aria-label={`Ground Check calendar day ${index + 1}`}
+                    value={groundCheck.dayOffset}
+                    onChange={(event) =>
+                      setGroundChecks((current) =>
+                        current.map((item, itemIndex) =>
+                          itemIndex === index
+                            ? {
+                                ...item,
+                                dayOffset: Number(event.target.value) as 0 | 1,
+                              }
+                            : item,
+                        ),
+                      )
+                    }
+                  >
+                    <option value={0}>Operational date</option>
+                    <option value={1}>Next day</option>
+                  </select>
+                </label>
+              ) : null}
+              <div className="inline-actions">
+                <button
+                  className="button secondary"
+                  disabled={index === 0}
+                  type="button"
+                  onClick={() => setGroundChecks((current) => moveItem(current, index, -1))}
+                >
+                  Move up
+                </button>
+                <button
+                  className="button secondary"
+                  disabled={index === groundChecks.length - 1}
+                  type="button"
+                  onClick={() => setGroundChecks((current) => moveItem(current, index, 1))}
+                >
+                  Move down
+                </button>
+                <button
+                  className="button danger"
+                  type="button"
+                  onClick={() =>
+                    setGroundChecks((current) =>
+                      current.filter((_, itemIndex) => itemIndex !== index),
+                    )
+                  }
+                >
+                  Remove
+                </button>
+              </div>
+            </fieldset>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel form-section" aria-labelledby="ddr-closing-heading">
+        <div className="full-width-field">
+          <p className="eyebrow">Optional Draft notes</p>
+          <h2 id="ddr-closing-heading">Closing Notes</h2>
+        </div>
+        <div className="form-grid full-width-field">
+          <label className="full-width-field">
+            <span>Comments</span>
+            <textarea
+              {...errorAttributes(state, "comments")}
+              maxLength={5000}
+              rows={4}
+              value={comments}
+              onChange={(event) => setComments(event.target.value)}
+            />
+            {firstError(state, "comments")}
+          </label>
+          <label>
+            <span>Safety Items Found</span>
+            <textarea
+              {...errorAttributes(state, "safetyItemsFound")}
+              maxLength={5000}
+              rows={4}
+              value={safetyItemsFound}
+              onChange={(event) => setSafetyItemsFound(event.target.value)}
+            />
+            {firstError(state, "safetyItemsFound")}
+          </label>
+          <label>
+            <span>Action Taken</span>
+            <textarea
+              {...errorAttributes(state, "actionTaken")}
+              maxLength={5000}
+              rows={4}
+              value={actionTaken}
+              onChange={(event) => setActionTaken(event.target.value)}
+            />
+            {firstError(state, "actionTaken")}
+          </label>
         </div>
       </section>
 

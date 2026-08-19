@@ -5,7 +5,8 @@ import {
   getDraglineDelayCode,
 } from "./catalog";
 import { calculateDraglineShiftTotals } from "./calculations";
-import { normalizeEventStartTime } from "./time";
+import { parseStationNotation } from "./station";
+import { normalizeEventStartTime, validateEventInterval } from "./time";
 
 const POSTGRES_INTEGER_MAX = 2_147_483_647;
 
@@ -87,6 +88,20 @@ const optionalPositiveWholeNumberInput = (label: string) =>
       .optional(),
   );
 
+const optionalText = (label: string, max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max, `${label} must be ${max} characters or fewer.`)
+    .optional()
+    .transform((value) => value || undefined);
+
+const optionalStationInput = z
+  .string()
+  .trim()
+  .optional()
+  .transform((value) => value || undefined);
+
 function isDateOnly(value: string) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return false;
@@ -124,6 +139,13 @@ export const draglineDelayReportTimelineEntrySchema = z.object({
   causesDowntime: z.boolean(),
 });
 
+export const draglineDelayReportGroundCheckSchema = z.object({
+  id: optionalId,
+  sequence: positiveWholeNumberInput("Ground Check sequence"),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, "Enter a valid Ground Check time."),
+  dayOffset: z.union([z.literal(0), z.literal(1)]),
+});
+
 export const draglineDelayReportSubmissionSchema = z
   .object({
     operationalWorkDate: z
@@ -137,6 +159,18 @@ export const draglineDelayReportSubmissionSchema = z
     startingHourMeter: wholeNumberInput("Starting Hour Meter"),
     endingHourMeter: optionalWholeNumberInput("Ending Hour Meter"),
     supervisorId: optionalId,
+    lakeId: optionalId,
+    normalDiggingBuckets: optionalWholeNumberInput("Normal Digging Buckets"),
+    benchfillBuckets: optionalWholeNumberInput("Benchfill Buckets"),
+    stationStart: optionalStationInput,
+    stationEnd: optionalStationInput,
+    depthFeet: optionalWholeNumberInput("Depth"),
+    fuelGallons: optionalWholeNumberInput("Fuel"),
+    cableDragFeet: optionalWholeNumberInput("Cable Drag"),
+    hoistFeet: optionalWholeNumberInput("Hoist"),
+    comments: optionalText("Comments", 5000),
+    safetyItemsFound: optionalText("Safety Items Found", 5000),
+    actionTaken: optionalText("Action Taken", 5000),
     recordVersion: optionalPositiveWholeNumberInput("Record version"),
     operators: z
       .array(draglineDelayReportOperatorSchema)
@@ -145,8 +179,39 @@ export const draglineDelayReportSubmissionSchema = z
     timelineEntries: z
       .array(draglineDelayReportTimelineEntrySchema)
       .max(200, "A report may contain at most 200 timeline entries."),
+    groundChecks: z
+      .array(draglineDelayReportGroundCheckSchema)
+      .max(100, "A report may contain at most 100 Ground Checks.")
+      .default([]),
   })
   .superRefine((value, context) => {
+    if (Boolean(value.stationStart) !== Boolean(value.stationEnd)) {
+      const missingField = value.stationStart ? "stationEnd" : "stationStart";
+      context.addIssue({
+        code: "custom",
+        path: [missingField],
+        message: "Enter both Station Start and Station End, or leave both blank.",
+      });
+    }
+    for (const [field, station] of [
+      ["stationStart", value.stationStart],
+      ["stationEnd", value.stationEnd],
+    ] as const) {
+      if (!station) continue;
+      try {
+        const parsedStation = parseStationNotation(station);
+        if (parsedStation.absoluteFeet > POSTGRES_INTEGER_MAX) {
+          throw new Error("Station is outside the supported range.");
+        }
+      } catch (error) {
+        context.addIssue({
+          code: "custom",
+          path: [field],
+          message: error instanceof Error ? error.message : "Station is invalid.",
+        });
+      }
+    }
+
     const operatorIds = new Set<string>();
     const operatorRowIds = new Set<string>();
     value.operators.forEach((operator, index) => {
@@ -241,6 +306,42 @@ export const draglineDelayReportSubmissionSchema = z
         message: error instanceof Error ? error.message : "Timeline is invalid.",
       });
     }
+
+    const groundCheckIds = new Set<string>();
+    value.groundChecks.forEach((groundCheck, index) => {
+      if (groundCheck.sequence !== index + 1) {
+        context.addIssue({
+          code: "custom",
+          path: ["groundChecks", index, "sequence"],
+          message: "Ground Check order must be contiguous and start at 1.",
+        });
+      }
+      if (groundCheck.id) {
+        if (groundCheckIds.has(groundCheck.id)) {
+          context.addIssue({
+            code: "custom",
+            path: ["groundChecks", index, "id"],
+            message: "Ground Check row identity is duplicated.",
+          });
+        }
+        groundCheckIds.add(groundCheck.id);
+      }
+      try {
+        validateEventInterval(
+          value.shift,
+          normalizeEventStartTime(groundCheck.startTime, groundCheck.dayOffset),
+        );
+      } catch (error) {
+        context.addIssue({
+          code: "custom",
+          path: ["groundChecks", index, "startTime"],
+          message:
+            error instanceof Error
+              ? error.message.replace("Event", "Ground Check")
+              : "Ground Check time is invalid.",
+        });
+      }
+    });
   });
 
 export type DraglineDelayReportSubmissionInput = z.infer<
@@ -271,11 +372,27 @@ export function draglineDelayReportFieldErrors(error: z.ZodError) {
 export function normalizeDraglineDelayReportSubmission(
   input: DraglineDelayReportSubmissionInput,
 ) {
+  const stationStartFeet = input.stationStart
+    ? parseStationNotation(input.stationStart).absoluteFeet
+    : undefined;
+  const stationEndFeet = input.stationEnd
+    ? parseStationNotation(input.stationEnd).absoluteFeet
+    : undefined;
+
   return {
     ...input,
+    stationStartFeet,
+    stationEndFeet,
     timelineEntries: input.timelineEntries.map((entry) => ({
       ...entry,
       startMinuteOffset: normalizeEventStartTime(entry.startTime, entry.dayOffset),
+    })),
+    groundChecks: input.groundChecks.map((groundCheck) => ({
+      ...groundCheck,
+      startMinuteOffset: normalizeEventStartTime(
+        groundCheck.startTime,
+        groundCheck.dayOffset,
+      ),
     })),
   };
 }

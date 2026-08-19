@@ -549,7 +549,8 @@ foundation. The original Dragline Delay Report front and official Delay Code
 Legend are preserved and visually verified. The
 [Delay Code Catalog V1](reference/dragline-delay-reports/delay-code-catalog-v1.md)
 is the canonical source-derived 66-entry transcription and is implemented as a
-feature-owned application catalog. DDR-2 and DDR-3 remain pending.
+feature-owned application catalog. DDR-2 Draft production/progress entry is
+implemented; DDR-3 completion/correction remains pending.
 
 ### DDR-1 — Independent Draft Report Foundation
 
@@ -571,7 +572,7 @@ Target:
 - Integer-minute interval-union downtime and server-derived runtime from 720
   minutes.
 - Station parser, normalization, absolute-feet, and Advance helpers with
-  focused tests; negative-Advance acceptance remains unresolved.
+  focused tests; DDR-2 applies absolute-distance semantics in both directions.
 - Optimistic stale-version protection for repeated Draft saves.
 - Required nonnegative whole-number Starting Hour Meter and optional
   whole-number Ending Hour Meter while Draft.
@@ -586,21 +587,27 @@ Exclusions:
 - No Work Schedule dependency.
 - No decimal hour-meter storage or inferred precision.
 
-### DDR-2 — Production / Progress / End-of-Shift Completion
+### DDR-2 — Production / Progress / End-of-Shift Draft Entry
+
+Status: Implemented
 
 Target:
 
 - Source-verified production and end-of-shift fields.
 - Normal Digging Buckets and Benchfill Buckets.
-- Lake ID and Direction after format/vocabulary closure.
-- Station Start and End with server-derived Advance.
+- Canonical Mine-owned Lake reference, Mine-filtered selection, and historical
+  display-name snapshot; Direction is intentionally excluded.
+- Station Start and End with server-derived absolute Advance.
 - Derived Run Time and Down Time.
 - Manual Depth in feet.
 - Manual Fuel in gallons, independent from Equipment Fuel Events.
 - Optional Cable Drag and Hoist in feet.
 - Repeatable ordered manual Ground Check times.
 - Comments, optional Safety Items Found, and optional Action Taken.
-- Approved completion-requiredness validation.
+- Failure-state preservation for every header, timeline, DDR-2 field, and
+  repeated row, with clear pending/error/success feedback.
+
+Completion-requiredness and the explicit status transition remain DDR-3 work.
 
 ### DDR-3 — Completion / Correction
 

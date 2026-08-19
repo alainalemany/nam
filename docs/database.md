@@ -179,10 +179,10 @@ model, generic attachment model, or implemented schema.
 
 ## Dragline Delay Report Concepts
 
-Status: DDR-1 root, ordered Operator, and stable Timeline Entry persistence is
-implemented in `prisma/schema.prisma`. DDR-2 Ground Check and end-of-shift
-facts, plus DDR-3 correction history, remain conceptual and sequenced in
-`docs/roadmap.md`. The feature is governed by
+Status: DDR-1 root, ordered Operator, and stable Timeline Entry persistence and
+DDR-2 Lake, Ground Check, production/progress, measurement, and closing-note
+persistence are implemented in `prisma/schema.prisma`. DDR-3 correction history
+remains conceptual and sequenced in `docs/roadmap.md`. The feature is governed by
 `docs/architecture/features/dragline-delay-reports.md`.
 
 ### DraglineDelayReport
@@ -204,8 +204,12 @@ Conceptual fields and rules:
   integer Ending Hour Meter while Draft.
 - Optional live supervisor Employee reference plus limited display-name and
   employee-code snapshots while Draft completion rules remain open.
-- DDR-2 production, progress, normalized station, measurement, Ground Check,
-  comment, and optional safety/action facts.
+- Optional live Lake reference plus Lake display-name snapshot.
+- Optional nonnegative integer Normal Digging and Benchfill bucket counts.
+- Optional paired normalized `stationStartFeet` and `stationEndFeet` values.
+- Optional nonnegative integer Depth feet, Fuel gallons, Cable Drag feet, and
+  Hoist feet.
+- Optional Comments, Safety Items Found, and Action Taken text.
 - Server-derived integer downtime and runtime minutes.
 - Required positive integer `recordVersion` for optimistic concurrency.
 - Created and updated timestamps.
@@ -218,14 +222,32 @@ check restrict this aggregate to `DAY` and `NIGHT`.
 
 The tuple `(equipmentId, operationalWorkDate, shift)` is unique. Mine and City
 derive through Equipment and are not independent inputs. The root owns ordered
-operator participants, timeline entries, Ground Check entries, and correction
-events.
+operator participants, timeline entries, implemented Ground Check entries, and
+future correction events.
 
 The source front does not itself establish meter precision, but confirmed
 digital product direction now requires nonnegative whole numbers and rejects
 decimals. `startingHourMeter` is an `Int`; `endingHourMeter` is a nullable
-`Int` during Draft. Lake ID format, Direction vocabulary, negative Advance
-validity, and final completion-requiredness remain open.
+`Int` during Draft. DDR-2 uses whole-unit nonnegative `Int` values for its
+implemented measurements. Final completion-requiredness remains open;
+Direction is intentionally not stored.
+
+### Lake
+
+Implemented minimal recurring operational reference owned by one Mine.
+
+Fields and rules:
+
+- Stable identity and required live Mine relation with Restrict deletion.
+- Required display name unique within the Mine.
+- `ACTIVE`, `INACTIVE`, or `ARCHIVED` reference status.
+- Optional bounded notes and standard timestamps.
+- New DDR selection exposes only active Lakes for the Equipment's Mine.
+- A report keeps a nullable live Lake relation with `SetNull` deletion behavior
+  and a Lake display-name snapshot for historical meaning.
+
+Lake is not a generic location hierarchy and owns no coordinates, geometry,
+depth history, environmental data, or Direction vocabulary.
 
 ### DraglineDelayReportOperator
 
@@ -275,15 +297,16 @@ deleted. Live Equipment, supervisor, and operator Employee references use
 
 ### DraglineDelayReportGroundCheck
 
-Repeatable ordered Ground Check time owned by DDR-2.
+Implemented repeatable ordered Ground Check time owned by DDR-2.
 
 Conceptual fields:
 
 - Durable child identity.
 - Parent report reference.
 - Positive sequence unique within the report.
-- Actual local `HH:mm` time.
-- Operational-day offset or deterministic equivalent.
+- Integer `startMinuteOffset` using the same operational-date and overnight
+  normalization as the timeline.
+- Created and updated timestamps.
 
 The list has no paper-form-derived fixed maximum. It remains manually entered
 in DDR-2 even if a source-verified timeline code can also represent Ground
@@ -315,8 +338,8 @@ generic audit system.
 - Station input preserves normalized station number/offset or deterministic
   absolute feet, not notation-only text.
 - Station offset is normally `00..99`.
-- Advance is ending absolute feet minus starting absolute feet and is
-  server-derived.
+- Advance is the absolute difference between ending and starting absolute feet
+  and is server-derived rather than persisted.
 - Depth, Cable Drag, and Hoist use feet; Fuel uses gallons.
 - DDR report Fuel remains independent from `EquipmentFuelEvent`.
 
