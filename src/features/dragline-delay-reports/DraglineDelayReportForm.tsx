@@ -1,6 +1,13 @@
 "use client";
 
-import { startTransition, useActionState, useMemo, useState } from "react";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   DRAGLINE_DELAY_CODE_CATALOG_VERSION,
@@ -25,6 +32,10 @@ import {
   emptyDraglineDelayReportActionState,
   type DraglineDelayReportActionState,
 } from "./validation";
+import {
+  draglineDelayReportErrorSummary,
+  draglineDelayReportErrorTargetPaths,
+} from "./validation-feedback";
 
 type Props = {
   action: (
@@ -75,13 +86,35 @@ function emptyGroundCheck(): DraglineDelayReportGroundCheckFormRow {
 
 function firstError(state: DraglineDelayReportActionState, path: string) {
   const message = state.fieldErrors[path]?.[0];
-  return message ? <p className="field-error">{message}</p> : null;
+  return message ? (
+    <p className="field-error" id={errorId(path)}>
+      {message}
+    </p>
+  ) : null;
+}
+
+function errorId(path: string) {
+  return `ddr-${path.replace(/[^a-zA-Z0-9_-]/g, "-")}-error`;
 }
 
 function errorAttributes(state: DraglineDelayReportActionState, path: string) {
   return state.fieldErrors[path]?.length
-    ? { "aria-invalid": true as const }
-    : {};
+    ? {
+        "aria-describedby": errorId(path),
+        "aria-invalid": true as const,
+        "data-ddr-error-path": path,
+      }
+    : { "data-ddr-error-path": path };
+}
+
+function hasError(state: DraglineDelayReportActionState, path: string) {
+  return Boolean(state.fieldErrors[path]?.length);
+}
+
+function hasNestedError(state: DraglineDelayReportActionState, path: string) {
+  return Object.keys(state.fieldErrors).some(
+    (errorPath) => errorPath === path || errorPath.startsWith(`${path}.`),
+  );
 }
 
 function moveItem<T>(items: T[], index: number, offset: -1 | 1) {
@@ -236,6 +269,11 @@ export function DraglineDelayReportForm({
     action,
     emptyDraglineDelayReportActionState,
   );
+  const formRef = useRef<HTMLFormElement>(null);
+  const errorSummary = useMemo(
+    () => draglineDelayReportErrorSummary(state.fieldErrors),
+    [state.fieldErrors],
+  );
   const [operationalWorkDate, setOperationalWorkDate] = useState(
     initialValues.operationalWorkDate,
   );
@@ -280,6 +318,26 @@ export function DraglineDelayReportForm({
       : [emptyTimelineEntry()],
   );
   const [groundChecks, setGroundChecks] = useState(initialValues.groundChecks);
+
+  function focusErrorPath(path: string) {
+    const form = formRef.current;
+    if (!form) return;
+
+    const target = draglineDelayReportErrorTargetPaths(path)
+      .map((candidate) =>
+        form.querySelector<HTMLElement>(`[data-ddr-error-path="${candidate}"]`),
+      )
+      .find((candidate): candidate is HTMLElement => Boolean(candidate));
+    if (!target) return;
+
+    target.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    target.focus({ preventScroll: true });
+  }
+
+  useEffect(() => {
+    if (state.status !== "error") return;
+    focusErrorPath(errorSummary[0]?.path ?? "form");
+  }, [errorSummary, state.status]);
 
   const selectedEquipment = equipmentOptions.find(
     (option) => option.id === equipmentId,
@@ -403,6 +461,7 @@ export function DraglineDelayReportForm({
   return (
     <form
       className="form-stack ddr-form"
+      ref={formRef}
       onSubmit={(event) => {
         event.preventDefault();
         const submitter = (event.nativeEvent as SubmitEvent)
@@ -418,8 +477,27 @@ export function DraglineDelayReportForm({
     >
       <input name="payload" type="hidden" value={payload} />
       {state.status === "error" ? (
-        <div className="form-alert" role="alert">
+        <div
+          className="form-alert ddr-error-summary"
+          data-ddr-error-path="form"
+          role="alert"
+          tabIndex={-1}
+        >
           <p>{state.message}</p>
+          {errorSummary.length ? (
+            <div>
+              <p>Fix the following:</p>
+              <ul>
+                {errorSummary.map((error) => (
+                  <li key={`${error.path}-${error.message}`}>
+                    <button type="button" onClick={() => focusErrorPath(error.path)}>
+                      <strong>{error.label}:</strong> {error.message}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -569,7 +647,13 @@ export function DraglineDelayReportForm({
         </div>
       </section>
 
-      <section className="panel form-section" aria-labelledby="ddr-people-heading">
+      <section
+        aria-describedby={hasError(state, "operators") ? errorId("operators") : undefined}
+        aria-labelledby="ddr-people-heading"
+        className={`panel form-section${hasError(state, "operators") ? " ddr-invalid-section" : ""}`}
+        data-ddr-error-path="operators"
+        tabIndex={-1}
+      >
         <div className="section-heading full-width-field">
           <div>
             <p className="eyebrow">Canonical Employees</p>
@@ -587,8 +671,15 @@ export function DraglineDelayReportForm({
         {firstError(state, "operators")}
         <div className="ddr-operator-list full-width-field">
           {operators.map((operator, index) => (
-            <fieldset className="ddr-operator-row" key={operator.clientId}>
+            <fieldset
+              className={`ddr-operator-row${hasNestedError(state, `operators.${index}`) ? " ddr-invalid-row" : ""}`}
+              data-ddr-error-path={`operators.${index}`}
+              key={operator.clientId}
+              tabIndex={-1}
+            >
               <legend>Operator {index + 1}</legend>
+              {firstError(state, `operators.${index}.sequence`)}
+              {firstError(state, `operators.${index}.id`)}
               <EmployeeField
                 errorPath={`operators.${index}.employeeId`}
                 label="Operator"
@@ -648,7 +739,15 @@ export function DraglineDelayReportForm({
         </div>
       </section>
 
-      <section className="panel form-section" aria-labelledby="ddr-timeline-heading">
+      <section
+        aria-describedby={
+          hasError(state, "timelineEntries") ? errorId("timelineEntries") : undefined
+        }
+        aria-labelledby="ddr-timeline-heading"
+        className={`panel form-section${hasError(state, "timelineEntries") ? " ddr-invalid-section" : ""}`}
+        data-ddr-error-path="timelineEntries"
+        tabIndex={-1}
+      >
         <div className="section-heading full-width-field">
           <div>
             <p className="eyebrow">Actual-time operational record</p>
@@ -672,8 +771,16 @@ export function DraglineDelayReportForm({
         {firstError(state, "timelineEntries")}
         <div className="ddr-timeline-list full-width-field">
           {timelineEntries.map((entry, index) => (
-            <fieldset className="ddr-timeline-row" key={entry.clientId}>
+            <fieldset
+              className={`ddr-timeline-row${hasNestedError(state, `timelineEntries.${index}`) ? " ddr-invalid-row" : ""}`}
+              data-ddr-error-path={`timelineEntries.${index}`}
+              key={entry.clientId}
+              tabIndex={-1}
+            >
               <legend>Timeline row {index + 1}</legend>
+              {firstError(state, `timelineEntries.${index}.sequence`)}
+              {firstError(state, `timelineEntries.${index}.id`)}
+              {firstError(state, `timelineEntries.${index}.catalogVersion`)}
               <div className="ddr-timeline-fields">
                 <label>
                   <span>Start time</span>
@@ -692,6 +799,7 @@ export function DraglineDelayReportForm({
                   <label>
                     <span>Calendar day</span>
                     <select
+                      {...errorAttributes(state, `timelineEntries.${index}.dayOffset`)}
                       aria-label={`Calendar day for row ${index + 1}`}
                       value={entry.dayOffset}
                       onChange={(event) =>
@@ -703,6 +811,7 @@ export function DraglineDelayReportForm({
                       <option value={0}>Operational date</option>
                       <option value={1}>Next day</option>
                     </select>
+                    {firstError(state, `timelineEntries.${index}.dayOffset`)}
                   </label>
                 ) : null}
                 <DelayCodeField
@@ -731,6 +840,7 @@ export function DraglineDelayReportForm({
                 </label>
                 <label className="checkbox-label ddr-downtime-control">
                   <input
+                    {...errorAttributes(state, `timelineEntries.${index}.causesDowntime`)}
                     aria-label={`Causes machine downtime for row ${index + 1}`}
                     checked={entry.causesDowntime}
                     type="checkbox"
@@ -742,9 +852,11 @@ export function DraglineDelayReportForm({
                   />
                   <span>Causes machine downtime</span>
                 </label>
+                {firstError(state, `timelineEntries.${index}.causesDowntime`)}
                 <label className="ddr-description-field">
                   <span>Description / context (optional)</span>
                   <input
+                    {...errorAttributes(state, `timelineEntries.${index}.description`)}
                     aria-label={`Description for row ${index + 1}`}
                     maxLength={1000}
                     value={entry.description}
@@ -752,6 +864,7 @@ export function DraglineDelayReportForm({
                       updateTimelineEntry(index, { description: event.target.value })
                     }
                   />
+                  {firstError(state, `timelineEntries.${index}.description`)}
                 </label>
               </div>
               <div className="inline-actions ddr-row-actions">
@@ -972,7 +1085,13 @@ export function DraglineDelayReportForm({
         </div>
       </section>
 
-      <section className="panel form-section" aria-labelledby="ddr-ground-check-heading">
+      <section
+        aria-describedby={hasError(state, "groundChecks") ? errorId("groundChecks") : undefined}
+        aria-labelledby="ddr-ground-check-heading"
+        className={`panel form-section${hasError(state, "groundChecks") ? " ddr-invalid-section" : ""}`}
+        data-ddr-error-path="groundChecks"
+        tabIndex={-1}
+      >
         <div className="section-heading full-width-field">
           <div>
             <p className="eyebrow">Manual inspection times</p>
@@ -999,8 +1118,15 @@ export function DraglineDelayReportForm({
             </p>
           ) : null}
           {groundChecks.map((groundCheck, index) => (
-            <fieldset className="ddr-operator-row" key={groundCheck.clientId}>
+            <fieldset
+              className={`ddr-operator-row${hasNestedError(state, `groundChecks.${index}`) ? " ddr-invalid-row" : ""}`}
+              data-ddr-error-path={`groundChecks.${index}`}
+              key={groundCheck.clientId}
+              tabIndex={-1}
+            >
               <legend>Ground Check {index + 1}</legend>
+              {firstError(state, `groundChecks.${index}.sequence`)}
+              {firstError(state, `groundChecks.${index}.id`)}
               <label>
                 <span>Time</span>
                 <input
@@ -1024,6 +1150,7 @@ export function DraglineDelayReportForm({
                 <label>
                   <span>Calendar day</span>
                   <select
+                    {...errorAttributes(state, `groundChecks.${index}.dayOffset`)}
                     aria-label={`Ground Check calendar day ${index + 1}`}
                     value={groundCheck.dayOffset}
                     onChange={(event) =>
@@ -1042,6 +1169,7 @@ export function DraglineDelayReportForm({
                     <option value={0}>Operational date</option>
                     <option value={1}>Next day</option>
                   </select>
+                  {firstError(state, `groundChecks.${index}.dayOffset`)}
                 </label>
               ) : null}
               <div className="inline-actions">

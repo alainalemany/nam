@@ -560,6 +560,12 @@ validation, stale-version checks, or persistence fails. Pending, error,
 field-validation, stale-write, and successful mutation states are explicit;
 raw database or framework errors are never shown.
 
+Failed validation also presents a concise summary with human-readable field,
+Operator-row, Timeline-row, and Ground-Check-row labels. Every affected
+editable control retains its inline error and visible invalid treatment, while
+collection-level errors identify their section. The first invalid control or
+section is scrolled into view and focused without resetting form state.
+
 The timeline code control is one searchable dropdown grouped by Operational,
 Mechanical, and Electrical. It searches code and description, displays derived
 category, and exposes no separate Category input.

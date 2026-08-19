@@ -463,6 +463,40 @@ textarea {
   font-weight: 700;
 }
 
+.ddr-error-summary > p,
+.ddr-error-summary div > p {
+  margin: 0;
+}
+
+.ddr-error-summary div {
+  margin-top: 10px;
+  border-top: 1px solid #f0b4b1;
+  padding-top: 10px;
+}
+
+.ddr-error-summary ul {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.ddr-error-summary button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  text-decoration: underline;
+}
+
+.ddr-error-summary button:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid #b42318;
+  outline-offset: 2px;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -1290,6 +1324,19 @@ textarea {
   border-radius: 8px;
   margin: 0;
   padding: 14px;
+}
+
+.ddr-form input[aria-invalid="true"],
+.ddr-form select[aria-invalid="true"],
+.ddr-form textarea[aria-invalid="true"] {
+  background-color: #fff5f4;
+  box-shadow: 0 0 0 2px #b42318;
+}
+
+.ddr-invalid-section,
+.ddr-invalid-row {
+  border-color: #b42318;
+  box-shadow: inset 0 0 0 1px #b42318;
 }
 
 .ddr-operator-row legend,

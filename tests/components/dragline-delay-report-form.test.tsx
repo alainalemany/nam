@@ -120,10 +120,23 @@ describe("DraglineDelayReportForm", () => {
     expect(screen.getByLabelText("Lake")).toHaveValue("lake-12");
     fireEvent.submit(screen.getByRole("button", { name: "Save Draft Report" }).closest("form")!);
 
-    expect(await screen.findByText("Dragline Equipment is required.")).toBeInTheDocument();
+    expect(await screen.findAllByText("Dragline Equipment is required.")).toHaveLength(2);
     expect(
       screen.getByRole("combobox", { name: /Dragline Equipment/ }),
     ).toHaveAttribute("aria-invalid", "true");
+    expect(
+      within(screen.getByRole("alert")).getByRole("button", {
+        name: /Dragline Equipment: Dragline Equipment is required/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: /Dragline Equipment/ }),
+    ).toHaveAttribute("aria-describedby", "ddr-equipmentId-error");
+    await waitFor(() => {
+      expect(
+        screen.getByRole("combobox", { name: /Dragline Equipment/ }),
+      ).toHaveFocus();
+    });
     await waitFor(() => {
       expect(screen.getByLabelText("Starting Hour Meter")).toHaveValue(12399);
       expect(
@@ -235,14 +248,84 @@ describe("DraglineDelayReportForm", () => {
     fireEvent.submit(screen.getByRole("button", { name: "Save Draft Report" }).closest("form")!);
 
     expect(
-      await screen.findByText("Select an official Delay Code from Catalog V1."),
-    ).toBeInTheDocument();
+      await screen.findAllByText("Select an official Delay Code from Catalog V1."),
+    ).toHaveLength(2);
     expect(screen.getByLabelText("Description for row 1")).toHaveValue(
       "preserve this context",
     );
     expect(screen.getByLabelText("Normal Digging Buckets")).toHaveValue(99);
     expect(screen.getByLabelText("Station End")).toHaveValue("bad station");
     expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("10:00");
+  });
+
+  it("identifies a nested duplicate Operator on the correct row", async () => {
+    const action = vi.fn(async () => ({
+      status: "error" as const,
+      message: "Required or invalid fields need attention. Your entered values were preserved.",
+      fieldErrors: {
+        "operators.1.employeeId": [
+          "An Employee may appear only once as an Operator.",
+        ],
+      },
+    }));
+    renderForm(action);
+    fireEvent.click(screen.getByRole("button", { name: "Add Operator" }));
+    fireEvent.change(screen.getByLabelText("Operator 2"), {
+      target: { value: "operator-1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Draft Report" }));
+
+    const operator = await screen.findByRole("group", { name: "Operator 2" });
+    await waitFor(() => expect(operator).toHaveClass("ddr-invalid-row"));
+    expect(
+      within(screen.getByRole("alert")).getByRole("button", {
+        name: /Operator 2: An Employee may appear only once/,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Operator 2")).toHaveAttribute(
+      "aria-describedby",
+      "ddr-operators-1-employeeId-error",
+    );
+    expect(screen.getByLabelText("Operator 2")).toHaveValue("operator-1");
+    await waitFor(() => expect(screen.getByLabelText("Operator 2")).toHaveFocus());
+  });
+
+  it("identifies a missing downtime duration on the correct Timeline row", async () => {
+    const action = vi.fn(async () => ({
+      status: "error" as const,
+      message: "Required or invalid fields need attention. Your entered values were preserved.",
+      fieldErrors: {
+        "timelineEntries.0.durationMinutes": [
+          "A downtime-causing entry requires a positive duration.",
+        ],
+      },
+    }));
+    renderForm(action);
+    fireEvent.change(screen.getByLabelText("Start time for row 1"), {
+      target: { value: "08:30" },
+    });
+    fireEvent.change(screen.getByLabelText("Delay Code for row 1"), {
+      target: { value: "26" },
+    });
+    fireEvent.click(screen.getByLabelText("Causes machine downtime for row 1"));
+    fireEvent.click(screen.getByRole("button", { name: "Save Draft Report" }));
+
+    const timelineRow = await screen.findByRole("group", { name: "Timeline row 1" });
+    await waitFor(() => expect(timelineRow).toHaveClass("ddr-invalid-row"));
+    expect(
+      within(screen.getByRole("alert")).getByRole("button", {
+        name: /Timeline row 1 — Duration: A downtime-causing entry requires/,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Duration for row 1")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(screen.getByLabelText("Start time for row 1")).toHaveValue("08:30");
+    expect(screen.getByLabelText("Delay Code for row 1")).toHaveValue("26");
+    await waitFor(() =>
+      expect(screen.getByLabelText("Duration for row 1")).toHaveFocus(),
+    );
   });
 
   it("preserves dynamic rows when a Ground Check validation error returns", async () => {
@@ -263,7 +346,19 @@ describe("DraglineDelayReportForm", () => {
     });
     fireEvent.submit(screen.getByRole("button", { name: "Save Draft Report" }).closest("form")!);
 
-    expect(await screen.findByText(/Ground Check must start/)).toBeInTheDocument();
+    expect(await screen.findAllByText(/Ground Check must start/)).toHaveLength(2);
+    expect(
+      within(screen.getByRole("alert")).getByRole("button", {
+        name: /Ground Check 1 — Time: Ground Check must start/,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Ground Check 1" })).toHaveClass(
+      "ddr-invalid-row",
+    );
+    expect(screen.getByLabelText("Ground Check time 1")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
     expect(screen.getByLabelText("Start time for row 1")).toHaveValue("08:30");
     expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("04:00");
   });
@@ -335,7 +430,19 @@ describe("DraglineDelayReportForm", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Complete Report" }));
 
-    expect(await screen.findByText(/Ending Hour Meter is required/)).toBeInTheDocument();
+    expect(await screen.findAllByText(/Ending Hour Meter is required/)).toHaveLength(2);
+    expect(
+      within(screen.getByRole("alert")).getByRole("button", {
+        name: /Ending Hour Meter: Ending Hour Meter is required/,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Ending Hour Meter/)).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText(/Ending Hour Meter/)).toHaveFocus(),
+    );
     expect(screen.getByLabelText("Comments")).toHaveValue("Preserve completion notes");
     expect(screen.getByLabelText("Delay Code for row 1")).toHaveValue("13");
     expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("10:00");
@@ -364,31 +471,84 @@ describe("DraglineDelayReportForm", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Complete Report" }));
 
-    expect(await screen.findByText(/Supervisor is required/)).toBeInTheDocument();
-    expect(screen.getByText("Final timeline entry must be 13 — Shift Change.")).toBeInTheDocument();
+    expect(await screen.findAllByText(/Supervisor is required/)).toHaveLength(2);
+    expect(
+      screen.getAllByText("Final timeline entry must be 13 — Shift Change."),
+    ).toHaveLength(2);
+    expect(
+      within(screen.getByRole("alert")).getByRole("button", {
+        name: /Timeline: Final timeline entry must be 13 — Shift Change/,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Timeline" })).toHaveClass(
+      "ddr-invalid-section",
+    );
     expect(screen.getByLabelText("Delay Code for row 1")).toHaveValue("34");
     expect(screen.getByLabelText("Safety Items Found")).toHaveValue(
       "Preserve safety observation",
     );
   });
 
-  it("preserves invalid station input and unsaved rows on failed completion", async () => {
+  it("surfaces a collection-level completion error on the Timeline section", async () => {
     const action = vi.fn(async () => ({
       status: "error" as const,
       message: "Cannot complete report yet.",
-      fieldErrors: { stationEnd: ["Station must use notation such as 50+30."] },
+      fieldErrors: {
+        timelineEntries: ["Final timeline entry must be 13 — Shift Change."],
+      },
+    }));
+    renderForm(action, { allowComplete: true });
+    fireEvent.change(screen.getByLabelText("Start time for row 1"), {
+      target: { value: "16:59" },
+    });
+    fireEvent.change(screen.getByLabelText("Delay Code for row 1"), {
+      target: { value: "34" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Complete Report" }));
+
+    const timeline = await screen.findByRole("region", { name: "Timeline" });
+    await waitFor(() => expect(timeline).toHaveClass("ddr-invalid-section"));
+    expect(timeline).toHaveAttribute(
+      "aria-describedby",
+      "ddr-timelineEntries-error",
+    );
+    await waitFor(() => expect(timeline).toHaveFocus());
+    expect(screen.getByLabelText("Start time for row 1")).toHaveValue("16:59");
+    expect(screen.getByLabelText("Delay Code for row 1")).toHaveValue("34");
+  });
+
+  it("identifies the missing member of a Station pair without losing other values", async () => {
+    const action = vi.fn(async () => ({
+      status: "error" as const,
+      message: "Cannot complete report yet.",
+      fieldErrors: {
+        stationEnd: [
+          "Enter both Station Start and Station End, or leave both blank.",
+        ],
+      },
     }));
     renderForm(action, { allowComplete: true });
     fireEvent.change(screen.getByLabelText("Station End"), {
-      target: { value: "invalid" },
+      target: { value: "" },
     });
     fireEvent.change(screen.getByLabelText("Normal Digging Buckets"), {
       target: { value: "77" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Complete Report" }));
 
-    expect(await screen.findByText(/Station must use notation/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Station End/)).toHaveValue("invalid");
+    expect(
+      await screen.findAllByText(/Enter both Station Start and Station End/),
+    ).toHaveLength(2);
+    expect(
+      within(screen.getByRole("alert")).getByRole("button", {
+        name: /Station End: Enter both Station Start and Station End/,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Station End/)).toHaveAttribute(
+      "aria-describedby",
+      "ddr-stationEnd-error",
+    );
+    expect(screen.getByLabelText(/Station End/)).toHaveValue("");
     expect(screen.getByLabelText("Normal Digging Buckets")).toHaveValue(77);
   });
 
@@ -434,7 +594,19 @@ describe("DraglineDelayReportForm", () => {
     });
     fireEvent.submit(screen.getByRole("button", { name: "Save Corrected Report" }).closest("form")!);
 
-    expect(await screen.findByText("Correction Reason is required.")).toBeInTheDocument();
+    expect(await screen.findAllByText("Correction Reason is required.")).toHaveLength(2);
+    expect(
+      within(screen.getByRole("alert")).getByRole("button", {
+        name: /Correction Reason: Correction Reason is required/,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Correction Reason" })).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "Correction Reason" })).toHaveFocus(),
+    );
     expect(screen.getByLabelText("Fuel (gallons)")).toHaveValue(525);
     expect(screen.getByLabelText("Comments")).toHaveValue("Corrected report comment");
   });
