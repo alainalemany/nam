@@ -51,6 +51,17 @@ enum ShiftType {
   UNKNOWN
 }
 
+enum DraglineDelayReportStatus {
+  DRAFT
+  COMPLETED
+}
+
+enum DraglineDelayCodeCategory {
+  OPERATIONAL
+  MECHANICAL
+  ELECTRICAL
+}
+
 enum DailyLogActivityType {
   DRAGLINE_MOVE
   CUT
@@ -331,6 +342,7 @@ model Equipment {
   fuelEvents              EquipmentFuelEvent[]          @relation("EquipmentFuelEventEquipment")
   supplyRequestVersions   SupplyRequestVersion[]        @relation("SupplyRequestVersionEquipment")
   knowledgeRevisions      KnowledgeRecordRevision[]     @relation("KnowledgeRevisionEquipment")
+  draglineDelayReports    DraglineDelayReport[]         @relation("DraglineDelayReportEquipment")
   equipmentNumber         String?
   displayName             String
   category                EquipmentCategory
@@ -660,20 +672,93 @@ model FuelServicePerson {
 }
 
 model Employee {
-  id                    String                 @id @default(cuid())
-  employeeCode          String?                @unique
-  displayName           String
-  isActive              Boolean                @default(true)
-  isSupervisor          Boolean                @default(false)
-  primarySchedules      WeeklySchedule[]       @relation("WeeklySchedulePrimaryEmployee")
-  assignedSchedules     WeeklySchedule[]       @relation("WeeklyScheduleAssignedByEmployee")
-  assignmentCrewMembers AssignmentCrewMember[]
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
+  id                             String                        @id @default(cuid())
+  employeeCode                   String?                       @unique
+  displayName                    String
+  isActive                       Boolean                       @default(true)
+  isSupervisor                   Boolean                       @default(false)
+  primarySchedules               WeeklySchedule[]              @relation("WeeklySchedulePrimaryEmployee")
+  assignedSchedules              WeeklySchedule[]              @relation("WeeklyScheduleAssignedByEmployee")
+  assignmentCrewMembers          AssignmentCrewMember[]
+  draglineDelayReportOperators   DraglineDelayReportOperator[] @relation("DraglineDelayReportOperatorEmployee")
+  supervisedDraglineDelayReports DraglineDelayReport[]         @relation("DraglineDelayReportSupervisor")
+  createdAt                      DateTime                      @default(now())
+  updatedAt                      DateTime                      @updatedAt
 
   @@index([isActive])
   @@index([isSupervisor, isActive])
   @@index([displayName])
+}
+
+model DraglineDelayReport {
+  id                     String                             @id @default(cuid())
+  status                 DraglineDelayReportStatus          @default(DRAFT)
+  operationalWorkDate    DateTime                           @db.Date
+  shift                  ShiftType
+  equipmentId            String?
+  equipment              Equipment?                         @relation("DraglineDelayReportEquipment", fields: [equipmentId], references: [id], onDelete: SetNull, map: "DraglineDelayReport_equipment_fkey")
+  equipmentDisplayName   String
+  equipmentNumber        String?
+  equipmentCategory      EquipmentCategory
+  mineName               String
+  cityName               String
+  cityState              String?
+  startingHourMeter      Int
+  endingHourMeter        Int?
+  supervisorId           String?
+  supervisor             Employee?                          @relation("DraglineDelayReportSupervisor", fields: [supervisorId], references: [id], onDelete: SetNull, map: "DraglineDelayReport_supervisor_fkey")
+  supervisorDisplayName  String?
+  supervisorEmployeeCode String?
+  downTimeMinutes        Int                                @default(0)
+  runTimeMinutes         Int                                @default(720)
+  recordVersion          Int                                @default(1)
+  operators              DraglineDelayReportOperator[]
+  timelineEntries        DraglineDelayReportTimelineEntry[]
+  createdAt              DateTime                           @default(now())
+  updatedAt              DateTime                           @updatedAt
+
+  @@unique([equipmentId, operationalWorkDate, shift], map: "DraglineDelayReport_equipment_date_shift_key")
+  @@index([operationalWorkDate], map: "DraglineDelayReport_workDate_idx")
+  @@index([status], map: "DraglineDelayReport_status_idx")
+  @@index([supervisorId], map: "DraglineDelayReport_supervisor_idx")
+}
+
+model DraglineDelayReportOperator {
+  id                  String              @id @default(cuid())
+  reportId            String
+  report              DraglineDelayReport @relation(fields: [reportId], references: [id], onDelete: Cascade, map: "DraglineDelayReportOperator_report_fkey")
+  sequence            Int
+  employeeId          String?
+  employee            Employee?           @relation("DraglineDelayReportOperatorEmployee", fields: [employeeId], references: [id], onDelete: SetNull, map: "DraglineDelayReportOperator_employee_fkey")
+  employeeDisplayName String
+  employeeCode        String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@unique([reportId, sequence], map: "DraglineDelayReportOperator_report_sequence_key")
+  @@unique([reportId, employeeId], map: "DraglineDelayReportOperator_report_employee_key")
+  @@index([employeeId], map: "DraglineDelayReportOperator_employee_idx")
+}
+
+model DraglineDelayReportTimelineEntry {
+  id                      String                    @id @default(cuid())
+  reportId                String
+  report                  DraglineDelayReport       @relation(fields: [reportId], references: [id], onDelete: Cascade, map: "DraglineDelayReportTimelineEntry_report_fkey")
+  sequence                Int
+  startMinuteOffset       Int
+  delayCodeCatalogVersion Int
+  delayCode               String
+  delayCodeDescription    String
+  delayCodeCategory       DraglineDelayCodeCategory
+  description             String?
+  durationMinutes         Int?
+  causesDowntime          Boolean                   @default(false)
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+
+  @@unique([reportId, sequence], map: "DraglineDelayReportTimeline_report_sequence_key")
+  @@index([reportId, startMinuteOffset, sequence], map: "DraglineDelayReportTimeline_chronology_idx")
+  @@index([delayCode], map: "DraglineDelayReportTimeline_code_idx")
 }
 
 model WeeklySchedule {

@@ -207,6 +207,12 @@ h3 {
   color: #34424d;
 }
 
+.button.danger {
+  border-color: #d8a09d;
+  background: #fff5f4;
+  color: #8f211d;
+}
+
 .button:disabled {
   cursor: wait;
   opacity: 0.65;
@@ -1269,6 +1275,74 @@ textarea {
   align-items: end;
 }
 
+.ddr-operator-list,
+.ddr-timeline-list {
+  display: grid;
+  gap: 14px;
+}
+
+.ddr-operator-row,
+.ddr-timeline-row {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  border: 1px solid #d9e0e6;
+  border-radius: 8px;
+  margin: 0;
+  padding: 14px;
+}
+
+.ddr-operator-row legend,
+.ddr-timeline-row legend {
+  padding: 0 6px;
+  color: #54616c;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.ddr-employee-field,
+.ddr-code-field {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ddr-employee-field .subtle,
+.ddr-code-field .subtle {
+  grid-column: 1 / -1;
+}
+
+.ddr-timeline-fields {
+  display: grid;
+  align-items: end;
+  gap: 12px;
+  grid-template-columns: repeat(6, minmax(125px, 1fr));
+}
+
+.ddr-code-field,
+.ddr-description-field {
+  grid-column: span 2;
+}
+
+.ddr-downtime-control {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #c5ced6;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.ddr-downtime-control input {
+  width: auto;
+}
+
+.ddr-row-actions {
+  justify-content: flex-end;
+}
+
 @media (max-width: 900px) {
   .detail-grid,
   .module-grid,
@@ -1282,6 +1356,10 @@ textarea {
 
   .fuel-fill-row {
     grid-template-columns: 1fr;
+  }
+
+  .ddr-timeline-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .timesheet-day > summary,
@@ -1315,6 +1393,17 @@ textarea {
   .checklist-detail-response {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .ddr-employee-field,
+  .ddr-code-field,
+  .ddr-timeline-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .ddr-code-field,
+  .ddr-description-field {
+    grid-column: auto;
   }
 }
 

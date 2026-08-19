@@ -544,19 +544,22 @@ Approved feature implementation architecture:
 
 `docs/architecture/features/dragline-delay-reports.md`
 
-Current status: Product direction and Level 2 documentation architecture are
-approved. Implementation has not started. The original Dragline Delay Report
-front and official Delay Code Legend are absent, so the official catalog and
-source-dependent validation remain blocked until source closure under
-`source-forms/dragline-delay-report/`.
+Current status: DDR-1 is implemented as the independent usable Draft
+foundation. The original Dragline Delay Report front and official Delay Code
+Legend are preserved and visually verified. The
+[Delay Code Catalog V1](reference/dragline-delay-reports/delay-code-catalog-v1.md)
+is the canonical source-derived 66-entry transcription and is implemented as a
+feature-owned application catalog. DDR-2 and DDR-3 remain pending.
 
 ### DDR-1 — Independent Draft Report Foundation
+
+Status: Implemented
 
 Target:
 
 - Additive Dragline Delay Report persistence and migration.
-- Source-verified, versioned official Delay Code catalog only after both source
-  artifacts exist.
+- Source-verified, versioned official Delay Code catalog from
+  `docs/reference/dragline-delay-reports/delay-code-catalog-v1.md`.
 - Required active Dragline Equipment/date/Day-or-Night identity with derived
   Mine/City and historical snapshots.
 - Canonical Employee operator and supervisor relationships with ordered
@@ -570,6 +573,8 @@ Target:
 - Station parser, normalization, absolute-feet, and Advance helpers with
   focused tests; negative-Advance acceptance remains unresolved.
 - Optimistic stale-version protection for repeated Draft saves.
+- Required nonnegative whole-number Starting Hour Meter and optional
+  whole-number Ending Hour Meter while Draft.
 
 Exclusions:
 
@@ -579,8 +584,7 @@ Exclusions:
 - No attachments, photos, or media infrastructure.
 - No global shift enum redesign.
 - No Work Schedule dependency.
-- No guessed official Delay Code catalog or source-dependent hour-meter
-  precision.
+- No decimal hour-meter storage or inferred precision.
 
 ### DDR-2 — Production / Progress / End-of-Shift Completion
 

@@ -36,7 +36,7 @@ scope, architecture, infrastructure, and future implementation direction.
 | --- | --- |
 | Dashboard Home | High-level view of open items, recent activity, safety, maintenance, and operational stats. |
 | Daily Log | Full-day operator activity timeline with notes, linked records, equipment, contractors, and attachments. |
-| Dragline Delay Reports | Approved structured Draft-to-Completed operational reports for one Dragline, work date, and Day/Night shift; implementation awaits source closure. |
+| Dragline Delay Reports | DDR-1 Draft workflow implemented for one Dragline, work date, and Day/Night shift with whole-number hour meters, ordered Employees, Catalog V1 timeline entries, and derived runtime/downtime; completion and end-of-shift fields remain sequenced in DDR-2/DDR-3. |
 | Shift Reports | Structured shift-level records that connect work activity, inspections, and related paperwork. |
 | Work Authorizations | Safety and maintenance work records tied to shift reports, including permits and completion checklists. |
 | Daily Inspections | Manual equipment and work-area inspection summaries. |
@@ -133,14 +133,19 @@ blocked from implementation by unresolved sensitive-data decisions, while
 Fleet and the Equipment Activity Timeline remain deferred. Future work must
 continue to follow the documentation-first, vertical-slice approach.
 
-Dragline Delay Reports are now approved as an additive structured feature that
-remains separate from both the current Daily Log and the existing generic Shift
-Report. The Level 2 architecture and DDR-1 through DDR-3 sequence are canonical
+Dragline Delay Reports are an additive structured feature that remains separate
+from both the current Daily Log and the existing generic Shift Report. DDR-1 is
+implemented with independent Draft persistence, list/create/detail/edit routes,
+stable timeline rows, optimistic concurrency, and feature-owned calculation
+helpers. The Level 2 architecture and DDR-1 through DDR-3 sequence are canonical
 in [Dragline Delay Reports Architecture](docs/architecture/features/dragline-delay-reports.md).
-The original report front and official Delay Code Legend are not committed, so
-the official Delay Code catalog and source-dependent implementation remain
-blocked until those artifacts are preserved under
-`source-forms/dragline-delay-report/` and verified.
+The original report front and official Delay Code Legend are preserved under
+`source-forms/dragline-delay-report/` and visually verified. Their canonical
+66-entry transcription is the
+[Dragline Delay Code Catalog V1](docs/reference/dragline-delay-reports/delay-code-catalog-v1.md).
+Starting and Ending Hour Meter values use confirmed nonnegative whole numbers;
+Ending Hour Meter may remain blank while Draft. This is approved digital product
+behavior rather than a precision inferred from the handwritten source example.
 
 Phase 23.4 implements Operational Safety Checklist `HOURS`/`MILES` meter units,
 editable category suggestions, explicit known-mismatch confirmation, signed

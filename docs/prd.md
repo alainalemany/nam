@@ -680,6 +680,9 @@ feature governed by
   date, and one shift.
 - Accepted shifts are Day and Night only. Existing global `SWING`, `OTHER`, and
   `UNKNOWN` values remain available to other features but are invalid for DDR.
+- Day Shift runs from 5:00 AM to 5:00 PM. Night Shift runs from 5:00 PM to
+  5:00 AM on the next calendar day. Event-start windows use half-open end
+  semantics.
 - Historical paper Shift 1 maps to Day and Shift 2 maps to Night. Paper Shift 3
   is not modeled.
 - Lifecycle is `DRAFT -> COMPLETED`.
@@ -709,9 +712,11 @@ supervisor eligibility. Report-owned name/code snapshots preserve historical
 meaning. Work Schedule may later provide convenience context, but it is not a
 creation, save, completion, or correction dependency.
 
-Exact hour-meter numeric precision remains an Open Question pending source
-verification. Implementation must not invent a precision or final database
-validation rule.
+Starting and Ending Hour Meter values are nonnegative whole numbers; decimals
+are invalid. Starting Hour Meter is required on the Draft header. Ending Hour
+Meter may remain blank while Draft because it may not be known until later in
+the shift. This confirmed digital product rule does not claim that the source
+image itself establishes precision.
 
 ### Official Delay Code Catalog
 
@@ -730,9 +735,12 @@ searches code and description, derives category from the selected code, and
 has no separate Category input. Official codes and descriptions must not be
 invented, inferred, renumbered, normalized, or rewritten.
 
-The original report front and Delay Code Legend are absent as of 2026-08-18.
-They remain required under `source-forms/dragline-delay-report/`; the official
-catalog must not be generated until both are committed and verified.
+The authoritative report front and Delay Code Legend are preserved under
+`source-forms/dragline-delay-report/` and were visually verified on 2026-08-18.
+The exact 66-entry transcription is canonical in the
+[Delay Code Catalog V1](reference/dragline-delay-reports/delay-code-catalog-v1.md).
+Other documents and future software must link to or validate against that
+version rather than duplicate or rewrite the legend.
 
 ### Operational Timeline And Calculations
 
@@ -809,10 +817,9 @@ Log changes, existing Shift Report changes, Day View participation, global
 shift redesign, and automatic relationships to Equipment Fuel Events or Work
 Schedule.
 
-Open Questions remain exact hour-meter precision, Lake ID format, Direction
-vocabulary, negative Advance support, end-of-shift completion requiredness,
-future Ground Check derivation, and any source-required time precision finer
-than integer minutes.
+Open Questions remain Lake ID format, Direction vocabulary, negative Advance
+support, end-of-shift completion requiredness, future Ground Check derivation,
+and any source-required time precision finer than integer minutes.
 
 ## Payslip Repository Requirements
 

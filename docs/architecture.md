@@ -174,15 +174,16 @@ snapshots for the primary employee, Assigned By supervisor, and assignment crew
 participants. Employee remains reference data rather than authentication or
 workforce-management infrastructure.
 
-Dragline Delay Reports are an approved future additive feature with Level 2
+Dragline Delay Reports are an approved additive feature with Level 2
 architecture in
-`docs/architecture/features/dragline-delay-reports.md`. They will use canonical
-Dragline Equipment and Employee references, feature-owned versioned Delay Code
-data, stable Draft aggregates, integer-minute interval-union downtime, derived
-runtime, and explicit completion/correction. They do not repurpose existing
+`docs/architecture/features/dragline-delay-reports.md`. DDR-1 implements
+canonical Dragline Equipment and Employee references, feature-owned versioned
+Delay Code data, stable Draft aggregates, integer-minute interval-union
+downtime, derived runtime, and optimistic concurrency. DDR-3 will add explicit
+completion/correction. Dragline Delay Reports do not repurpose existing
 Daily Logs or Shift Reports, and DDR-1 through DDR-3 do not participate in Day
-View or introduce media. Official Delay Code implementation remains blocked
-until the missing source artifacts are committed and verified.
+View or introduce media. Source closure and the Catalog V1 application
+definition are complete.
 
 ## Architecture Decision Records
 

@@ -179,9 +179,10 @@ model, generic attachment model, or implemented schema.
 
 ## Dragline Delay Report Concepts
 
-Status: Confirmed conceptual data authority. No concepts in this section exist
-in `prisma/schema.prisma` yet. Implementation is sequenced as DDR-1 through
-DDR-3 in `docs/roadmap.md` and governed by
+Status: DDR-1 root, ordered Operator, and stable Timeline Entry persistence is
+implemented in `prisma/schema.prisma`. DDR-2 Ground Check and end-of-shift
+facts, plus DDR-3 correction history, remain conceptual and sequenced in
+`docs/roadmap.md`. The feature is governed by
 `docs/architecture/features/dragline-delay-reports.md`.
 
 ### DraglineDelayReport
@@ -199,8 +200,8 @@ Conceptual fields and rules:
 - Required live Dragline Equipment reference at creation.
 - Limited Equipment display name, number, category, Mine name, City name, and
   City state snapshots.
-- Starting and Ending Hour Meter values using source-verified precision that is
-  still open.
+- Required nonnegative integer Starting Hour Meter and optional nonnegative
+  integer Ending Hour Meter while Draft.
 - Optional live supervisor Employee reference plus limited display-name and
   employee-code snapshots while Draft completion rules remain open.
 - DDR-2 production, progress, normalized station, measurement, Ground Check,
@@ -209,26 +210,33 @@ Conceptual fields and rules:
 - Required positive integer `recordVersion` for optimistic concurrency.
 - Created and updated timestamps.
 
+DDR-1 stores lifecycle in `DraglineDelayReportStatus` (`DRAFT`, `COMPLETED`) but
+only creates and edits `DRAFT` records. It stores Delay Code category snapshots
+in `DraglineDelayCodeCategory` (`OPERATIONAL`, `MECHANICAL`, `ELECTRICAL`). The
+global `ShiftType` enum remains unchanged; feature validation and a database
+check restrict this aggregate to `DAY` and `NIGHT`.
+
 The tuple `(equipmentId, operationalWorkDate, shift)` is unique. Mine and City
 derive through Equipment and are not independent inputs. The root owns ordered
 operator participants, timeline entries, Ground Check entries, and correction
 events.
 
-Exact database type and validation for Starting/Ending Hour Meter must remain
-open until the source artifact confirms precision. Lake ID format, Direction
-vocabulary, negative Advance validity, and final completion-requiredness also
-remain open.
+The source front does not itself establish meter precision, but confirmed
+digital product direction now requires nonnegative whole numbers and rejects
+decimals. `startingHourMeter` is an `Int`; `endingHourMeter` is a nullable
+`Int` during Draft. Lake ID format, Direction vocabulary, negative Advance
+validity, and final completion-requiredness remain open.
 
 ### DraglineDelayReportOperator
 
-Ordered report-owned operator participation.
+Implemented ordered report-owned operator participation.
 
 Conceptual fields:
 
 - Durable child identity.
-- Parent report reference.
+- Required parent report reference with cascade ownership.
 - Positive display sequence unique within the report.
-- Live canonical Employee reference when available.
+- Live canonical Employee reference with `SetNull` behavior when available.
 - Employee display-name and employee-code snapshots.
 
 The same Employee may appear at most once per report. New selection uses active
@@ -237,16 +245,16 @@ ownership.
 
 ### DraglineDelayReportTimelineEntry
 
-Stable ordered operational timeline child.
+Implemented stable ordered operational timeline child.
 
 Conceptual fields:
 
 - Durable child identity.
 - Parent report reference.
 - Stable sequence used to order entries with equal actual start times.
-- Actual local `HH:mm` start time at integer-minute precision.
-- Operational-day offset or deterministic equivalent for after-midnight
-  chronology under the report work date.
+- Integer `startMinuteOffset` from operational-date midnight. Day uses
+  `[300, 1020)` and Night uses `[1020, 1740)`; any recorded duration must end
+  within that 12-hour window.
 - Delay Code catalog version.
 - Official code, exact description, and derived category snapshots.
 - Description/context.
@@ -257,7 +265,13 @@ Conceptual fields:
 Equal start times are valid. If the entry causes downtime, a positive integer
 duration is required. Non-downtime duration never contributes to report
 downtime. The official code must resolve from the source-verified catalog; no
-free-text code or category is stored as user authority.
+free-text code or category is stored as user authority. Catalog V1 is
+canonical in the
+[Dragline Delay Code Catalog V1](reference/dragline-delay-reports/delay-code-catalog-v1.md).
+
+Report-owned Operator and Timeline Entry rows cascade when the report is
+deleted. Live Equipment, supervisor, and operator Employee references use
+`SetNull`; their report-owned snapshots retain historical display meaning.
 
 ### DraglineDelayReportGroundCheck
 

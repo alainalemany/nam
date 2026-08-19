@@ -19,17 +19,15 @@ Feature behavior and boundaries are authoritative in the
 
 ## Dragline Delay Reports
 
-The intended source-derived catalog location is:
+| Catalog | Source | Status |
+| --- | --- | --- |
+| [Delay Code Catalog V1](dragline-delay-reports/delay-code-catalog-v1.md) | [Official Delay Code Legend](../../source-forms/dragline-delay-report/02-delay-code-legend.jpg) | Canonical V1 source-derived catalog; 66 visible codes verified |
 
-```text
-docs/reference/dragline-delay-reports/delay-code-catalog-v1.md
-```
+The accompanying [Dragline Delay Report front](../../source-forms/dragline-delay-report/01-dragline-delay-report-front.jpg)
+is also preserved and visually verified. The catalog retains exact legend
+wording, categories, code identities, numeric gaps, and source ordering. It is
+separate from Timesheet Work Codes and does not authorize implementation by
+itself.
 
-Status: Blocked. The original Dragline Delay Report front and official Delay
-Code Legend are not committed. They must first be preserved under
-`source-forms/dragline-delay-report/` and visually verified. Do not create the
-catalog from memory, inference, Timesheet Work Codes, or rewritten
-descriptions.
-
-Feature behavior and source-closure rules are authoritative in the
+Feature behavior and source-verification rules are authoritative in the
 [Dragline Delay Reports Architecture](../architecture/features/dragline-delay-reports.md).

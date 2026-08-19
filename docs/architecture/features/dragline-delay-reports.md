@@ -11,7 +11,7 @@ Depends On:
 
 - Canonical Dragline Equipment, Mine, and City reference data
 - Canonical Employee reference data
-- Source closure for the official Dragline Delay Report and Delay Code Legend
+- Verified Dragline Delay Report source artifacts and Delay Code Catalog V1
 - `docs/product-roadmap.md`
 - `docs/delivery-architecture.md`
 - `docs/dependency-architecture.md`
@@ -30,14 +30,17 @@ Related Documents:
 - `docs/architecture/features/work-schedule.md`
 - `docs/architecture/features/operational-safety-checklists.md`
 - `docs/reference/README.md`
+- `docs/reference/dragline-delay-reports/delay-code-catalog-v1.md`
 
 Last Reviewed: 2026-08-18
 
-Implementation Status: Documentation and source-closure architecture is
-approved. No Dragline Delay Report application persistence, Prisma model,
-migration, route, action, component, or test exists. The official report front
-and Delay Code Legend are not committed, so the official Delay Code catalog
-must not be generated yet.
+Implementation Status: DDR-1 is implemented as an independent usable Draft
+workflow. Additive Prisma persistence, one migration, list/create/detail/edit
+routes, feature-owned Server Actions and validation, Catalog V1 application
+data, stable repeated rows, overnight chronology, interval-union downtime,
+derived runtime, station helpers, optimistic concurrency, navigation, and
+focused tests exist. DDR-2 production/end-of-shift fields and DDR-3
+completion/correction remain pending.
 
 ## 1. Purpose
 
@@ -70,13 +73,14 @@ implementation sequencing in `docs/roadmap.md`.
   historical snapshots.
 - Downtime uses integer-minute interval-union semantics; runtime is 720 minutes
   minus unique downtime minutes.
+- Starting and Ending Hour Meter values are nonnegative whole numbers. Starting
+  is required in Draft; Ending may remain blank while Draft.
 - Station values have normalized numeric meaning and Advance is derived.
 - No attachments, photos, Day View contribution, Daily Log redesign, or global
   shift redesign belongs to DDR-1 through DDR-3.
 
 ### Open Questions
 
-- Exact Starting and Ending Hour Meter numeric precision.
 - Exact Lake ID format.
 - Exact Direction vocabulary.
 - Whether reverse station movement and negative Advance are valid.
@@ -99,40 +103,71 @@ by guesswork during implementation.
 - Automatic Ground Check extraction from timeline entries.
 - Analytics, exports, corporate submission, integrations, and global search.
 
-## 3. Source-Artifact Closure
+## 3. Source Verification
 
-The intended durable source location is:
+The two authoritative source images are preserved at:
 
-```text
-source-forms/dragline-delay-report/
-```
+- [Dragline Delay Report front](../../../source-forms/dragline-delay-report/01-dragline-delay-report-front.jpg)
+- [Official Delay Code Legend](../../../source-forms/dragline-delay-report/02-delay-code-legend.jpg)
 
-That directory must eventually contain both original authoritative artifacts:
+Both images were visually verified on 2026-08-18. The legend's exact 66-entry
+transcription is canonical only in the
+[Dragline Delay Code Catalog V1](../../reference/dragline-delay-reports/delay-code-catalog-v1.md):
+28 Operational, 23 Mechanical, and 15 Electrical codes. All visible legend
+entries are readable. Numeric gaps are preserved and must not be filled.
 
-- The Dragline Delay Report front/report artifact.
-- The official Delay Code Legend artifact.
+### Source-Visible Report Wording
 
-Neither artifact exists in the repository as of 2026-08-18. Do not fabricate
-them, transcribe a catalog from memory, or infer missing codes and wording.
+| Product concept | Exact visible source wording | Verification note |
+| --- | --- | --- |
+| Equipment | `Equipo #` | Printed in the report title area. |
+| Shift | `TURNO: 1 - 2 - 3 (ESCOJA UNA)` | Paper numbering is visible; NAM still accepts only Day and Night. |
+| Date | `FECHA:` | Printed in the header. |
+| Starting Hour Meter | `INICIAR EL MEDIDOR DE HORA:` | One printed meter line is visible. |
+| Ending Hour Meter | No separate printed label | A handwritten whole-number pair appears on the meter line, but the second value is not separately labeled. |
+| Timeline columns | `HORA`, `CODIGO`, `DESCRIPCION`, `TIEMPO DE RETARDO`; the second time block uses `TIME` | Paper rows use ten-minute increments. |
+| Normal Digging Buckets | `CUBOS DE EXCAVACIÓN NORMALES` | Printed production field. |
+| Benchfill Buckets | `CUBOS DE BENCHFILL` | Printed production field. |
+| Lake ID / Direction | `IDENTIFICACION Y DIRECCION DEL LAGO` | One combined printed field; no format or controlled vocabulary is stated. |
+| Operators | `OPERADOR 1:`, `OPERADOR 2:` | Paper provides two lines; digital participation remains repeatable and ordered. |
+| Supervisor | `SUPERVISOR:` | Printed person field. |
+| Comments | `COMENTARIOS:` | Printed multiline area. |
+| Station Start / End | `STATION START/END:` | One combined printed line. |
+| Advance | `ADVANCE:` | Printed manual total on paper. |
+| Run Time / Down Time | `RUN TIME:`, `DOWN TIME:` | Printed manual totals on paper. |
+| Depth / Fuel | `DEPTH:`, `FUEL:` | No unit or numeric precision is printed. |
+| Cable Drag / Hoist | `CABLE DRAG:`, `HOIST:` | No unit or numeric precision is printed. |
+| Ground Check | `GROUND CHECK` | Paper provides fixed spaces with four visible handwritten times in this completed example. |
+| Safety / action | `SAFETY ITEMS FOUND:`, `ACTION TAKEN:` | These headings appear below the code table on the legend artifact, not on the report-front image. |
 
-After both artifacts are committed, a source-verification pass must:
+The image does not independently establish Starting or Ending Hour Meter
+precision. The completed example uses handwritten whole numbers, but the form
+supplies no printed format, decimal marker, unit, or precision instruction and
+does not separately label Ending Hour Meter. Confirmed digital product direction
+nevertheless requires nonnegative whole numbers; that decision is not presented
+as an inference from one handwritten example.
 
-1. Visually inspect every relevant page or image.
-2. Preserve exact official code values and descriptions.
-3. Preserve the three official user-facing category names exactly:
-   Operational, Mechanical, and Electrical.
-4. Record catalog version identity and source provenance.
-5. Create the source-derived reference catalog under the intended location:
+The completed example visibly uses station-style handwriting and handwritten
+Depth, Fuel, delay durations, and Ground Check times. Those entries verify
+operational use but do not create a reliable printed precision, format, or unit
+rule. Confirmed digital units and calculations come from approved product
+direction, not from otherwise unlabeled handwriting.
 
-```text
-docs/reference/dragline-delay-reports/delay-code-catalog-v1.md
-```
+### Intentional Paper-To-Digital Differences
 
-6. Implement the same verified version as a feature-owned application catalog,
-   with tests proving code, description, category, ordering, and version.
+| Paper source | Approved digital model |
+| --- | --- |
+| Numbered Shift 1, 2, or 3 | Feature validation accepts `DAY` and `NIGHT` only; Shift 3 is not modeled. |
+| Fixed ten-minute timeline rows | Entries use actual integer-minute start times and deterministic overnight chronology. |
+| Two printed operator lines | Report-owned operator participation is repeatable and ordered. |
+| Delay time is written in each row | Each entry has explicit downtime meaning; unique downtime uses interval union. |
+| Run Time and Down Time are written on the report | Server-authoritative totals are derived; runtime is `720 - unique downtime`. |
+| Station Start/End and Advance are written | The operator enters normalized Start/End values and NAM derives Advance. |
+| Fixed Ground Check row | Ground Check times are a repeatable ordered digital list. |
 
-Until that closure occurs, the official catalog and any persistence that
-claims official Delay Code validity remain blocked.
+Source-artifact and reference-catalog closure is complete. DDR-1 implements the
+same verified catalog as a feature-owned application definition, with tests for
+version, code, exact description, category, and ordering.
 
 ## 4. Responsibilities
 
@@ -143,8 +178,8 @@ Dragline Delay Reports own:
 - Equipment, Mine, and City historical display snapshots.
 - Ordered operator participation and one supervisor relationship using
   canonical Employees plus report-owned snapshots.
-- Starting and Ending Hour Meter report facts after source precision is
-  verified.
+- Nonnegative whole-number Starting and Ending Hour Meter report facts, with
+  Ending optional while Draft.
 - Ordered, stable operational timeline entries.
 - Delay Code selection and historical catalog snapshots.
 - Explicit per-entry downtime meaning.
@@ -295,10 +330,12 @@ If false, any recorded duration is excluded from machine downtime. Category
 alone does not determine downtime, and concurrent non-downtime work never adds
 stopped-machine time.
 
-The data model must not require the operator to repeat a calendar date on every
-entry. A representation such as local `HH:mm` plus an operational-day offset is
-acceptable. For example, `23:50` on offset `0` sorts before `00:10` on offset
-`1`, while both remain owned by the report's operational work date.
+The data model does not require the operator to repeat a calendar date on every
+entry. DDR-1 stores an integer `startMinuteOffset` from operational-date
+midnight. Day Shift is 05:00 through before 17:00 (`[300, 1020)`). Night Shift
+is 17:00 through before 05:00 on the next calendar day (`[1020, 1740)`). For
+example, `23:50` is 1430 and next-day `00:10` is 1450, while both remain owned
+by the report's operational work date.
 
 ## 11. Downtime And Runtime
 
@@ -361,8 +398,9 @@ The normalized representation must preserve station number and offset feet, or
 an equivalent deterministic absolute-feet value. Offset is normally `00`
 through `99`. The server derives Advance; the operator does not re-enter it.
 
-Whether a negative result is valid is open. DDR-2 must not silently clamp,
-reverse, or reject it without explicit validation closure.
+Whether a negative result is operationally valid remains open. DDR-1's pure
+helper reports reverse movement as unsupported; this is not a final DDR-2
+product decision and no value is silently clamped or reversed.
 
 ## 13. Production And End-Of-Shift Facts
 
@@ -475,23 +513,25 @@ catalog administrator, or generic audit system is required.
 
 ## 17. UI Composition
 
-Planned feature-owned surfaces:
+Implemented DDR-1 feature-owned surfaces:
 
 - Report history.
 - New Draft report.
 - Draft detail/edit workspace.
+
+Future DDR-2/DDR-3 surfaces:
+
 - Completed read-only detail.
 - Explicit Correct Report workflow and correction-event summary.
-- Loading, empty, not-found, validation, stale-version, and persistence-error
-  states.
 
-The Draft workspace should group:
+The DDR-1 Draft workspace groups:
 
 - Equipment, work date, shift, hour meters, operators, and supervisor.
 - Chronological timeline with stable repeatable rows.
-- Production/progress and station facts.
 - Runtime/downtime summary.
-- Ground Checks and end-of-shift notes.
+
+Production/progress, Station entry, Ground Checks, and end-of-shift notes remain
+DDR-2 work.
 
 The timeline code control is one searchable dropdown grouped by Operational,
 Mechanical, and Electrical. It searches code and description, displays derived
@@ -513,6 +553,8 @@ DDR-specific server validation includes:
 - Existing active supervisor-eligible Employee for a newly selected
   supervisor.
 - Unique ordered operator participation.
+- Required nonnegative whole-number Starting Hour Meter and optional
+  nonnegative whole-number Ending Hour Meter while Draft.
 - Official Delay Code membership in the submitted catalog version.
 - No client authority over code description or category snapshots.
 - Valid local start time, operational day offset, stable sequence, and child
@@ -524,9 +566,9 @@ DDR-specific server validation includes:
 - Draft-only ordinary editing and explicit completion/correction commands.
 - Required correction reason and immutable correction event.
 
-Source-dependent precision, Lake/Direction format, negative Advance, and final
-completion-requiredness rules remain open and must be resolved before their
-own implementation boundary is finalized.
+Lake/Direction format, negative Advance, finer-than-minute time precision, and
+final completion-requiredness rules remain open and must be resolved before
+their own implementation boundary is finalized.
 
 Validation errors should map to the report section and repeated row where
 practical. Stale writes should instruct the operator to reload and reconcile;
@@ -541,7 +583,7 @@ rules in `docs/development.md`.
 
 - `DAY`/`NIGHT` feature restriction without changing global `ShiftType`.
 - Delay Code lookup, search text, derived category, version, and snapshots
-  after source closure.
+  against the canonical V1 catalog.
 - Actual-time plus operational-day-offset normalization and overnight ordering.
 - Equal-time deterministic sequence ordering.
 - Half-open interval union for disjoint, overlapping, nested, touching, and
@@ -585,10 +627,12 @@ remains proportional to an approved repository E2E foundation.
 
 ### DDR-1 — Independent Draft Report Foundation
 
+Status: Implemented
+
 Target:
 
 - Additive Dragline Delay Report persistence.
-- Verified Delay Code catalog only after both source artifacts exist.
+- Verified Delay Code Catalog V1 as the application-owned source definition.
 - Dragline Equipment context and snapshots.
 - Canonical Employee operator/supervisor context and snapshots.
 - Draft history, create, edit, and detail.
@@ -598,6 +642,8 @@ Target:
 - Derived 720-minute runtime.
 - Station parsing, normalization, and calculation helpers with focused tests.
 - Optimistic stale-version protection for repeated Draft saves.
+- Nonnegative whole-number Starting Hour Meter and optional Ending Hour Meter
+  while Draft.
 
 Exclusions:
 
@@ -605,8 +651,8 @@ Exclusions:
 - No Day View participation.
 - No attachments or photos.
 - No global shift redesign.
-- No production/end-of-shift completion surface beyond fields whose source
-  precision is closed for this slice.
+- No decimal hour-meter storage or inferred precision.
+- No production/end-of-shift completion surface.
 
 ### DDR-2 — Production / Progress / End-of-Shift Completion
 
@@ -643,7 +689,8 @@ The architecture is successful when:
 
 - A future implementation can build DDR-1 from repository truth without chat
   memory.
-- Missing source artifacts fail closed instead of producing a guessed catalog.
+- The implemented catalog remains traceable to the canonical source-derived V1
+  reference without invented codes or rewritten descriptions.
 - Report identity, Draft saves, stable timeline rows, concurrency, and
   overnight chronology are deterministic.
 - Overlapping downtime is counted once and concurrent non-downtime work adds no

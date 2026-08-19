@@ -32,10 +32,17 @@ Implementation standards for turning these modules into feature slices live in
 
 ## Source Documents
 
-## Pending Collection
+### Preserved Authoritative Sources
 
-- Dragline Delay Report front/report artifact
-- Official Delay Code Legend artifact
+- [Dragline Delay Report front](../source-forms/dragline-delay-report/01-dragline-delay-report-front.jpg)
+- [Official Delay Code Legend](../source-forms/dragline-delay-report/02-delay-code-legend.jpg)
+
+The Dragline Delay Report sources were visually verified on 2026-08-18. The
+exact source-derived transcription is canonical in the
+[Delay Code Catalog V1](reference/dragline-delay-reports/delay-code-catalog-v1.md).
+
+### Pending Collection
+
 - STOP Card
 - Final approved Dragline and Mobile checklist item sets
 - Greasing Form
@@ -46,11 +53,6 @@ Implementation standards for turning these modules into feature slices live in
 Pending source-form collection does not mean the corresponding software module
 is unimplemented. STOP Cards and Daily Inspections currently use the approved V1
 fields documented in `docs/database.md` and their feature architecture documents.
-
-The Dragline Delay Report artifacts are not collected. Their intended durable
-location is `source-forms/dragline-delay-report/`. Do not create the official
-Delay Code catalog until the original report front and legend are committed and
-verified.
 
 ## Shift Reports
 
@@ -381,7 +383,8 @@ The feature owns:
   snapshots.
 - Multiple ordered operator participants and one supervisor selected from the
   canonical Employee model with historical snapshots.
-- Starting and Ending Hour Meter report facts after source precision closes.
+- Nonnegative whole-number Starting and Ending Hour Meter report facts; Starting
+  is required in Draft and Ending may remain blank while Draft.
 - A stable concurrent timeline using one source-verified official code per
   entry.
 - Explicit per-entry downtime meaning, integer-minute interval-union downtime,
@@ -407,16 +410,22 @@ or a global shift redesign in DDR-1 through DDR-3.
 The official Delay Code catalog is a controlled, versioned application catalog
 with exactly Operational, Mechanical, and Electrical categories. The UI will
 use one searchable code/description dropdown and derive category. The catalog
-is blocked until the missing original report front and official legend are
-preserved in `source-forms/dragline-delay-report/`; official codes and
-descriptions must not be invented or rewritten.
+was verified directly from the preserved official legend and is canonical in
+[Delay Code Catalog V1](reference/dragline-delay-reports/delay-code-catalog-v1.md).
+Its 66 entries retain source wording, ordering, category, and numeric gaps;
+official codes and descriptions must not be invented or rewritten.
 
-### Open Questions
+### Implementation Status And Open Questions
 
-Open source/validation questions are exact hour-meter precision, Lake ID
-format, Direction vocabulary, negative Advance support, completion-required
-fields, future Ground Check derivation, and any precision finer than integer
-minutes.
+DDR-1 is implemented as an independent Draft workflow with history,
+create/detail/edit surfaces, stable ordered children, Catalog V1 validation,
+overnight chronology, interval-union downtime, derived runtime, station
+helpers, and stale-write protection. It does not participate in Daily Log, Day
+View, Work Schedule, attachments, or completion.
+
+Open validation questions are Lake ID format, Direction vocabulary, negative
+Advance support, completion-required fields, future Ground Check derivation,
+and any precision finer than integer minutes.
 
 ## Knowledge Base (KB)
 
