@@ -171,7 +171,9 @@ describe("DraglineDelayReportForm", () => {
       target: { value: "20" },
     });
     fireEvent.click(screen.getByLabelText("Causes machine downtime for row 1"));
-    fireEvent.click(screen.getByRole("button", { name: "Add Timeline Row" }));
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Add Timeline Row" })[0],
+    );
     fireEvent.change(screen.getByLabelText("Start time for row 2"), {
       target: { value: "08:30" },
     });
@@ -187,6 +189,45 @@ describe("DraglineDelayReportForm", () => {
     expect(screen.getByLabelText("Causes machine downtime for row 2")).not.toBeChecked();
     expect(screen.getAllByText("20 min").length).toBeGreaterThan(0);
     expect(screen.getAllByText("700 min").length).toBeGreaterThan(0);
+  });
+
+  it("offers green add-row controls above and below the Timeline and focuses each new row", async () => {
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    renderForm();
+    fireEvent.change(screen.getByLabelText("Start time for row 1"), {
+      target: { value: "08:30" },
+    });
+    fireEvent.change(screen.getByLabelText("Description for row 1"), {
+      target: { value: "Existing factual row" },
+    });
+
+    let addButtons = screen.getAllByRole("button", { name: "Add Timeline Row" });
+    expect(addButtons).toHaveLength(2);
+    expect(addButtons[0]).toHaveClass("ddr-add-timeline-button");
+    expect(addButtons[1]).toHaveClass("ddr-add-timeline-button");
+    expect(addButtons[0]).toHaveAttribute("data-ddr-add-timeline-position", "top");
+    expect(addButtons[1]).toHaveAttribute("data-ddr-add-timeline-position", "bottom");
+
+    fireEvent.click(addButtons[0]);
+    await waitFor(() => expect(screen.getByLabelText("Start time for row 2")).toHaveFocus());
+    expect(screen.getAllByRole("group", { name: /Timeline row/ })).toHaveLength(2);
+    expect(screen.getByLabelText("Start time for row 1")).toHaveValue("08:30");
+    expect(screen.getByLabelText("Description for row 1")).toHaveValue(
+      "Existing factual row",
+    );
+
+    addButtons = screen.getAllByRole("button", { name: "Add Timeline Row" });
+    fireEvent.click(addButtons[1]);
+    await waitFor(() => expect(screen.getByLabelText("Start time for row 3")).toHaveFocus());
+    expect(screen.getAllByRole("group", { name: /Timeline row/ })).toHaveLength(3);
+    expect(scrollIntoView).toHaveBeenCalledTimes(2);
+    expect(scrollIntoView.mock.contexts.at(-1)).toBe(
+      screen.getByRole("group", { name: "Timeline row 3" }),
+    );
   });
 
   it("renders DDR-2 fields, filters Lakes by Mine, and previews absolute Advance", () => {

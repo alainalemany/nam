@@ -341,14 +341,21 @@ stopped-machine time.
 
 The data model does not require the operator to repeat a calendar date on every
 entry. DDR-1 stores an integer `startMinuteOffset` from operational-date
-midnight. Day Shift is 05:00 through before 17:00 (`[300, 1020)`). Night Shift
-is 17:00 through before 05:00 on the next calendar day (`[1020, 1740)`). For
-example, `23:50` is 1430 and next-day `00:10` is 1450, while both remain owned
-by the report's operational work date.
+midnight. The scheduled Day Shift is 05:00 through 17:00 (`[300, 1020)`) and
+the scheduled Night Shift is 17:00 through 05:00 on the next calendar day
+(`[1020, 1740)`). Timeline entries begin no earlier than the applicable shift
+start but may continue beyond the scheduled end to preserve factual operations
+when relief is late. Code 13 — Shift Change records the actual change time and
+may occur at or after the scheduled boundary. The existing two-calendar-day
+representation supports offsets `0..2879`; it does not introduce a multi-day
+timeline model. For example, `23:50` is 1430, next-day `00:10` is 1450, and
+next-day `06:00` is 1800, while all remain owned by the report's operational
+work date.
 
 ## 11. Downtime And Runtime
 
-The normal report duration is 720 integer minutes.
+The scheduled report duration is always 720 integer minutes even when its
+factual timeline continues past the scheduled shift end.
 
 Downtime is the union of all intervals whose entries explicitly cause machine
 downtime. It is not the sum of all timeline durations.
@@ -357,15 +364,19 @@ Server-authoritative calculation:
 
 1. Convert every downtime entry into a half-open normalized interval
    `[startMinute, startMinute + durationMinutes)`.
-2. Sort intervals by start minute and then end minute.
-3. Merge overlapping or touching intervals.
-4. Sum the merged interval lengths once.
-5. Persist or return the derived unique downtime minutes according to the
+2. Clip each interval to the scheduled Day `[300, 1020)` or Night
+   `[1020, 1740)` calculation window; discard intervals entirely outside it.
+3. Sort the remaining intervals by start minute and then end minute.
+4. Merge overlapping or touching intervals.
+5. Sum the merged interval lengths once.
+6. Persist or return the derived unique downtime minutes according to the
    implementation slice; never trust a client-entered total.
-6. Derive runtime as `720 - downtimeMinutes`.
+7. Derive runtime as `720 - downtimeMinutes`.
 
-The derived result must remain within `0..720`. Invalid interval state must be
-rejected rather than silently clipped or converted into a negative runtime.
+The derived result must remain within `0..720`. Clipping applies only to the
+scheduled calculation boundary: malformed starts, nonpositive durations, and
+other invalid interval state remain validation errors rather than being
+silently repaired.
 
 Examples:
 
@@ -569,6 +580,11 @@ section is scrolled into view and focused without resetting form state.
 The timeline code control is one searchable dropdown grouped by Operational,
 Mechanical, and Electrical. It searches code and description, displays derived
 category, and exposes no separate Category input.
+
+The Timeline section provides green Add Timeline Row controls above and below
+the row list so the action remains visible as a long report grows. Either
+control appends exactly one stable row, scrolls that row into view, and focuses
+its Start time without changing existing row values or order.
 
 Concurrent rows with equal start times must remain visible and independently
 editable. Overnight presentation should communicate next-day chronology without

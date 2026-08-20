@@ -7,7 +7,10 @@ import {
 import { calculateDraglineShiftTotals } from "./calculations";
 import { hasFinalShiftChangeEntry } from "./lifecycle";
 import { parseStationNotation } from "./station";
-import { normalizeEventStartTime, validateEventInterval } from "./time";
+import {
+  normalizeEventStartTime,
+  validateScheduledShiftStart,
+} from "./time";
 
 const POSTGRES_INTEGER_MAX = 2_147_483_647;
 
@@ -328,7 +331,7 @@ export const draglineDelayReportSubmissionSchema = z
         groundCheckIds.add(groundCheck.id);
       }
       try {
-        validateEventInterval(
+        validateScheduledShiftStart(
           value.shift,
           normalizeEventStartTime(groundCheck.startTime, groundCheck.dayOffset),
         );

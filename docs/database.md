@@ -281,9 +281,12 @@ Conceptual fields:
 - Durable child identity.
 - Parent report reference.
 - Stable sequence used to order entries with equal actual start times.
-- Integer `startMinuteOffset` from operational-date midnight. Day uses
-  `[300, 1020)` and Night uses `[1020, 1740)`; any recorded duration must end
-  within that 12-hour window.
+- Integer `startMinuteOffset` from operational-date midnight. Timeline entries
+  begin no earlier than the selected shift start and may continue beyond its
+  scheduled end within the existing two-calendar-day `0..2879` representation.
+  Day `[300, 1020)` and Night `[1020, 1740)` remain the fixed scheduled
+  calculation windows; downtime intervals are clipped to those windows rather
+  than expanding the 720-minute report total.
 - Delay Code catalog version.
 - Official code, exact description, and derived category snapshots.
 - Description/context.

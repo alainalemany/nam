@@ -39,7 +39,7 @@ describe("Dragline downtime interval union", () => {
     expect(totals).toEqual({ downTimeMinutes: 70, runTimeMinutes: 650 });
   });
 
-  it("rejects incomplete, nonpositive, and out-of-window downtime", () => {
+  it("rejects incomplete, nonpositive, and pre-shift downtime", () => {
     expect(() =>
       calculateDraglineDowntime("DAY", [
         { startMinuteOffset: 500, causesDowntime: true },
@@ -47,13 +47,32 @@ describe("Dragline downtime interval union", () => {
     ).toThrow(/requires a positive duration/);
     expect(() => calculateDraglineDowntime("DAY", [delay(510, 0)])).toThrow(/positive/);
     expect(() => calculateDraglineDowntime("DAY", [delay(510, -1)])).toThrow(/positive/);
-    expect(() => calculateDraglineDowntime("DAY", [delay(299, 10)])).toThrow(/within/);
-    expect(() => calculateDraglineDowntime("DAY", [delay(991, 30)])).toThrow(/end within/);
+    expect(() => calculateDraglineDowntime("DAY", [delay(299, 10)])).toThrow(/at or after/);
   });
 
   it("allows downtime to end exactly at the corrected shift boundaries", () => {
     expect(calculateDraglineDowntime("DAY", [delay(990, 30)])).toBe(30);
     expect(calculateDraglineDowntime("NIGHT", [delay(1710, 30)])).toBe(30);
+  });
+
+  it("clips downtime crossing the scheduled end and ignores post-shift downtime", () => {
+    expect(calculateDraglineDowntime("DAY", [delay(1010, 30)])).toBe(10);
+    expect(calculateDraglineDowntime("DAY", [delay(1030, 20)])).toBe(0);
+  });
+
+  it("unions overlapping downtime only within the scheduled calculation window", () => {
+    expect(
+      calculateDraglineDowntime("DAY", [delay(1000, 40), delay(1010, 30)]),
+    ).toBe(20);
+  });
+
+  it("keeps runtime based on 720 minutes when the factual timeline runs late", () => {
+    expect(
+      calculateDraglineShiftTotals("DAY", [
+        delay(600, 60),
+        { startMinuteOffset: 1080, causesDowntime: false },
+      ]),
+    ).toEqual({ downTimeMinutes: 60, runTimeMinutes: 660 });
   });
 
   it("derives runtime from a normal 720-minute shift and rejects impossible totals", () => {

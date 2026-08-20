@@ -461,7 +461,7 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
     }
   });
 
-  it("persists the confirmed 05:00-to-17:00 Day and 17:00-to-05:00 Night boundaries", async () => {
+  it("persists extended factual timelines while retaining scheduled 12-hour totals", async () => {
     const client = new PrismaClient({ datasourceUrl: databaseUrl });
     try {
       await withRollback(client, async (transaction, prefix) => {
@@ -485,13 +485,23 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
             },
             {
               sequence: 2,
-              startTime: "16:30",
+              startTime: "16:50",
               dayOffset: 0,
               catalogVersion: 1,
               delayCode: "26",
-              description: "Ends at Day shift boundary",
+              description: "Crosses the Day shift boundary",
               durationMinutes: 30,
               causesDowntime: true,
+            },
+            {
+              sequence: 3,
+              startTime: "18:00",
+              dayOffset: 0,
+              catalogVersion: 1,
+              delayCode: "13",
+              description: "Late Day Shift Change",
+              durationMinutes: "",
+              causesDowntime: false,
             },
           ],
         });
@@ -510,13 +520,23 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
             },
             {
               sequence: 2,
-              startTime: "04:30",
+              startTime: "04:50",
               dayOffset: 1,
               catalogVersion: 1,
               delayCode: "26",
-              description: "Ends at Night shift boundary",
+              description: "Crosses the Night shift boundary",
               durationMinutes: 30,
               causesDowntime: true,
+            },
+            {
+              sequence: 3,
+              startTime: "06:00",
+              dayOffset: 1,
+              catalogVersion: 1,
+              delayCode: "13",
+              description: "Late Night Shift Change",
+              durationMinutes: "",
+              causesDowntime: false,
             },
           ],
         });
@@ -539,14 +559,16 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
         const persistedNight = persisted.find((report) => report.shift === "NIGHT");
         expect(persistedDay?.timelineEntries.map((entry) => entry.startMinuteOffset)).toEqual([
           300,
-          990,
+          1010,
+          1080,
         ]);
         expect(persistedNight?.timelineEntries.map((entry) => entry.startMinuteOffset)).toEqual([
           1020,
-          1710,
+          1730,
+          1800,
         ]);
-        expect(persistedDay).toMatchObject({ downTimeMinutes: 30, runTimeMinutes: 690 });
-        expect(persistedNight).toMatchObject({ downTimeMinutes: 30, runTimeMinutes: 690 });
+        expect(persistedDay).toMatchObject({ downTimeMinutes: 10, runTimeMinutes: 710 });
+        expect(persistedNight).toMatchObject({ downTimeMinutes: 10, runTimeMinutes: 710 });
 
         expect(
           draglineDelayReportSubmissionSchema.safeParse({
@@ -555,33 +577,89 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
               { ...dayInput.timelineEntries[0], startTime: "17:00" },
             ],
           }).success,
-        ).toBe(false);
+        ).toBe(true);
         expect(
           draglineDelayReportSubmissionSchema.safeParse({
             ...nightInput,
             timelineEntries: [
               {
                 ...nightInput.timelineEntries[1],
+                sequence: 1,
                 startTime: "05:00",
                 durationMinutes: "",
                 causesDowntime: false,
               },
             ],
           }).success,
-        ).toBe(false);
+        ).toBe(true);
         expect(
           draglineDelayReportSubmissionSchema.safeParse({
             ...nightInput,
             timelineEntries: [
               {
                 ...nightInput.timelineEntries[1],
+                sequence: 1,
                 startTime: "04:31",
                 durationMinutes: 30,
               },
             ],
           }).success,
-        ).toBe(false);
+        ).toBe(true);
       });
+    } finally {
+      await client.$disconnect();
+    }
+  });
+
+  it("uses the two-calendar-day database bound for timeline starts", async () => {
+    const client = new PrismaClient({ datasourceUrl: databaseUrl });
+    const prefix = uniquePrefix();
+    try {
+      const constraints = await client.$queryRaw<Array<{ definition: string }>>`
+        SELECT pg_get_constraintdef(oid) AS definition
+        FROM pg_constraint
+        WHERE conname = 'DraglineDelayReportTimeline_start_check'
+          AND conrelid = '"DraglineDelayReportTimelineEntry"'::regclass
+      `;
+      expect(constraints).toHaveLength(1);
+      expect(constraints[0].definition).toContain(
+        '"startMinuteOffset" >= 0',
+      );
+      expect(constraints[0].definition).toContain(
+        '"startMinuteOffset" <= 2879',
+      );
+
+      await expect(
+        client.$transaction(async (transaction) => {
+          const references = await createReferences(transaction, prefix);
+          const report = await persistDraglineDelayReportInTransaction(
+            transaction,
+            validInput(references),
+          );
+          const source = await transaction.draglineDelayReportTimelineEntry.findFirstOrThrow({
+            where: { reportId: report.id },
+          });
+          await transaction.draglineDelayReportTimelineEntry.create({
+            data: {
+              id: `${prefix}-outside-timeline`,
+              reportId: report.id,
+              sequence: 99,
+              startMinuteOffset: 2880,
+              delayCodeCatalogVersion: source.delayCodeCatalogVersion,
+              delayCode: source.delayCode,
+              delayCodeDescription: source.delayCodeDescription,
+              delayCodeCategory: source.delayCodeCategory,
+              description: "Outside the supported two-calendar-day timeline",
+              causesDowntime: false,
+            },
+          });
+        }),
+      ).rejects.toThrow(/DraglineDelayReportTimeline_start_check/);
+      expect(
+        await client.draglineDelayReport.count({
+          where: { equipmentDisplayName: { startsWith: prefix } },
+        }),
+      ).toBe(0);
     } finally {
       await client.$disconnect();
     }

@@ -62,7 +62,7 @@ describe("Dragline Delay Report validation", () => {
     ).toBe(false);
   });
 
-  it("enforces the confirmed 5-to-5 boundaries at the submission boundary", () => {
+  it("keeps the 5-to-5 start boundary while allowing a factual extended timeline", () => {
     const submission = ({
       shift,
       startTime,
@@ -90,16 +90,19 @@ describe("Dragline Delay Report validation", () => {
 
     expect(submission({ shift: "DAY", startTime: "05:00" })).toBe(true);
     expect(submission({ shift: "DAY", startTime: "16:59" })).toBe(true);
-    expect(submission({ shift: "DAY", startTime: "17:00" })).toBe(false);
+    expect(submission({ shift: "DAY", startTime: "17:00" })).toBe(true);
+    expect(submission({ shift: "DAY", startTime: "17:20" })).toBe(true);
+    expect(submission({ shift: "DAY", startTime: "18:00" })).toBe(true);
     expect(submission({ shift: "DAY", startTime: "04:59" })).toBe(false);
     expect(
       submission({ shift: "DAY", startTime: "16:30", durationMinutes: "30" }),
     ).toBe(true);
     expect(
       submission({ shift: "DAY", startTime: "16:31", durationMinutes: "30" }),
-    ).toBe(false);
+    ).toBe(true);
 
     expect(submission({ shift: "NIGHT", startTime: "17:00" })).toBe(true);
+    expect(submission({ shift: "NIGHT", startTime: "16:59" })).toBe(false);
     expect(submission({ shift: "NIGHT", startTime: "23:30" })).toBe(true);
     expect(
       submission({ shift: "NIGHT", startTime: "00:20", dayOffset: 1 }),
@@ -109,7 +112,13 @@ describe("Dragline Delay Report validation", () => {
     ).toBe(true);
     expect(
       submission({ shift: "NIGHT", startTime: "05:00", dayOffset: 1 }),
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      submission({ shift: "NIGHT", startTime: "05:20", dayOffset: 1 }),
+    ).toBe(true);
+    expect(
+      submission({ shift: "NIGHT", startTime: "06:00", dayOffset: 1 }),
+    ).toBe(true);
     expect(
       submission({
         shift: "NIGHT",
@@ -125,7 +134,55 @@ describe("Dragline Delay Report validation", () => {
         dayOffset: 1,
         durationMinutes: "30",
       }),
-    ).toBe(false);
+    ).toBe(true);
+  });
+
+  it("accepts an on-time or late final Code 13 for Day and Night completion", () => {
+    for (const startTime of ["17:00", "17:20", "18:00"]) {
+      expect(
+        draglineDelayReportCompletionSchema.safeParse(
+          completionInput({
+            timelineEntries: [
+              validInput.timelineEntries[0],
+              {
+                ...validInput.timelineEntries[0],
+                sequence: 2,
+                startTime,
+                delayCode: "13",
+                durationMinutes: "",
+                causesDowntime: false,
+              },
+            ],
+          }),
+        ).success,
+      ).toBe(true);
+    }
+
+    for (const startTime of ["05:00", "05:20", "06:00"]) {
+      expect(
+        draglineDelayReportCompletionSchema.safeParse(
+          completionInput({
+            shift: "NIGHT",
+            timelineEntries: [
+              {
+                ...validInput.timelineEntries[0],
+                sequence: 1,
+                startTime: "23:30",
+              },
+              {
+                ...validInput.timelineEntries[0],
+                sequence: 2,
+                startTime,
+                dayOffset: 1,
+                delayCode: "13",
+                durationMinutes: "",
+                causesDowntime: false,
+              },
+            ],
+          }),
+        ).success,
+      ).toBe(true);
+    }
   });
 
   it.each(["12.5", "-1", "abc"])("rejects non-whole starting meter %s", (meter) => {

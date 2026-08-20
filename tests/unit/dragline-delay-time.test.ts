@@ -7,6 +7,7 @@ import {
   normalizeEventStartTime,
   splitEventStartMinute,
   validateEventInterval,
+  validateScheduledShiftStart,
 } from "@/features/dragline-delay-reports/time";
 
 describe("Dragline Delay Report time normalization", () => {
@@ -37,21 +38,36 @@ describe("Dragline Delay Report time normalization", () => {
     });
   });
 
-  it("enforces the half-open Day event-start boundaries", () => {
+  it("accepts extended Day timeline entries but rejects starts before shift", () => {
     expect(() => validateEventInterval("DAY", 300)).not.toThrow();
     expect(() => validateEventInterval("DAY", 1019)).not.toThrow();
-    expect(() => validateEventInterval("DAY", 1020)).toThrow(/within/);
-    expect(() => validateEventInterval("DAY", 299)).toThrow(/within/);
+    expect(() => validateEventInterval("DAY", 1020)).not.toThrow();
+    expect(() => validateEventInterval("DAY", 1040)).not.toThrow();
+    expect(() => validateEventInterval("DAY", 1080)).not.toThrow();
+    expect(() => validateEventInterval("DAY", 299)).toThrow(/at or after/);
     expect(() => validateEventInterval("DAY", 990, 30)).not.toThrow();
-    expect(() => validateEventInterval("DAY", 991, 30)).toThrow(/end within/);
+    expect(() => validateEventInterval("DAY", 991, 30)).not.toThrow();
   });
 
-  it("enforces the half-open Night event-start boundaries", () => {
+  it("accepts extended Night timeline entries on the next calendar day", () => {
     expect(() => validateEventInterval("NIGHT", 1020)).not.toThrow();
     expect(() => validateEventInterval("NIGHT", 1410)).not.toThrow();
     expect(() => validateEventInterval("NIGHT", 1739)).not.toThrow();
-    expect(() => validateEventInterval("NIGHT", 1740)).toThrow(/within/);
+    expect(() => validateEventInterval("NIGHT", 1740)).not.toThrow();
+    expect(() => validateEventInterval("NIGHT", 1760)).not.toThrow();
+    expect(() => validateEventInterval("NIGHT", 1800)).not.toThrow();
     expect(() => validateEventInterval("NIGHT", 1710, 30)).not.toThrow();
-    expect(() => validateEventInterval("NIGHT", 1711, 30)).toThrow(/end within/);
+    expect(() => validateEventInterval("NIGHT", 1711, 30)).not.toThrow();
+    expect(() => validateEventInterval("NIGHT", 2879)).not.toThrow();
+    expect(() => validateEventInterval("NIGHT", 2880)).toThrow(/two-calendar-day/);
+    expect(() => validateEventInterval("NIGHT", 1019)).toThrow(/at or after/);
+  });
+
+  it("keeps scheduled-window validation available for Ground Checks", () => {
+    expect(() => validateScheduledShiftStart("DAY", 300)).not.toThrow();
+    expect(() => validateScheduledShiftStart("DAY", 1019)).not.toThrow();
+    expect(() => validateScheduledShiftStart("DAY", 1020)).toThrow(/12-hour/);
+    expect(() => validateScheduledShiftStart("NIGHT", 1739)).not.toThrow();
+    expect(() => validateScheduledShiftStart("NIGHT", 1740)).toThrow(/12-hour/);
   });
 });

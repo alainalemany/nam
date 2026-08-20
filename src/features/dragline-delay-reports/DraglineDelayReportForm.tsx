@@ -317,7 +317,15 @@ export function DraglineDelayReportForm({
       ? initialValues.timelineEntries
       : [emptyTimelineEntry()],
   );
+  const pendingTimelineFocusClientId = useRef<string | null>(null);
   const [groundChecks, setGroundChecks] = useState(initialValues.groundChecks);
+
+  function addTimelineEntry() {
+    if (timelineEntries.length >= 200) return;
+    const entry = emptyTimelineEntry();
+    pendingTimelineFocusClientId.current = entry.clientId;
+    setTimelineEntries((current) => [...current, entry]);
+  }
 
   function focusErrorPath(path: string) {
     const form = formRef.current;
@@ -338,6 +346,23 @@ export function DraglineDelayReportForm({
     if (state.status !== "error") return;
     focusErrorPath(errorSummary[0]?.path ?? "form");
   }, [errorSummary, state.status]);
+
+  useEffect(() => {
+    const clientId = pendingTimelineFocusClientId.current;
+    if (!clientId) return;
+
+    const row = formRef.current?.querySelector<HTMLElement>(
+      `[data-ddr-timeline-client-id="${clientId}"]`,
+    );
+    const startTime = row?.querySelector<HTMLInputElement>(
+      'input[data-ddr-timeline-start="true"]',
+    );
+    if (!row || !startTime) return;
+
+    pendingTimelineFocusClientId.current = null;
+    row.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    startTime.focus({ preventScroll: true });
+  }, [timelineEntries]);
 
   const selectedEquipment = equipmentOptions.find(
     (option) => option.id === equipmentId,
@@ -754,12 +779,11 @@ export function DraglineDelayReportForm({
             <h2 id="ddr-timeline-heading">Timeline</h2>
           </div>
           <button
-            className="button secondary"
+            className="button ddr-add-timeline-button"
+            data-ddr-add-timeline-position="top"
             disabled={timelineEntries.length >= 200}
             type="button"
-            onClick={() =>
-              setTimelineEntries((current) => [...current, emptyTimelineEntry()])
-            }
+            onClick={addTimelineEntry}
           >
             Add Timeline Row
           </button>
@@ -774,6 +798,7 @@ export function DraglineDelayReportForm({
             <fieldset
               className={`ddr-timeline-row${hasNestedError(state, `timelineEntries.${index}`) ? " ddr-invalid-row" : ""}`}
               data-ddr-error-path={`timelineEntries.${index}`}
+              data-ddr-timeline-client-id={entry.clientId}
               key={entry.clientId}
               tabIndex={-1}
             >
@@ -787,6 +812,7 @@ export function DraglineDelayReportForm({
                   <input
                     {...errorAttributes(state, `timelineEntries.${index}.startTime`)}
                     aria-label={`Start time for row ${index + 1}`}
+                    data-ddr-timeline-start="true"
                     type="time"
                     value={entry.startTime}
                     onChange={(event) =>
@@ -903,6 +929,17 @@ export function DraglineDelayReportForm({
               </div>
             </fieldset>
           ))}
+          <div className="inline-actions ddr-timeline-bottom-actions">
+            <button
+              className="button ddr-add-timeline-button"
+              data-ddr-add-timeline-position="bottom"
+              disabled={timelineEntries.length >= 200}
+              type="button"
+              onClick={addTimelineEntry}
+            >
+              Add Timeline Row
+            </button>
+          </div>
         </div>
       </section>
 

@@ -1,5 +1,6 @@
 import {
   DRAGLINE_SHIFT_MINUTES,
+  getDraglineShiftWindow,
   type DraglineDelayReportShift,
   validateEventInterval,
 } from "./time";
@@ -14,6 +15,7 @@ export function calculateDraglineDowntime(
   shift: DraglineDelayReportShift,
   entries: readonly DowntimeInput[],
 ) {
+  const window = getDraglineShiftWindow(shift);
   const intervals = entries.flatMap((entry) => {
     validateEventInterval(shift, entry.startMinuteOffset, entry.durationMinutes);
 
@@ -25,12 +27,13 @@ export function calculateDraglineDowntime(
       throw new Error("A downtime-causing entry requires a positive duration.");
     }
 
-    return [
-      {
-        start: entry.startMinuteOffset,
-        end: entry.startMinuteOffset + entry.durationMinutes,
-      },
-    ];
+    const start = Math.max(entry.startMinuteOffset, window.startMinuteOffset);
+    const end = Math.min(
+      entry.startMinuteOffset + entry.durationMinutes,
+      window.endMinuteOffset,
+    );
+
+    return end > start ? [{ start, end }] : [];
   });
 
   intervals.sort((left, right) => left.start - right.start || left.end - right.end);

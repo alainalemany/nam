@@ -1,4 +1,5 @@
 export const DRAGLINE_SHIFT_MINUTES = 720;
+export const DRAGLINE_TIMELINE_END_MINUTE_OFFSET = 2 * 24 * 60;
 
 export type DraglineDelayReportShift = "DAY" | "NIGHT";
 
@@ -86,9 +87,11 @@ export function validateEventInterval(
   if (
     !Number.isInteger(startMinuteOffset) ||
     startMinuteOffset < window.startMinuteOffset ||
-    startMinuteOffset >= window.endMinuteOffset
+    startMinuteOffset >= DRAGLINE_TIMELINE_END_MINUTE_OFFSET
   ) {
-    throw new Error("Event start time must fall within the selected 12-hour shift.");
+    throw new Error(
+      "Event start time must be at or after the selected shift start and within the supported two-calendar-day timeline.",
+    );
   }
 
   if (durationMinutes == null) {
@@ -98,8 +101,19 @@ export function validateEventInterval(
   if (!Number.isInteger(durationMinutes) || durationMinutes <= 0) {
     throw new Error("Duration must be a positive whole number of minutes.");
   }
+}
 
-  if (startMinuteOffset + durationMinutes > window.endMinuteOffset) {
-    throw new Error("Event duration must end within the selected 12-hour shift.");
+export function validateScheduledShiftStart(
+  shift: DraglineDelayReportShift,
+  startMinuteOffset: number,
+) {
+  const window = getDraglineShiftWindow(shift);
+
+  if (
+    !Number.isInteger(startMinuteOffset) ||
+    startMinuteOffset < window.startMinuteOffset ||
+    startMinuteOffset >= window.endMinuteOffset
+  ) {
+    throw new Error("Event start time must fall within the selected 12-hour shift.");
   }
 }

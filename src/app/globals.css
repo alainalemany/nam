@@ -213,6 +213,12 @@ h3 {
   color: #8f211d;
 }
 
+.button.ddr-add-timeline-button {
+  border-color: #18794e;
+  background: #18794e;
+  color: #ffffff;
+}
+
 .button:disabled {
   cursor: wait;
   opacity: 0.65;
@@ -1387,6 +1393,10 @@ textarea {
 }
 
 .ddr-row-actions {
+  justify-content: flex-end;
+}
+
+.ddr-timeline-bottom-actions {
   justify-content: flex-end;
 }
 
