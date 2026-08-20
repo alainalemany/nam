@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getDraglineDelayReportById } from "@/features/dragline-delay-reports/data";
+import { formatDraglineDurationMinutes } from "@/features/dragline-delay-reports/duration";
 import { calculateStationAdvance, formatStationNotation } from "@/features/dragline-delay-reports/station";
 import { formatEventStartMinute } from "@/features/dragline-delay-reports/time";
 
@@ -90,7 +91,7 @@ export default async function DraglineDelayReportDetailPage({
             </p>
           </div>
           <div>
-            <p className="eyebrow">Station Start</p>
+            <p className="eyebrow">Section Start</p>
             <p>
               {report.stationStartFeet == null
                 ? missingLabel
@@ -98,7 +99,7 @@ export default async function DraglineDelayReportDetailPage({
             </p>
           </div>
           <div>
-            <p className="eyebrow">Station End</p>
+            <p className="eyebrow">Section End</p>
             <p>
               {report.stationEndFeet == null
                 ? missingLabel
@@ -214,11 +215,11 @@ export default async function DraglineDelayReportDetailPage({
           </div>
           <div>
             <p className="eyebrow">Down Time</p>
-            <p>{report.downTimeMinutes} minutes</p>
+            <p>{formatDraglineDurationMinutes(report.downTimeMinutes)}</p>
           </div>
           <div>
             <p className="eyebrow">Run Time</p>
-            <p>{report.runTimeMinutes} minutes</p>
+            <p>{formatDraglineDurationMinutes(report.runTimeMinutes)}</p>
           </div>
         </div>
       </section>

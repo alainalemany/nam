@@ -194,7 +194,7 @@ export const draglineDelayReportSubmissionSchema = z
       context.addIssue({
         code: "custom",
         path: [missingField],
-        message: "Enter both Station Start and Station End, or leave both blank.",
+        message: "Enter both Section Start and Section End, or leave both blank.",
       });
     }
     for (const [field, station] of [
@@ -205,13 +205,13 @@ export const draglineDelayReportSubmissionSchema = z
       try {
         const parsedStation = parseStationNotation(station);
         if (parsedStation.absoluteFeet > POSTGRES_INTEGER_MAX) {
-          throw new Error("Station is outside the supported range.");
+          throw new Error("Section is outside the supported range.");
         }
       } catch (error) {
         context.addIssue({
           code: "custom",
           path: [field],
-          message: error instanceof Error ? error.message : "Station is invalid.",
+          message: error instanceof Error ? error.message : "Section is invalid.",
         });
       }
     }

@@ -39,8 +39,8 @@ function completedReport() {
     lakeDisplayNameSnapshot: null,
     normalDiggingBuckets: null,
     benchfillBuckets: null,
-    stationStartFeet: null,
-    stationEndFeet: null,
+    stationStartFeet: 1600,
+    stationEndFeet: 1620,
     depthFeet: null,
     fuelGallons: null,
     cableDragFeet: null,
@@ -48,8 +48,8 @@ function completedReport() {
     comments: null,
     safetyItemsFound: null,
     actionTaken: null,
-    downTimeMinutes: 0,
-    runTimeMinutes: 720,
+    downTimeMinutes: 135,
+    runTimeMinutes: 585,
     recordVersion: 3,
     completedAt: new Date("2026-08-18T21:00:00.000Z"),
     createdAt: new Date("2026-08-18T09:00:00.000Z"),
@@ -114,6 +114,12 @@ describe("Dragline Delay Report Completed detail", () => {
       screen.getByText("Corrected Ending Hour Meter from signed shift paperwork."),
     ).toBeInTheDocument();
     expect(screen.getByText("2 → 3")).toBeInTheDocument();
+    expect(screen.getByText("Section Start")).toBeInTheDocument();
+    expect(screen.getByText("Section End")).toBeInTheDocument();
+    expect(screen.getByText("16+00")).toBeInTheDocument();
+    expect(screen.getByText("16+20")).toBeInTheDocument();
+    expect(screen.getByText("9 h 45 min")).toBeInTheDocument();
+    expect(screen.getByText("2 h 15 min")).toBeInTheDocument();
   });
 
   it.each([

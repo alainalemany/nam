@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { getDraglineDelayReports } from "@/features/dragline-delay-reports/data";
+import { formatDraglineDurationMinutes } from "@/features/dragline-delay-reports/duration";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +71,8 @@ export default async function DraglineDelayReportsPage() {
                     <td>{report.shift === "DAY" ? "Day" : "Night"}</td>
                     <td>{report.status === "DRAFT" ? "Draft" : "Completed"}</td>
                     <td>
-                      {report.runTimeMinutes} / {report.downTimeMinutes} min
+                      {formatDraglineDurationMinutes(report.runTimeMinutes)} /{" "}
+                      {formatDraglineDurationMinutes(report.downTimeMinutes)}
                       <span className="subtle">Run / Down</span>
                     </td>
                     <td>{report.updatedAt.toLocaleString("en-US")}</td>

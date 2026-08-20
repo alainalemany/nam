@@ -61,8 +61,8 @@ const initialValues = {
   lakeId: "lake-12",
   normalDiggingBuckets: "10",
   benchfillBuckets: "2",
-  stationStart: "50+30",
-  stationEnd: "50+60",
+  stationStart: "16+0",
+  stationEnd: "16+20",
   depthFeet: "65",
   fuelGallons: "500",
   cableDragFeet: "",
@@ -161,6 +161,7 @@ describe("DraglineDelayReportForm", () => {
 
   it("supports dynamic same-time concurrent rows and an explicit downtime control", () => {
     renderForm();
+    expect(screen.getByText("Duration (minutes, optional)")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Start time for row 1"), {
       target: { value: "08:30" },
     });
@@ -188,7 +189,7 @@ describe("DraglineDelayReportForm", () => {
     expect(screen.getByLabelText("Causes machine downtime for row 1")).toBeChecked();
     expect(screen.getByLabelText("Causes machine downtime for row 2")).not.toBeChecked();
     expect(screen.getAllByText("20 min").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("700 min").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("11 h 40 min").length).toBeGreaterThan(0);
   });
 
   it("offers green add-row controls above and below the Timeline and focuses each new row", async () => {
@@ -232,18 +233,22 @@ describe("DraglineDelayReportForm", () => {
 
   it("renders DDR-2 fields, filters Lakes by Mine, and previews absolute Advance", () => {
     renderForm();
+    expect(screen.getAllByText("12 h").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("0 h").length).toBeGreaterThan(0);
     expect(screen.getByLabelText("Lake")).toHaveValue("lake-12");
     expect(screen.getByRole("option", { name: "Lake 12" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Other Mine Lake" })).not.toBeInTheDocument();
-    expect(screen.getByText("30 ft")).toBeInTheDocument();
+    expect(screen.getByText("20 ft")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Station Start"), {
-      target: { value: "50+60" },
+    expect(screen.getByLabelText("Section Start")).toHaveValue("16+0");
+    fireEvent.change(screen.getByLabelText("Section Start"), {
+      target: { value: "16+90" },
     });
-    fireEvent.change(screen.getByLabelText("Station End"), {
-      target: { value: "50+30" },
+    fireEvent.change(screen.getByLabelText("Section End"), {
+      target: { value: "17+20" },
     });
     expect(screen.getByText("30 ft")).toBeInTheDocument();
+    expect(screen.getByLabelText("Section Start")).toHaveValue("16+90");
   });
 
   it("supports repeatable Ground Check rows without coupling them to timeline rows", () => {
@@ -279,7 +284,7 @@ describe("DraglineDelayReportForm", () => {
     fireEvent.change(screen.getByLabelText("Normal Digging Buckets"), {
       target: { value: "99" },
     });
-    fireEvent.change(screen.getByLabelText("Station End"), {
+    fireEvent.change(screen.getByLabelText("Section End"), {
       target: { value: "bad station" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Add Ground Check" }));
@@ -295,7 +300,8 @@ describe("DraglineDelayReportForm", () => {
       "preserve this context",
     );
     expect(screen.getByLabelText("Normal Digging Buckets")).toHaveValue(99);
-    expect(screen.getByLabelText("Station End")).toHaveValue("bad station");
+    expect(screen.getByLabelText("Section Start")).toHaveValue("16+0");
+    expect(screen.getByLabelText("Section End")).toHaveValue("bad station");
     expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("10:00");
   });
 
@@ -558,18 +564,18 @@ describe("DraglineDelayReportForm", () => {
     expect(screen.getByLabelText("Delay Code for row 1")).toHaveValue("34");
   });
 
-  it("identifies the missing member of a Station pair without losing other values", async () => {
+  it("identifies the missing member of a Section pair without losing other values", async () => {
     const action = vi.fn(async () => ({
       status: "error" as const,
       message: "Cannot complete report yet.",
       fieldErrors: {
         stationEnd: [
-          "Enter both Station Start and Station End, or leave both blank.",
+          "Enter both Section Start and Section End, or leave both blank.",
         ],
       },
     }));
     renderForm(action, { allowComplete: true });
-    fireEvent.change(screen.getByLabelText("Station End"), {
+    fireEvent.change(screen.getByLabelText("Section End"), {
       target: { value: "" },
     });
     fireEvent.change(screen.getByLabelText("Normal Digging Buckets"), {
@@ -578,18 +584,18 @@ describe("DraglineDelayReportForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Complete Report" }));
 
     expect(
-      await screen.findAllByText(/Enter both Station Start and Station End/),
+      await screen.findAllByText(/Enter both Section Start and Section End/),
     ).toHaveLength(2);
     expect(
       within(screen.getByRole("alert")).getByRole("button", {
-        name: /Station End: Enter both Station Start and Station End/,
+        name: /Section End: Enter both Section Start and Section End/,
       }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/Station End/)).toHaveAttribute(
+    expect(screen.getByLabelText(/Section End/)).toHaveAttribute(
       "aria-describedby",
       "ddr-stationEnd-error",
     );
-    expect(screen.getByLabelText(/Station End/)).toHaveValue("");
+    expect(screen.getByLabelText(/Section End/)).toHaveValue("");
     expect(screen.getByLabelText("Normal Digging Buckets")).toHaveValue(77);
   });
 

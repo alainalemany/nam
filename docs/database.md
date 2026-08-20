@@ -349,9 +349,9 @@ identity because NAM Dashboard has no reliable authenticated-user concept.
   within `0..720`.
 - Run Time is `720 - Down Time`.
 - Client-entered totals are never authoritative.
-- Station input preserves normalized station number/offset or deterministic
-  absolute feet, not notation-only text.
-- Station offset is normally `00..99`.
+- User-facing Section input preserves normalized section number/offset or
+  deterministic absolute feet, not notation-only text.
+- Section offset accepts one or two digits in the range `0..99`.
 - Advance is the absolute difference between ending and starting absolute feet
   and is server-derived rather than persisted.
 - Depth, Cable Drag, and Hoist use feet; Fuel uses gallons.

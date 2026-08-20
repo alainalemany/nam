@@ -701,9 +701,9 @@ must be Code 13. Code 13 never completes a report automatically and does not
 need to occur at an exact boundary minute beyond normal timeline-window
 validation.
 
-Normal Digging Buckets, Benchfill Buckets, Lake, Stations, Depth, Fuel, Cable
+Normal Digging Buckets, Benchfill Buckets, Lake, Sections, Depth, Fuel, Cable
 Drag, Hoist, Ground Checks, Comments, Safety Items Found, and Action Taken
-remain optional at completion. Station Start and End still must be both present
+remain optional at completion. Section Start and End still must be both present
 or both absent. Every successful correction keeps the report Completed,
 increments `recordVersion`, and appends a reason, timestamp, and previous/to
 version transition; it does not store full aggregate versions or field diffs.
@@ -778,21 +778,22 @@ explicit semantic distinction indicating whether it causes machine downtime.
 - Run Time is server-derived as `720 - Down Time`.
 - Client-entered runtime or downtime totals are never authoritative.
 
-### Station And Advance
+### Section And Advance
 
-Station values use the operational 100-foot convention. Familiar notation may
+Section values use the operational 100-foot convention. Familiar notation may
 be used for input and display, but storage must preserve normalized numeric
 meaning.
 
 ```text
-absolute feet = station number * 100 + offset feet
+absolute feet = section number * 100 + offset feet
 advance = absolute value of (ending absolute feet - starting absolute feet)
 ```
 
-Offset is normally `00` through `99`. `50+30 -> 50+60` and
-`50+90 -> 51+20` both derive 30 feet of Advance. Advance is calculated by NAM
-and is not manually re-entered. Increasing and decreasing station order both
-produce the positive distance progressed; no Direction value is inferred.
+Offset accepts one or two digits from `0` through `99`. `16+0 -> 16+20`
+derives 20 feet and `16+90 -> 17+20` derives 30 feet of Advance. Advance is
+calculated by NAM and is not manually re-entered. Increasing and decreasing
+section order both produce the positive distance progressed; no Direction
+value is inferred.
 
 ### Production And End-Of-Shift Facts
 
@@ -801,7 +802,7 @@ The structured report includes:
 - Normal Digging Buckets.
 - Benchfill Buckets.
 - Canonical Lake selected from active Lakes belonging to the Equipment's Mine.
-- Station Start and Station End with derived Advance.
+- Section Start and Section End with derived Advance.
 - Derived Run Time and Down Time.
 - Manual Depth in feet.
 - Manual Fuel in gallons.

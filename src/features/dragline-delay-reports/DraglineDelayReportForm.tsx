@@ -16,6 +16,7 @@ import {
   searchDraglineDelayCodes,
 } from "./catalog";
 import { calculateDraglineShiftTotals } from "./calculations";
+import { formatDraglineDurationMinutes } from "./duration";
 import { filterDraglineLakesForMine } from "./lakes";
 import { calculateStationAdvance, parseStationNotation } from "./station";
 import { normalizeEventStartTime } from "./time";
@@ -663,11 +664,19 @@ export function DraglineDelayReportForm({
           </div>
           <div>
             <span>Down Time</span>
-            <strong>{totals ? `${totals.downTimeMinutes} min` : "Check timeline"}</strong>
+            <strong>
+              {totals
+                ? formatDraglineDurationMinutes(totals.downTimeMinutes)
+                : "Check timeline"}
+            </strong>
           </div>
           <div>
             <span>Run Time</span>
-            <strong>{totals ? `${totals.runTimeMinutes} min` : "Check timeline"}</strong>
+            <strong>
+              {totals
+                ? formatDraglineDurationMinutes(totals.runTimeMinutes)
+                : "Check timeline"}
+            </strong>
           </div>
         </div>
       </section>
@@ -1020,22 +1029,22 @@ export function DraglineDelayReportForm({
             ) : null}
           </label>
           <label>
-            <span>Station Start</span>
+            <span>Section Start</span>
             <input
               {...errorAttributes(state, "stationStart")}
               inputMode="numeric"
-              placeholder="50+30"
+              placeholder="16+0"
               value={stationStart}
               onChange={(event) => setStationStart(event.target.value)}
             />
             {firstError(state, "stationStart")}
           </label>
           <label>
-            <span>Station End</span>
+            <span>Section End</span>
             <input
               {...errorAttributes(state, "stationEnd")}
               inputMode="numeric"
-              placeholder="50+60"
+              placeholder="16+20"
               value={stationEnd}
               onChange={(event) => setStationEnd(event.target.value)}
             />
@@ -1072,11 +1081,19 @@ export function DraglineDelayReportForm({
         <div className="checklist-derived-context full-width-field" aria-live="polite">
           <div>
             <span>Down Time</span>
-            <strong>{totals ? `${totals.downTimeMinutes} min` : "Check timeline"}</strong>
+            <strong>
+              {totals
+                ? formatDraglineDurationMinutes(totals.downTimeMinutes)
+                : "Check timeline"}
+            </strong>
           </div>
           <div>
             <span>Run Time</span>
-            <strong>{totals ? `${totals.runTimeMinutes} min` : "Check timeline"}</strong>
+            <strong>
+              {totals
+                ? formatDraglineDurationMinutes(totals.runTimeMinutes)
+                : "Check timeline"}
+            </strong>
           </div>
         </div>
         <div className="form-grid full-width-field">

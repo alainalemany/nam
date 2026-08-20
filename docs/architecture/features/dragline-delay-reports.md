@@ -74,10 +74,10 @@ implementation sequencing in `docs/roadmap.md`.
   minus unique downtime minutes.
 - Starting and Ending Hour Meter values are nonnegative whole numbers. Starting
   is required in Draft; Ending may remain blank while Draft.
-- Station values have normalized numeric meaning and Advance is derived.
+- Section values have normalized numeric meaning and Advance is derived.
 - Lake is canonical Mine-owned reference data; DDR exposes no Direction field.
-- Advance is the absolute distance between normalized Station Start and End,
-  regardless of increasing or decreasing station order.
+- Advance is the absolute distance between normalized Section Start and End,
+  regardless of increasing or decreasing section order.
 - No attachments, photos, Day View contribution, Daily Log redesign, or global
   shift redesign belongs to DDR-1 through DDR-3.
 
@@ -130,7 +130,7 @@ entries are readable. Numeric gaps are preserved and must not be filled.
 | Operators | `OPERADOR 1:`, `OPERADOR 2:` | Paper provides two lines; digital participation remains repeatable and ordered. |
 | Supervisor | `SUPERVISOR:` | Printed person field. |
 | Comments | `COMENTARIOS:` | Printed multiline area. |
-| Station Start / End | `STATION START/END:` | One combined printed line. |
+| Section Start / End | `STATION START/END:` | The paper says Station; NAM uses the operation's Section terminology. |
 | Advance | `ADVANCE:` | Printed manual total on paper. |
 | Run Time / Down Time | `RUN TIME:`, `DOWN TIME:` | Printed manual totals on paper. |
 | Depth / Fuel | `DEPTH:`, `FUEL:` | No unit or numeric precision is printed. |
@@ -145,7 +145,7 @@ does not separately label Ending Hour Meter. Confirmed digital product direction
 nevertheless requires nonnegative whole numbers; that decision is not presented
 as an inference from one handwritten example.
 
-The completed example visibly uses station-style handwriting and handwritten
+The completed example visibly uses section-style handwriting and handwritten
 Depth, Fuel, delay durations, and Ground Check times. Those entries verify
 operational use but do not create a reliable printed precision, format, or unit
 rule. Confirmed digital units and calculations come from approved product
@@ -160,7 +160,7 @@ direction, not from otherwise unlabeled handwriting.
 | Two printed operator lines | Report-owned operator participation is repeatable and ordered. |
 | Delay time is written in each row | Each entry has explicit downtime meaning; unique downtime uses interval union. |
 | Run Time and Down Time are written on the report | Server-authoritative totals are derived; runtime is `720 - unique downtime`. |
-| Station Start/End and Advance are written | The operator enters normalized Start/End values and NAM derives Advance. |
+| Station Start/End and Advance are written | The operator enters normalized Section Start/End values and NAM derives Advance. |
 | Fixed Ground Check row | Ground Check times are a repeatable ordered digital list. |
 
 Source-artifact and reference-catalog closure is complete. DDR-1 implements the
@@ -182,7 +182,7 @@ Dragline Delay Reports own:
 - Delay Code selection and historical catalog snapshots.
 - Explicit per-entry downtime meaning.
 - Server-authoritative downtime and runtime calculations.
-- Production, progress, station, depth, fuel, cable, Ground Check, comment, and
+- Production, progress, section, depth, fuel, cable, Ground Check, comment, and
   optional safety/action facts introduced in DDR-2.
 - Explicit completion and correction behavior introduced in DDR-3.
 - Optimistic concurrency, feature-owned validation, persistence, queries, UI,
@@ -390,37 +390,41 @@ Client-side previews may use the same pure helper for immediate feedback, but
 the Server Action and persistence boundary recalculate the authoritative
 values.
 
-## 12. Station And Advance
+## 12. Section And Advance
 
-Station input may use familiar notation such as `50+30`, but storage must
-preserve normalized numeric meaning rather than opaque text alone.
+The user-facing operational term is Section, not Station. Section input uses
+familiar notation such as `16+0`, `16+20`, `16+90`, and `17+20`, while storage
+must preserve normalized numeric meaning rather than opaque text alone.
 
 Confirmed arithmetic:
 
 ```text
-absolute feet = station number * 100 + offset feet
-advance feet = ending absolute feet - starting absolute feet
+absolute feet = section number * 100 + offset feet
+advance feet = abs(ending absolute feet - starting absolute feet)
 ```
 
 Examples:
 
 ```text
-50+30 = 5030 feet
-50+60 = 5060 feet
-Advance = 30 feet
+16+0 = 1600 feet
+16+20 = 1620 feet
+Advance = 20 feet
 
-50+90 = 5090 feet
-51+20 = 5120 feet
+16+90 = 1690 feet
+17+20 = 1720 feet
 Advance = 30 feet
 ```
 
-The normalized representation must preserve station number and offset feet, or
-an equivalent deterministic absolute-feet value. Offset is normally `00`
-through `99`. The server derives Advance; the operator does not re-enter it.
+The offset accepts one or two digits in the range `0..99`. The normalized
+representation must preserve section number and offset feet, or an equivalent
+deterministic absolute-feet value. The form preserves the notation typed by the
+operator; persisted values retain their normalized absolute-feet meaning. The
+server derives Advance, so the operator does not re-enter it.
 
 Advance is `abs(stationEndFeet - stationStartFeet)`. Both `50+30 -> 50+60`
-and `50+60 -> 50+30` therefore produce 30 feet. Reverse station order is valid
-input and does not create Direction semantics.
+and `50+60 -> 50+30` therefore produce 30 feet. Reverse section order is valid
+input and does not create Direction semantics. The existing internal field
+names remain unchanged to avoid needless schema and implementation churn.
 
 ## 13. Production And End-Of-Shift Facts
 
@@ -429,8 +433,8 @@ DDR-2 implements source-verified structured/manual Draft fields:
 - Normal Digging Buckets.
 - Benchfill Buckets.
 - Canonical Lake selected from the Equipment's Mine.
-- Station Start and Station End, with derived Advance in feet.
-- Derived Run Time and Down Time in minutes.
+- Section Start and Section End, with derived Advance in feet.
+- Derived Run Time and Down Time, calculated in integer minutes.
 - Manual Depth in feet.
 - Manual Fuel in gallons.
 - Optional manual Cable Drag in feet cut off during a resocket.
@@ -450,7 +454,7 @@ subsystem.
 Depth is a manually entered numeric measurement in feet. It is not calculated
 or derived from another feature.
 
-All DDR-2 fields remain optional while Draft except that Station Start and End
+All DDR-2 fields remain optional while Draft except that Section Start and End
 must be supplied as a valid pair when either is entered. Completion-requiredness
 is deferred to DDR-3. Bucket and measurement storage uses nonnegative whole
 units in the implemented schema.
@@ -497,7 +501,7 @@ DRAFT -> COMPLETED
   validation, recalculates derived facts, and transitions atomically.
 - Completion requires Ending Hour Meter, at least one Operator, a Supervisor,
   a valid timeline, and final normalized Code 13 — Shift Change.
-- Normal Digging Buckets, Benchfill Buckets, Lake, paired-or-blank Stations,
+- Normal Digging Buckets, Benchfill Buckets, Lake, paired-or-blank Sections,
   Depth, Fuel, Cable Drag, Hoist, Ground Checks, Comments, Safety Items Found,
   and Action Taken remain optional.
 - Code 13 does not complete a report automatically and is not required at an
@@ -536,7 +540,7 @@ Expected flow:
    aggregate with Zod.
 4. The server reloads authoritative Equipment, Employee, and Delay Code data.
 5. The server generates reference snapshots and recalculates normalized time,
-   downtime, runtime, station, and Advance values applicable to the slice.
+   downtime, runtime, section, and Advance values applicable to the slice.
 6. Prisma writes the root and owned children in one transaction.
 7. The transaction uses expected `recordVersion` stale-write protection and
    increments the version exactly once on success.
@@ -564,6 +568,12 @@ The DDR-1 Draft workspace groups:
 - Equipment, work date, shift, hour meters, operators, and supervisor.
 - Chronological timeline with stable repeatable rows.
 - Runtime/downtime summary.
+
+Runtime and Down Time remain integer-minute calculations and persisted facts.
+Their user-facing summaries use compact hours/minutes such as `9 h 45 min` and
+`2 h 15 min`; exact hours omit the minute remainder, and zero displays as `0 h`.
+Individual timeline Delay durations continue to be entered and shown in whole
+minutes.
 
 The Draft completion and Completed correction workspaces preserve every
 controlled field, repeated child row, and Correction Reason when server
@@ -610,11 +620,11 @@ DDR-specific server validation includes:
   identity.
 - Required positive integer duration for a downtime-causing entry.
 - Interval-union result and runtime within `0..720`.
-- Station notation parsing, offset normalization, and server-derived Advance.
+- Section notation parsing, offset normalization, and server-derived Advance.
 - Optional Lake membership in the selected Equipment's Mine and active status
   for a newly selected Lake.
 - Optional nonnegative bucket/measurement values and bounded closing text.
-- Valid paired station inputs with absolute derived Advance.
+- Valid paired section inputs with absolute derived Advance.
 - Ordered Ground Check identities and times within the report shift window.
 - Expected `recordVersion` on every existing-report mutation.
 - Draft-only ordinary editing and explicit completion/correction commands.
@@ -647,7 +657,7 @@ rules in `docs/development.md`.
   concurrent downtime intervals.
 - Exclusion of non-downtime duration from downtime.
 - Runtime derivation from 720 minutes.
-- Station parsing, normalized absolute feet, boundary crossing, and derived
+- Section parsing, normalized absolute feet, boundary crossing, and derived
   Advance.
 - Employee/operator/supervisor selection validation.
 - Open-field validation only after its rule is confirmed.
@@ -672,7 +682,7 @@ rules in `docs/development.md`.
 - Multiple ordered operators and supervisor eligibility.
 - Searchable grouped Delay Code selection with no Category input.
 - Concurrent equal-time timeline rows and overnight presentation.
-- Derived downtime/runtime and station/Advance presentation.
+- Derived downtime/runtime and Section/Advance presentation.
 - Repeatable Ground Check times.
 - No Daily Log, Day View, attachment, or photo side effects.
 
@@ -697,7 +707,7 @@ Target:
 - Actual-time and overnight chronology.
 - Deterministic integer-minute interval-union downtime calculation.
 - Derived 720-minute runtime.
-- Station parsing, normalization, and calculation helpers with focused tests.
+- Section parsing, normalization, and calculation helpers with focused tests.
 - Optimistic stale-version protection for repeated Draft saves.
 - Nonnegative whole-number Starting Hour Meter and optional Ending Hour Meter
   while Draft.
@@ -720,7 +730,7 @@ Target:
 - Source-verified production and end-of-shift fields.
 - Normal Digging and Benchfill Buckets.
 - Canonical Mine-owned Lake reference and snapshot; no Direction field.
-- Station Start and End with derived Advance.
+- Section Start and End with derived Advance.
 - Depth in feet.
 - Fuel in gallons, independent from Equipment Fuel Events.
 - Optional Cable Drag and Hoist in feet.
@@ -763,7 +773,7 @@ The architecture is successful when:
   downtime.
 - Equipment and Employee references use canonical records while snapshots
   preserve history.
-- Station and Advance calculations preserve normalized numeric meaning.
+- Section and Advance calculations preserve normalized numeric meaning.
 - Completed reports are read-only except through explicit reasoned correction.
 - Daily Logs, Shift Reports, Work Schedule, Equipment Fuel Events, Operational
   Safety Checklists, Day View, and media remain independent.

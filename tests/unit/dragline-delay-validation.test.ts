@@ -272,14 +272,18 @@ describe("Dragline Delay Report validation", () => {
     }
   });
 
-  it("requires a valid station pair and normalizes both directions", () => {
-    expect(
-      draglineDelayReportSubmissionSchema.safeParse({
-        ...validInput,
-        stationStart: "50+30",
-        stationEnd: "",
-      }).success,
-    ).toBe(false);
+  it("requires a valid Section pair and accepts one-digit offsets", () => {
+    const missingEnd = draglineDelayReportSubmissionSchema.safeParse({
+      ...validInput,
+      stationStart: "16+0",
+      stationEnd: "",
+    });
+    expect(missingEnd.success).toBe(false);
+    if (!missingEnd.success) {
+      expect(missingEnd.error.issues[0]?.message).toBe(
+        "Enter both Section Start and Section End, or leave both blank.",
+      );
+    }
     expect(
       draglineDelayReportSubmissionSchema.safeParse({
         ...validInput,
@@ -290,12 +294,12 @@ describe("Dragline Delay Report validation", () => {
 
     const parsed = draglineDelayReportSubmissionSchema.parse({
       ...validInput,
-      stationStart: "50+60",
-      stationEnd: "50+30",
+      stationStart: "16+0",
+      stationEnd: "16+20",
     });
     expect(normalizeDraglineDelayReportSubmission(parsed)).toMatchObject({
-      stationStartFeet: 5060,
-      stationEndFeet: 5030,
+      stationStartFeet: 1600,
+      stationEndFeet: 1620,
     });
   });
 
