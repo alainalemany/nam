@@ -1053,7 +1053,13 @@ export function DraglineDelayReportForm({
           <div>
             <span>Advance</span>
             <p>
-              <strong>{advanceFeet == null ? "Enter valid Start and End" : `${advanceFeet} ft`}</strong>
+              <strong>
+                {advanceFeet == null
+                  ? stationStart.trim() && !stationEnd.trim()
+                    ? "Enter Section End to calculate"
+                    : "Enter valid Start and End"
+                  : `${advanceFeet} ft`}
+              </strong>
             </p>
             <p className="subtle">Absolute distance; calculated by NAM.</p>
           </div>

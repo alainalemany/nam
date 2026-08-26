@@ -241,6 +241,12 @@ describe("DraglineDelayReportForm", () => {
     expect(screen.getByText("20 ft")).toBeInTheDocument();
 
     expect(screen.getByLabelText("Section Start")).toHaveValue("16+0");
+    fireEvent.change(screen.getByLabelText("Section End"), {
+      target: { value: "" },
+    });
+    expect(screen.getByText("Enter Section End to calculate")).toBeInTheDocument();
+    expect(screen.queryByText("20 ft")).not.toBeInTheDocument();
+
     fireEvent.change(screen.getByLabelText("Section Start"), {
       target: { value: "16+90" },
     });
@@ -249,6 +255,22 @@ describe("DraglineDelayReportForm", () => {
     });
     expect(screen.getByText("30 ft")).toBeInTheDocument();
     expect(screen.getByLabelText("Section Start")).toHaveValue("16+90");
+  });
+
+  it("keeps the established Edit form module order", () => {
+    renderForm();
+    expect(
+      screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent),
+    ).toEqual([
+      "Shift context",
+      "Operators and Supervisor",
+      "Timeline",
+      "Production",
+      "Work Area and Progress",
+      "Operational Context",
+      "Ground Checks",
+      "Closing Notes",
+    ]);
   });
 
   it("supports repeatable Ground Check rows without coupling them to timeline rows", () => {
@@ -284,8 +306,11 @@ describe("DraglineDelayReportForm", () => {
     fireEvent.change(screen.getByLabelText("Normal Digging Buckets"), {
       target: { value: "99" },
     });
+    fireEvent.change(screen.getByLabelText("Section Start"), {
+      target: { value: "18+5" },
+    });
     fireEvent.change(screen.getByLabelText("Section End"), {
-      target: { value: "bad station" },
+      target: { value: "" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Add Ground Check" }));
     fireEvent.change(screen.getByLabelText("Ground Check time 1"), {
@@ -300,8 +325,8 @@ describe("DraglineDelayReportForm", () => {
       "preserve this context",
     );
     expect(screen.getByLabelText("Normal Digging Buckets")).toHaveValue(99);
-    expect(screen.getByLabelText("Section Start")).toHaveValue("16+0");
-    expect(screen.getByLabelText("Section End")).toHaveValue("bad station");
+    expect(screen.getByLabelText("Section Start")).toHaveValue("18+5");
+    expect(screen.getByLabelText("Section End")).toHaveValue("");
     expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("10:00");
   });
 

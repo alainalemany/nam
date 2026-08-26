@@ -419,7 +419,10 @@ The offset accepts one or two digits in the range `0..99`. The normalized
 representation must preserve section number and offset feet, or an equivalent
 deterministic absolute-feet value. The form preserves the notation typed by the
 operator; persisted values retain their normalized absolute-feet meaning. The
-server derives Advance, so the operator does not re-enter it.
+server derives Advance only when both Section Start and Section End are present,
+so the operator does not re-enter it. A Draft may retain Section Start before
+the end position is known. Section End without Section Start is invalid, and
+completion/correction keep the paired-or-blank rule.
 
 Advance is `abs(stationEndFeet - stationStartFeet)`. Both `50+30 -> 50+60`
 and `50+60 -> 50+30` therefore produce 30 feet. Reverse section order is valid
@@ -454,10 +457,11 @@ subsystem.
 Depth is a manually entered numeric measurement in feet. It is not calculated
 or derived from another feature.
 
-All DDR-2 fields remain optional while Draft except that Section Start and End
-must be supplied as a valid pair when either is entered. Completion-requiredness
-is deferred to DDR-3. Bucket and measurement storage uses nonnegative whole
-units in the implemented schema.
+All DDR-2 fields remain optional while Draft. Section Start may be saved before
+Section End is known; Section End requires Section Start, and Advance remains
+unavailable until both are present. Completion/correction require the two
+values to be paired when either is recorded. Bucket and measurement storage
+uses nonnegative whole units in the implemented schema.
 
 ## 14. Ground Checks
 
@@ -563,6 +567,13 @@ Implemented DDR-1 through DDR-3 feature-owned surfaces:
 - Completed read-only detail.
 - Explicit Correct Report workflow and ordered correction-event summary.
 
+The read-only detail view emphasizes operational date and shift as its primary
+heading, with Equipment as supporting context. Its operational modules render
+in this order: Report Context, Operational Timeline, Production and Progress,
+Ground Checks, and Closing Notes. Completed-report Correction History follows
+those operational modules when applicable. This ordering does not change the
+Draft/Correction edit form composition.
+
 The DDR-1 Draft workspace groups:
 
 - Equipment, work date, shift, hour meters, operators, and supervisor.
@@ -624,7 +635,8 @@ DDR-specific server validation includes:
 - Optional Lake membership in the selected Equipment's Mine and active status
   for a newly selected Lake.
 - Optional nonnegative bucket/measurement values and bounded closing text.
-- Valid paired section inputs with absolute derived Advance.
+- Valid progressive Draft Section input, End-without-Start rejection, paired
+  completion/correction input, and absolute derived Advance when both exist.
 - Ordered Ground Check identities and times within the report shift window.
 - Expected `recordVersion` on every existing-report mutation.
 - Draft-only ordinary editing and explicit completion/correction commands.

@@ -410,6 +410,81 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
     }
   });
 
+  it("persists progressive Draft Section states and rejects End-only at the database", async () => {
+    const client = new PrismaClient({ datasourceUrl: databaseUrl });
+    try {
+      await withRollback(client, async (transaction, prefix) => {
+        const references = await createReferences(transaction, prefix);
+        const neither = await persistDraglineDelayReportInTransaction(
+          transaction,
+          validInput(references, {
+            operationalWorkDate: "2026-08-21",
+            stationStart: "",
+            stationEnd: "",
+          }),
+        );
+        const startOnly = await persistDraglineDelayReportInTransaction(
+          transaction,
+          validInput(references, {
+            operationalWorkDate: "2026-08-22",
+            stationStart: "18+5",
+            stationEnd: "",
+          }),
+        );
+        const both = await persistDraglineDelayReportInTransaction(
+          transaction,
+          validInput(references, {
+            operationalWorkDate: "2026-08-23",
+            stationStart: "18+5",
+            stationEnd: "18+20",
+          }),
+        );
+
+        expect(
+          await transaction.draglineDelayReport.findUniqueOrThrow({
+            where: { id: neither.id },
+            select: { stationStartFeet: true, stationEndFeet: true },
+          }),
+        ).toEqual({ stationStartFeet: null, stationEndFeet: null });
+        expect(
+          await transaction.draglineDelayReport.findUniqueOrThrow({
+            where: { id: startOnly.id },
+            select: { stationStartFeet: true, stationEndFeet: true },
+          }),
+        ).toEqual({ stationStartFeet: 1805, stationEndFeet: null });
+        expect(
+          await transaction.draglineDelayReport.findUniqueOrThrow({
+            where: { id: both.id },
+            select: { stationStartFeet: true, stationEndFeet: true },
+          }),
+        ).toEqual({ stationStartFeet: 1805, stationEndFeet: 1820 });
+
+        await transaction.$executeRawUnsafe("SAVEPOINT ddr_end_only_check");
+        let endOnlyRejected = false;
+        try {
+          await transaction.draglineDelayReport.update({
+            where: { id: startOnly.id },
+            data: { stationStartFeet: null, stationEndFeet: 1820 },
+          });
+        } catch {
+          endOnlyRejected = true;
+          await transaction.$executeRawUnsafe(
+            "ROLLBACK TO SAVEPOINT ddr_end_only_check",
+          );
+        }
+        expect(endOnlyRejected).toBe(true);
+        expect(
+          await transaction.draglineDelayReport.findUniqueOrThrow({
+            where: { id: startOnly.id },
+            select: { stationStartFeet: true, stationEndFeet: true },
+          }),
+        ).toEqual({ stationStartFeet: 1805, stationEndFeet: null });
+      });
+    } finally {
+      await client.$disconnect();
+    }
+  });
+
   it("enforces Dragline-only Equipment and canonical Employee eligibility", async () => {
     const client = new PrismaClient({ datasourceUrl: databaseUrl });
     try {
@@ -1069,6 +1144,9 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
       expect(rows.map((row) => row.migration_name)).toContain(
         "20260819000200_dragline_delay_reports_ddr3",
       );
+      expect(rows.map((row) => row.migration_name)).toContain(
+        "20260826000100_dragline_delay_report_draft_section_start",
+      );
     } finally {
       await client.$disconnect();
     }
@@ -1078,9 +1156,9 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
     const client = new PrismaClient({ datasourceUrl: databaseUrl });
     try {
       const constraints = await client.$queryRaw<
-        Array<{ conname: string; confdeltype: string }>
+        Array<{ conname: string; confdeltype: string; definition: string }>
       >`
-        SELECT conname, confdeltype::text
+        SELECT conname, confdeltype::text, pg_get_constraintdef(oid) AS definition
         FROM pg_constraint
         WHERE conname IN (
           'Lake_mine_fkey',
@@ -1095,12 +1173,19 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
         )
       `;
       const byName = new Map(
-        constraints.map((constraint) => [constraint.conname, constraint.confdeltype]),
+        constraints.map((constraint) => [constraint.conname, constraint]),
       );
       expect([...byName.keys()]).toHaveLength(9);
-      expect(byName.get("Lake_mine_fkey")).toBe("r");
-      expect(byName.get("DraglineDelayReport_lake_fkey")).toBe("n");
-      expect(byName.get("DraglineDelayReportGroundCheck_report_fkey")).toBe("c");
+      expect(byName.get("Lake_mine_fkey")?.confdeltype).toBe("r");
+      expect(byName.get("DraglineDelayReport_lake_fkey")?.confdeltype).toBe("n");
+      expect(
+        byName.get("DraglineDelayReportGroundCheck_report_fkey")?.confdeltype,
+      ).toBe("c");
+      expect(
+        byName.get("DraglineDelayReport_station_pair_check")?.definition,
+      ).toMatch(
+        /"stationEndFeet" IS NULL.*OR.*"stationStartFeet" IS NOT NULL/,
+      );
     } finally {
       await client.$disconnect();
     }

@@ -189,12 +189,11 @@ export const draglineDelayReportSubmissionSchema = z
       .default([]),
   })
   .superRefine((value, context) => {
-    if (Boolean(value.stationStart) !== Boolean(value.stationEnd)) {
-      const missingField = value.stationStart ? "stationEnd" : "stationStart";
+    if (!value.stationStart && value.stationEnd) {
       context.addIssue({
         code: "custom",
-        path: [missingField],
-        message: "Enter both Section Start and Section End, or leave both blank.",
+        path: ["stationStart"],
+        message: "Enter Section Start when Section End is recorded.",
       });
     }
     for (const [field, station] of [
@@ -350,6 +349,13 @@ export const draglineDelayReportSubmissionSchema = z
 
 export const draglineDelayReportCompletionSchema =
   draglineDelayReportSubmissionSchema.superRefine((value, context) => {
+    if (value.stationStart && !value.stationEnd) {
+      context.addIssue({
+        code: "custom",
+        path: ["stationEnd"],
+        message: "Enter both Section Start and Section End, or leave both blank.",
+      });
+    }
     if (value.endingHourMeter == null) {
       context.addIssue({
         code: "custom",

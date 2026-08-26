@@ -272,23 +272,45 @@ describe("Dragline Delay Report validation", () => {
     }
   });
 
-  it("requires a valid Section pair and accepts one-digit offsets", () => {
-    const missingEnd = draglineDelayReportSubmissionSchema.safeParse({
-      ...validInput,
-      stationStart: "16+0",
-      stationEnd: "",
-    });
-    expect(missingEnd.success).toBe(false);
-    if (!missingEnd.success) {
-      expect(missingEnd.error.issues[0]?.message).toBe(
-        "Enter both Section Start and Section End, or leave both blank.",
-      );
-    }
+  it("allows progressive Draft Section entry while rejecting End-only", () => {
     expect(
       draglineDelayReportSubmissionSchema.safeParse({
         ...validInput,
-        stationStart: "50+30",
-        stationEnd: "50+100",
+        stationStart: "",
+        stationEnd: "",
+      }).success,
+    ).toBe(true);
+
+    const startOnly = draglineDelayReportSubmissionSchema.parse({
+      ...validInput,
+      stationStart: "18+5",
+      stationEnd: "",
+    });
+    expect(normalizeDraglineDelayReportSubmission(startOnly)).toMatchObject({
+      stationStartFeet: 1805,
+      stationEndFeet: undefined,
+    });
+
+    const endOnly = draglineDelayReportSubmissionSchema.safeParse({
+      ...validInput,
+      stationStart: "",
+      stationEnd: "18+20",
+    });
+    expect(endOnly.success).toBe(false);
+    if (!endOnly.success) {
+      expect(endOnly.error.issues).toContainEqual(
+        expect.objectContaining({
+          path: ["stationStart"],
+          message: "Enter Section Start when Section End is recorded.",
+        }),
+      );
+    }
+
+    expect(
+      draglineDelayReportSubmissionSchema.safeParse({
+        ...validInput,
+        stationStart: "invalid",
+        stationEnd: "",
       }).success,
     ).toBe(false);
 
@@ -301,6 +323,32 @@ describe("Dragline Delay Report validation", () => {
       stationStartFeet: 1600,
       stationEndFeet: 1620,
     });
+  });
+
+  it("keeps Section Start and End paired for completion", () => {
+    const startOnly = draglineDelayReportCompletionSchema.safeParse(
+      completionInput({ stationStart: "18+5", stationEnd: "" }),
+    );
+    expect(startOnly.success).toBe(false);
+    if (!startOnly.success) {
+      expect(startOnly.error.issues).toContainEqual(
+        expect.objectContaining({
+          path: ["stationEnd"],
+          message: "Enter both Section Start and Section End, or leave both blank.",
+        }),
+      );
+    }
+
+    expect(
+      draglineDelayReportCompletionSchema.safeParse(
+        completionInput({ stationStart: "", stationEnd: "" }),
+      ).success,
+    ).toBe(true);
+    expect(
+      draglineDelayReportCompletionSchema.safeParse(
+        completionInput({ stationStart: "18+5", stationEnd: "18+20" }),
+      ).success,
+    ).toBe(true);
   });
 
   it("normalizes ordered Ground Check times and enforces the report shift window", () => {

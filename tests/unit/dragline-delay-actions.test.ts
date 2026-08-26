@@ -100,6 +100,36 @@ describe("Dragline Delay Report lifecycle Server Actions", () => {
     expect(mocks.complete).not.toHaveBeenCalled();
   });
 
+  it("saves Start-only Section progress but keeps completion paired", async () => {
+    await expect(
+      updateDraglineDelayReportAction(
+        "report-1",
+        emptyDraglineDelayReportActionState,
+        mutationFormData("draft", {
+          stationStart: "18+5",
+          stationEnd: "",
+        }),
+      ),
+    ).rejects.toThrow("redirect:/dragline-delay-reports/report-1?saved=updated");
+    expect(mocks.persist).toHaveBeenCalledWith(
+      expect.objectContaining({ stationStart: "18+5", stationEnd: undefined }),
+      "report-1",
+    );
+
+    const completion = await updateDraglineDelayReportAction(
+      "report-1",
+      emptyDraglineDelayReportActionState,
+      mutationFormData("complete", {
+        stationStart: "18+5",
+        stationEnd: "",
+      }),
+    );
+    expect(completion.fieldErrors.stationEnd).toEqual([
+      "Enter both Section Start and Section End, or leave both blank.",
+    ]);
+    expect(mocks.complete).not.toHaveBeenCalled();
+  });
+
   it("validates and explicitly completes through completion persistence", async () => {
     await expect(
       updateDraglineDelayReportAction(

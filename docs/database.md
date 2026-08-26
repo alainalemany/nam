@@ -207,7 +207,10 @@ Conceptual fields and rules:
   completion and correction.
 - Optional live Lake reference plus Lake display-name snapshot.
 - Optional nonnegative integer Normal Digging and Benchfill bucket counts.
-- Optional paired normalized `stationStartFeet` and `stationEndFeet` values.
+- Optional normalized `stationStartFeet` and `stationEndFeet` values. Drafts may
+  retain Start without End; End may never exist without Start. Completion and
+  correction validation require the two values to be paired when either is
+  recorded.
 - Optional nonnegative integer Depth feet, Fuel gallons, Cable Drag feet, and
   Hoist feet.
 - Optional Comments, Safety Items Found, and Action Taken text.
@@ -352,6 +355,8 @@ identity because NAM Dashboard has no reliable authenticated-user concept.
 - User-facing Section input preserves normalized section number/offset or
   deterministic absolute feet, not notation-only text.
 - Section offset accepts one or two digits in the range `0..99`.
+- Draft persistence allows neither Section value, Start only, or Start and End;
+  a database check rejects End without Start.
 - Advance is the absolute difference between ending and starting absolute feet
   and is server-derived rather than persisted.
 - Depth, Cable Drag, and Hoist use feet; Fuel uses gallons.

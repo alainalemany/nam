@@ -44,10 +44,10 @@ export default async function DraglineDelayReportDetailPage({
           <p className="eyebrow">
             {report.status === "DRAFT" ? "Draft" : "Completed"} · Version {report.recordVersion}
           </p>
-          <h1>{report.equipmentDisplayName}</h1>
-          <p className="summary">
+          <h1>
             {displayDate(report.operationalWorkDate)} · {report.shift === "DAY" ? "Day" : "Night"} shift
-          </p>
+          </h1>
+          <p className="summary">{report.equipmentDisplayName}</p>
         </div>
         <div className="inline-actions">
           <Link className="button secondary" href="/dragline-delay-reports">
@@ -69,6 +69,112 @@ export default async function DraglineDelayReportDetailPage({
             </Link>
           )}
         </div>
+      </section>
+
+      <section className="panel table-panel" aria-labelledby="ddr-context-heading">
+        <h2 id="ddr-context-heading">Report Context</h2>
+        <div className="detail-grid full-width-field">
+          <div>
+            <p className="eyebrow">Equipment number</p>
+            <p>{report.equipmentNumber ?? "Not recorded"}</p>
+          </div>
+          <div>
+            <p className="eyebrow">Location</p>
+            <p>
+              {report.mineName} · {report.cityName}
+              {report.cityState ? `, ${report.cityState}` : ""}
+            </p>
+          </div>
+          <div>
+            <p className="eyebrow">Starting Hour Meter</p>
+            <p>{report.startingHourMeter.toLocaleString()}</p>
+          </div>
+          <div>
+            <p className="eyebrow">Ending Hour Meter</p>
+            <p>
+              {report.endingHourMeter == null
+                ? missingLabel
+                : report.endingHourMeter.toLocaleString()}
+            </p>
+          </div>
+          <div>
+            <p className="eyebrow">Operators</p>
+            <p>
+              {report.operators
+                .map((operator) => operator.employeeDisplayName)
+                .join(", ")}
+            </p>
+          </div>
+          <div>
+            <p className="eyebrow">Supervisor</p>
+            <p>{report.supervisorDisplayName ?? missingLabel}</p>
+          </div>
+          <div>
+            <p className="eyebrow">Completed</p>
+            <p>
+              {report.completedAt
+                ? report.completedAt.toLocaleString("en-US")
+                : "Not completed"}
+            </p>
+          </div>
+          <div>
+            <p className="eyebrow">Down Time</p>
+            <p>{formatDraglineDurationMinutes(report.downTimeMinutes)}</p>
+          </div>
+          <div>
+            <p className="eyebrow">Run Time</p>
+            <p>{formatDraglineDurationMinutes(report.runTimeMinutes)}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="panel table-panel" aria-labelledby="ddr-timeline-detail-heading">
+        <div className="section-heading">
+          <h2 id="ddr-timeline-detail-heading">Operational Timeline</h2>
+          <span className="count-pill">{report.timelineEntries.length}</span>
+        </div>
+        {report.timelineEntries.length === 0 ? (
+          <div className="empty-state">
+            <h3>No timeline entries yet</h3>
+            <p>This Draft can be saved before the first operational activity is recorded.</p>
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Start</th>
+                  <th>Delay Code</th>
+                  <th>Category</th>
+                  <th>Duration</th>
+                  <th>Downtime cause</th>
+                  <th>Description / context</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.timelineEntries.map((entry) => (
+                  <tr key={entry.id}>
+                    <td>{formatEventStartMinute(entry.startMinuteOffset)}</td>
+                    <td>
+                      {entry.delayCode} — {entry.delayCodeDescription}
+                      <span className="subtle">
+                        Catalog V{entry.delayCodeCatalogVersion}
+                      </span>
+                    </td>
+                    <td>{entry.delayCodeCategory}</td>
+                    <td>
+                      {entry.durationMinutes == null
+                        ? "Not recorded"
+                        : `${entry.durationMinutes} min`}
+                    </td>
+                    <td>{entry.causesDowntime ? "Yes" : "No"}</td>
+                    <td>{entry.description ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       <section className="panel table-panel" aria-labelledby="ddr-production-detail-heading">
@@ -167,63 +273,6 @@ export default async function DraglineDelayReportDetailPage({
         </div>
       </section>
 
-      <section className="panel table-panel" aria-labelledby="ddr-context-heading">
-        <h2 id="ddr-context-heading">Report Context</h2>
-        <div className="detail-grid full-width-field">
-          <div>
-            <p className="eyebrow">Equipment number</p>
-            <p>{report.equipmentNumber ?? "Not recorded"}</p>
-          </div>
-          <div>
-            <p className="eyebrow">Location</p>
-            <p>
-              {report.mineName} · {report.cityName}
-              {report.cityState ? `, ${report.cityState}` : ""}
-            </p>
-          </div>
-          <div>
-            <p className="eyebrow">Starting Hour Meter</p>
-            <p>{report.startingHourMeter.toLocaleString()}</p>
-          </div>
-          <div>
-            <p className="eyebrow">Ending Hour Meter</p>
-            <p>
-              {report.endingHourMeter == null
-                ? missingLabel
-                : report.endingHourMeter.toLocaleString()}
-            </p>
-          </div>
-          <div>
-            <p className="eyebrow">Operators</p>
-            <p>
-              {report.operators
-                .map((operator) => operator.employeeDisplayName)
-                .join(", ")}
-            </p>
-          </div>
-          <div>
-            <p className="eyebrow">Supervisor</p>
-            <p>{report.supervisorDisplayName ?? missingLabel}</p>
-          </div>
-          <div>
-            <p className="eyebrow">Completed</p>
-            <p>
-              {report.completedAt
-                ? report.completedAt.toLocaleString("en-US")
-                : "Not completed"}
-            </p>
-          </div>
-          <div>
-            <p className="eyebrow">Down Time</p>
-            <p>{formatDraglineDurationMinutes(report.downTimeMinutes)}</p>
-          </div>
-          <div>
-            <p className="eyebrow">Run Time</p>
-            <p>{formatDraglineDurationMinutes(report.runTimeMinutes)}</p>
-          </div>
-        </div>
-      </section>
-
       {report.status === "COMPLETED" ? (
         <section className="panel table-panel" aria-labelledby="ddr-correction-history-heading">
           <div className="section-heading">
@@ -261,54 +310,6 @@ export default async function DraglineDelayReportDetailPage({
         </section>
       ) : null}
 
-      <section className="panel table-panel" aria-labelledby="ddr-timeline-detail-heading">
-        <div className="section-heading">
-          <h2 id="ddr-timeline-detail-heading">Operational Timeline</h2>
-          <span className="count-pill">{report.timelineEntries.length}</span>
-        </div>
-        {report.timelineEntries.length === 0 ? (
-          <div className="empty-state">
-            <h3>No timeline entries yet</h3>
-            <p>This Draft can be saved before the first operational activity is recorded.</p>
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Start</th>
-                  <th>Delay Code</th>
-                  <th>Category</th>
-                  <th>Duration</th>
-                  <th>Downtime cause</th>
-                  <th>Description / context</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.timelineEntries.map((entry) => (
-                  <tr key={entry.id}>
-                    <td>{formatEventStartMinute(entry.startMinuteOffset)}</td>
-                    <td>
-                      {entry.delayCode} — {entry.delayCodeDescription}
-                      <span className="subtle">
-                        Catalog V{entry.delayCodeCatalogVersion}
-                      </span>
-                    </td>
-                    <td>{entry.delayCodeCategory}</td>
-                    <td>
-                      {entry.durationMinutes == null
-                        ? "Not recorded"
-                        : `${entry.durationMinutes} min`}
-                    </td>
-                    <td>{entry.causesDowntime ? "Yes" : "No"}</td>
-                    <td>{entry.description ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
     </main>
   );
 }

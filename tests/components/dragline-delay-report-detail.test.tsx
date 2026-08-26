@@ -93,6 +93,30 @@ function completedReport() {
 }
 
 describe("Dragline Delay Report Completed detail", () => {
+  it("keeps Draft status above a date-first heading and secondary machine name", async () => {
+    mocks.getReport.mockResolvedValue({
+      ...completedReport(),
+      status: "DRAFT",
+      recordVersion: 2,
+      completedAt: null,
+      corrections: [],
+    });
+    render(
+      await DraglineDelayReportDetailPage({
+        params: Promise.resolve({ id: "report-1" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    expect(screen.getByText("Draft · Version 2")).toHaveClass("eyebrow");
+    const heading = screen.getByRole("heading", {
+      level: 1,
+      name: "August 18, 2026 · Day shift",
+    });
+    expect(heading.nextElementSibling).toHaveTextContent("Dragline 1");
+    expect(heading.nextElementSibling).toHaveClass("summary");
+  });
+
   it("is read-only by default and displays completion and correction history", async () => {
     mocks.getReport.mockResolvedValue(completedReport());
     render(
@@ -103,6 +127,14 @@ describe("Dragline Delay Report Completed detail", () => {
     );
 
     expect(screen.getByText(/Completed · Version 3/)).toBeInTheDocument();
+    const primaryHeading = screen.getByRole("heading", {
+      level: 1,
+      name: "August 18, 2026 · Day shift",
+    });
+    const machineSummary = screen.getByText("Dragline 1", {
+      selector: "p.summary",
+    });
+    expect(primaryHeading.nextElementSibling).toBe(machineSummary);
     expect(screen.getByRole("link", { name: "Correct Report" })).toHaveAttribute(
       "href",
       "/dragline-delay-reports/report-1/correct",
@@ -120,6 +152,16 @@ describe("Dragline Delay Report Completed detail", () => {
     expect(screen.getByText("16+20")).toBeInTheDocument();
     expect(screen.getByText("9 h 45 min")).toBeInTheDocument();
     expect(screen.getByText("2 h 15 min")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent),
+    ).toEqual([
+      "Report Context",
+      "Operational Timeline",
+      "Production and Progress",
+      "Ground Checks",
+      "Closing Notes",
+      "Correction History",
+    ]);
   });
 
   it.each([
