@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 
 import {
   equipmentCategoryOptions,
@@ -8,7 +8,12 @@ import {
   equipmentPowerTypeOptions,
   recordStatusOptions,
 } from "./constants";
-import { emptyEquipmentFormState, type EquipmentFormField, type EquipmentFormState } from "./validation";
+import {
+  emptyEquipmentFormState,
+  type EquipmentFormField,
+  type EquipmentFormState,
+  type EquipmentFormValues,
+} from "./validation";
 
 type EquipmentFormInitialValues = {
   mineId?: string;
@@ -64,8 +69,34 @@ export function EquipmentForm({
   submitLabel,
 }: EquipmentFormProps) {
   const [state, formAction, pending] = useActionState(action, emptyEquipmentFormState);
-  const [mineId, setMineId] = useState(initialValues?.mineId ?? "");
-  const selectedMine = mineOptions.find((mine) => mine.id === mineId);
+  const [values, setValues] = useState<EquipmentFormValues>(() => ({
+    mineId: initialValues?.mineId ?? "",
+    displayName: initialValues?.displayName ?? "",
+    equipmentNumber: initialValues?.equipmentNumber ?? "",
+    category: initialValues?.category ?? "DRAGLINE",
+    make: initialValues?.make ?? "",
+    model: initialValues?.model ?? "",
+    powerType: initialValues?.powerType ?? "",
+    instrumentationType: initialValues?.instrumentationType ?? "",
+    hasDigitalAlarmScreen: initialValues?.hasDigitalAlarmScreen ?? false,
+    status: initialValues?.status ?? "ACTIVE",
+    notes: initialValues?.notes ?? "",
+  }));
+
+  useEffect(() => {
+    if (state.values) {
+      setValues(state.values);
+    }
+  }, [state.values]);
+
+  function updateValue<Field extends keyof EquipmentFormValues>(
+    field: Field,
+    value: EquipmentFormValues[Field],
+  ) {
+    setValues((current) => ({ ...current, [field]: value }));
+  }
+
+  const selectedMine = mineOptions.find((mine) => mine.id === values.mineId);
 
   return (
     <form action={formAction} className="form-stack">
@@ -83,8 +114,8 @@ export function EquipmentForm({
             <select
               aria-invalid={state.fieldErrors.mineId ? true : undefined}
               name="mineId"
-              value={mineId}
-              onChange={(event) => setMineId(event.target.value)}
+              value={values.mineId}
+              onChange={(event) => updateValue("mineId", event.target.value)}
             >
               <option value="">Select Mine</option>
               {mineOptions.map((mine) => (
@@ -125,7 +156,8 @@ export function EquipmentForm({
             <span>Display name</span>
             <input
               name="displayName"
-              defaultValue={initialValues?.displayName ?? ""}
+              value={values.displayName}
+              onChange={(event) => updateValue("displayName", event.target.value)}
               autoComplete="off"
             />
             {fieldError(state, "displayName")}
@@ -135,7 +167,8 @@ export function EquipmentForm({
             <span>Equipment number</span>
             <input
               name="equipmentNumber"
-              defaultValue={initialValues?.equipmentNumber ?? ""}
+              value={values.equipmentNumber}
+              onChange={(event) => updateValue("equipmentNumber", event.target.value)}
               autoComplete="off"
             />
             {fieldError(state, "equipmentNumber")}
@@ -143,7 +176,11 @@ export function EquipmentForm({
 
           <label>
             <span>Category</span>
-            <select name="category" defaultValue={initialValues?.category ?? "DRAGLINE"}>
+            <select
+              name="category"
+              value={values.category}
+              onChange={(event) => updateValue("category", event.target.value)}
+            >
               {equipmentCategoryOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -155,7 +192,11 @@ export function EquipmentForm({
 
           <label>
             <span>Status</span>
-            <select name="status" defaultValue={initialValues?.status ?? "ACTIVE"}>
+            <select
+              name="status"
+              value={values.status}
+              onChange={(event) => updateValue("status", event.target.value)}
+            >
               {recordStatusOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -169,7 +210,8 @@ export function EquipmentForm({
             <span>Make</span>
             <input
               name="make"
-              defaultValue={initialValues?.make ?? ""}
+              value={values.make}
+              onChange={(event) => updateValue("make", event.target.value)}
               autoComplete="off"
             />
             {fieldError(state, "make")}
@@ -179,7 +221,8 @@ export function EquipmentForm({
             <span>Model</span>
             <input
               name="model"
-              defaultValue={initialValues?.model ?? ""}
+              value={values.model}
+              onChange={(event) => updateValue("model", event.target.value)}
               autoComplete="off"
             />
             {fieldError(state, "model")}
@@ -187,7 +230,11 @@ export function EquipmentForm({
 
           <label>
             <span>Power type</span>
-            <select name="powerType" defaultValue={initialValues?.powerType ?? ""}>
+            <select
+              name="powerType"
+              value={values.powerType}
+              onChange={(event) => updateValue("powerType", event.target.value)}
+            >
               <option value="">Not set</option>
               {equipmentPowerTypeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -202,7 +249,10 @@ export function EquipmentForm({
             <span>Instrumentation</span>
             <select
               name="instrumentationType"
-              defaultValue={initialValues?.instrumentationType ?? ""}
+              value={values.instrumentationType}
+              onChange={(event) =>
+                updateValue("instrumentationType", event.target.value)
+              }
             >
               <option value="">Not set</option>
               {equipmentInstrumentationTypeOptions.map((option) => (
@@ -219,14 +269,22 @@ export function EquipmentForm({
           <input
             name="hasDigitalAlarmScreen"
             type="checkbox"
-            defaultChecked={initialValues?.hasDigitalAlarmScreen ?? false}
+            checked={values.hasDigitalAlarmScreen}
+            onChange={(event) =>
+              updateValue("hasDigitalAlarmScreen", event.target.checked)
+            }
           />
           <span>Has digital alarm screen</span>
         </label>
 
         <label className="full-width-field">
           <span>Notes</span>
-          <textarea name="notes" defaultValue={initialValues?.notes ?? ""} rows={5} />
+          <textarea
+            name="notes"
+            value={values.notes}
+            onChange={(event) => updateValue("notes", event.target.value)}
+            rows={5}
+          />
           {fieldError(state, "notes")}
         </label>
       </section>

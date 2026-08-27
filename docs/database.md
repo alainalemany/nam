@@ -33,12 +33,15 @@ The implemented reference hierarchy is `City -> Mine -> Equipment`:
 - One Mine belongs to one City and owns zero or more Equipment records.
 - One Equipment record belongs to exactly one Mine through required `mineId`;
   current City context derives through that Mine.
-- Equipment display name is unique within its Mine.
+- Equipment display name is descriptive and may repeat within or across Mines.
+- Nullable Equipment Number is the operational identifier and is unique across
+  Equipment records when supplied. Multiple records may omit it.
 
 Equipment create and edit mutations accept an existing canonical `mineId` and
 validate the referenced Mine server-side. They do not create or duplicate City
-or Mine records. The schema already stores this relationship directly, so the
-canonical-selection workflow requires no schema or migration change.
+or Mine records. Failed mutations retain submitted values, including selected
+Mine context and checkbox state, so the operator can correct the reported field
+without re-entering the record.
 
 ## STOP Card Entities
 

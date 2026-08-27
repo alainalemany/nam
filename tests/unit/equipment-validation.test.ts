@@ -49,4 +49,22 @@ describe("Equipment validation", () => {
       expect(result.error.flatten().fieldErrors.status).toBeDefined();
     }
   });
+
+  it("keeps Equipment Number optional and normalizes blank input", () => {
+    const first = equipmentFormSchema.safeParse({
+      ...baseInput,
+      equipmentNumber: "",
+    });
+    const second = equipmentFormSchema.safeParse({
+      ...baseInput,
+      equipmentNumber: "   ",
+    });
+
+    expect(first.success).toBe(true);
+    expect(second.success).toBe(true);
+    if (first.success && second.success) {
+      expect(first.data.equipmentNumber).toBeUndefined();
+      expect(second.data.equipmentNumber).toBeUndefined();
+    }
+  });
 });

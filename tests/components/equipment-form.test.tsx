@@ -2,7 +2,10 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { EquipmentForm } from "@/features/equipment/EquipmentForm";
-import type { EquipmentFormState } from "@/features/equipment/validation";
+import {
+  equipmentFormValues,
+  type EquipmentFormState,
+} from "@/features/equipment/validation";
 
 async function action(
   _previousState: EquipmentFormState,
@@ -141,5 +144,147 @@ describe("EquipmentForm", () => {
     expect(
       screen.getByRole("option", { name: "Closed Mine (Lakeland, FL) (inactive)" }),
     ).toBeDisabled();
+  });
+
+  it("preserves every submitted New Equipment value and Mine context after failure", async () => {
+    const failedAction = vi.fn(
+      async (
+        _previousState: EquipmentFormState,
+        formData: FormData,
+      ): Promise<EquipmentFormState> => ({
+        status: "error",
+        message: "Equipment #131909 already exists as Tundra at White Rock Quarry.",
+        fieldErrors: {
+          equipmentNumber: ["Enter a different Equipment Number."],
+        },
+        values: equipmentFormValues(formData),
+      }),
+    );
+
+    render(
+      <EquipmentForm
+        action={failedAction}
+        cancelHref="/equipment"
+        mineOptions={mineOptions}
+        submitLabel="Create Equipment"
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Mine"), {
+      target: { value: "mine-2" },
+    });
+    fireEvent.change(screen.getByLabelText("Display name"), {
+      target: { value: "Tundra" },
+    });
+    fireEvent.change(screen.getByLabelText("Equipment number"), {
+      target: { value: "131909" },
+    });
+    fireEvent.change(screen.getByLabelText("Category"), {
+      target: { value: "WORK_TRUCK" },
+    });
+    fireEvent.change(screen.getByLabelText("Status"), {
+      target: { value: "INACTIVE" },
+    });
+    fireEvent.change(screen.getByLabelText("Make"), {
+      target: { value: "Toyota" },
+    });
+    fireEvent.change(screen.getByLabelText("Model"), {
+      target: { value: "Tundra" },
+    });
+    fireEvent.change(screen.getByLabelText("Power type"), {
+      target: { value: "GASOLINE" },
+    });
+    fireEvent.change(screen.getByLabelText("Instrumentation"), {
+      target: { value: "MIXED" },
+    });
+    fireEvent.click(screen.getByLabelText("Has digital alarm screen"));
+    fireEvent.change(screen.getByLabelText("Notes"), {
+      target: { value: "Night shift truck" },
+    });
+
+    fireEvent.submit(
+      screen.getByRole("button", { name: "Create Equipment" }).closest("form")!,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Equipment #131909 already exists",
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText("Mine")).toHaveValue("mine-2"),
+    );
+    expect(screen.getByText("Gillette, WY")).toBeInTheDocument();
+    expect(screen.getByText("Strip Mine")).toBeInTheDocument();
+    expect(screen.getByLabelText("Display name")).toHaveValue("Tundra");
+    expect(screen.getByLabelText(/Equipment number/)).toHaveValue("131909");
+    expect(screen.getByLabelText("Category")).toHaveValue("WORK_TRUCK");
+    expect(screen.getByLabelText("Status")).toHaveValue("INACTIVE");
+    expect(screen.getByLabelText("Make")).toHaveValue("Toyota");
+    expect(screen.getByLabelText("Model")).toHaveValue("Tundra");
+    expect(screen.getByLabelText("Power type")).toHaveValue("GASOLINE");
+    expect(screen.getByLabelText("Instrumentation")).toHaveValue("MIXED");
+    expect(screen.getByLabelText("Has digital alarm screen")).toBeChecked();
+    expect(screen.getByLabelText("Notes")).toHaveValue("Night shift truck");
+    expect(
+      screen.queryByText("Use a unique display name for this mine."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("preserves edited values after validation failure", async () => {
+    const failedAction = vi.fn(
+      async (
+        _previousState: EquipmentFormState,
+        formData: FormData,
+      ): Promise<EquipmentFormState> => ({
+        status: "error",
+        message: "Equipment could not be updated.",
+        fieldErrors: { displayName: ["Display name is required."] },
+        values: equipmentFormValues(formData),
+      }),
+    );
+
+    render(
+      <EquipmentForm
+        action={failedAction}
+        cancelHref="/equipment"
+        initialValues={{
+          mineId: "mine-1",
+          displayName: "Original",
+          equipmentNumber: "DL-1",
+          hasDigitalAlarmScreen: true,
+          notes: "Original notes",
+        }}
+        mineOptions={mineOptions}
+        submitLabel="Save Equipment"
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Mine"), {
+      target: { value: "mine-2" },
+    });
+    fireEvent.change(screen.getByLabelText("Display name"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByLabelText("Equipment number"), {
+      target: { value: "DL-2" },
+    });
+    fireEvent.click(screen.getByLabelText("Has digital alarm screen"));
+    fireEvent.change(screen.getByLabelText("Notes"), {
+      target: { value: "Submitted edit notes" },
+    });
+    fireEvent.submit(
+      screen.getByRole("button", { name: "Save Equipment" }).closest("form")!,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Equipment could not be updated.",
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText("Mine")).toHaveValue("mine-2"),
+    );
+    expect(screen.getByText("Gillette, WY")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Display name/)).toHaveValue("");
+    expect(screen.getByLabelText("Equipment number")).toHaveValue("DL-2");
+    expect(screen.getByLabelText("Has digital alarm screen")).not.toBeChecked();
+    expect(screen.getByLabelText("Notes")).toHaveValue("Submitted edit notes");
   });
 });

@@ -9,10 +9,12 @@ import { prisma } from "@/lib/prisma";
 import {
   emptyEquipmentFormState,
   equipmentEditFormSchema,
+  equipmentFormValues,
   equipmentFormSchema,
   type EquipmentEditFormInput,
   type EquipmentFormInput,
   type EquipmentFormState,
+  type EquipmentFormValues,
 } from "./validation";
 
 type EquipmentSubmissionInput = EquipmentFormInput | EquipmentEditFormInput;
@@ -30,6 +32,19 @@ class MineSelectionError extends Error {
 
 class EquipmentNotFoundError extends Error {}
 
+class EquipmentNumberConflictError extends Error {
+  constructor(
+    readonly equipmentNumber: string,
+    readonly displayName: string,
+    readonly mineName: string,
+  ) {
+    super(
+      `Equipment #${equipmentNumber} already exists as ${displayName} at ${mineName}.`,
+    );
+    this.name = "EquipmentNumberConflictError";
+  }
+}
+
 function equipmentWriteData(input: EquipmentSubmissionInput) {
   return {
     mineId: input.mineId,
@@ -46,39 +61,55 @@ function equipmentWriteData(input: EquipmentSubmissionInput) {
   };
 }
 
-function duplicateEquipmentState(): EquipmentFormState {
+function duplicateEquipmentNumberState(
+  values: EquipmentFormValues,
+  conflict?: EquipmentNumberConflictError,
+): EquipmentFormState {
   return {
     status: "error",
-    message: "An equipment record with this display name already exists for the selected mine.",
+    message:
+      conflict?.message ??
+      `Equipment #${values.equipmentNumber.trim()} is already assigned to another Equipment record.`,
     fieldErrors: {
-      displayName: ["Use a unique display name for this mine."],
+      equipmentNumber: ["Enter a different Equipment Number."],
     },
+    values,
   };
 }
 
-function errorState(message: string): EquipmentFormState {
+function errorState(
+  message: string,
+  values: EquipmentFormValues,
+): EquipmentFormState {
   return {
     ...emptyEquipmentFormState,
     status: "error",
     message,
+    values,
   };
 }
 
-function mineErrorState(message: string): EquipmentFormState {
+function mineErrorState(
+  message: string,
+  values: EquipmentFormValues,
+): EquipmentFormState {
   return {
     status: "error",
     message: "The selected Mine is not available.",
     fieldErrors: { mineId: [message] },
+    values,
   };
 }
 
 function validationState(
   fieldErrors: EquipmentFormState["fieldErrors"],
+  values: EquipmentFormValues,
 ): EquipmentFormState {
   return {
     status: "error",
     message: "Check the highlighted fields and try again.",
     fieldErrors,
+    values,
   };
 }
 
@@ -88,7 +119,13 @@ function parseCreateFormData(formData: FormData):
   const parsed = equipmentFormSchema.safeParse(Object.fromEntries(formData));
   return parsed.success
     ? { ok: true, data: parsed.data }
-    : { ok: false, state: validationState(parsed.error.flatten().fieldErrors) };
+    : {
+        ok: false,
+        state: validationState(
+          parsed.error.flatten().fieldErrors,
+          equipmentFormValues(formData),
+        ),
+      };
 }
 
 function parseEditFormData(formData: FormData):
@@ -97,7 +134,13 @@ function parseEditFormData(formData: FormData):
   const parsed = equipmentEditFormSchema.safeParse(Object.fromEntries(formData));
   return parsed.success
     ? { ok: true, data: parsed.data }
-    : { ok: false, state: validationState(parsed.error.flatten().fieldErrors) };
+    : {
+        ok: false,
+        state: validationState(
+          parsed.error.flatten().fieldErrors,
+          equipmentFormValues(formData),
+        ),
+      };
 }
 
 function targetMatches(
@@ -119,43 +162,88 @@ function targetMatches(
 function persistenceErrorState(
   error: unknown,
   operation: "created" | "updated",
+  values: EquipmentFormValues,
 ): EquipmentFormState {
   if (error instanceof MineSelectionError) {
-    return mineErrorState(error.message);
+    return mineErrorState(error.message, values);
   }
 
   if (error instanceof EquipmentNotFoundError) {
-    return errorState("Equipment could not be found. Reload the Equipment list and try again.");
+    return errorState(
+      "Equipment could not be found. Reload the Equipment list and try again.",
+      values,
+    );
+  }
+
+  if (error instanceof EquipmentNumberConflictError) {
+    return duplicateEquipmentNumberState(values, error);
   }
 
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2025") {
-      return errorState("Equipment could not be found. Reload the Equipment list and try again.");
+      return errorState(
+        "Equipment could not be found. Reload the Equipment list and try again.",
+        values,
+      );
     }
 
     if (error.code === "P2034") {
-      return errorState("Reference data changed while Equipment was being saved. Try again.");
+      return errorState(
+        "Reference data changed while Equipment was being saved. Try again.",
+        values,
+      );
     }
 
     if (error.code === "P2003") {
-      return mineErrorState("Select an existing Mine and try again.");
+      return mineErrorState("Select an existing Mine and try again.", values);
     }
 
     if (
       error.code === "P2002" &&
       targetMatches(
         error.meta?.target,
-        "Equipment_mineId_displayName_key",
-        ["mineId", "displayName"],
+        "Equipment_equipmentNumber_key",
+        ["equipmentNumber"],
       )
     ) {
-      return duplicateEquipmentState();
+      return duplicateEquipmentNumberState(values);
     }
   }
 
   return errorState(
     `Equipment could not be ${operation}. Review the fields and try again.`,
+    values,
   );
+}
+
+async function validateEquipmentNumber(
+  transaction: Prisma.TransactionClient,
+  equipmentNumber: string | undefined,
+  retainedEquipmentId?: string,
+) {
+  if (!equipmentNumber) {
+    return;
+  }
+
+  const conflict = await transaction.equipment.findFirst({
+    where: {
+      equipmentNumber,
+      ...(retainedEquipmentId ? { id: { not: retainedEquipmentId } } : {}),
+    },
+    select: {
+      displayName: true,
+      equipmentNumber: true,
+      mine: { select: { name: true } },
+    },
+  });
+
+  if (conflict?.equipmentNumber) {
+    throw new EquipmentNumberConflictError(
+      conflict.equipmentNumber,
+      conflict.displayName,
+      conflict.mine.name,
+    );
+  }
 }
 
 async function validateMineSelection(
@@ -185,6 +273,7 @@ export async function createEquipmentAction(
   _previousState: EquipmentFormState,
   formData: FormData,
 ) {
+  const values = equipmentFormValues(formData);
   const input = parseCreateFormData(formData);
   if (!input.ok) {
     return input.state;
@@ -193,12 +282,13 @@ export async function createEquipmentAction(
   try {
     await prisma.$transaction(async (transaction) => {
       await validateMineSelection(transaction, input.data.mineId);
+      await validateEquipmentNumber(transaction, input.data.equipmentNumber);
       await transaction.equipment.create({
         data: equipmentWriteData(input.data),
       });
     }, serializableTransaction);
   } catch (error) {
-    return persistenceErrorState(error, "created");
+    return persistenceErrorState(error, "created", values);
   }
 
   revalidatePath("/");
@@ -211,6 +301,7 @@ export async function updateEquipmentAction(
   _previousState: EquipmentFormState,
   formData: FormData,
 ) {
+  const values = equipmentFormValues(formData);
   const input = parseEditFormData(formData);
   if (!input.ok) {
     return input.state;
@@ -227,13 +318,18 @@ export async function updateEquipmentAction(
       }
 
       await validateMineSelection(transaction, input.data.mineId, equipment.mineId);
+      await validateEquipmentNumber(
+        transaction,
+        input.data.equipmentNumber,
+        equipmentId,
+      );
       await transaction.equipment.update({
         where: { id: equipmentId },
         data: equipmentWriteData(input.data),
       });
     }, serializableTransaction);
   } catch (error) {
-    return persistenceErrorState(error, "updated");
+    return persistenceErrorState(error, "updated", values);
   }
 
   revalidatePath("/");

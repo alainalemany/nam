@@ -70,10 +70,46 @@ export type EquipmentEditFormInput = z.infer<typeof equipmentEditFormSchema>;
 
 export type EquipmentFormField = keyof EquipmentFormInput;
 
+export type EquipmentFormValues = {
+  mineId: string;
+  displayName: string;
+  equipmentNumber: string;
+  category: string;
+  make: string;
+  model: string;
+  powerType: string;
+  instrumentationType: string;
+  hasDigitalAlarmScreen: boolean;
+  status: string;
+  notes: string;
+};
+
+export function equipmentFormValues(formData: FormData): EquipmentFormValues {
+  const value = (field: EquipmentFormField) => {
+    const fieldValue = formData.get(field);
+    return typeof fieldValue === "string" ? fieldValue : "";
+  };
+
+  return {
+    mineId: value("mineId"),
+    displayName: value("displayName"),
+    equipmentNumber: value("equipmentNumber"),
+    category: value("category"),
+    make: value("make"),
+    model: value("model"),
+    powerType: value("powerType"),
+    instrumentationType: value("instrumentationType"),
+    hasDigitalAlarmScreen: formData.has("hasDigitalAlarmScreen"),
+    status: value("status"),
+    notes: value("notes"),
+  };
+}
+
 export type EquipmentFormState = {
   status: "idle" | "error";
   message: string;
   fieldErrors: Partial<Record<EquipmentFormField, string[]>>;
+  values?: EquipmentFormValues;
 };
 
 export const emptyEquipmentFormState: EquipmentFormState = {

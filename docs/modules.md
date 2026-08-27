@@ -64,6 +64,11 @@ does not create or reconcile Mine or City records from typed names. A currently
 assigned inactive Mine may be retained during an unrelated edit, while new
 Equipment and Mine reassignment require an active Mine.
 
+Display name is descriptive and may repeat. Equipment Number is the optional
+operational identifier and must be unique when supplied. Create and edit
+validation failures preserve the submitted fields, selected Mine-derived
+context, and checkbox state.
+
 The Equipment history view supports combined feature-owned filtering by
 Equipment category, canonical Mine, Active/Inactive status, and a
 case-insensitive partial search across display name and Equipment number. The
