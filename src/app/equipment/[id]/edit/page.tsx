@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { updateEquipmentAction } from "@/features/equipment/actions";
+import { getEquipmentMineOptions } from "@/features/equipment/data";
 import { EquipmentForm } from "@/features/equipment/EquipmentForm";
 import { prisma } from "@/lib/prisma";
 
@@ -12,16 +13,12 @@ type EditEquipmentPageProps = {
 
 export default async function EditEquipmentPage({ params }: EditEquipmentPageProps) {
   const { id } = await params;
-  const equipment = await prisma.equipment.findUnique({
-    where: { id },
-    include: {
-      mine: {
-        include: {
-          city: true,
-        },
-      },
-    },
-  });
+  const [equipment, mineOptions] = await Promise.all([
+    prisma.equipment.findUnique({
+      where: { id },
+    }),
+    getEquipmentMineOptions(true),
+  ]);
 
   if (!equipment) {
     notFound();
@@ -35,7 +32,8 @@ export default async function EditEquipmentPage({ params }: EditEquipmentPagePro
         <p className="eyebrow">Reference data</p>
         <h1 id="page-title">Edit equipment</h1>
         <p className="summary">
-          Update the equipment record and its city or mine association.
+          Update the equipment record or assign an existing Mine. City context
+          follows the selected Mine.
         </p>
       </section>
 
@@ -44,10 +42,7 @@ export default async function EditEquipmentPage({ params }: EditEquipmentPagePro
           action={updateAction}
           cancelHref="/equipment"
           initialValues={{
-            cityName: equipment.mine.city.name,
-            cityState: equipment.mine.city.state ?? "",
-            mineName: equipment.mine.name,
-            mineType: equipment.mine.type ?? "",
+            mineId: equipment.mineId,
             displayName: equipment.displayName,
             equipmentNumber: equipment.equipmentNumber ?? "",
             category: equipment.category,
@@ -59,6 +54,7 @@ export default async function EditEquipmentPage({ params }: EditEquipmentPagePro
             status: equipment.status,
             notes: equipment.notes ?? "",
           }}
+          mineOptions={mineOptions}
           submitLabel="Save Equipment"
         />
       </section>

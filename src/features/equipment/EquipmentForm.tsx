@@ -1,22 +1,17 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import {
-  cityStateOptions,
   equipmentCategoryOptions,
   equipmentInstrumentationTypeOptions,
   equipmentPowerTypeOptions,
-  mineTypeOptions,
   recordStatusOptions,
 } from "./constants";
 import { emptyEquipmentFormState, type EquipmentFormField, type EquipmentFormState } from "./validation";
 
 type EquipmentFormInitialValues = {
-  cityName?: string;
-  cityState?: string;
-  mineName?: string;
-  mineType?: string;
+  mineId?: string;
   displayName?: string;
   equipmentNumber?: string;
   category?: string;
@@ -29,6 +24,14 @@ type EquipmentFormInitialValues = {
   notes?: string;
 };
 
+export type EquipmentMineOption = {
+  id: string;
+  label: string;
+  cityLabel: string;
+  mineType: string | null;
+  status: string;
+};
+
 type EquipmentFormProps = {
   action: (
     previousState: EquipmentFormState,
@@ -36,6 +39,7 @@ type EquipmentFormProps = {
   ) => Promise<EquipmentFormState>;
   cancelHref: string;
   initialValues?: EquipmentFormInitialValues;
+  mineOptions: EquipmentMineOption[];
   submitLabel: string;
 };
 
@@ -56,17 +60,12 @@ export function EquipmentForm({
   action,
   cancelHref,
   initialValues,
+  mineOptions,
   submitLabel,
 }: EquipmentFormProps) {
   const [state, formAction, pending] = useActionState(action, emptyEquipmentFormState);
-  const initialCityState = initialValues ? (initialValues.cityState ?? "") : "FL";
-  const initialMineType = initialValues ? (initialValues.mineType ?? "") : "Quarry";
-  const hasLegacyCityState = !cityStateOptions.some(
-    (option) => option.value === initialCityState,
-  );
-  const hasLegacyMineType = !mineTypeOptions.some(
-    (option) => option.value === initialMineType,
-  );
+  const [mineId, setMineId] = useState(initialValues?.mineId ?? "");
+  const selectedMine = mineOptions.find((mine) => mine.id === mineId);
 
   return (
     <form action={formAction} className="form-stack">
@@ -80,80 +79,42 @@ export function EquipmentForm({
         <h2 id="location-heading">Location</h2>
         <div className="form-grid">
           <label>
-            <span>City</span>
-            <input
-              name="cityName"
-              defaultValue={initialValues?.cityName ?? ""}
-              autoComplete="off"
-            />
-            {fieldError(state, "cityName")}
-          </label>
-
-          <label>
-            <span>State</span>
-            <select
-              aria-describedby={hasLegacyCityState ? "city-state-help" : undefined}
-              aria-label="State"
-              name="cityState"
-              defaultValue={initialCityState}
-            >
-              {hasLegacyCityState ? (
-                <option value={initialCityState}>
-                  {initialCityState || "Not set"} (stored shared value)
-                </option>
-              ) : null}
-              {cityStateOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {hasLegacyCityState ? (
-              <span className="field-help" id="city-state-help">
-                This stored shared City value is preserved for unrelated Equipment changes.
-                Correct it only through the controlled reference-data process.
-              </span>
-            ) : null}
-            {fieldError(state, "cityState")}
-          </label>
-
-          <label>
             <span>Mine</span>
-            <input
-              name="mineName"
-              defaultValue={initialValues?.mineName ?? ""}
-              autoComplete="off"
-            />
-            {fieldError(state, "mineName")}
-          </label>
-
-          <label>
-            <span>Mine type</span>
             <select
-              aria-describedby={hasLegacyMineType ? "mine-type-help" : undefined}
-              aria-label="Mine type"
-              name="mineType"
-              defaultValue={initialMineType}
+              aria-invalid={state.fieldErrors.mineId ? true : undefined}
+              name="mineId"
+              value={mineId}
+              onChange={(event) => setMineId(event.target.value)}
             >
-              {hasLegacyMineType ? (
-                <option value={initialMineType}>
-                  {initialMineType || "Not set"} (stored shared value)
-                </option>
-              ) : null}
-              {mineTypeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+              <option value="">Select Mine</option>
+              {mineOptions.map((mine) => (
+                <option
+                  disabled={
+                    mine.status !== "ACTIVE" && mine.id !== initialValues?.mineId
+                  }
+                  key={mine.id}
+                  value={mine.id}
+                >
+                  {mine.label}{mine.status !== "ACTIVE" ? " (inactive)" : ""}
                 </option>
               ))}
             </select>
-            {hasLegacyMineType ? (
-              <span className="field-help" id="mine-type-help">
-                This stored shared Mine value is preserved for unrelated Equipment changes.
-                Correct it only through the controlled reference-data process.
-              </span>
-            ) : null}
-            {fieldError(state, "mineType")}
+            {fieldError(state, "mineId")}
           </label>
+          <div className="checklist-derived-context full-width-field" aria-live="polite">
+            <div>
+              <span>City</span>
+              <strong>{selectedMine?.cityLabel ?? "Derived from selected Mine"}</strong>
+            </div>
+            <div>
+              <span>Mine type</span>
+              <strong>
+                {selectedMine
+                  ? selectedMine.mineType ?? "Not set"
+                  : "Derived from selected Mine"}
+              </strong>
+            </div>
+          </div>
         </div>
       </section>
 

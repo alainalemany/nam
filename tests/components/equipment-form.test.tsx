@@ -15,164 +15,131 @@ async function action(
   };
 }
 
+const mineOptions = [
+  {
+    id: "mine-1",
+    label: "White Rock Quarry (Miami, FL)",
+    cityLabel: "Miami, FL",
+    mineType: "Quarry",
+    status: "ACTIVE",
+  },
+  {
+    id: "mine-2",
+    label: "North Mine (Gillette, WY)",
+    cityLabel: "Gillette, WY",
+    mineType: "Strip Mine",
+    status: "ACTIVE",
+  },
+];
+
 afterEach(cleanup);
 
 describe("EquipmentForm", () => {
-  it("renders core reference-data fields and the submit action", () => {
+  it("uses canonical Mine options and derives City context", () => {
     render(
       <EquipmentForm
         action={action}
         cancelHref="/equipment"
+        mineOptions={mineOptions}
         submitLabel="Create Equipment"
       />,
     );
 
-    expect(screen.getByLabelText("City")).toBeInTheDocument();
-    expect(screen.getByLabelText("Mine")).toBeInTheDocument();
+    const mine = screen.getByLabelText("Mine");
+    expect(mine).toBeInstanceOf(HTMLSelectElement);
+    expect(within(mine).getByRole("option", { name: "Select Mine" })).toBeInTheDocument();
+    expect(
+      within(mine).getByRole("option", { name: "White Rock Quarry (Miami, FL)" }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(mine, { target: { value: "mine-2" } });
+
+    expect(screen.getByText("Gillette, WY")).toBeInTheDocument();
+    expect(screen.getByText("Strip Mine")).toBeInTheDocument();
     expect(screen.getByLabelText("Display name")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create Equipment" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Cancel" })).toHaveAttribute(
-      "href",
-      "/equipment",
-    );
   });
 
-  it("renders genuine State and Mine type create defaults and submits them without interaction", async () => {
+  it("preselects and submits the existing Mine on edit", async () => {
+    const updateAction = vi.fn(action);
+
+    render(
+      <EquipmentForm
+        action={updateAction}
+        cancelHref="/equipment"
+        initialValues={{ mineId: "mine-2", displayName: "Dragline 1" }}
+        mineOptions={mineOptions}
+        submitLabel="Save Equipment"
+      />,
+    );
+
+    expect(screen.getByLabelText("Mine")).toHaveValue("mine-2");
+    expect(screen.getByText("Gillette, WY")).toBeInTheDocument();
+
+    fireEvent.submit(screen.getByRole("button", { name: "Save Equipment" }).closest("form")!);
+
+    await waitFor(() => expect(updateAction).toHaveBeenCalledTimes(1));
+    expect(updateAction.mock.calls[0][1].get("mineId")).toBe("mine-2");
+  });
+
+  it("submits a selected canonical Mine ID without typed Mine reference fields", async () => {
     const createAction = vi.fn(action);
 
     render(
       <EquipmentForm
         action={createAction}
         cancelHref="/equipment"
+        mineOptions={mineOptions}
         submitLabel="Create Equipment"
       />,
     );
 
-    expect(screen.getByLabelText("State")).toHaveValue("FL");
-    expect(screen.getByLabelText("Mine type")).toHaveValue("Quarry");
-
+    fireEvent.change(screen.getByLabelText("Mine"), { target: { value: "mine-1" } });
     fireEvent.submit(screen.getByRole("button", { name: "Create Equipment" }).closest("form")!);
 
     await waitFor(() => expect(createAction).toHaveBeenCalledTimes(1));
     const submitted = createAction.mock.calls[0][1];
-    expect(submitted.get("cityState")).toBe("FL");
-    expect(submitted.get("mineType")).toBe("Quarry");
+    expect(submitted.get("mineId")).toBe("mine-1");
+    expect(submitted.get("mineName")).toBeNull();
+    expect(submitted.get("cityName")).toBeNull();
+    expect(submitted.get("mineType")).toBeNull();
   });
 
-  it("submits alternate controlled State and Mine type selections", async () => {
-    const createAction = vi.fn(action);
+  it("retains the currently assigned inactive Mine but disables other inactive options", () => {
+    const options = [
+      ...mineOptions,
+      {
+        id: "mine-inactive",
+        label: "Historic Mine (Bartow, FL)",
+        cityLabel: "Bartow, FL",
+        mineType: "Quarry",
+        status: "INACTIVE",
+      },
+      {
+        id: "mine-other-inactive",
+        label: "Closed Mine (Lakeland, FL)",
+        cityLabel: "Lakeland, FL",
+        mineType: "Quarry",
+        status: "INACTIVE",
+      },
+    ];
 
-    render(
-      <EquipmentForm
-        action={createAction}
-        cancelHref="/equipment"
-        submitLabel="Create Equipment"
-      />,
-    );
-
-    fireEvent.change(screen.getByLabelText("State"), { target: { value: "WY" } });
-    fireEvent.change(screen.getByLabelText("Mine type"), {
-      target: { value: "Strip Mine" },
-    });
-    fireEvent.submit(screen.getByRole("button", { name: "Create Equipment" }).closest("form")!);
-
-    await waitFor(() => expect(createAction).toHaveBeenCalledTimes(1));
-    const submitted = createAction.mock.calls[0][1];
-    expect(submitted.get("cityState")).toBe("WY");
-    expect(submitted.get("mineType")).toBe("Strip Mine");
-  });
-
-  it("preserves and submits stored controlled State and Mine Type values while editing", async () => {
-    const updateAction = vi.fn(action);
-
-    render(
-      <EquipmentForm
-        action={updateAction}
-        cancelHref="/equipment"
-        initialValues={{ cityState: "PA", mineType: "Underground Mine" }}
-        submitLabel="Save Equipment"
-      />,
-    );
-
-    expect(screen.getByLabelText("State")).toHaveValue("PA");
-    expect(screen.getByLabelText("Mine type")).toHaveValue("Underground Mine");
-
-    fireEvent.submit(screen.getByRole("button", { name: "Save Equipment" }).closest("form")!);
-
-    await waitFor(() => expect(updateAction).toHaveBeenCalledTimes(1));
-    const submitted = updateAction.mock.calls[0][1];
-    expect(submitted.get("cityState")).toBe("PA");
-    expect(submitted.get("mineType")).toBe("Underground Mine");
-  });
-
-  it("preserves and submits null State and Mine Type sentinels during unrelated edits", async () => {
-    const updateAction = vi.fn(action);
-
-    render(
-      <EquipmentForm
-        action={updateAction}
-        cancelHref="/equipment"
-        initialValues={{ cityState: "", mineType: "" }}
-        submitLabel="Save Equipment"
-      />,
-    );
-
-    expect(screen.getByLabelText("State")).toHaveValue("");
-    expect(screen.getByLabelText("Mine type")).toHaveValue("");
-    expect(screen.getAllByText(/preserved for unrelated Equipment changes/i)).toHaveLength(2);
-    expect(screen.getAllByText(/controlled reference-data process/i)).toHaveLength(2);
-
-    fireEvent.submit(screen.getByRole("button", { name: "Save Equipment" }).closest("form")!);
-
-    await waitFor(() => expect(updateAction).toHaveBeenCalledTimes(1));
-    const submitted = updateAction.mock.calls[0][1];
-    expect(submitted.get("cityState")).toBe("");
-    expect(submitted.get("mineType")).toBe("");
-  });
-
-  it("preserves and submits exact out-of-catalog State and Mine Type values while editing", async () => {
-    const updateAction = vi.fn(action);
-
-    render(
-      <EquipmentForm
-        action={updateAction}
-        cancelHref="/equipment"
-        initialValues={{ cityState: "Legacy State", mineType: "Legacy Mine Type" }}
-        submitLabel="Save Equipment"
-      />,
-    );
-
-    expect(screen.getByLabelText("State")).toHaveValue("Legacy State");
-    expect(screen.getByLabelText("Mine type")).toHaveValue("Legacy Mine Type");
-    expect(screen.getByRole("option", { name: "Legacy State (stored shared value)" }))
-      .toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Legacy Mine Type (stored shared value)" }))
-      .toBeInTheDocument();
-
-    fireEvent.submit(screen.getByRole("button", { name: "Save Equipment" }).closest("form")!);
-
-    await waitFor(() => expect(updateAction).toHaveBeenCalledTimes(1));
-    const submitted = updateAction.mock.calls[0][1];
-    expect(submitted.get("cityState")).toBe("Legacy State");
-    expect(submitted.get("mineType")).toBe("Legacy Mine Type");
-  });
-
-  it("renders exactly the controlled create options with no placeholder defaults", () => {
     render(
       <EquipmentForm
         action={action}
         cancelHref="/equipment"
-        submitLabel="Create Equipment"
+        initialValues={{ mineId: "mine-inactive" }}
+        mineOptions={options}
+        submitLabel="Save Equipment"
       />,
     );
 
-    const stateOptions = within(screen.getByLabelText("State")).getAllByRole("option");
-    const mineTypeOptions = within(screen.getByLabelText("Mine type")).getAllByRole("option");
-
-    expect(stateOptions).toHaveLength(51);
-    expect(new Set(stateOptions.map((option) => (option as HTMLOptionElement).value)).size).toBe(51);
-    expect(mineTypeOptions).toHaveLength(8);
-    expect(stateOptions[0]).not.toHaveTextContent(/select|choose/i);
-    expect(mineTypeOptions[0]).not.toHaveTextContent(/select|choose/i);
+    expect(screen.getByLabelText("Mine")).toHaveValue("mine-inactive");
+    expect(
+      screen.getByRole("option", { name: "Historic Mine (Bartow, FL) (inactive)" }),
+    ).not.toBeDisabled();
+    expect(
+      screen.getByRole("option", { name: "Closed Mine (Lakeland, FL) (inactive)" }),
+    ).toBeDisabled();
   });
 });

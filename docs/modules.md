@@ -15,6 +15,7 @@ Implementation standards for turning these modules into feature slices live in
 ## Table Of Contents
 
 - [Source Documents](#source-documents)
+- [Equipment Reference Data](#equipment-reference-data)
 - [Shift Reports](#shift-reports)
 - [Work Authorizations](#work-authorizations)
 - [STOP Cards](#stop-cards)
@@ -53,6 +54,20 @@ exact source-derived transcription is canonical in the
 Pending source-form collection does not mean the corresponding software module
 is unimplemented. STOP Cards and Daily Inspections currently use the approved V1
 fields documented in `docs/database.md` and their feature architecture documents.
+
+## Equipment Reference Data
+
+Equipment records use the canonical `City -> Mine -> Equipment` reference
+hierarchy. New and edited Equipment select an existing Mine by stable identity;
+the selected Mine supplies City and Mine Type context. The Equipment workflow
+does not create or reconcile Mine or City records from typed names. A currently
+assigned inactive Mine may be retained during an unrelated edit, while new
+Equipment and Mine reassignment require an active Mine.
+
+The Equipment history view supports combined feature-owned filtering by
+Equipment category, canonical Mine, Active/Inactive status, and a
+case-insensitive partial search across display name and Equipment number. The
+table remains the canonical Equipment record list and retains its Edit action.
 
 ## Shift Reports
 

@@ -5,6 +5,7 @@ relationships, enums, and data modeling notes.
 
 ## Table Of Contents
 
+- [Operations Reference Entities](#operations-reference-entities)
 - [STOP Card Entities](#stop-card-entities)
 - [Daily Inspection Entities](#daily-inspection-entities)
 - [Operational Safety Checklist Entities](#operational-safety-checklist-entities)
@@ -21,6 +22,23 @@ relationships, enums, and data modeling notes.
 - [Payslip Repository Entities](#payslip-repository-entities)
 - [Equipment Fuel Event Concepts](#equipment-fuel-event-concepts)
 - [Supply Request Concepts](#supply-request-concepts)
+
+## Operations Reference Entities
+
+### City, Mine, And Equipment
+
+The implemented reference hierarchy is `City -> Mine -> Equipment`:
+
+- One City owns zero or more Mine records.
+- One Mine belongs to one City and owns zero or more Equipment records.
+- One Equipment record belongs to exactly one Mine through required `mineId`;
+  current City context derives through that Mine.
+- Equipment display name is unique within its Mine.
+
+Equipment create and edit mutations accept an existing canonical `mineId` and
+validate the referenced Mine server-side. They do not create or duplicate City
+or Mine records. The schema already stores this relationship directly, so the
+canonical-selection workflow requires no schema or migration change.
 
 ## STOP Card Entities
 

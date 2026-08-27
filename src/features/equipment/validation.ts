@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { cityStateOptions, mineTypeOptions } from "./constants";
-
 const requiredText = (label: string) =>
   z.preprocess(
     (value) => (typeof value === "string" ? value.trim() : value),
@@ -26,17 +24,8 @@ const checkboxValue = z.preprocess(
   z.boolean(),
 );
 
-export const cityStateSchema = z.enum(
-  cityStateOptions.map((option) => option.value),
-);
-
-export const mineTypeSchema = z.enum(
-  mineTypeOptions.map((option) => option.value),
-);
-
 const equipmentFields = {
-  cityName: requiredText("City"),
-  mineName: requiredText("Mine"),
+  mineId: requiredText("Mine"),
   displayName: requiredText("Display name"),
   equipmentNumber: optionalText(80),
   category: z.enum([
@@ -72,17 +61,9 @@ const equipmentFields = {
   notes: optionalText(1000),
 };
 
-export const equipmentFormSchema = z.object({
-  ...equipmentFields,
-  cityState: cityStateSchema,
-  mineType: mineTypeSchema,
-});
+export const equipmentFormSchema = z.object(equipmentFields);
 
-export const equipmentEditFormSchema = z.object({
-  ...equipmentFields,
-  cityState: z.string().max(40, "Use 40 characters or fewer."),
-  mineType: z.string().max(80, "Use 80 characters or fewer."),
-});
+export const equipmentEditFormSchema = equipmentFormSchema;
 
 export type EquipmentFormInput = z.infer<typeof equipmentFormSchema>;
 export type EquipmentEditFormInput = z.infer<typeof equipmentEditFormSchema>;
