@@ -69,7 +69,13 @@ export default async function DraglineDelayReportsPage() {
                       </span>
                     </td>
                     <td>{report.shift === "DAY" ? "Day" : "Night"}</td>
-                    <td>{report.status === "DRAFT" ? "Draft" : "Completed"}</td>
+                    <td>
+                      <span
+                        className={`ddr-status-badge ddr-status-badge--${report.status.toLowerCase()}`}
+                      >
+                        {report.status === "DRAFT" ? "Draft" : "Completed"}
+                      </span>
+                    </td>
                     <td>
                       {formatDraglineDurationMinutes(report.runTimeMinutes)} /{" "}
                       {formatDraglineDurationMinutes(report.downTimeMinutes)}

@@ -240,6 +240,29 @@ h3 {
   font-weight: 700;
 }
 
+.ddr-status-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.ddr-status-badge--draft {
+  border-color: #e7b66a;
+  background: #fff8e8;
+  color: #70430e;
+}
+
+.ddr-status-badge--completed {
+  border-color: #8fc7a6;
+  background: #effaf3;
+  color: #174d2c;
+}
+
 .empty-state {
   display: grid;
   justify-items: start;
