@@ -2,9 +2,13 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
+import { calculateDraglineShiftTotals } from "./calculations";
 import { getDraglineDelayCode } from "./catalog";
 import { formatStationNotation } from "./station";
-import { splitEventStartMinute } from "./time";
+import {
+  splitEventStartMinute,
+  type DraglineDelayReportShift,
+} from "./time";
 import type {
   DraglineDelayReportFormInitialValues,
   DraglineEmployeeOption,
@@ -31,23 +35,64 @@ const detailInclude = {
   corrections: { orderBy: [{ sequence: "asc" as const }, { id: "asc" as const }] },
 } satisfies Prisma.DraglineDelayReportInclude;
 
+const totalsInclude = {
+  timelineEntries: {
+    select: {
+      startMinuteOffset: true,
+      durationMinutes: true,
+      causesDowntime: true,
+    },
+  },
+  groundChecks: { select: { startMinuteOffset: true } },
+} satisfies Prisma.DraglineDelayReportInclude;
+
+function calculatePersistedTotals(report: {
+  shift: string;
+  timelineEntries: Array<{
+    startMinuteOffset: number;
+    durationMinutes: number | null;
+    causesDowntime: boolean;
+  }>;
+  groundChecks: Array<{ startMinuteOffset: number }>;
+}) {
+  if (report.shift !== "DAY" && report.shift !== "NIGHT") {
+    throw new Error("Dragline Delay Report shift must be Day or Night.");
+  }
+
+  return calculateDraglineShiftTotals(
+    report.shift as DraglineDelayReportShift,
+    report.timelineEntries,
+    report.groundChecks,
+  );
+}
+
 export async function getDraglineDelayReports() {
-  return prisma.draglineDelayReport.findMany({
+  const reports = await prisma.draglineDelayReport.findMany({
     orderBy: [
       { operationalWorkDate: "desc" },
       { shift: "asc" },
       { updatedAt: "desc" },
       { id: "desc" },
     ],
+    include: totalsInclude,
     take: 250,
   });
+
+  return reports.map(({ timelineEntries, groundChecks, ...report }) => ({
+    ...report,
+    ...calculatePersistedTotals({ ...report, timelineEntries, groundChecks }),
+  }));
 }
 
 export async function getDraglineDelayReportById(id: string) {
-  return prisma.draglineDelayReport.findUnique({
+  const report = await prisma.draglineDelayReport.findUnique({
     where: { id },
     include: detailInclude,
   });
+
+  return report
+    ? { ...report, ...calculatePersistedTotals(report) }
+    : null;
 }
 
 export async function getDraglineEquipmentOptions(selectedEquipmentId?: string | null) {

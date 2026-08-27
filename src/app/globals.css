@@ -219,6 +219,16 @@ h3 {
   color: #ffffff;
 }
 
+.ddr-ground-check-info {
+  margin: 0;
+  border-left: 3px solid #1f6feb;
+  border-radius: 4px;
+  background: #eef6ff;
+  color: #164f99;
+  padding: 10px 12px;
+  line-height: 1.5;
+}
+
 .button:disabled {
   cursor: wait;
   opacity: 0.65;

@@ -480,7 +480,11 @@ export async function persistDraglineDelayReportInTransaction(
   }
 
   const normalized = normalizeDraglineDelayReportSubmission(input);
-  const totals = calculateDraglineShiftTotals(input.shift, normalized.timelineEntries);
+  const totals = calculateDraglineShiftTotals(
+    input.shift,
+    normalized.timelineEntries,
+    normalized.groundChecks,
+  );
   const people = await resolveEmployees(transaction, input, existing);
   const lake = await resolveLake(
     transaction,

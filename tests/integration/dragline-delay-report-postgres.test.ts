@@ -283,8 +283,8 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
           shift: "NIGHT",
           startingHourMeter: 12000,
           endingHourMeter: null,
-          downTimeMinutes: 90,
-          runTimeMinutes: 630,
+          downTimeMinutes: 110,
+          runTimeMinutes: 610,
           recordVersion: 1,
           equipmentDisplayName: references.dragline.displayName,
           mineName: references.mine.name,
@@ -380,8 +380,8 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
         expect(after).toMatchObject({
           endingHourMeter: 12011,
           recordVersion: 2,
-          downTimeMinutes: 30,
-          runTimeMinutes: 690,
+          downTimeMinutes: 40,
+          runTimeMinutes: 680,
         });
         expect(after.operators).toHaveLength(2);
         expect(after.operators[0].id).toBe(retainedOperatorId);
@@ -642,7 +642,7 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
           1730,
           1800,
         ]);
-        expect(persistedDay).toMatchObject({ downTimeMinutes: 10, runTimeMinutes: 710 });
+        expect(persistedDay).toMatchObject({ downTimeMinutes: 20, runTimeMinutes: 700 });
         expect(persistedNight).toMatchObject({ downTimeMinutes: 10, runTimeMinutes: 710 });
 
         expect(

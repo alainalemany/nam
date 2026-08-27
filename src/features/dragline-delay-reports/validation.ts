@@ -300,17 +300,8 @@ export const draglineDelayReportSubmissionSchema = z
       }
     });
 
-    try {
-      calculateDraglineShiftTotals(value.shift, calculationEntries);
-    } catch (error) {
-      context.addIssue({
-        code: "custom",
-        path: ["timelineEntries"],
-        message: error instanceof Error ? error.message : "Timeline is invalid.",
-      });
-    }
-
     const groundCheckIds = new Set<string>();
+    const calculationGroundChecks: Array<{ startMinuteOffset: number }> = [];
     value.groundChecks.forEach((groundCheck, index) => {
       if (groundCheck.sequence !== index + 1) {
         context.addIssue({
@@ -330,10 +321,15 @@ export const draglineDelayReportSubmissionSchema = z
         groundCheckIds.add(groundCheck.id);
       }
       try {
+        const startMinuteOffset = normalizeEventStartTime(
+          groundCheck.startTime,
+          groundCheck.dayOffset,
+        );
         validateScheduledShiftStart(
           value.shift,
-          normalizeEventStartTime(groundCheck.startTime, groundCheck.dayOffset),
+          startMinuteOffset,
         );
+        calculationGroundChecks.push({ startMinuteOffset });
       } catch (error) {
         context.addIssue({
           code: "custom",
@@ -345,6 +341,20 @@ export const draglineDelayReportSubmissionSchema = z
         });
       }
     });
+
+    try {
+      calculateDraglineShiftTotals(
+        value.shift,
+        calculationEntries,
+        calculationGroundChecks,
+      );
+    } catch (error) {
+      context.addIssue({
+        code: "custom",
+        path: ["timelineEntries"],
+        message: error instanceof Error ? error.message : "Timeline is invalid.",
+      });
+    }
   });
 
 export const draglineDelayReportCompletionSchema =

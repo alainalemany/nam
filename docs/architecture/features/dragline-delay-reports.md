@@ -357,13 +357,14 @@ work date.
 The scheduled report duration is always 720 integer minutes even when its
 factual timeline continues past the scheduled shift end.
 
-Downtime is the union of all intervals whose entries explicitly cause machine
-downtime. It is not the sum of all timeline durations.
+Downtime is the union of all timeline intervals whose entries explicitly cause
+machine downtime plus every recorded Ground Check's fixed ten-minute interval.
+It is not the sum of all timeline or Ground Check durations.
 
 Server-authoritative calculation:
 
-1. Convert every downtime entry into a half-open normalized interval
-   `[startMinute, startMinute + durationMinutes)`.
+1. Convert every downtime entry and every fixed ten-minute Ground Check into a
+   half-open normalized interval `[startMinute, startMinute + durationMinutes)`.
 2. Clip each interval to the scheduled Day `[300, 1020)` or Night
    `[1020, 1740)` calculation window; discard intervals entirely outside it.
 3. Sort the remaining intervals by start minute and then end minute.
@@ -385,6 +386,8 @@ Examples:
 - A downtime-causing Code 26 Surveying interval may overlap non-downtime Code
   34 Other work. Only the stopped-machine interval contributes to downtime.
 - Two overlapping downtime intervals contribute only their unique union.
+- Ground Checks use the same interval union as timeline downtime, so overlapping
+  Ground Checks or overlap with timeline downtime are counted only once.
 
 Client-side previews may use the same pure helper for immediate feedback, but
 the Server Action and persistence boundary recalculate the authoritative
@@ -470,10 +473,17 @@ inspect whether ground conditions allow safe continued dragging, including
 cracking, crumbling toward or into the lake, unsafe deterioration, or an
 acceptable condition.
 
-The report owns a repeatable ordered list of Ground Check times. Storage must
-support as many checks as occurred and must not reproduce a fixed number of
-paper-form boxes. Overnight chronology uses the same deterministic day-offset
-approach as timeline entries.
+The report owns a repeatable ordered list of Ground Check times. The operator
+records only each inspection time; every saved Ground Check automatically
+represents a fixed ten-minute downtime interval. Storage must support as many
+checks as occurred and must not reproduce a fixed number of paper-form boxes.
+Overnight chronology uses the same deterministic day-offset approach as
+timeline entries.
+
+Ground Check intervals participate in the same unique-downtime union as
+timeline downtime-causing entries. Overlaps do not double-count, and intervals
+are clipped to the scheduled 12-hour shift window. Runtime remains 720 minus
+the resulting unique scheduled-window downtime minutes.
 
 A Ground Check may also be represented by an appropriate official timeline
 code after source verification. DDR-2 still records the end-of-shift Ground

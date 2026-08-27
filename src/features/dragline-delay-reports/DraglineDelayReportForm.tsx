@@ -398,11 +398,17 @@ export function DraglineDelayReportForm({
             : undefined,
           causesDowntime: entry.causesDowntime,
         })),
+        groundChecks.map((groundCheck) => ({
+          startMinuteOffset: normalizeEventStartTime(
+            groundCheck.startTime,
+            groundCheck.dayOffset,
+          ),
+        })),
       );
     } catch {
       return null;
     }
-  }, [shift, submittedTimeline]);
+  }, [groundChecks, shift, submittedTimeline]);
   const advanceFeet = useMemo(() => {
     if (!stationStart.trim() || !stationEnd.trim()) return null;
     try {
@@ -1169,6 +1175,10 @@ export function DraglineDelayReportForm({
         <p className="subtle full-width-field">
           Record every physical ground-condition inspection. These times are not
           derived from timeline codes.
+        </p>
+        <p className="ddr-ground-check-info full-width-field" role="note">
+          Each Ground Check counts as 10 minutes of downtime and is included
+          automatically in Run Time / Down Time totals.
         </p>
         {firstError(state, "groundChecks")}
         <div className="ddr-operator-list full-width-field">

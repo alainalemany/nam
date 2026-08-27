@@ -275,6 +275,13 @@ describe("DraglineDelayReportForm", () => {
 
   it("supports repeatable Ground Check rows without coupling them to timeline rows", () => {
     renderForm();
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "Each Ground Check counts as 10 minutes of downtime and is included automatically in Run Time / Down Time totals.",
+    );
+    expect(screen.getByRole("note")).toHaveClass("ddr-ground-check-info");
+    expect(
+      screen.queryByLabelText(/Ground Check duration/i),
+    ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Add Ground Check" }));
     fireEvent.change(screen.getByLabelText("Ground Check time 1"), {
       target: { value: "10:00" },
@@ -286,6 +293,8 @@ describe("DraglineDelayReportForm", () => {
     expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("10:00");
     expect(screen.getByLabelText("Ground Check time 2")).toHaveValue("12:00");
     expect(screen.getAllByText(/Ground Check \d/)).toHaveLength(2);
+    expect(screen.getAllByText("20 min").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("11 h 40 min").length).toBeGreaterThan(0);
   });
 
   it("preserves entered rows when field errors return", async () => {

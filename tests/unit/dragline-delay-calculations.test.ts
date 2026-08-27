@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DRAGLINE_GROUND_CHECK_DOWNTIME_MINUTES,
   calculateDraglineDowntime,
   calculateDraglineRuntime,
   calculateDraglineShiftTotals,
@@ -37,6 +38,46 @@ describe("Dragline downtime interval union", () => {
   it("supports overnight intervals and duration crossing midnight", () => {
     const totals = calculateDraglineShiftTotals("NIGHT", [delay(1430, 60), delay(1480, 20)]);
     expect(totals).toEqual({ downTimeMinutes: 70, runTimeMinutes: 650 });
+  });
+
+  it("counts every non-overlapping Ground Check as ten minutes of downtime", () => {
+    expect(DRAGLINE_GROUND_CHECK_DOWNTIME_MINUTES).toBe(10);
+    expect(
+      calculateDraglineShiftTotals("DAY", [], [
+        { startMinuteOffset: 600 },
+        { startMinuteOffset: 720 },
+        { startMinuteOffset: 840 },
+        { startMinuteOffset: 960 },
+      ]),
+    ).toEqual({ downTimeMinutes: 40, runTimeMinutes: 680 });
+  });
+
+  it("unions Ground Checks with timeline downtime instead of double-counting", () => {
+    expect(
+      calculateDraglineShiftTotals("DAY", [delay(600, 30)], [
+        { startMinuteOffset: 605 },
+      ]),
+    ).toEqual({ downTimeMinutes: 30, runTimeMinutes: 690 });
+    expect(
+      calculateDraglineShiftTotals("DAY", [delay(595, 10)], [
+        { startMinuteOffset: 600 },
+      ]),
+    ).toEqual({ downTimeMinutes: 15, runTimeMinutes: 705 });
+    expect(
+      calculateDraglineShiftTotals("DAY", [], [
+        { startMinuteOffset: 600 },
+        { startMinuteOffset: 605 },
+      ]),
+    ).toEqual({ downTimeMinutes: 15, runTimeMinutes: 705 });
+  });
+
+  it("clips Ground Checks to the scheduled shift calculation window", () => {
+    expect(
+      calculateDraglineShiftTotals("DAY", [], [{ startMinuteOffset: 1015 }]),
+    ).toEqual({ downTimeMinutes: 5, runTimeMinutes: 715 });
+    expect(
+      calculateDraglineShiftTotals("DAY", [], [{ startMinuteOffset: 1030 }]),
+    ).toEqual({ downTimeMinutes: 0, runTimeMinutes: 720 });
   });
 
   it("rejects incomplete, nonpositive, and pre-shift downtime", () => {
