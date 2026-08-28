@@ -49,74 +49,6 @@ function preservedEquipmentSnapshot(existing: ExistingFuelEvent) {
   };
 }
 
-async function resolveServicePerson(
-  transaction: Prisma.TransactionClient,
-  input: EquipmentFuelEventSubmissionInput,
-  existing: ExistingFuelEvent | undefined,
-) {
-  if (input.newFuelServicePersonDisplayName) {
-    const displayName = normalizeFuelDisplayText(input.newFuelServicePersonDisplayName);
-    const normalizedKey = normalizeFuelReference(displayName);
-    const duplicate = await transaction.fuelServicePerson.findUnique({ where: { normalizedKey } });
-    if (duplicate) {
-      throw new EquipmentFuelPersistenceError(
-        "That Fuel Service Person already exists. Select the existing record.",
-        "newFuelServicePersonDisplayName",
-      );
-    }
-    const created = await transaction.fuelServicePerson.create({
-      data: { displayName, normalizedKey, active: true },
-    });
-    return { id: created.id, snapshot: created.displayName };
-  }
-
-  if (!input.fuelServicePersonId) return { id: null, snapshot: null };
-  const person = await transaction.fuelServicePerson.findUnique({
-    where: { id: input.fuelServicePersonId },
-  });
-  if (!person) {
-    throw new EquipmentFuelPersistenceError(
-      "The selected Fuel Service Person could not be found.",
-      "fuelServicePersonId",
-    );
-  }
-  const unchanged = existing?.fuelServicePersonId === person.id;
-  if (!unchanged && !person.active) {
-    throw new EquipmentFuelPersistenceError(
-      "Select an active Fuel Service Person.",
-      "fuelServicePersonId",
-    );
-  }
-  return {
-    id: person.id,
-    snapshot: unchanged
-      ? existing?.fuelServicePersonDisplayNameSnapshot ?? person.displayName
-      : person.displayName,
-  };
-}
-
-async function validateDailyLogActivity(
-  transaction: Prisma.TransactionClient,
-  activityId: string | undefined,
-  input: EquipmentFuelEventSubmissionInput,
-) {
-  if (!activityId) return null;
-  const activity = await transaction.dailyLogActivity.findUnique({ where: { id: activityId } });
-  if (!activity) {
-    throw new EquipmentFuelPersistenceError("The selected Daily Work Log activity could not be found.", "dailyLogActivityId");
-  }
-  if (activity.activityType !== "FUEL_SERVICE") {
-    throw new EquipmentFuelPersistenceError("Only a Fueling Daily Work Log activity may be linked.", "dailyLogActivityId");
-  }
-  if (activity.activityDate.toISOString().slice(0, 10) !== input.operationalWorkDate) {
-    throw new EquipmentFuelPersistenceError("The linked Daily Work Log activity must use the same operational work date.", "dailyLogActivityId");
-  }
-  if (activity.equipmentId && activity.equipmentId !== input.equipmentId) {
-    throw new EquipmentFuelPersistenceError("The linked Daily Work Log activity belongs to different Equipment.", "dailyLogActivityId");
-  }
-  return activity.id;
-}
-
 function tankFillData(input: EquipmentFuelEventSubmissionInput) {
   const totalGallons = input.tankFills.reduce((total, fill) => total + fill.gallons, 0);
   if (!Number.isSafeInteger(totalGallons) || totalGallons > maxEventGallons) {
@@ -157,8 +89,6 @@ export async function persistEquipmentFuelEvent(
       throw new EquipmentFuelPersistenceError("The selected fuel type is not compatible with this Equipment.", "fuelType");
     }
 
-    const servicePerson = await resolveServicePerson(transaction, input, existing);
-    const dailyLogActivityId = await validateDailyLogActivity(transaction, input.dailyLogActivityId, input);
     const { fills, totalGallons } = tankFillData(input);
     const snapshot = existing && !equipmentChanged
       ? preservedEquipmentSnapshot(existing)
@@ -170,15 +100,18 @@ export async function persistEquipmentFuelEvent(
       ...snapshot,
       fuelType: input.fuelType,
       totalGallons,
-      fuelServicePersonId: servicePerson.id,
-      fuelServicePersonDisplayNameSnapshot: servicePerson.snapshot,
-      dailyLogActivityId,
       notes: input.notes ?? null,
     };
 
     if (!existing) {
       return transaction.equipmentFuelEvent.create({
-        data: { ...parentData, tankFills: { create: fills } },
+        data: {
+          ...parentData,
+          fuelServicePersonId: null,
+          fuelServicePersonDisplayNameSnapshot: null,
+          dailyLogActivityId: null,
+          tankFills: { create: fills },
+        },
         select: { id: true },
       });
     }

@@ -1,25 +1,52 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ loadContext: vi.fn() }));
+const mocks = vi.hoisted(() => ({ loadSuggestions: vi.fn() }));
 vi.mock("@/features/equipment-fuel-events/actions", () => ({
-  getEquipmentFuelFormContextAction: mocks.loadContext,
+  getEquipmentFuelTankLabelSuggestionsAction: mocks.loadSuggestions,
 }));
 
 import { EquipmentFuelEventForm } from "@/features/equipment-fuel-events/EquipmentFuelEventForm";
+import type { EquipmentFuelActionState } from "@/features/equipment-fuel-events/validation";
 
 afterEach(cleanup);
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.loadContext.mockResolvedValue({ dailyLogActivities: [], tankLabelSuggestions: [] });
+  mocks.loadSuggestions.mockResolvedValue([]);
 });
-const action = vi.fn(async () => ({ status: "idle" as const, message: "", fieldErrors: {} }));
+
+const action = vi.fn(async (): Promise<EquipmentFuelActionState> => ({ status: "idle", message: "", fieldErrors: {} }));
 const equipmentOptions = [
   { id: "diesel-1", label: "Dragline 1 #DL-1 · Mine A", displayName: "Dragline 1", equipmentNumber: "DL-1", category: "DRAGLINE" as const, powerType: "DIESEL" as const, status: "ACTIVE" as const, mineName: "Mine A", cityName: "City A", cityState: "FL" },
   { id: "diesel-2", label: "Tractor 2 #TR-2 · Mine B", displayName: "Tractor 2", equipmentNumber: "TR-2", category: "TRACTOR" as const, powerType: "DIESEL" as const, status: "ACTIVE" as const, mineName: "Mine B", cityName: "City B", cityState: "WY" },
   { id: "gas-1", label: "Truck 1 #WT-1 · Mine A", displayName: "Truck 1", equipmentNumber: "WT-1", category: "WORK_TRUCK" as const, powerType: "GASOLINE" as const, status: "ACTIVE" as const, mineName: "Mine A", cityName: "City A", cityState: "FL" },
 ];
-const baseProps = { action, cancelHref: "/", equipmentOptions, servicePeople: [{ id: "person-1", displayName: "Pat Smith", active: true }], initialDailyLogActivities: [{ id: "activity-1", label: "2026-07-15 · 08:00 · Fueling", activityDate: "2026-07-15", equipmentId: "diesel-1" }], initialTankLabelSuggestions: ["Main Tank", "Walking Engine"], submitLabel: "Save Fuel Event" };
+const initialValues = {
+  operationalWorkDate: "2026-07-15",
+  eventTime: "08:15",
+  equipmentId: "diesel-1",
+  fuelType: "DIESEL" as const,
+  notes: "Preserved event note",
+  tankFills: [
+    { sequence: 1, tankLabel: "Main Tank", gallons: "390" },
+    { sequence: 2, tankLabel: "Walking Engine", gallons: "79" },
+  ],
+};
+const baseProps = {
+  action,
+  cancelHref: "/",
+  equipmentOptions,
+  initialTankLabelSuggestions: ["Main Tank", "Walking Engine"],
+  submitLabel: "Save Fuel Event",
+};
+
+function submittedValues(formData: FormData) {
+  return JSON.parse(String(formData.get("payload")));
+}
+
+function rowIds(container: HTMLElement) {
+  return [...container.querySelectorAll<HTMLElement>(".fuel-fill-row")].map((row) => row.dataset.clientRowId);
+}
 
 describe("EquipmentFuelEventForm", () => {
   it("filters Equipment and fuel choices while deriving location", () => {
@@ -33,81 +60,111 @@ describe("EquipmentFuelEventForm", () => {
     expect(screen.getByRole("option", { name: "Gasoline" })).toBeDisabled();
   });
 
-  it("adds, orders, removes fills and previews the server-derived total", () => {
-    render(<EquipmentFuelEventForm {...baseProps} />);
-    fireEvent.change(screen.getByLabelText("Tank label"), { target: { value: "Main Tank" } });
-    fireEvent.change(screen.getByLabelText("Delivered gallons"), { target: { value: "390" } });
+  it("keeps stable client row identity through add, moves, remove, and failed submit", async () => {
+    const failedAction = vi.fn(async (_state: EquipmentFuelActionState, formData: FormData) => ({
+      status: "error" as const,
+      message: "The Fuel Event could not be saved.",
+      fieldErrors: {},
+      values: submittedValues(formData),
+    }));
+    const { container } = render(<EquipmentFuelEventForm {...baseProps} action={failedAction} />);
+    const firstId = rowIds(container)[0];
     fireEvent.click(screen.getByRole("button", { name: "Add Tank Fill" }));
-    const rows = screen.getAllByRole("group", { name: /Tank Fill/ });
-    fireEvent.change(within(rows[1]).getByLabelText("Tank label"), { target: { value: "Walking Engine" } });
-    fireEvent.change(within(rows[1]).getByLabelText("Delivered gallons"), { target: { value: "79" } });
-    expect(screen.getByText("469 gal")).toBeInTheDocument();
-    fireEvent.click(within(rows[1]).getByRole("button", { name: "Move up" }));
-    expect(screen.getAllByLabelText("Tank label")[0]).toHaveValue("Walking Engine");
+    const secondId = rowIds(container)[1];
+    expect(secondId).not.toBe(firstId);
+    fireEvent.click(within(screen.getAllByRole("group", { name: /Tank Fill/ })[1]).getByRole("button", { name: "Move up" }));
+    expect(rowIds(container)).toEqual([secondId, firstId]);
+    fireEvent.click(within(screen.getAllByRole("group", { name: /Tank Fill/ })[0]).getByRole("button", { name: "Move down" }));
+    expect(rowIds(container)).toEqual([firstId, secondId]);
+    fireEvent.click(screen.getByRole("button", { name: "Add Tank Fill" }));
+    const thirdId = rowIds(container)[2];
     fireEvent.click(within(screen.getAllByRole("group", { name: /Tank Fill/ })[1]).getByRole("button", { name: "Remove" }));
-    expect(screen.getAllByRole("group", { name: /Tank Fill/ })).toHaveLength(1);
+    expect(rowIds(container)).toEqual([firstId, thirdId]);
+    fireEvent.submit(screen.getByRole("button", { name: "Save Fuel Event" }).closest("form")!);
+    await screen.findByText("The Fuel Event could not be saved.");
+    expect(rowIds(container)).toEqual([firstId, thirdId]);
+    const payload = submittedValues(failedAction.mock.calls[0][1]);
+    expect(payload.tankFills.map((fill: { sequence: number }) => fill.sequence)).toEqual([1, 2]);
   });
 
-  it("clears machine-specific fills and Daily Log context whenever Equipment identity changes", () => {
-    render(<EquipmentFuelEventForm {...baseProps} initialValues={{ operationalWorkDate: "2026-07-15", eventTime: "08:15", equipmentId: "diesel-1", fuelType: "DIESEL", fuelServicePersonId: "person-1", dailyLogActivityId: "activity-1", notes: "Preserved event note", tankFills: [{ sequence: 1, tankLabel: "Main Tank", gallons: "390" }, { sequence: 2, tankLabel: "Walking Engine", gallons: "79" }] }} />);
-    expect(screen.getAllByRole("group", { name: /Tank Fill/ })).toHaveLength(2);
+  it("restores the complete raw aggregate and row order after Tank Label validation fails", async () => {
+    const invalidLabelAction = vi.fn(async (_state: EquipmentFuelActionState, formData: FormData) => ({
+      status: "error" as const,
+      message: "Check the highlighted Fuel Event fields and try again.",
+      fieldErrors: { "tankFills.0.tankLabel": ["Tank label is required."] },
+      values: submittedValues(formData),
+    }));
+    const { container } = render(<EquipmentFuelEventForm {...baseProps} action={invalidLabelAction} initialValues={initialValues} />);
+    fireEvent.change(screen.getByLabelText("Operational work date"), { target: { value: "2026-07-16" } });
+    fireEvent.change(screen.getByLabelText("Local event time"), { target: { value: "09:35" } });
+    fireEvent.change(screen.getByLabelText("Fuel type"), { target: { value: "OFF_ROAD_DIESEL" } });
+    fireEvent.change(screen.getByLabelText("Notes (optional)"), { target: { value: "Keep every raw value" } });
+    fireEvent.click(within(screen.getAllByRole("group", { name: /Tank Fill/ })[1]).getByRole("button", { name: "Move up" }));
+    fireEvent.change(screen.getAllByLabelText("Tank label")[0], { target: { value: "" } });
+    const idsBeforeSubmit = rowIds(container);
+    fireEvent.submit(screen.getByRole("button", { name: "Save Fuel Event" }).closest("form")!);
+    const error = await screen.findByText("Tank label is required.");
+    expect(submittedValues(invalidLabelAction.mock.calls[0][1]).tankFills).toHaveLength(2);
+    await waitFor(() => expect(screen.getByLabelText("Equipment")).toHaveValue("diesel-1"));
+    await waitFor(() => expect(screen.getAllByLabelText("Tank label")).toHaveLength(2));
+    expect(screen.getByLabelText("Operational work date")).toHaveValue("2026-07-16");
+    expect(screen.getByLabelText("Local event time")).toHaveValue("09:35");
+    expect(screen.getByLabelText("Fuel type")).toHaveValue("OFF_ROAD_DIESEL");
+    expect(screen.getByLabelText("Notes (optional)")).toHaveValue("Keep every raw value");
+    const restoredRows = screen.getAllByRole("group", { name: /Tank Fill/ });
+    expect(within(restoredRows[0]).getByLabelText("Tank label")).toHaveValue("");
+    expect(within(restoredRows[0]).getByLabelText("Delivered gallons")).toHaveValue(79);
+    expect(within(restoredRows[1]).getByLabelText("Tank label")).toHaveValue("Main Tank");
+    expect(within(restoredRows[1]).getByLabelText("Delivered gallons")).toHaveValue(390);
+    expect(rowIds(container)).toEqual(idsBeforeSubmit);
+    expect(within(restoredRows[0]).getByLabelText("Tank label")).toHaveAttribute("aria-invalid", "true");
+    expect(within(restoredRows[0]).getByLabelText("Tank label")).toHaveAttribute("aria-describedby", error.id);
+    expect(within(restoredRows[1]).getByLabelText("Tank label")).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("restores the complete aggregate after a recoverable persistence failure", async () => {
+    const failedAction = vi.fn(async (_state: EquipmentFuelActionState, formData: FormData) => ({
+      status: "error" as const,
+      message: "The Fuel Event could not be saved. Review the fields and try again.",
+      fieldErrors: {},
+      values: submittedValues(formData),
+    }));
+    render(<EquipmentFuelEventForm {...baseProps} action={failedAction} initialValues={initialValues} />);
+    fireEvent.change(screen.getByLabelText("Notes (optional)"), { target: { value: "Persistence retry" } });
+    fireEvent.click(within(screen.getAllByRole("group", { name: /Tank Fill/ })[1]).getByRole("button", { name: "Move up" }));
+    fireEvent.submit(screen.getByRole("button", { name: "Save Fuel Event" }).closest("form")!);
+    await screen.findByText("The Fuel Event could not be saved. Review the fields and try again.");
+    await waitFor(() => expect(screen.getByLabelText("Equipment")).toHaveValue("diesel-1"));
+    expect(screen.getByLabelText("Operational work date")).toHaveValue("2026-07-15");
+    expect(screen.getByLabelText("Local event time")).toHaveValue("08:15");
+    expect(screen.getByLabelText("Fuel type")).toHaveValue("DIESEL");
+    expect(screen.getByLabelText("Notes (optional)")).toHaveValue("Persistence retry");
+    expect(screen.getAllByLabelText("Tank label").map((input) => (input as HTMLInputElement).value)).toEqual(["Walking Engine", "Main Tank"]);
+    expect(screen.getAllByLabelText("Delivered gallons").map((input) => (input as HTMLInputElement).value)).toEqual(["79", "390"]);
+  });
+
+  it("clears machine-specific fills when Equipment identity changes but preserves Notes", () => {
+    render(<EquipmentFuelEventForm {...baseProps} initialValues={initialValues} />);
     fireEvent.change(screen.getByLabelText("Equipment"), { target: { value: "diesel-2" } });
     expect(screen.getAllByRole("group", { name: /Tank Fill/ })).toHaveLength(1);
     expect(screen.getByLabelText("Tank label")).toHaveValue("");
     expect(screen.getByLabelText("Delivered gallons")).toHaveValue(null);
-    expect(screen.getByLabelText("Daily Work Log Fueling activity (optional)")).toHaveValue("");
     expect(screen.getByLabelText("Notes (optional)")).toHaveValue("Preserved event note");
   });
 
-  it("preserves fills when correction Equipment is unchanged", () => {
-    render(<EquipmentFuelEventForm {...baseProps} initialValues={{ operationalWorkDate: "2026-07-15", eventTime: "08:15", equipmentId: "diesel-1", fuelType: "DIESEL", fuelServicePersonId: "", dailyLogActivityId: "", notes: "", tankFills: [{ sequence: 1, tankLabel: "Main Tank", gallons: "390" }] }} />);
-    fireEvent.change(screen.getByLabelText("Local event time"), { target: { value: "08:30" } });
-    expect(screen.getByLabelText("Tank label")).toHaveValue("Main Tank");
-    expect(screen.getByLabelText("Delivered gallons")).toHaveValue(390);
-  });
-
-  it("shows historical unavailable Equipment and requires intentional replacement", () => {
-    render(<EquipmentFuelEventForm {...baseProps} unavailableEquipmentLabel="Deleted Dragline #OLD-1" initialValues={{ operationalWorkDate: "2026-07-15", eventTime: "08:15", equipmentId: "", fuelType: "DIESEL", fuelServicePersonId: "", dailyLogActivityId: "", notes: "", tankFills: [{ sequence: 1, tankLabel: "Historic Tank", gallons: "100" }] }} />);
-    expect(screen.getByText(/Original Equipment unavailable/)).toHaveTextContent("Deleted Dragline #OLD-1");
-    fireEvent.change(screen.getByLabelText("Equipment"), { target: { value: "diesel-2" } });
-    expect(screen.getByLabelText("Tank label")).toHaveValue("");
-  });
-
-  it("loads Daily Log activities and tank suggestions for the selected date and Equipment", async () => {
-    mocks.loadContext.mockResolvedValue({
-      dailyLogActivities: [{ id: "activity-2", label: "2026-07-15 · 09:00 · Fueling", activityDate: "2026-07-15", equipmentId: null }],
-      tankLabelSuggestions: ["Auxiliary Tank"],
-    });
-    const { container } = render(<EquipmentFuelEventForm {...baseProps} initialDailyLogActivities={[]} initialTankLabelSuggestions={[]} />);
-    expect(screen.getByLabelText("Daily Work Log Fueling activity (optional)")).toBeDisabled();
+  it("loads only tank-label suggestions for selected Equipment", async () => {
+    mocks.loadSuggestions.mockResolvedValue(["Auxiliary Tank"]);
+    const { container } = render(<EquipmentFuelEventForm {...baseProps} initialTankLabelSuggestions={[]} />);
     fireEvent.change(screen.getByLabelText("Equipment"), { target: { value: "diesel-1" } });
-    await waitFor(() => expect(mocks.loadContext).toHaveBeenCalledWith(expect.any(String), "diesel-1", undefined));
-    expect(await screen.findByRole("option", { name: "2026-07-15 · 09:00 · Fueling" })).toBeInTheDocument();
+    await waitFor(() => expect(mocks.loadSuggestions).toHaveBeenCalledWith("diesel-1"));
     expect(container.querySelector('datalist option[value="Auxiliary Tank"]')).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Tank label"), { target: { value: "Operator Custom Tank" } });
-    expect(screen.getByLabelText("Tank label")).toHaveValue("Operator Custom Tank");
   });
 
-  it("clears an incompatible Daily Log selection when date or Equipment changes", async () => {
-    render(<EquipmentFuelEventForm {...baseProps} initialValues={{ operationalWorkDate: "2026-07-15", eventTime: "08:15", equipmentId: "diesel-1", fuelType: "DIESEL", fuelServicePersonId: "", dailyLogActivityId: "activity-1", notes: "", tankFills: [{ sequence: 1, tankLabel: "Main Tank", gallons: "390" }] }} />);
-    expect(screen.getByLabelText("Daily Work Log Fueling activity (optional)")).toHaveValue("activity-1");
-    fireEvent.change(screen.getByLabelText("Operational work date"), { target: { value: "2026-07-16" } });
-    expect(screen.getByLabelText("Daily Work Log Fueling activity (optional)")).toHaveValue("");
-    await waitFor(() => expect(mocks.loadContext).toHaveBeenCalledWith("2026-07-16", "diesel-1", undefined));
-
-    fireEvent.change(screen.getByLabelText("Equipment"), { target: { value: "diesel-2" } });
-    expect(screen.getByLabelText("Daily Work Log Fueling activity (optional)")).toHaveValue("");
-    await waitFor(() => expect(mocks.loadContext).toHaveBeenCalledWith("2026-07-16", "diesel-2", undefined));
-  });
-
-  it("renders server-owned Daily Log link errors at the selector", async () => {
-    const invalidLinkAction = vi.fn(async () => ({
-      status: "error" as const,
-      message: "Check the Daily Work Log link.",
-      fieldErrors: { dailyLogActivityId: ["Only a matching Fueling activity may be linked."] },
-    }));
-    render(<EquipmentFuelEventForm {...baseProps} action={invalidLinkAction} initialValues={{ operationalWorkDate: "2026-07-15", eventTime: "08:15", equipmentId: "diesel-1", fuelType: "DIESEL", fuelServicePersonId: "", dailyLogActivityId: "activity-1", notes: "", tankFills: [{ sequence: 1, tankLabel: "Main Tank", gallons: "390" }] }} />);
-    fireEvent.submit(screen.getByRole("button", { name: "Save Fuel Event" }).closest("form")!);
-    expect(await screen.findByText("Only a matching Fueling activity may be linked.")).toBeInTheDocument();
+  it("omits legacy workflow controls and presents Notes independently", () => {
+    render(<EquipmentFuelEventForm {...baseProps} initialValues={initialValues} />);
+    expect(screen.queryByLabelText(/Fuel Service Person/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Daily Work Log Fueling activity/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Service and timeline context" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Notes" })).toBeInTheDocument();
   });
 });

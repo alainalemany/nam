@@ -18,37 +18,32 @@ export type EquipmentFuelEquipmentOption = {
   cityState: string | null;
 };
 
-export type FuelServicePersonOption = {
-  id: string;
-  displayName: string;
-  active: boolean;
-};
-
-export type FuelDailyLogActivityOption = {
-  id: string;
-  label: string;
-  activityDate: string;
-  equipmentId: string | null;
-};
-
-export type EquipmentFuelFormContext = {
-  dailyLogActivities: FuelDailyLogActivityOption[];
-  tankLabelSuggestions: string[];
-};
-
 export type EquipmentFuelTankFillValue = {
+  clientRowId: string;
   sequence: number;
   tankLabel: string;
   gallons: string;
 };
+
+export type EquipmentFuelTankFillInitialValue = Omit<
+  EquipmentFuelTankFillValue,
+  "clientRowId"
+>;
 
 export type EquipmentFuelEventFormInitialValues = {
   operationalWorkDate: string;
   eventTime: string;
   equipmentId: string;
   fuelType: EquipmentFuelType;
-  fuelServicePersonId: string;
-  dailyLogActivityId: string;
+  notes: string;
+  tankFills: EquipmentFuelTankFillInitialValue[];
+};
+
+export type EquipmentFuelEventSubmittedValues = {
+  operationalWorkDate: string;
+  eventTime: string;
+  equipmentId: string;
+  fuelType: string;
   notes: string;
   tankFills: EquipmentFuelTankFillValue[];
 };

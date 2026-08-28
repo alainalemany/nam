@@ -5,11 +5,10 @@ const mocks = vi.hoisted(() => ({
   getEvents: vi.fn(),
   getFilterOptions: vi.fn(),
   getEquipmentOptions: vi.fn(),
-  getPersonOptions: vi.fn(),
   getPeople: vi.fn(),
   getEvent: vi.fn(),
-  getFormContext: vi.fn(),
-  loadFormContext: vi.fn(),
+  getTankSuggestions: vi.fn(),
+  loadTankSuggestions: vi.fn(),
 }));
 
 vi.mock("@/features/equipment-fuel-events/data", async () => {
@@ -19,10 +18,9 @@ vi.mock("@/features/equipment-fuel-events/data", async () => {
     getEquipmentFuelEvents: mocks.getEvents,
     getEquipmentFuelFilterOptions: mocks.getFilterOptions,
     getEquipmentFuelEquipmentOptions: mocks.getEquipmentOptions,
-    getFuelServicePersonOptions: mocks.getPersonOptions,
     getFuelServicePeople: mocks.getPeople,
     getEquipmentFuelEventById: mocks.getEvent,
-    getEquipmentFuelFormContext: mocks.getFormContext,
+    getTankLabelSuggestionsForEquipment: mocks.getTankSuggestions,
   };
 });
 
@@ -30,7 +28,7 @@ vi.mock("@/features/equipment-fuel-events/actions", () => ({
   createEquipmentFuelEventAction: vi.fn(),
   correctEquipmentFuelEventAction: vi.fn(),
   saveFuelServicePersonAction: vi.fn(),
-  getEquipmentFuelFormContextAction: mocks.loadFormContext,
+  getEquipmentFuelTankLabelSuggestionsAction: mocks.loadTankSuggestions,
 }));
 
 import CorrectEquipmentFuelEventPage from "@/app/equipment-fuel-events/[id]/edit/page";
@@ -59,11 +57,10 @@ beforeEach(() => {
   mocks.getEvents.mockResolvedValue([event()]);
   mocks.getFilterOptions.mockResolvedValue({ equipment: [{ id: "equipment-1", displayName: "Dragline 1", equipmentNumber: "DL-1" }], people: [] });
   mocks.getEquipmentOptions.mockResolvedValue([equipment]);
-  mocks.getPersonOptions.mockResolvedValue([]);
   mocks.getPeople.mockResolvedValue([{ id: "person-1", displayName: "Pat Smith", normalizedKey: "pat smith", active: true, createdAt: new Date(), updatedAt: new Date(), _count: { fuelEvents: 1 } }]);
   mocks.getEvent.mockResolvedValue(event());
-  mocks.getFormContext.mockResolvedValue({ dailyLogActivities: [], tankLabelSuggestions: ["Main Tank"] });
-  mocks.loadFormContext.mockResolvedValue({ dailyLogActivities: [], tankLabelSuggestions: [] });
+  mocks.getTankSuggestions.mockResolvedValue(["Main Tank"]);
+  mocks.loadTankSuggestions.mockResolvedValue([]);
 });
 
 afterEach(cleanup);
@@ -76,24 +73,28 @@ describe("Equipment Fuel Event routes", () => {
     expect(mocks.getEvents).toHaveBeenCalledWith(expect.objectContaining({ fuelType: "DIESEL" }));
   });
 
-  it("renders the create route without globally preloading Daily Log activities", async () => {
+  it("renders the create route without legacy person or Daily Log controls", async () => {
     render(await NewEquipmentFuelEventPage());
     expect(screen.getByRole("heading", { name: "Record Equipment Fueling" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Daily Work Log Fueling activity (optional)")).toBeDisabled();
-    expect(mocks.getFormContext).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText(/Fuel Service Person/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Daily Work Log Fueling activity/)).not.toBeInTheDocument();
+    expect(mocks.getTankSuggestions).not.toHaveBeenCalled();
   });
 
-  it("renders correction with context scoped to the current event", async () => {
-    mocks.getEvent.mockResolvedValue(event({ dailyLogActivityId: "activity-1", dailyLogActivity: { id: "activity-1", title: "Fueling", activityDate: new Date("2026-07-15T00:00:00Z") } }));
-    mocks.getFormContext.mockResolvedValue({
-      dailyLogActivities: [{ id: "activity-1", label: "2026-07-15 · 08:00 · Fueling", activityDate: "2026-07-15", equipmentId: "equipment-1" }],
-      tankLabelSuggestions: ["Main Tank"],
-    });
+  it("renders correction without exposing hidden historical legacy relationships", async () => {
+    mocks.getEvent.mockResolvedValue(event({
+      fuelServicePersonId: "person-1",
+      fuelServicePerson: { id: "person-1", displayName: "Pat Smith" },
+      fuelServicePersonDisplayNameSnapshot: "Historic Pat",
+      dailyLogActivityId: "activity-1",
+      dailyLogActivity: { id: "activity-1", title: "Fueling", activityDate: new Date("2026-07-15T00:00:00Z") },
+    }));
     render(await CorrectEquipmentFuelEventPage({ params: Promise.resolve({ id: "event-1" }) }));
     expect(screen.getByRole("heading", { name: "Correct Equipment Fueling" })).toBeInTheDocument();
     expect(screen.getByLabelText("Tank label")).toHaveValue("Main Tank");
-    expect(screen.getByLabelText("Daily Work Log Fueling activity (optional)")).toHaveValue("activity-1");
-    expect(mocks.getFormContext).toHaveBeenCalledWith({ operationalWorkDate: "2026-07-15", equipmentId: "equipment-1", currentEventId: "event-1" });
+    expect(screen.queryByLabelText(/Fuel Service Person/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Daily Work Log Fueling activity/)).not.toBeInTheDocument();
+    expect(mocks.getTankSuggestions).toHaveBeenCalledWith("equipment-1");
   });
 
   it("renders deleted-Equipment correction without reconstructing a live relation", async () => {
@@ -101,7 +102,7 @@ describe("Equipment Fuel Event routes", () => {
     render(await CorrectEquipmentFuelEventPage({ params: Promise.resolve({ id: "event-1" }) }));
     expect(screen.getByText(/Original Equipment unavailable/)).toHaveTextContent("Deleted Dragline #OLD-1");
     expect(screen.getByLabelText("Equipment")).toHaveValue("");
-    expect(mocks.getFormContext).not.toHaveBeenCalled();
+    expect(mocks.getTankSuggestions).not.toHaveBeenCalled();
   });
 
   it("renders Fuel Service Person management with historical usage", async () => {

@@ -7,11 +7,13 @@ import {
   maxTankFills,
 } from "./constants";
 import { isEquipmentFuelDateOnly, isLocalEventTime } from "./date";
+import type { EquipmentFuelEventSubmittedValues } from "./types";
 
 export type EquipmentFuelActionState = {
   status: "idle" | "error";
   message: string;
   fieldErrors: Record<string, string[]>;
+  values?: EquipmentFuelEventSubmittedValues;
 };
 
 export const emptyEquipmentFuelActionState: EquipmentFuelActionState = {
@@ -43,8 +45,6 @@ const requiredString = (label: string, max: number) =>
     z.string().min(1, `${label} is required.`).max(max, `${label} must be ${max} characters or fewer.`),
   );
 
-const optionalId = z.string().trim().optional().transform((value) => value || undefined);
-
 const integerFromInput = (label: string, minimum: number, maximum: number) =>
   z.preprocess(
     (value) => {
@@ -69,16 +69,9 @@ export const equipmentFuelEventSubmissionSchema = z.object({
   eventTime: z.string().refine(isLocalEventTime, "Enter a valid local event time in HH:mm format."),
   equipmentId: requiredString("Equipment", 200),
   fuelType: z.enum(equipmentFuelTypeValues, { message: "Select an approved fuel type." }),
-  fuelServicePersonId: optionalId,
-  newFuelServicePersonDisplayName: z.string().trim().max(200, "Fuel Service Person must be 200 characters or fewer.").optional().transform((value) => value || undefined),
-  dailyLogActivityId: optionalId,
   notes: z.string().trim().max(2000, "Notes must be 2000 characters or fewer.").optional().transform((value) => value || undefined),
   tankFills: z.array(equipmentFuelTankFillSchema).min(1, "Add at least one Tank Fill.").max(maxTankFills, `An event may contain at most ${maxTankFills} Tank Fills.`),
 }).superRefine((value, context) => {
-  if (value.fuelServicePersonId && value.newFuelServicePersonDisplayName) {
-    context.addIssue({ code: "custom", path: ["newFuelServicePersonDisplayName"], message: "Select an existing person or create a new one, not both." });
-  }
-
   const labels = new Map<string, number>();
   let total = 0;
   value.tankFills.forEach((fill, index) => {
@@ -105,6 +98,52 @@ export const fuelServicePersonSchema = z.object({
   displayName: requiredString("Display name", 200),
   active: z.boolean(),
 });
+
+function rawString(value: unknown) {
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  return "";
+}
+
+export function equipmentFuelSubmittedValues(
+  payload: unknown,
+): EquipmentFuelEventSubmittedValues | undefined {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return undefined;
+  }
+
+  const source = payload as Record<string, unknown>;
+  const rawFills = Array.isArray(source.tankFills) ? source.tankFills : [];
+  const usedRowIds = new Set<string>();
+  const tankFills = rawFills.map((rawFill, index) => {
+    const fill = rawFill && typeof rawFill === "object" && !Array.isArray(rawFill)
+      ? rawFill as Record<string, unknown>
+      : {};
+    const proposedRowId = rawString(fill.clientRowId).trim().slice(0, 100);
+    let clientRowId = proposedRowId || `submitted-tank-fill-${index + 1}`;
+    let suffix = 1;
+    while (usedRowIds.has(clientRowId)) {
+      clientRowId = `submitted-tank-fill-${index + 1}-${suffix}`;
+      suffix += 1;
+    }
+    usedRowIds.add(clientRowId);
+    return {
+      clientRowId,
+      sequence: index + 1,
+      tankLabel: rawString(fill.tankLabel),
+      gallons: rawString(fill.gallons),
+    };
+  });
+
+  return {
+    operationalWorkDate: rawString(source.operationalWorkDate),
+    eventTime: rawString(source.eventTime),
+    equipmentId: rawString(source.equipmentId),
+    fuelType: rawString(source.fuelType),
+    notes: rawString(source.notes),
+    tankFills,
+  };
+}
 
 export function equipmentFuelFieldErrors(error: z.ZodError) {
   const errors: Record<string, string[]> = {};

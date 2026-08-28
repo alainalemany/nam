@@ -7,9 +7,6 @@ import { buildEquipmentFuelWhere, type EquipmentFuelFilters } from "./filters";
 import type {
   EquipmentFuelEquipmentOption,
   EquipmentFuelEventFormInitialValues,
-  EquipmentFuelFormContext,
-  FuelDailyLogActivityOption,
-  FuelServicePersonOption,
 } from "./types";
 import { equipmentFuelDateToUtc, isEquipmentFuelDateOnly } from "./date";
 import { deduplicateTankLabelSuggestions } from "./validation";
@@ -107,66 +104,11 @@ export async function getEquipmentFuelEquipmentOptions(selectedEquipmentId?: str
   }));
 }
 
-export async function getFuelServicePersonOptions(selectedPersonId?: string | null) {
-  const records = await prisma.fuelServicePerson.findMany({
-    where: {
-      OR: [
-        { active: true },
-        ...(selectedPersonId ? [{ id: selectedPersonId }] : []),
-      ],
-    },
-    orderBy: { displayName: "asc" },
-  });
-  return records.map((record): FuelServicePersonOption => ({
-    id: record.id,
-    displayName: record.displayName,
-    active: record.active,
-  }));
-}
-
 export async function getFuelServicePeople() {
   return prisma.fuelServicePerson.findMany({
     include: { _count: { select: { fuelEvents: true } } },
     orderBy: [{ active: "desc" }, { displayName: "asc" }],
   });
-}
-
-export async function getFuelDailyLogActivityOptions({
-  operationalWorkDate,
-  equipmentId,
-  currentEventId,
-}: {
-  operationalWorkDate: string;
-  equipmentId: string;
-  currentEventId?: string | null;
-}) {
-  const normalizedEquipmentId = equipmentId.trim();
-  if (!isEquipmentFuelDateOnly(operationalWorkDate) || !normalizedEquipmentId) return [];
-
-  const activities = await prisma.dailyLogActivity.findMany({
-    where: {
-      activityType: "FUEL_SERVICE",
-      activityDate: equipmentFuelDateToUtc(operationalWorkDate),
-      AND: [
-        { OR: [{ equipmentId: null }, { equipmentId: normalizedEquipmentId }] },
-        {
-          OR: [
-            { equipmentFuelEvent: null },
-            ...(currentEventId ? [{ equipmentFuelEvent: { id: currentEventId } }] : []),
-          ],
-        },
-      ],
-    },
-    include: { equipment: true },
-    orderBy: [{ startTime: "asc" }, { sequence: "asc" }, { id: "asc" }],
-    take: 100,
-  });
-  return activities.map((activity): FuelDailyLogActivityOption => ({
-    id: activity.id,
-    activityDate: activity.activityDate.toISOString().slice(0, 10),
-    equipmentId: activity.equipmentId,
-    label: `${activity.activityDate.toISOString().slice(0, 10)} · ${activity.startTime ?? "Time not recorded"} · ${activity.title}${activity.equipment ? ` · ${activity.equipment.displayName}` : ""}`,
-  }));
 }
 
 export async function getTankLabelSuggestionsForEquipment(equipmentId: string) {
@@ -188,23 +130,6 @@ export async function getTankLabelSuggestionsForEquipment(equipmentId: string) {
     take: 250,
   });
   return deduplicateTankLabelSuggestions(fills.map((fill) => fill.tankLabel));
-}
-
-export async function getEquipmentFuelFormContext({
-  operationalWorkDate,
-  equipmentId,
-  currentEventId,
-}: {
-  operationalWorkDate: string;
-  equipmentId: string;
-  currentEventId?: string | null;
-}): Promise<EquipmentFuelFormContext> {
-  if (!equipmentId.trim()) return { dailyLogActivities: [], tankLabelSuggestions: [] };
-  const [dailyLogActivities, tankLabelSuggestions] = await Promise.all([
-    getFuelDailyLogActivityOptions({ operationalWorkDate, equipmentId, currentEventId }),
-    getTankLabelSuggestionsForEquipment(equipmentId),
-  ]);
-  return { dailyLogActivities, tankLabelSuggestions };
 }
 
 export async function getEquipmentFuelFilterOptions() {
@@ -229,8 +154,6 @@ export function equipmentFuelEventToFormInitial(event: FuelEventDetail): Equipme
     eventTime: event.eventTime,
     equipmentId: event.equipmentId ?? "",
     fuelType: event.fuelType,
-    fuelServicePersonId: event.fuelServicePersonId ?? "",
-    dailyLogActivityId: event.dailyLogActivityId ?? "",
     notes: event.notes ?? "",
     tankFills: event.tankFills.map((fill) => ({
       sequence: fill.sequence,

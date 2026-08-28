@@ -9,11 +9,12 @@ import {
   persistEquipmentFuelEvent,
   saveFuelServicePersonReference,
 } from "./persistence";
-import { getEquipmentFuelFormContext } from "./data";
+import { getTankLabelSuggestionsForEquipment } from "./data";
 import {
   emptyEquipmentFuelActionState,
   equipmentFuelEventSubmissionSchema,
   equipmentFuelFieldErrors,
+  equipmentFuelSubmittedValues,
   fuelServicePersonSchema,
   type EquipmentFuelActionState,
 } from "./validation";
@@ -28,58 +29,61 @@ function parsePayload(formData: FormData): unknown {
   }
 }
 
-export async function getEquipmentFuelFormContextAction(
-  operationalWorkDate: string,
+export async function getEquipmentFuelTankLabelSuggestionsAction(
   equipmentId: string,
-  currentEventId?: string | null,
 ) {
-  return getEquipmentFuelFormContext({ operationalWorkDate, equipmentId, currentEventId });
+  return getTankLabelSuggestionsForEquipment(equipmentId);
 }
 
 function inputState(formData: FormData):
-  | { ok: true; data: ReturnType<typeof equipmentFuelEventSubmissionSchema.parse> }
+  | {
+      ok: true;
+      data: ReturnType<typeof equipmentFuelEventSubmissionSchema.parse>;
+      values: NonNullable<EquipmentFuelActionState["values"]>;
+    }
   | { ok: false; state: EquipmentFuelActionState } {
-  const parsed = equipmentFuelEventSubmissionSchema.safeParse(parsePayload(formData));
-  if (parsed.success) return { ok: true, data: parsed.data };
+  const payload = parsePayload(formData);
+  const values = equipmentFuelSubmittedValues(payload);
+  const parsed = equipmentFuelEventSubmissionSchema.safeParse(payload);
+  if (parsed.success) {
+    if (values) return { ok: true, data: parsed.data, values };
+    return {
+      ok: false,
+      state: {
+        status: "error",
+        message: "The submitted Fuel Event could not be read. Review the fields and try again.",
+        fieldErrors: {},
+      },
+    };
+  }
   return {
     ok: false,
     state: {
       status: "error",
       message: "Check the highlighted Fuel Event fields and try again.",
       fieldErrors: equipmentFuelFieldErrors(parsed.error),
+      values,
     },
   };
 }
 
-function persistenceState(error: unknown): EquipmentFuelActionState {
+function persistenceState(
+  error: unknown,
+  values: NonNullable<EquipmentFuelActionState["values"]>,
+): EquipmentFuelActionState {
   if (error instanceof EquipmentFuelPersistenceError) {
     return {
       status: "error",
       message: error.message,
       fieldErrors: error.field ? { [error.field]: [error.message] } : {},
+      values,
     };
-  }
-  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-    const target = String(error.meta?.target ?? "");
-    if (target.includes("dailyLogActivity")) {
-      return {
-        status: "error",
-        message: "That Daily Work Log activity is already linked to another Fuel Event.",
-        fieldErrors: { dailyLogActivityId: ["Choose a different Fueling activity or leave the link empty."] },
-      };
-    }
-    if (target.includes("normalizedKey")) {
-      return {
-        status: "error",
-        message: "That Fuel Service Person already exists.",
-        fieldErrors: { newFuelServicePersonDisplayName: ["Select the existing record instead."] },
-      };
-    }
   }
   return {
     ...emptyEquipmentFuelActionState,
     status: "error",
     message: "The Fuel Event could not be saved. Review the fields and try again.",
+    values,
   };
 }
 
@@ -93,11 +97,10 @@ export async function createEquipmentFuelEventAction(
   try {
     id = (await persistEquipmentFuelEvent(parsed.data)).id;
   } catch (error) {
-    return persistenceState(error);
+    return persistenceState(error, parsed.values);
   }
   revalidatePath("/");
   revalidatePath("/equipment-fuel-events");
-  revalidatePath("/equipment-fuel-events/service-personnel");
   redirect(`/equipment-fuel-events/${id}`);
 }
 
@@ -111,7 +114,7 @@ export async function correctEquipmentFuelEventAction(
   try {
     await persistEquipmentFuelEvent(parsed.data, eventId);
   } catch (error) {
-    return persistenceState(error);
+    return persistenceState(error, parsed.values);
   }
   revalidatePath("/equipment-fuel-events");
   revalidatePath(`/equipment-fuel-events/${eventId}`);

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { compatibleFuelTypes, isFuelTypeCompatible } from "@/features/equipment-fuel-events/constants";
 import { isEquipmentFuelDateOnly, isLocalEventTime, localEquipmentFuelDateValue, localEquipmentFuelTimeValue } from "@/features/equipment-fuel-events/date";
 import { buildEquipmentFuelWhere, parseEquipmentFuelFilters } from "@/features/equipment-fuel-events/filters";
-import { deduplicateTankLabelSuggestions, equipmentFuelEventSubmissionSchema, normalizeFuelReference } from "@/features/equipment-fuel-events/validation";
+import { deduplicateTankLabelSuggestions, equipmentFuelEventSubmissionSchema, equipmentFuelSubmittedValues, normalizeFuelReference } from "@/features/equipment-fuel-events/validation";
 
 function validInput() {
   return {
@@ -11,9 +11,6 @@ function validInput() {
     eventTime: "23:45",
     equipmentId: "equipment-1",
     fuelType: "OFF_ROAD_DIESEL",
-    fuelServicePersonId: "person-1",
-    newFuelServicePersonDisplayName: "",
-    dailyLogActivityId: "activity-1",
     notes: "Fuel hose was repositioned.",
     tankFills: [
       { sequence: 1, tankLabel: "Main Tank", gallons: "390" },
@@ -85,15 +82,27 @@ describe("Equipment Fuel Event aggregate validation", () => {
     expect(equipmentFuelEventSubmissionSchema.safeParse(input).success).toBe(true);
   });
 
-  it("enforces label, person, and notes length guards", () => {
+  it("enforces label and notes length guards", () => {
     expect(equipmentFuelEventSubmissionSchema.safeParse({ ...validInput(), notes: "x".repeat(2001) }).success).toBe(false);
-    expect(equipmentFuelEventSubmissionSchema.safeParse({ ...validInput(), newFuelServicePersonDisplayName: "x".repeat(201), fuelServicePersonId: "" }).success).toBe(false);
     const input = validInput(); input.tankFills[0].tankLabel = "x".repeat(101);
     expect(equipmentFuelEventSubmissionSchema.safeParse(input).success).toBe(false);
   });
 
-  it("does not allow selecting and creating a service person together", () => {
-    expect(equipmentFuelEventSubmissionSchema.safeParse({ ...validInput(), newFuelServicePersonDisplayName: "New Person" }).success).toBe(false);
+  it("recovers raw submitted values, stable row IDs, and visible row order before transformations", () => {
+    expect(equipmentFuelSubmittedValues({
+      ...validInput(),
+      notes: "  keep spacing  ",
+      tankFills: [
+        { clientRowId: "row-b", sequence: 9, tankLabel: " Walking   Engine ", gallons: "079" },
+        { clientRowId: "row-a", sequence: 4, tankLabel: "", gallons: "390x" },
+      ],
+    })).toEqual(expect.objectContaining({
+      notes: "  keep spacing  ",
+      tankFills: [
+        { clientRowId: "row-b", sequence: 1, tankLabel: " Walking   Engine ", gallons: "079" },
+        { clientRowId: "row-a", sequence: 2, tankLabel: "", gallons: "390x" },
+      ],
+    }));
   });
 });
 

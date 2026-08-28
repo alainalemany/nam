@@ -27,7 +27,7 @@ const equipment = {
 function input(overrides: Record<string, unknown> = {}) {
   return equipmentFuelEventSubmissionSchema.parse({
     operationalWorkDate: "2026-07-15", eventTime: "23:45", equipmentId: "equipment-1",
-    fuelType: "OFF_ROAD_DIESEL", fuelServicePersonId: "person-1", dailyLogActivityId: "activity-1", notes: "Context",
+    fuelType: "OFF_ROAD_DIESEL", notes: "Context",
     tankFills: [{ sequence: 1, tankLabel: " Main   Tank ", gallons: "390" }, { sequence: 2, tankLabel: "Walking Engine", gallons: "79" }],
     ...overrides,
   });
@@ -46,8 +46,6 @@ function existing(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   tx.equipment.findUnique.mockResolvedValue(equipment);
-  tx.fuelServicePerson.findUnique.mockResolvedValue({ id: "person-1", displayName: "Current Pat", normalizedKey: "current pat", active: true });
-  tx.dailyLogActivity.findUnique.mockResolvedValue({ id: "activity-1", activityType: "FUEL_SERVICE", activityDate: new Date("2026-07-15T00:00:00Z"), equipmentId: "equipment-1" });
   tx.equipmentFuelEvent.create.mockResolvedValue({ id: "event-1" });
   tx.equipmentFuelEvent.update.mockResolvedValue({ id: "event-1" });
   tx.equipmentFuelEventTankFill.deleteMany.mockResolvedValue({ count: 2 });
@@ -55,14 +53,18 @@ beforeEach(() => {
 });
 
 describe("Equipment Fuel Event persistence", () => {
-  it("creates one complete aggregate with server-owned snapshots, normalized labels, and derived total", async () => {
+  it("creates one complete aggregate with null legacy links, normalized labels, and a server-derived total", async () => {
     tx.equipmentFuelEvent.findUnique.mockResolvedValue(undefined);
     await persistEquipmentFuelEvent(input());
     expect(tx.equipmentFuelEvent.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
       equipmentDisplayName: "Dragline 1", mineName: "Mine A", cityName: "City A", totalGallons: 469,
-      fuelServicePersonDisplayNameSnapshot: "Current Pat",
+      fuelServicePersonId: null,
+      fuelServicePersonDisplayNameSnapshot: null,
+      dailyLogActivityId: null,
       tankFills: { create: [{ sequence: 1, tankLabel: "Main Tank", normalizedTankLabel: "main tank", gallons: 390 }, { sequence: 2, tankLabel: "Walking Engine", normalizedTankLabel: "walking engine", gallons: 79 }] },
     }) }));
+    expect(tx.fuelServicePerson.findUnique).not.toHaveBeenCalled();
+    expect(tx.dailyLogActivity.findUnique).not.toHaveBeenCalled();
   });
 
   it("allows repeated same-day and identical-time events because no business-key lookup occurs", async () => {
@@ -72,32 +74,23 @@ describe("Equipment Fuel Event persistence", () => {
     expect(tx.equipmentFuelEvent.create).toHaveBeenCalledTimes(2);
   });
 
-  it("preserves unchanged historical Equipment and inactive-person snapshots", async () => {
+  it("preserves hidden legacy person relation, person snapshot, and Daily Log link during correction", async () => {
     tx.equipmentFuelEvent.findUnique.mockResolvedValue(existing());
     tx.equipment.findUnique.mockResolvedValue({ ...equipment, status: "INACTIVE", displayName: "Renamed Dragline" });
-    tx.fuelServicePerson.findUnique.mockResolvedValue({ id: "person-1", displayName: "Renamed Pat", active: false });
     await persistEquipmentFuelEvent(input(), "event-1");
-    expect(tx.equipmentFuelEvent.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ equipmentDisplayName: "Historic Dragline", mineName: "Historic Mine", fuelServicePersonDisplayNameSnapshot: "Historic Pat" }) }));
-  });
-
-  it("requires an active replacement person and refreshes only the person snapshot", async () => {
-    tx.equipmentFuelEvent.findUnique.mockResolvedValue(existing());
-    tx.fuelServicePerson.findUnique.mockResolvedValue({ id: "person-2", displayName: "New Pat", normalizedKey: "new pat", active: false });
-    await expect(persistEquipmentFuelEvent(input({ fuelServicePersonId: "person-2" }), "event-1")).rejects.toMatchObject({ field: "fuelServicePersonId" });
-    tx.fuelServicePerson.findUnique.mockResolvedValue({ id: "person-2", displayName: "New Pat", normalizedKey: "new pat", active: true });
-    await persistEquipmentFuelEvent(input({ fuelServicePersonId: "person-2" }), "event-1");
-    expect(tx.equipmentFuelEvent.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
-      equipmentDisplayName: "Historic Dragline",
-      fuelServicePersonId: "person-2",
-      fuelServicePersonDisplayNameSnapshot: "New Pat",
-    }) }));
+    const updateData = tx.equipmentFuelEvent.update.mock.calls[0][0].data;
+    expect(updateData).toMatchObject({ equipmentDisplayName: "Historic Dragline", mineName: "Historic Mine" });
+    expect(updateData).not.toHaveProperty("fuelServicePersonId");
+    expect(updateData).not.toHaveProperty("fuelServicePersonDisplayNameSnapshot");
+    expect(updateData).not.toHaveProperty("dailyLogActivityId");
+    expect(tx.fuelServicePerson.findUnique).not.toHaveBeenCalled();
+    expect(tx.dailyLogActivity.findUnique).not.toHaveBeenCalled();
   });
 
   it("refreshes snapshots and replaces stale fills transactionally after Equipment changes", async () => {
     tx.equipmentFuelEvent.findUnique.mockResolvedValue(existing());
     tx.equipment.findUnique.mockResolvedValue({ ...equipment, id: "equipment-2", displayName: "Replacement Tractor", category: "TRACTOR" });
-    tx.dailyLogActivity.findUnique.mockResolvedValue(null);
-    await persistEquipmentFuelEvent(input({ equipmentId: "equipment-2", dailyLogActivityId: "" }), "event-1");
+    await persistEquipmentFuelEvent(input({ equipmentId: "equipment-2" }), "event-1");
     expect(tx.equipmentFuelEvent.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ equipmentId: "equipment-2", equipmentDisplayName: "Replacement Tractor", mineName: "Mine A" }) }));
     expect(tx.equipmentFuelEventTankFill.deleteMany).toHaveBeenCalledWith({ where: { equipmentFuelEventId: "event-1" } });
     expect(tx.equipmentFuelEventTankFill.createMany).toHaveBeenCalled();
@@ -119,30 +112,9 @@ describe("Equipment Fuel Event persistence", () => {
     await expect(persistEquipmentFuelEvent(input())).rejects.toMatchObject({ field: "fuelType" });
   });
 
-  it("validates Daily Work Log type, date, and Equipment without mutating it", async () => {
-    tx.equipmentFuelEvent.findUnique.mockResolvedValue(undefined);
-    tx.dailyLogActivity.findUnique.mockResolvedValue({ id: "activity-1", activityType: "CUT", activityDate: new Date("2026-07-15T00:00:00Z"), equipmentId: "equipment-1" });
-    await expect(persistEquipmentFuelEvent(input())).rejects.toMatchObject({ field: "dailyLogActivityId" });
-    tx.dailyLogActivity.findUnique.mockResolvedValue({ id: "activity-1", activityType: "FUEL_SERVICE", activityDate: new Date("2026-07-16T00:00:00Z"), equipmentId: "equipment-1" });
-    await expect(persistEquipmentFuelEvent(input())).rejects.toMatchObject({ field: "dailyLogActivityId" });
-    tx.dailyLogActivity.findUnique.mockResolvedValue({ id: "activity-1", activityType: "FUEL_SERVICE", activityDate: new Date("2026-07-15T00:00:00Z"), equipmentId: "equipment-2" });
-    await expect(persistEquipmentFuelEvent(input())).rejects.toMatchObject({ field: "dailyLogActivityId" });
-    expect(tx.dailyLogActivity).not.toHaveProperty("update");
-  });
-
-  it("creates an inline person in the event transaction and rejects an equivalent duplicate", async () => {
-    tx.equipmentFuelEvent.findUnique.mockResolvedValue(undefined);
-    tx.fuelServicePerson.findUnique.mockResolvedValue(null);
-    tx.fuelServicePerson.create.mockResolvedValue({ id: "person-new", displayName: "Pat Smith", normalizedKey: "pat smith", active: true });
-    await persistEquipmentFuelEvent(input({ fuelServicePersonId: "", newFuelServicePersonDisplayName: " Pat   Smith " }));
-    expect(tx.fuelServicePerson.create).toHaveBeenCalledWith({ data: { displayName: "Pat Smith", normalizedKey: "pat smith", active: true } });
-    tx.fuelServicePerson.findUnique.mockResolvedValue({ id: "person-existing", active: true });
-    await expect(persistEquipmentFuelEvent(input({ fuelServicePersonId: "", newFuelServicePersonDisplayName: "PAT SMITH" }))).rejects.toMatchObject({ field: "newFuelServicePersonDisplayName" });
-  });
-
   it("requires a current active replacement after Equipment SetNull", async () => {
     tx.equipmentFuelEvent.findUnique.mockResolvedValue(existing({ equipmentId: null }));
     tx.equipment.findUnique.mockResolvedValue({ ...equipment, id: "equipment-2", status: "INACTIVE" });
-    await expect(persistEquipmentFuelEvent(input({ equipmentId: "equipment-2", dailyLogActivityId: "" }), "event-1")).rejects.toMatchObject({ field: "equipmentId" });
+    await expect(persistEquipmentFuelEvent(input({ equipmentId: "equipment-2" }), "event-1")).rejects.toMatchObject({ field: "equipmentId" });
   });
 });
