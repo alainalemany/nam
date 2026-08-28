@@ -32,7 +32,7 @@ Related Documents:
 - `docs/reference/README.md`
 - `docs/reference/dragline-delay-reports/delay-code-catalog-v1.md`
 
-Last Reviewed: 2026-08-19
+Last Reviewed: 2026-08-28
 
 Implementation Status: DDR-1 through DDR-3 are implemented as an independent
 usable Draft, completion, and correction workflow. The aggregate includes
@@ -334,10 +334,14 @@ not violate uniqueness. Concurrent activities remain separate child records.
 Draft editing must preserve submitted child identities and reject unknown or
 duplicated identities rather than replacing every timeline row destructively.
 
-If `causesDowntime` is true, positive integer duration minutes are required.
-If false, any recorded duration is excluded from machine downtime. Category
-alone does not determine downtime, and concurrent non-downtime work never adds
-stopped-machine time.
+For entries other than Code 13, `causesDowntime: true` requires positive integer
+duration minutes. If false, any recorded duration is excluded from machine
+downtime. Category alone does not determine downtime, and concurrent
+non-downtime work never adds stopped-machine time.
+
+Code 13 — Shift Change is an explicit exception to the submitted or persisted
+`causesDowntime` value. Its start time, duration, and description remain factual
+timeline information, but it always contributes zero minutes to Down Time.
 
 The data model does not require the operator to repeat a calendar date on every
 entry. DDR-1 stores an integer `startMinuteOffset` from operational-date
@@ -373,6 +377,11 @@ Server-authoritative calculation:
 6. Persist or return the derived unique downtime minutes according to the
    implementation slice; never trust a client-entered total.
 7. Derive runtime as `720 - downtimeMinutes`.
+
+Code 13 — Shift Change contributes zero minutes regardless of whether it occurs
+before, at, or after the scheduled shift end. Late Shift Change remains valid
+factual timeline history; scheduled Run Time and Down Time remain based on the
+720-minute calculation window.
 
 The derived result must remain within `0..720`. Clipping applies only to the
 scheduled calculation boundary: malformed starts, nonpositive durations, and

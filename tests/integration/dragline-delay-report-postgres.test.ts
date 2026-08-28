@@ -261,6 +261,56 @@ function validCompletionInput(
 }
 
 describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow", () => {
+  it("persists the August 27 union while excluding pre-end Code 13 downtime", async () => {
+    const client = new PrismaClient({ datasourceUrl: databaseUrl });
+    try {
+      await withRollback(client, async (transaction, prefix) => {
+        const references = await createReferences(transaction, prefix);
+        const created = await persistDraglineDelayReportInTransaction(
+          transaction,
+          validInput(references, {
+            operationalWorkDate: "2026-08-27",
+            shift: "DAY",
+            timelineEntries: [
+              {
+                sequence: 1,
+                startTime: "06:10",
+                dayOffset: 0,
+                catalogVersion: 1,
+                delayCode: "26",
+                description: "Dozer working",
+                durationMinutes: 30,
+                causesDowntime: true,
+              },
+              {
+                sequence: 2,
+                startTime: "16:50",
+                dayOffset: 0,
+                catalogVersion: 1,
+                delayCode: "13",
+                description: "Shift Change",
+                durationMinutes: 15,
+                causesDowntime: true,
+              },
+            ],
+            groundChecks: [
+              { sequence: 1, startTime: "06:20", dayOffset: 0 },
+            ],
+          }),
+        );
+
+        expect(
+          await transaction.draglineDelayReport.findUniqueOrThrow({
+            where: { id: created.id },
+            select: { downTimeMinutes: true, runTimeMinutes: true },
+          }),
+        ).toEqual({ downTimeMinutes: 30, runTimeMinutes: 690 });
+      });
+    } finally {
+      await client.$disconnect();
+    }
+  });
+
   it("creates and edits a Draft while preserving retained child IDs and authoritative totals", async () => {
     const client = new PrismaClient({ datasourceUrl: databaseUrl });
     try {

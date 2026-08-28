@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   DRAGLINE_DELAY_CODE_CATALOG_VERSION,
+  DRAGLINE_SHIFT_CHANGE_DELAY_CODE,
   getDraglineDelayCode,
 } from "./catalog";
 import { calculateDraglineShiftTotals } from "./calculations";
@@ -250,6 +251,7 @@ export const draglineDelayReportSubmissionSchema = z
       startMinuteOffset: number;
       durationMinutes?: number;
       causesDowntime: boolean;
+      delayCode: string;
     }> = [];
 
     value.timelineEntries.forEach((entry, index) => {
@@ -277,7 +279,11 @@ export const draglineDelayReportSubmissionSchema = z
           message: "Select an official Delay Code from Catalog V1.",
         });
       }
-      if (entry.causesDowntime && entry.durationMinutes == null) {
+      if (
+        entry.delayCode !== DRAGLINE_SHIFT_CHANGE_DELAY_CODE &&
+        entry.causesDowntime &&
+        entry.durationMinutes == null
+      ) {
         context.addIssue({
           code: "custom",
           path: ["timelineEntries", index, "durationMinutes"],
@@ -290,6 +296,7 @@ export const draglineDelayReportSubmissionSchema = z
           startMinuteOffset: normalizeEventStartTime(entry.startTime, entry.dayOffset),
           durationMinutes: entry.durationMinutes,
           causesDowntime: entry.causesDowntime,
+          delayCode: entry.delayCode,
         });
       } catch (error) {
         context.addIssue({

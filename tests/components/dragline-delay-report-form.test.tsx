@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DraglineDelayReportForm } from "@/features/dragline-delay-reports/DraglineDelayReportForm";
+import type { DraglineDelayReportFormInitialValues } from "@/features/dragline-delay-reports/types";
 import type { DraglineDelayReportActionState } from "@/features/dragline-delay-reports/validation";
 
 afterEach(cleanup);
@@ -86,6 +87,7 @@ function renderForm(
   })),
   options: {
     allowComplete?: boolean;
+    initialValues?: DraglineDelayReportFormInitialValues;
     mode?: "draft" | "correction";
     submitLabel?: string;
   } = {},
@@ -96,7 +98,7 @@ function renderForm(
       cancelHref="/dragline-delay-reports"
       employeeOptions={employeeOptions}
       equipmentOptions={equipmentOptions}
-      initialValues={initialValues}
+      initialValues={options.initialValues ?? initialValues}
       lakeOptions={lakeOptions}
       allowComplete={options.allowComplete}
       mode={options.mode}
@@ -190,6 +192,60 @@ describe("DraglineDelayReportForm", () => {
     expect(screen.getByLabelText("Causes machine downtime for row 2")).not.toBeChecked();
     expect(screen.getAllByText("20 min").length).toBeGreaterThan(0);
     expect(screen.getAllByText("11 h 40 min").length).toBeGreaterThan(0);
+  });
+
+  it("makes Code 13 explicitly non-downtime in the timeline editor", () => {
+    renderForm();
+    const downtime = screen.getByLabelText(
+      "Causes machine downtime for row 1",
+    );
+    fireEvent.click(downtime);
+    expect(downtime).toBeChecked();
+
+    fireEvent.change(screen.getByLabelText("Delay Code for row 1"), {
+      target: { value: "13" },
+    });
+
+    expect(downtime).toBeDisabled();
+    expect(downtime).not.toBeChecked();
+    expect(
+      screen.getByText(
+        "Shift Change is recorded in the timeline but does not count toward Down Time.",
+      ),
+    ).toHaveTextContent(
+      "Shift Change is recorded in the timeline but does not count toward Down Time.",
+    );
+  });
+
+  it("previews the August 27 shared timeline and Ground Check union", () => {
+    renderForm(undefined, {
+      initialValues: {
+        ...initialValues,
+        operationalWorkDate: "2026-08-27",
+        timelineEntries: [
+          {
+            clientId: "timeline-august-27",
+            startTime: "06:10",
+            dayOffset: 0,
+            delayCode: "26",
+            description: "Dozer working",
+            durationMinutes: "30",
+            causesDowntime: true,
+            category: "OPERATIONAL",
+          },
+        ],
+        groundChecks: [
+          {
+            clientId: "ground-check-august-27",
+            startTime: "06:20",
+            dayOffset: 0,
+          },
+        ],
+      },
+    });
+
+    expect(screen.getAllByText("30 min").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("11 h 30 min").length).toBeGreaterThan(0);
   });
 
   it("offers green add-row controls above and below the Timeline and focuses each new row", async () => {

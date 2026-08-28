@@ -41,6 +41,7 @@ const totalsInclude = {
       startMinuteOffset: true,
       durationMinutes: true,
       causesDowntime: true,
+      delayCode: true,
     },
   },
   groundChecks: { select: { startMinuteOffset: true } },
@@ -52,6 +53,7 @@ function calculatePersistedTotals(report: {
     startMinuteOffset: number;
     durationMinutes: number | null;
     causesDowntime: boolean;
+    delayCode: string;
   }>;
   groundChecks: Array<{ startMinuteOffset: number }>;
 }) {

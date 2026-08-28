@@ -204,6 +204,23 @@ describe("Dragline Delay Report validation", () => {
     expect(draglineDelayReportSubmissionSchema.safeParse(incomplete).success).toBe(false);
   });
 
+  it("does not require a downtime duration for Code 13", () => {
+    expect(
+      draglineDelayReportSubmissionSchema.safeParse({
+        ...validInput,
+        timelineEntries: [
+          {
+            ...validInput.timelineEntries[0],
+            delayCode: "13",
+            description: "Shift Change",
+            durationMinutes: "",
+            causesDowntime: true,
+          },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
   it("allows same-time concurrent activities and excludes non-downtime work", () => {
     const result = draglineDelayReportSubmissionSchema.safeParse({
       ...validInput,

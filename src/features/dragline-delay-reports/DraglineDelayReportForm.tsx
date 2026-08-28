@@ -11,6 +11,7 @@ import {
 
 import {
   DRAGLINE_DELAY_CODE_CATALOG_VERSION,
+  DRAGLINE_SHIFT_CHANGE_DELAY_CODE,
   getDraglineDelayCode,
   groupDraglineDelayCodes,
   searchDraglineDelayCodes,
@@ -167,7 +168,13 @@ function DelayCodeField({
           value={entry.delayCode}
           onChange={(event) => {
             const next = getDraglineDelayCode(event.target.value);
-            onChange({ delayCode: event.target.value, category: next?.category });
+            onChange({
+              delayCode: event.target.value,
+              category: next?.category,
+              ...(event.target.value === DRAGLINE_SHIFT_CHANGE_DELAY_CODE
+                ? { causesDowntime: false }
+                : {}),
+            });
           }}
         >
           <option value="">Select official code</option>
@@ -397,6 +404,7 @@ export function DraglineDelayReportForm({
             ? Number(entry.durationMinutes)
             : undefined,
           causesDowntime: entry.causesDowntime,
+          delayCode: entry.delayCode,
         })),
         groundChecks.map((groundCheck) => ({
           startMinuteOffset: normalizeEventStartTime(
@@ -883,7 +891,14 @@ export function DraglineDelayReportForm({
                   <input
                     {...errorAttributes(state, `timelineEntries.${index}.causesDowntime`)}
                     aria-label={`Causes machine downtime for row ${index + 1}`}
-                    checked={entry.causesDowntime}
+                    checked={
+                      entry.delayCode === DRAGLINE_SHIFT_CHANGE_DELAY_CODE
+                        ? false
+                        : entry.causesDowntime
+                    }
+                    disabled={
+                      entry.delayCode === DRAGLINE_SHIFT_CHANGE_DELAY_CODE
+                    }
                     type="checkbox"
                     onChange={(event) =>
                       updateTimelineEntry(index, {
@@ -893,6 +908,12 @@ export function DraglineDelayReportForm({
                   />
                   <span>Causes machine downtime</span>
                 </label>
+                {entry.delayCode === DRAGLINE_SHIFT_CHANGE_DELAY_CODE ? (
+                  <p className="subtle ddr-shift-change-info" role="note">
+                    Shift Change is recorded in the timeline but does not count
+                    toward Down Time.
+                  </p>
+                ) : null}
                 {firstError(state, `timelineEntries.${index}.causesDowntime`)}
                 <label className="ddr-description-field">
                   <span>Description / context (optional)</span>

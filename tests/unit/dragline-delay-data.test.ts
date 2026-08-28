@@ -28,22 +28,25 @@ function persistedReport(status: "DRAFT" | "COMPLETED") {
     id: `${status.toLowerCase()}-report`,
     status,
     shift: "DAY",
-    downTimeMinutes: 0,
-    runTimeMinutes: 720,
+    downTimeMinutes: 40,
+    runTimeMinutes: 680,
     timelineEntries: [{
-      startMinuteOffset: 600,
+      startMinuteOffset: 370,
       durationMinutes: 30,
       causesDowntime: true,
+      delayCode: "15",
+    }, {
+      startMinuteOffset: 1010,
+      durationMinutes: 15,
+      causesDowntime: true,
+      delayCode: "13",
     }],
-    groundChecks: [
-      { startMinuteOffset: 605 },
-      { startMinuteOffset: 720 },
-    ],
+    groundChecks: [{ startMinuteOffset: 380 }],
   };
 }
 
 describe("Dragline Delay Report persisted-total reads", () => {
-  it("recalculates existing Draft history totals from persisted Ground Checks", async () => {
+  it("recalculates August 27 Draft history totals while ignoring persisted Code 13 downtime", async () => {
     mocks.findMany.mockResolvedValue([persistedReport("DRAFT")]);
 
     const reports = await getDraglineDelayReports();
@@ -51,14 +54,14 @@ describe("Dragline Delay Report persisted-total reads", () => {
     expect(reports[0]).toMatchObject({
       id: "draft-report",
       status: "DRAFT",
-      downTimeMinutes: 40,
-      runTimeMinutes: 680,
+      downTimeMinutes: 30,
+      runTimeMinutes: 690,
     });
     expect(reports[0]).not.toHaveProperty("timelineEntries");
     expect(reports[0]).not.toHaveProperty("groundChecks");
   });
 
-  it("recalculates existing Completed detail totals without rewriting its rows", async () => {
+  it("recalculates August 27 Completed detail totals while ignoring persisted Code 13 downtime", async () => {
     const persisted = persistedReport("COMPLETED");
     mocks.findUnique.mockResolvedValue(persisted);
 
@@ -67,8 +70,8 @@ describe("Dragline Delay Report persisted-total reads", () => {
     expect(report).toMatchObject({
       id: "completed-report",
       status: "COMPLETED",
-      downTimeMinutes: 40,
-      runTimeMinutes: 680,
+      downTimeMinutes: 30,
+      runTimeMinutes: 690,
       timelineEntries: persisted.timelineEntries,
       groundChecks: persisted.groundChecks,
     });

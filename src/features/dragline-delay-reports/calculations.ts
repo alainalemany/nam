@@ -1,3 +1,4 @@
+import { DRAGLINE_SHIFT_CHANGE_DELAY_CODE } from "./catalog";
 import {
   DRAGLINE_SHIFT_MINUTES,
   getDraglineShiftWindow,
@@ -10,6 +11,11 @@ export type DowntimeInput = Readonly<{
   durationMinutes?: number | null;
   causesDowntime: boolean;
 }>;
+
+export type TimelineDowntimeInput = DowntimeInput &
+  Readonly<{
+    delayCode: string;
+  }>;
 
 export type GroundCheckDowntimeInput = Readonly<{
   startMinuteOffset: number;
@@ -90,11 +96,17 @@ export function calculateDraglineRuntime(downTimeMinutes: number) {
 
 export function calculateDraglineShiftTotals(
   shift: DraglineDelayReportShift,
-  entries: readonly DowntimeInput[],
+  entries: readonly TimelineDowntimeInput[],
   groundChecks: readonly GroundCheckDowntimeInput[] = [],
 ) {
   const downTimeMinutes = calculateDraglineDowntime(shift, [
-    ...entries,
+    ...entries.map((entry) => ({
+      ...entry,
+      causesDowntime:
+        entry.delayCode === DRAGLINE_SHIFT_CHANGE_DELAY_CODE
+          ? false
+          : entry.causesDowntime,
+    })),
     ...groundChecks.map((groundCheck) => ({
       startMinuteOffset: groundCheck.startMinuteOffset,
       durationMinutes: DRAGLINE_GROUND_CHECK_DOWNTIME_MINUTES,
