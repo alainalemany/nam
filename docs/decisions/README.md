@@ -15,7 +15,7 @@ maintainability.
 | [ADR-003](adr-003-permanent-operational-history.md) | 2026-06-22 | Product architecture | NAM Dashboard prioritizes permanent operational history with search and calendar navigation. |
 | [ADR-004](adr-004-manual-work-schedule-entry.md) | 2026-06-22 | Product workflow | Work Schedule uses manual entry and manual editing instead of SMS import or parsing. |
 | [ADR-005](adr-005-payslip-financial-bounded-context.md) | 2026-06-23 | Security/data boundaries | Payslip Repository is a dedicated financial bounded context. |
-| [ADR-006](adr-006-fuel-log-structured-operational-module.md) | 2026-06-24 | Product/data architecture | Structured fuel records preserve base facts; a 2026-07-14 clarification separates Equipment Fuel Events from Fleet purchases. |
+| [ADR-006](adr-006-fuel-log-structured-operational-module.md) | 2026-06-24 | Product/data architecture | Structured fuel records preserve base facts; Equipment Fuel Event price/station direction is superseded by ADR-020. |
 | [ADR-007](adr-007-work-truck-log-personal-record.md) | 2026-06-24 | Product workflow | Superseded historical proposal for a standalone Work Truck Log; see ADR-017. |
 | [ADR-008](adr-008-docker-compose-deployment-baseline.md) | 2026-06-29 | Infrastructure/deployment | Docker Compose is the standard deployment method with host-level Caddy planned for public ingress. |
 | [ADR-009](adr-009-phase-2a-development-postgresql-foundation.md) | 2026-06-29 | Infrastructure/development | Phase 2A establishes a development-only PostgreSQL Docker foundation. |
@@ -29,6 +29,7 @@ maintainability.
 | [ADR-017](adr-017-supersede-standalone-work-truck-log.md) | 2026-07-16 | Product/domain architecture | Operational Safety Checklists and Daily Work Logs supersede the proposed standalone Work Truck Log. |
 | [ADR-018](adr-018-private-operational-safety-checklist-photo-storage.md) | 2026-07-16 | Infrastructure/security architecture | Checklist photo evidence uses private feature-owned metadata and local persistent media storage behind an explicit access gate. |
 | [ADR-019](adr-019-managed-private-overlay-operational-pilot.md) | 2026-07-17 | Infrastructure/security architecture | The controlled operational pilot uses a managed private overlay with Tailscale as the implementation reference and independent key-only SSH recovery. |
+| [ADR-020](adr-020-equipment-fuel-events-v2-station-pricing-and-meter.md) | 2026-08-29 | Product/data architecture | Equipment Fuel Events V2 uses reusable Gas Stations, event-level Decimal pricing, fractional gallons, meter facts, and backward-compatible legacy handling. |
 
 ## Categories
 
@@ -40,11 +41,13 @@ Product and domain architecture:
 - ADR-006
 - ADR-007
 - ADR-017
+- ADR-020
 
 Data architecture and boundaries:
 
 - ADR-001
 - ADR-005
+- ADR-020
 
 Application architecture:
 

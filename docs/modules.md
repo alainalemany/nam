@@ -847,66 +847,57 @@ tank.
 
 ### Source Workflow
 
-A fuel-service person fills one or more tanks on one Equipment record and
-reports the delivered quantity. For example, one dragline service occurrence
-may fill a main tank and a walking-engine tank with separate gallon amounts.
-
-The operator records the occurrence as structured Equipment history. The same
-work may also appear narratively as a Daily Work Log `FUEL_SERVICE` activity.
+The operator records one actual fueling occurrence at one reusable Gas Station.
+For example, one dragline occurrence may fill a main tank and a walking-engine
+tank with separate fractional gallon amounts while sharing the event's station,
+fuel type, and price per gallon.
 
 ### Confirmed Boundary
 
 - One occurrence concerns one Equipment subject.
 - One occurrence may contain one or more tank-fill facts.
 - Equipment Fuel Events own structured delivered-quantity facts.
-- A Daily Work Log may own optional narrative context for the same occurrence.
 - Timesheet Work Allocations do not own Equipment Fuel Events.
-- Fleet gas-station purchases, company fuel cards, receipts, car washes, and
-  temporary vehicle assignment belong to a separate future Fleet domain.
-- Starting meter readings belong to Operational Safety Checklists.
+- Company fuel cards, payment accounts, car washes, temporary vehicle
+  assignment, and receipt-image storage remain outside this feature.
+- Legacy Fuel Service Person and Daily Work Log relationships remain stored but
+  are not part of the V2 workflow.
 
-### Approved V1 Workflow
+### Approved V2 Workflow
 
 - Record operational work date and actual local event time.
-- Select one fuel-consuming Equipment record; derive Mine and City through
-  Equipment.
+- Select one fuel-consuming Equipment record.
 - Select exactly one V1 fuel type: Diesel, Off-road Diesel, or Gasoline.
-- Record one or more ordered Tank Fills as positive integer whole US gallons.
+- Select one active reusable Gas Station and preserve its display snapshots.
+- Record one positive event-level price per gallon.
+- Record one or more ordered Tank Fills as positive Decimal US gallons with up
+  to three fractional digits.
 - Apply conservative V1 guards of `1` through `10` fills, `1` through `100`
   characters per unique normalized tank label, `1` through `999999` gallons per
   fill, and a maximum derived total of `9999990`.
 - Use suggested Equipment tank labels with manual override and no Tank
   Management subsystem. Suggestions come from feature-owned history and are
   normalized and deduplicated for display.
-- Derive event total gallons from the ordered Tank Fills.
-- Optionally select or create a feature-owned Fuel Service Person and preserve
-  the historical display-name snapshot.
-- Retire Fuel Service Person records through inactivation; inactive records are
-  excluded from new selection while unchanged historical references remain
-  readable and used records are protected from hard deletion through
-  Restrict-style relationship behavior.
-- Optionally own a nullable one-to-one link to a matching Daily Work Log
-  `FUEL_SERVICE` activity without changing either feature's ownership.
-  Activity deletion clears the link rather than rewriting the event.
+- Derive exact total gallons and a cents-rounded event cost on the server.
+- Record an explicit Hours, Odometer, or Not Applicable meter type; require a
+  nonnegative reading for Hours and Odometer.
+- Optionally record a receipt reference.
 - Allow optional notes only for exceptional operational context.
 - Persist completed records only, allow explicit in-place correction, and
   provide no normal deletion workflow.
 
-Meter readings are excluded. Hour Meter remains owned by Operational Safety
-Checklists. Equipment Fuel Events preserve limited Equipment, Mine, and City
-display snapshots for historical readability. Structured feature-owned history
-filters and selected-date Day View participation are implemented; analytics,
-reports, and global search remain deferred.
+Gas Stations store no prices or business-management fields. Fuel Events preserve
+limited Equipment and station snapshots for historical readability. Structured
+feature-owned history filters and selected-date Day View participation are
+implemented; analytics, reports, receipt images, and global search remain
+deferred.
 
 New events and Equipment replacements require active eligible Equipment.
 Unchanged inactive Equipment may remain during correction, while a missing live
 relation requires intentional active eligible replacement.
 
-Current implementation status: V1 foundation implemented with feature-owned
-history filtering, completed-record creation and correction, ordered Tank Fill
-persistence, Fuel Service Person management and inline creation, optional
-Daily Work Log activity linking, historical snapshots, and a feature-owned Day
-View display summary added in Phase 24.1.
+Current implementation status: V1 and V2 Phase 1 are implemented. V2 Phase 2A
+is approved by ADR-020 and the feature architecture.
 
 Boundary assessment:
 

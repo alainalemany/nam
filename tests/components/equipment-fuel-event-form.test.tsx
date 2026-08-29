@@ -21,11 +21,20 @@ const equipmentOptions = [
   { id: "diesel-2", label: "Tractor 2 #TR-2 · Mine B", displayName: "Tractor 2", equipmentNumber: "TR-2", category: "TRACTOR" as const, powerType: "DIESEL" as const, status: "ACTIVE" as const, mineName: "Mine B", cityName: "City B", cityState: "WY" },
   { id: "gas-1", label: "Truck 1 #WT-1 · Mine A", displayName: "Truck 1", equipmentNumber: "WT-1", category: "WORK_TRUCK" as const, powerType: "GASOLINE" as const, status: "ACTIVE" as const, mineName: "Mine A", cityName: "City A", cityState: "FL" },
 ];
+const gasStationOptions = [
+  { id: "station-1", label: "Wawa · 123 Main St · Hialeah, FL · 33010", name: "Wawa", address: "123 Main St", cityName: "Hialeah", cityState: "FL", postalCode: "33010", isActive: true },
+  { id: "station-2", label: "Shell · 500 West Ave · Miami, FL", name: "Shell", address: "500 West Ave", cityName: "Miami", cityState: "FL", postalCode: null, isActive: true },
+];
 const initialValues = {
   operationalWorkDate: "2026-07-15",
   eventTime: "08:15",
   equipmentId: "diesel-1",
   fuelType: "DIESEL" as const,
+  gasStationId: "station-1",
+  pricePerGallon: "3.457",
+  meterType: "HOURS" as const,
+  meterReading: "1204.5",
+  receiptReference: "R-100",
   notes: "Preserved event note",
   tankFills: [
     { sequence: 1, tankLabel: "Main Tank", gallons: "390" },
@@ -36,6 +45,7 @@ const baseProps = {
   action,
   cancelHref: "/",
   equipmentOptions,
+  gasStationOptions,
   initialTankLabelSuggestions: ["Main Tank", "Walking Engine"],
   submitLabel: "Save Fuel Event",
 };
@@ -49,15 +59,17 @@ function rowIds(container: HTMLElement) {
 }
 
 describe("EquipmentFuelEventForm", () => {
-  it("filters Equipment and fuel choices while deriving location", () => {
+  it("filters Equipment and Gas Station choices without presenting Equipment assignment as fueling location", () => {
     render(<EquipmentFuelEventForm {...baseProps} />);
     fireEvent.change(screen.getByLabelText("Find Equipment"), { target: { value: "DL-1" } });
     expect(screen.getByRole("option", { name: "Dragline 1 #DL-1 · Mine A" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Truck 1 #WT-1 · Mine A" })).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Equipment"), { target: { value: "diesel-1" } });
-    expect(screen.getByText("Mine A")).toBeInTheDocument();
-    expect(screen.getByText("City A, FL")).toBeInTheDocument();
+    expect(screen.getByText("Dragline 1 #DL-1 · Mine A", { selector: "strong" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Gasoline" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Find Gas Station"), { target: { value: "Wawa" } });
+    expect(screen.getByRole("option", { name: gasStationOptions[0].label })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: gasStationOptions[1].label })).not.toBeInTheDocument();
   });
 
   it("keeps stable client row identity through add, moves, remove, and failed submit", async () => {
@@ -98,9 +110,15 @@ describe("EquipmentFuelEventForm", () => {
     fireEvent.change(screen.getByLabelText("Operational work date"), { target: { value: "2026-07-16" } });
     fireEvent.change(screen.getByLabelText("Local event time"), { target: { value: "09:35" } });
     fireEvent.change(screen.getByLabelText("Fuel type"), { target: { value: "OFF_ROAD_DIESEL" } });
+    fireEvent.change(screen.getByLabelText("Gas Station"), { target: { value: "station-2" } });
+    fireEvent.change(screen.getByLabelText("Price per gallon"), { target: { value: "4.129" } });
+    fireEvent.change(screen.getByLabelText("Meter type"), { target: { value: "ODOMETER" } });
+    fireEvent.change(screen.getByLabelText("Meter reading"), { target: { value: "4500.125" } });
+    fireEvent.change(screen.getByLabelText("Receipt number/reference (optional)"), { target: { value: "R-RAW-22" } });
     fireEvent.change(screen.getByLabelText("Notes (optional)"), { target: { value: "Keep every raw value" } });
     fireEvent.click(within(screen.getAllByRole("group", { name: /Tank Fill/ })[1]).getByRole("button", { name: "Move up" }));
     fireEvent.change(screen.getAllByLabelText("Tank label")[0], { target: { value: "" } });
+    fireEvent.change(screen.getAllByLabelText("Delivered gallons")[0], { target: { value: "79.347" } });
     const idsBeforeSubmit = rowIds(container);
     fireEvent.submit(screen.getByRole("button", { name: "Save Fuel Event" }).closest("form")!);
     const error = await screen.findByText("Tank label is required.");
@@ -110,10 +128,15 @@ describe("EquipmentFuelEventForm", () => {
     expect(screen.getByLabelText("Operational work date")).toHaveValue("2026-07-16");
     expect(screen.getByLabelText("Local event time")).toHaveValue("09:35");
     expect(screen.getByLabelText("Fuel type")).toHaveValue("OFF_ROAD_DIESEL");
+    expect(screen.getByLabelText("Gas Station")).toHaveValue("station-2");
+    expect(screen.getByLabelText("Price per gallon")).toHaveValue(4.129);
+    expect(screen.getByLabelText("Meter type")).toHaveValue("ODOMETER");
+    expect(screen.getByLabelText("Meter reading")).toHaveValue(4500.125);
+    expect(screen.getByLabelText("Receipt number/reference (optional)")).toHaveValue("R-RAW-22");
     expect(screen.getByLabelText("Notes (optional)")).toHaveValue("Keep every raw value");
     const restoredRows = screen.getAllByRole("group", { name: /Tank Fill/ });
     expect(within(restoredRows[0]).getByLabelText("Tank label")).toHaveValue("");
-    expect(within(restoredRows[0]).getByLabelText("Delivered gallons")).toHaveValue(79);
+    expect(within(restoredRows[0]).getByLabelText("Delivered gallons")).toHaveValue(79.347);
     expect(within(restoredRows[1]).getByLabelText("Tank label")).toHaveValue("Main Tank");
     expect(within(restoredRows[1]).getByLabelText("Delivered gallons")).toHaveValue(390);
     expect(rowIds(container)).toEqual(idsBeforeSubmit);
@@ -131,6 +154,9 @@ describe("EquipmentFuelEventForm", () => {
     }));
     render(<EquipmentFuelEventForm {...baseProps} action={failedAction} initialValues={initialValues} />);
     fireEvent.change(screen.getByLabelText("Notes (optional)"), { target: { value: "Persistence retry" } });
+    fireEvent.change(screen.getByLabelText("Price per gallon"), { target: { value: "3.999" } });
+    fireEvent.change(screen.getByLabelText("Meter reading"), { target: { value: "1205.125" } });
+    fireEvent.change(screen.getByLabelText("Receipt number/reference (optional)"), { target: { value: "R-RETRY" } });
     fireEvent.click(within(screen.getAllByRole("group", { name: /Tank Fill/ })[1]).getByRole("button", { name: "Move up" }));
     fireEvent.submit(screen.getByRole("button", { name: "Save Fuel Event" }).closest("form")!);
     await screen.findByText("The Fuel Event could not be saved. Review the fields and try again.");
@@ -138,6 +164,11 @@ describe("EquipmentFuelEventForm", () => {
     expect(screen.getByLabelText("Operational work date")).toHaveValue("2026-07-15");
     expect(screen.getByLabelText("Local event time")).toHaveValue("08:15");
     expect(screen.getByLabelText("Fuel type")).toHaveValue("DIESEL");
+    expect(screen.getByLabelText("Gas Station")).toHaveValue("station-1");
+    expect(screen.getByLabelText("Price per gallon")).toHaveValue(3.999);
+    expect(screen.getByLabelText("Meter type")).toHaveValue("HOURS");
+    expect(screen.getByLabelText("Meter reading")).toHaveValue(1205.125);
+    expect(screen.getByLabelText("Receipt number/reference (optional)")).toHaveValue("R-RETRY");
     expect(screen.getByLabelText("Notes (optional)")).toHaveValue("Persistence retry");
     expect(screen.getAllByLabelText("Tank label").map((input) => (input as HTMLInputElement).value)).toEqual(["Walking Engine", "Main Tank"]);
     expect(screen.getAllByLabelText("Delivered gallons").map((input) => (input as HTMLInputElement).value)).toEqual(["79", "390"]);

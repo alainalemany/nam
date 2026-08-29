@@ -14,7 +14,7 @@ import { emptyEquipmentFuelActionState } from "@/features/equipment-fuel-events/
 
 function formData(overrides: Record<string, unknown> = {}) {
   const data = new FormData();
-  data.set("payload", JSON.stringify({ operationalWorkDate: "2026-07-15", eventTime: "23:45", equipmentId: "equipment-1", fuelType: "DIESEL", notes: "Raw notes", tankFills: [{ clientRowId: "row-a", sequence: 1, tankLabel: "Main Tank", gallons: "390" }], ...overrides }));
+  data.set("payload", JSON.stringify({ operationalWorkDate: "2026-07-15", eventTime: "23:45", equipmentId: "equipment-1", fuelType: "DIESEL", gasStationId: "station-1", pricePerGallon: "3.457", meterType: "HOURS", meterReading: "1204.5", receiptReference: "R-100", notes: "Raw notes", tankFills: [{ clientRowId: "row-a", sequence: 1, tankLabel: "Main Tank", gallons: "390" }], ...overrides }));
   return data;
 }
 
@@ -25,11 +25,12 @@ describe("Equipment Fuel Event Server Actions", () => {
     await expect(createEquipmentFuelEventAction(emptyEquipmentFuelActionState, formData({
       fuelServicePersonId: "forged-person",
       dailyLogActivityId: "forged-activity",
-    }))).rejects.toThrow("redirect:/equipment-fuel-events/event-1");
-    expect(mocks.persist).toHaveBeenCalledWith(expect.objectContaining({ operationalWorkDate: "2026-07-15", tankFills: [{ sequence: 1, tankLabel: "Main Tank", gallons: 390 }] }));
+    }))).rejects.toThrow("redirect:/equipment-fuel-events/event-1?result=created");
+    expect(mocks.persist).toHaveBeenCalledWith(expect.objectContaining({ operationalWorkDate: "2026-07-15", gasStationId: "station-1", tankFills: [expect.objectContaining({ sequence: 1, tankLabel: "Main Tank" })] }));
+    expect(mocks.persist.mock.calls[0][0].tankFills[0].gallons.toString()).toBe("390");
     expect(mocks.persist.mock.calls[0][0]).not.toHaveProperty("fuelServicePersonId");
     expect(mocks.persist.mock.calls[0][0]).not.toHaveProperty("dailyLogActivityId");
-    await expect(correctEquipmentFuelEventAction("event-1", emptyEquipmentFuelActionState, formData())).rejects.toThrow("redirect:/equipment-fuel-events/event-1");
+    await expect(correctEquipmentFuelEventAction("event-1", emptyEquipmentFuelActionState, formData())).rejects.toThrow("redirect:/equipment-fuel-events/event-1?result=corrected");
     expect(mocks.persist).toHaveBeenLastCalledWith(expect.any(Object), "event-1");
   });
 
@@ -43,6 +44,11 @@ describe("Equipment Fuel Event Server Actions", () => {
       eventTime: "24:00",
       equipmentId: "equipment-2",
       fuelType: "OFF_ROAD_DIESEL",
+      gasStationId: "station-2",
+      pricePerGallon: "3.45x",
+      meterType: "ODOMETER",
+      meterReading: "4500.125",
+      receiptReference: "  raw receipt  ",
       notes: "  preserve my spacing  ",
       tankFills: rawFills,
     }));
@@ -54,6 +60,11 @@ describe("Equipment Fuel Event Server Actions", () => {
       eventTime: "24:00",
       equipmentId: "equipment-2",
       fuelType: "OFF_ROAD_DIESEL",
+      gasStationId: "station-2",
+      pricePerGallon: "3.45x",
+      meterType: "ODOMETER",
+      meterReading: "4500.125",
+      receiptReference: "  raw receipt  ",
       notes: "  preserve my spacing  ",
       tankFills: rawFills,
     });
@@ -72,6 +83,11 @@ describe("Equipment Fuel Event Server Actions", () => {
       eventTime: "23:45",
       equipmentId: "equipment-1",
       fuelType: "DIESEL",
+      gasStationId: "station-1",
+      pricePerGallon: "3.457",
+      meterType: "HOURS",
+      meterReading: "1204.5",
+      receiptReference: "R-100",
       notes: "Raw notes",
       tankFills: [{ clientRowId: "row-a", sequence: 1, tankLabel: "Main Tank", gallons: "390" }],
     });
@@ -88,6 +104,11 @@ describe("Equipment Fuel Event Server Actions", () => {
         eventTime: "23:45",
         equipmentId: "equipment-1",
         fuelType: "DIESEL",
+        gasStationId: "station-1",
+        pricePerGallon: "3.457",
+        meterType: "HOURS",
+        meterReading: "1204.5",
+        receiptReference: "R-100",
         notes: "Raw notes",
         tankFills: [{ clientRowId: "row-a", sequence: 1, tankLabel: "Main Tank", gallons: "390" }],
       },

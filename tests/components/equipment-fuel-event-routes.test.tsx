@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   getEvents: vi.fn(),
   getFilterOptions: vi.fn(),
   getEquipmentOptions: vi.fn(),
+  getGasStationOptions: vi.fn(),
   getPeople: vi.fn(),
   getEvent: vi.fn(),
   getTankSuggestions: vi.fn(),
@@ -18,6 +19,7 @@ vi.mock("@/features/equipment-fuel-events/data", async () => {
     getEquipmentFuelEvents: mocks.getEvents,
     getEquipmentFuelFilterOptions: mocks.getFilterOptions,
     getEquipmentFuelEquipmentOptions: mocks.getEquipmentOptions,
+    getEquipmentFuelGasStationOptions: mocks.getGasStationOptions,
     getFuelServicePeople: mocks.getPeople,
     getEquipmentFuelEventById: mocks.getEvent,
     getTankLabelSuggestionsForEquipment: mocks.getTankSuggestions,
@@ -40,12 +42,13 @@ const equipment = {
   id: "equipment-1", label: "Dragline 1 #DL-1 · Mine A", displayName: "Dragline 1", equipmentNumber: "DL-1",
   category: "DRAGLINE", powerType: "DIESEL", status: "ACTIVE", mineName: "Mine A", cityName: "City A", cityState: "FL",
 };
+const gasStation = { id: "station-1", label: "Wawa · 123 Main St · Hialeah, FL", name: "Wawa", address: "123 Main St", cityName: "Hialeah", cityState: "FL", postalCode: null, isActive: true };
 
 function event(overrides: Record<string, unknown> = {}) {
   return {
     id: "event-1", operationalWorkDate: new Date("2026-07-15T00:00:00Z"), eventTime: "08:15", equipmentId: "equipment-1",
     equipmentDisplayName: "Historic Dragline", equipmentNumber: "DL-1", equipmentCategory: "DRAGLINE", mineName: "Historic Mine", cityName: "Historic City", cityState: "FL",
-    fuelType: "DIESEL", totalGallons: 100, fuelServicePersonId: null, fuelServicePerson: null, fuelServicePersonDisplayNameSnapshot: null,
+    fuelType: "DIESEL", totalGallons: 100, gasStationId: "station-1", gasStationNameSnapshot: "Wawa", gasStationAddressSnapshot: "123 Main St", gasStationCitySnapshot: "Hialeah", gasStationStateSnapshot: "FL", gasStationPostalCodeSnapshot: null, pricePerGallon: 3.5, totalCost: 350, meterType: "NOT_APPLICABLE", meterReading: null, receiptReference: null, fuelServicePersonId: null, fuelServicePerson: null, fuelServicePersonDisplayNameSnapshot: null,
     dailyLogActivityId: null, dailyLogActivity: null, notes: null, createdAt: new Date(), updatedAt: new Date(),
     tankFills: [{ id: "fill-1", equipmentFuelEventId: "event-1", sequence: 1, tankLabel: "Main Tank", normalizedTankLabel: "main tank", gallons: 100, createdAt: new Date(), updatedAt: new Date() }],
     ...overrides,
@@ -57,6 +60,7 @@ beforeEach(() => {
   mocks.getEvents.mockResolvedValue([event()]);
   mocks.getFilterOptions.mockResolvedValue({ equipment: [{ id: "equipment-1", displayName: "Dragline 1", equipmentNumber: "DL-1" }], people: [] });
   mocks.getEquipmentOptions.mockResolvedValue([equipment]);
+  mocks.getGasStationOptions.mockResolvedValue([gasStation]);
   mocks.getPeople.mockResolvedValue([{ id: "person-1", displayName: "Pat Smith", normalizedKey: "pat smith", active: true, createdAt: new Date(), updatedAt: new Date(), _count: { fuelEvents: 1 } }]);
   mocks.getEvent.mockResolvedValue(event());
   mocks.getTankSuggestions.mockResolvedValue(["Main Tank"]);

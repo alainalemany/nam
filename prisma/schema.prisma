@@ -202,6 +202,12 @@ enum EquipmentFuelType {
   GASOLINE
 }
 
+enum EquipmentFuelMeterType {
+  HOURS
+  ODOMETER
+  NOT_APPLICABLE
+}
+
 enum SupplyRequestStatus {
   REQUESTED
   FULFILLED
@@ -284,14 +290,15 @@ enum OperationalSafetyChecklistResponseCode {
 }
 
 model City {
-  id        String       @id @default(cuid())
-  name      String
-  state     String?
-  status    RecordStatus @default(ACTIVE)
-  notes     String?
-  mines     Mine[]
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id          String       @id @default(cuid())
+  name        String
+  state       String?
+  status      RecordStatus @default(ACTIVE)
+  notes       String?
+  mines       Mine[]
+  gasStations GasStation[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@unique([name, state])
   @@index([status])
@@ -641,7 +648,19 @@ model EquipmentFuelEvent {
   cityName                             String
   cityState                            String?
   fuelType                             EquipmentFuelType
-  totalGallons                         Int
+  totalGallons                         Decimal                      @db.Decimal(12, 3)
+  gasStationId                         String?
+  gasStation                           GasStation?                  @relation(fields: [gasStationId], references: [id], onDelete: Restrict, map: "FuelEvent_gasStation_fkey")
+  gasStationNameSnapshot               String?
+  gasStationAddressSnapshot            String?
+  gasStationCitySnapshot               String?
+  gasStationStateSnapshot              String?
+  gasStationPostalCodeSnapshot         String?
+  pricePerGallon                       Decimal?                     @db.Decimal(10, 3)
+  totalCost                            Decimal?                     @db.Decimal(14, 2)
+  meterType                            EquipmentFuelMeterType?
+  meterReading                         Decimal?                     @db.Decimal(14, 3)
+  receiptReference                     String?
   fuelServicePersonId                  String?
   fuelServicePerson                    FuelServicePerson?           @relation(fields: [fuelServicePersonId], references: [id], onDelete: Restrict, map: "FuelEvent_servicePerson_fkey")
   fuelServicePersonDisplayNameSnapshot String?
@@ -655,6 +674,7 @@ model EquipmentFuelEvent {
   @@index([operationalWorkDate], map: "FuelEvent_workDate_idx")
   @@index([equipmentId], map: "FuelEvent_equipment_idx")
   @@index([fuelType], map: "FuelEvent_fuelType_idx")
+  @@index([gasStationId], map: "FuelEvent_gasStation_idx")
   @@index([fuelServicePersonId], map: "FuelEvent_servicePerson_idx")
 }
 
@@ -665,13 +685,31 @@ model EquipmentFuelEventTankFill {
   sequence             Int
   tankLabel            String
   normalizedTankLabel  String
-  gallons              Int
+  gallons              Decimal            @db.Decimal(12, 3)
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
   @@unique([equipmentFuelEventId, sequence], map: "FuelTankFill_event_sequence_key")
   @@unique([equipmentFuelEventId, normalizedTankLabel], map: "FuelTankFill_event_label_key")
   @@index([equipmentFuelEventId], map: "FuelTankFill_event_idx")
+}
+
+model GasStation {
+  id            String               @id @default(cuid())
+  name          String
+  normalizedKey String               @unique(map: "GasStation_normalizedKey_key")
+  address       String?
+  cityId        String
+  city          City                 @relation(fields: [cityId], references: [id], onDelete: Restrict, map: "GasStation_city_fkey")
+  postalCode    String?
+  isActive      Boolean              @default(true)
+  fuelEvents    EquipmentFuelEvent[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([cityId], map: "GasStation_city_idx")
+  @@index([isActive], map: "GasStation_isActive_idx")
+  @@index([name], map: "GasStation_name_idx")
 }
 
 model FuelServicePerson {

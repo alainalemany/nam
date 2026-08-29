@@ -297,15 +297,20 @@ Potential fields:
 
 - Operational work date
 - Actual local event time
-- Equipment, with Mine and City derived through Equipment
+- Equipment
 - One fuel type: Diesel, Off-road Diesel, or Gasoline
+- Reusable Gas Station with historical location snapshots
+- Event-level Decimal price per gallon
 - One or more ordered Tank Fills
 - Required tank label with suggestions and manual override
-- Positive integer whole-US-gallon quantity per Tank Fill
-- Derived event total gallons
-- Optional feature-owned Fuel Service Person reference and name snapshot
-- Optional Daily Work Log fueling-activity context
+- Positive Decimal US-gallon quantity per Tank Fill
+- Derived exact event total gallons and cents-rounded total cost
+- Explicit Hours, Odometer, or Not Applicable meter type and conditional reading
+- Optional receipt reference
 - Optional exceptional notes
+
+Legacy Fuel Service Person and Daily Work Log relationships remain stored for
+backward compatibility but are not part of the V2 entry or detail workflow.
 
 ### 8A. Supply Requests
 
@@ -856,36 +861,26 @@ NAM Dashboard should support Equipment Fuel Events for operational fuel service
 performed on fuel-consuming Equipment such as diesel draglines, cable tractors,
 forklifts, generators, and future support equipment.
 
-One event represents one fueling occurrence for one Equipment subject. One
-occurrence may contain multiple tank fills. For example, one dragline service
-may record separate quantities for its main tank and walking-engine tank while
-remaining one operational event.
+One event represents one fueling occurrence for one Equipment subject at one
+reusable Gas Station, using one fuel type and one event-level price per gallon.
+One occurrence may contain multiple ordered Tank Fills. Each fill uses a
+required suggested-or-overridden label and a positive quantity with up to three
+fractional US-gallon digits. Event total gallons are the exact Decimal sum of
+the fills. Event total cost is calculated authoritatively on the server from
+total gallons multiplied by price per gallon and rounded half-up to cents.
 
-The fuel-service person reports delivered quantity. The operator should record
-the operational work date, actual local event time, Equipment, exactly one fuel
-type, and one or more ordered Tank Fills. V1 fuel types are Diesel, Off-road
-Diesel, and Gasoline. Each Tank Fill uses a required suggested-or-overridden
-label and a positive integer whole-US-gallon quantity. Event total gallons are
-derived from the fills. V1 permits `1` through `10` fills, labels from `1`
-through `100` characters, quantities from `1` through `999999` gallons per
-fill, and a maximum derived total of `9999990`. Duplicate labels after
-whitespace and case normalization are invalid within one event.
+The operator records operational work date, actual local event time, Equipment,
+fuel type, active Gas Station, price per gallon, ordered Tank Fills, explicit
+meter type, and a reading when Hours or Odometer applies. Receipt reference and
+notes are optional. Gas Stations contain only name, location/address, City,
+optional postal code, and active status; historical event snapshots keep the
+selected station readable. Prices belong to events, never Gas Stations.
 
-Fuel Service Person is optional feature-owned reference data with searchable
-selection, inline creation, and a historical display-name snapshot. It does not
-introduce Employee, User, or authentication behavior. Active records are
-available for new selection, inactivation is the retirement workflow, unchanged
-inactive historical references may remain during correction, and used records
-are protected from hard deletion through Restrict-style relationship behavior.
-Notes are optional, limited to `2000` characters, and reserved for exceptional
-operational context. Meter and level readings are not recorded; Hour Meter
-remains owned by Operational Safety Checklists.
-
-An Equipment Fuel Event may own an optional nullable one-to-one reference to a
-matching Daily Work Log fueling activity for narrative context. The structured
-fuel event and narrative activity remain independently owned, and activity
-deletion clears the link without rewriting Fuel Event history. Equipment Fuel
-Events do not belong to Timesheet Work Allocations.
+Fuel Service Person and Daily Work Log relationships are legacy-compatible
+storage only. Their controls and presentation are not part of Fuel Events V2.
+New events leave both relationships null; correction preserves existing hidden
+historical values. Equipment Fuel Events do not belong to Timesheet Work
+Allocations.
 
 V1 persists completed events only, supports explicit correction in place, and
 provides no normal deletion workflow. Equipment changes during correction
@@ -893,13 +888,12 @@ refresh the limited Equipment/location snapshots and require an active eligible
 replacement plus a complete valid Tank Fill set. Creation also requires active
 eligible Equipment; unchanged inactive Equipment may remain during correction.
 
-Fleet vehicle gas-station purchases are excluded. Company fuel cards, receipts,
-car washes, and temporary replacement-truck assignment belong to a separate
-future Fleet domain. Starting meter readings belong to Operational Safety
-Checklists.
+Company fuel cards, payment accounts, car washes, temporary replacement-truck
+assignment, and receipt-image storage are excluded. The event meter is an
+explicit occurrence fact and is not inferred from Equipment category.
 
 Feature-owned structured history filtering and selected-date Day View
-participation are implemented. Analytics, reporting, prices, and global
+participation are implemented. Analytics, reporting, receipt images, and global
 cross-module search remain deferred. Approved implementation architecture is
 `docs/architecture/features/equipment-fuel-events.md`.
 

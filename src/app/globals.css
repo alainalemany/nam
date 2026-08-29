@@ -1334,9 +1334,21 @@ textarea {
 .fuel-fill-row {
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(180px, 2fr) minmax(150px, 1fr) auto;
+  grid-template-columns: minmax(180px, 2fr) minmax(150px, 1fr) minmax(120px, 1fr) auto;
   border: 1px solid #d9e0e6;
   padding: 14px;
+}
+
+.fuel-fill-cost {
+  display: grid;
+  align-content: end;
+  gap: 6px;
+  padding-bottom: 10px;
+}
+
+.fuel-fill-cost span {
+  color: #34424d;
+  font-weight: 700;
 }
 
 .fuel-fill-row legend {

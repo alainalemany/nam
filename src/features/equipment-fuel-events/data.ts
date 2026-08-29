@@ -2,19 +2,19 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
-import { fuelTypeLabel } from "./constants";
+import { formatFuelGallons, fuelTypeLabel } from "./constants";
 import { buildEquipmentFuelWhere, type EquipmentFuelFilters } from "./filters";
 import type {
   EquipmentFuelEquipmentOption,
   EquipmentFuelEventFormInitialValues,
+  EquipmentFuelGasStationOption,
 } from "./types";
 import { equipmentFuelDateToUtc, isEquipmentFuelDateOnly } from "./date";
 import { deduplicateTankLabelSuggestions } from "./validation";
 
 const eventDetailInclude = {
   tankFills: { orderBy: { sequence: "asc" as const } },
-  fuelServicePerson: true,
-  dailyLogActivity: true,
+  gasStation: { include: { city: true } },
 } satisfies Prisma.EquipmentFuelEventInclude;
 
 export async function getEquipmentFuelEvents(filters: EquipmentFuelFilters = {}) {
@@ -62,10 +62,10 @@ export async function getEquipmentFuelEventDayViewItems(date: string) {
     eventTime: `${record.eventTime} local`,
     equipmentIdentity: `${record.equipmentDisplayName}${record.equipmentNumber ? ` #${record.equipmentNumber}` : ""}`,
     fuelType: fuelTypeLabel(record.fuelType),
-    totalGallons: `${record.totalGallons.toLocaleString()} gal`,
+    totalGallons: formatFuelGallons(record.totalGallons),
     tankFills: record.tankFills.map((fill) => ({
       sequence: fill.sequence,
-      summary: `${fill.tankLabel}: ${fill.gallons.toLocaleString()} gal`,
+      summary: `${fill.tankLabel}: ${formatFuelGallons(fill.gallons)}`,
     })),
     fuelServicePerson:
       record.fuelServicePersonDisplayNameSnapshot ?? "Not recorded",
@@ -102,6 +102,36 @@ export async function getEquipmentFuelEquipmentOptions(selectedEquipmentId?: str
     cityName: item.mine.city.name,
     cityState: item.mine.city.state,
   }));
+}
+
+export async function getEquipmentFuelGasStationOptions(selectedGasStationId?: string | null) {
+  const stations = await prisma.gasStation.findMany({
+    where: {
+      OR: [
+        { isActive: true },
+        ...(selectedGasStationId ? [{ id: selectedGasStationId }] : []),
+      ],
+    },
+    include: { city: true },
+    orderBy: [{ name: "asc" }, { address: "asc" }, { id: "asc" }],
+  });
+  return stations.map((station): EquipmentFuelGasStationOption => {
+    const location = [
+      station.address,
+      `${station.city.name}${station.city.state ? `, ${station.city.state}` : ""}`,
+      station.postalCode,
+    ].filter(Boolean).join(" · ");
+    return {
+      id: station.id,
+      label: `${station.name}${location ? ` · ${location}` : ""}`,
+      name: station.name,
+      address: station.address,
+      cityName: station.city.name,
+      cityState: station.city.state,
+      postalCode: station.postalCode,
+      isActive: station.isActive,
+    };
+  });
 }
 
 export async function getFuelServicePeople() {
@@ -154,11 +184,16 @@ export function equipmentFuelEventToFormInitial(event: FuelEventDetail): Equipme
     eventTime: event.eventTime,
     equipmentId: event.equipmentId ?? "",
     fuelType: event.fuelType,
+    gasStationId: event.gasStationId ?? "",
+    pricePerGallon: event.pricePerGallon?.toString() ?? "",
+    meterType: event.meterType ?? "",
+    meterReading: event.meterReading?.toString() ?? "",
+    receiptReference: event.receiptReference ?? "",
     notes: event.notes ?? "",
     tankFills: event.tankFills.map((fill) => ({
       sequence: fill.sequence,
       tankLabel: fill.tankLabel,
-      gallons: String(fill.gallons),
+      gallons: fill.gallons.toString(),
     })),
   };
 }

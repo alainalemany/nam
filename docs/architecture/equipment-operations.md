@@ -179,28 +179,27 @@ One event represents:
 - Event date and time context.
 - One fuel type for that occurrence unless later discovery proves mixed fuel is
   operationally real.
+- One reusable Gas Station and one event-level price per gallon.
 - One or more ordered tank-fill lines.
-- Delivered quantity reported by the fuel-service person.
-- Optional service-person or source context.
-- Optional explicit Daily Work Log activity context.
+- Precise delivered quantities, server-derived total gallons, and total cost.
+- Explicit meter type with a reading when applicable.
+- Optional receipt reference and notes.
 
 A multi-tank occurrence, such as a main tank and walking-engine tank filled
 during the same service visit, remains one event with separate tank-fill facts.
-Fleet vehicle fuel-card purchases, gas-station receipts, car washes, mileage,
-and temporary vehicle assignment do not belong to this feature.
+Company fuel-card account management, payment processing, car washes, temporary
+vehicle assignment, and receipt images do not belong to this feature.
 
-Equipment Fuel Events own structured delivered-quantity facts. Daily Work Logs
-may own a narrative `FUEL_SERVICE` activity for the same occurrence. Timesheet
-Work Allocations do not own or link to the fuel event merely because fueling
-happened during work.
+Equipment Fuel Events own structured station, delivered-quantity, historical
+price/cost, meter, and receipt-reference facts. Timesheet Work Allocations do
+not own or link to the fuel event merely because fueling happened during work.
 
 The approved feature architecture is
-`docs/architecture/features/equipment-fuel-events.md`. It resolves the V1 fuel
-types, whole-US-gallon Tank Fill model, completed-only correction lifecycle,
-active/inactive Fuel Service Person reference, historical snapshots, optional
-one-to-one Fuel Event-owned Daily Work Log activity context, active Equipment
-eligibility, bounded Tank Fill validation, and feature-owned Day View boundary.
-Meter readings are excluded.
+`docs/architecture/features/equipment-fuel-events.md`. ADR-020 supersedes the V1
+whole-gallon, no-station, no-price, and no-meter assumptions with reusable Gas
+Stations, Decimal gallons and pricing, explicit meter facts, receipt reference,
+and backward-compatible preservation of hidden legacy Fuel Service Person and
+Daily Work Log relationships.
 
 ## 8. Supply Requests
 
@@ -261,9 +260,10 @@ Fleet discovery must account for:
 - Optional car washes and related evidence.
 
 Future Fleet architecture may reuse Equipment references when appropriate, but
-it must not place receipt and vehicle-assignment behavior inside Operational
-Safety Checklists, Daily Work Logs, or Equipment Fuel Events. Starting meter
-readings remain checklist-owned, and mid-shift replacement narrative remains
+it must not place payment-account, vehicle-assignment, or broad receipt-image
+management behavior inside Operational Safety Checklists, Daily Work Logs, or
+Equipment Fuel Events. Fuel Events may own the bounded occurrence meter and
+receipt reference approved by ADR-020; mid-shift replacement narrative remains
 Daily Work Log-owned.
 
 ## 10. Equipment History
@@ -384,15 +384,13 @@ known-category defaults, optional checklist-level photo evidence, and NAM save
 confirmation. Photo implementation remains technically and security-gated by
 ADR-018 rather than blocked by checklist product ambiguity.
 
-Equipment Fuel Events have no remaining V1 product decisions. The approved
-architecture defines operational work date plus local event time, Diesel,
-Off-road Diesel, and Gasoline, ordered positive-integer whole-US-gallon Tank
-Fills with bounded validation and unique normalized labels, historical
-suggestions with manual override, no meter readings, active-Equipment
-eligibility, an optional active/inactive feature-owned Fuel Service Person
-reference, an optional unique Fuel Event-owned Daily Work Log activity link,
-completed-only correction, structured history filters, and implemented
-feature-owned Day View participation.
+Equipment Fuel Events V2 Phase 2A is approved by ADR-020. The current
+architecture defines operational work date plus local event time, one Equipment,
+fuel type, reusable Gas Station, event-level Decimal price, ordered fractional
+Tank Fills, exact server totals, explicit meter facts, optional receipt
+reference, completed-only correction, structured history, and Day View
+participation. Legacy Fuel Service Person and Daily Work Log relationships are
+preserved internally but retired from the active workflow.
 
 Supply Requests have no remaining Phase 26.1 product decisions. Confirmed V1
 direction includes NAM-only recording after corporate submission, one

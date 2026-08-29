@@ -1692,8 +1692,8 @@ Relationships:
 
 Equipment Fuel Events are implemented operational service records governed by
 `docs/architecture/features/equipment-fuel-events.md`. The Prisma aggregate is
-`EquipmentFuelEvent` with owned `EquipmentFuelEventTankFill` children and the
-feature-owned `FuelServicePerson` reference.
+`EquipmentFuelEvent` with owned `EquipmentFuelEventTankFill` children, reusable
+`GasStation` reference data, and legacy-compatible `FuelServicePerson` storage.
 
 ### Equipment Fuel Event
 
@@ -1706,10 +1706,16 @@ Conceptual fields:
 - Required actual local event time.
 - Required live Equipment reference at creation.
 - Required fuel type: Diesel, Off-road Diesel, or Gasoline.
-- Optional live Fuel Service Person reference.
-- Fuel Service Person display-name snapshot when selected.
-- Optional unique Daily Work Log fueling-activity reference owned by the Fuel
-  Event.
+- Nullable Gas Station reference for legacy compatibility; required for new V2
+  events.
+- Gas Station name, address, City, state, and postal snapshots.
+- Nullable Decimal price per gallon and server-derived total cost for legacy
+  compatibility; required for new V2 events.
+- Nullable meter type and reading, with explicit Hours, Odometer, and Not
+  Applicable rules.
+- Optional receipt reference.
+- Legacy Fuel Service Person reference/name snapshot and unique Daily Work Log
+  relationship retained but hidden from the V2 workflow.
 - Optional exceptional notes.
 - Equipment display name snapshot.
 - Equipment number snapshot.
@@ -1724,6 +1730,7 @@ Relationships:
 - Belongs to one Equipment when created; the live relation may later become
   null while historical snapshots remain.
 - Owns one or more ordered Tank Fills.
+- May reference one Gas Station using Restrict-style deletion behavior.
 - May reference one feature-owned Fuel Service Person using Restrict-style
   deletion behavior for historically used records.
 - May reference one matching Daily Work Log `FUEL_SERVICE` activity without
@@ -1747,10 +1754,10 @@ Conceptual fields:
 - Sequence unique within the parent event.
 - Required trimmed tank-label snapshot from `1` through `100` characters.
 - Required normalized tank-label comparison key unique within the parent event.
-- Required positive integer whole-US-gallon quantity from `1` through `999999`.
+- Required positive `Decimal(12,3)` US-gallon quantity up to `999999`.
 
-An event owns between `1` and `10` Tank Fills. The parent total is derived from
-their integer sum and may not exceed `9999990`. Tank Fills have no independent
+An event owns between `1` and `10` Tank Fills. The parent total is the exact
+Decimal sum and may not exceed `9999990`. Tank Fills have no independent
 lifecycle or reusable Tank reference. Suggested historical labels are
 normalized and deduplicated for display; manual override remains valid and does
 not create a Tank Management subsystem.
@@ -1774,41 +1781,59 @@ for new selection; an unchanged inactive historical reference may remain during
 correction. Inactivation is the retirement mechanism, and historically used
 records must not be hard-deleted.
 
+Fuel Service Person is retained for historical compatibility but is not exposed
+on Fuel Events V2 create, correction, or detail surfaces. New events leave the
+relation and snapshot null; legacy corrections preserve both unchanged.
+
+### Gas Station
+
+Represents a reusable fueling-location reference with name, server-derived
+normalized uniqueness key, optional address, required City relation, optional
+postal code, active/inactive status, and timestamps. The normalized key includes
+name, address, City identity, and postal code so distinct locations of the same
+brand remain valid.
+
+Gas Stations store no current price or accounting data. New events select only
+active stations. Inactive stations remain historically readable and may remain
+unchanged during correction. Historical use prevents destructive deletion.
+
 ### Historical And Relationship Rules
 
-- Mine and City derive through Equipment and are not independently selected.
+- Mine and City still derive through Equipment for assignment context, but Gas
+  Station snapshots own the displayed fueling location.
 - Creation and Equipment replacement require active Equipment. Electric-only
   Equipment is ineligible; Diesel and Gasoline power contexts constrain fuel
   choice, while Hybrid, Other, Unknown, or missing power context requires an
   explicit supported choice with no detected contradiction.
-- Equipment/location and service-person snapshots are server-generated.
+- Equipment and Gas Station snapshots are server-generated.
 - Complete Equipment, Mine, City, or person records are not duplicated.
 - Unchanged references preserve snapshots during correction.
 - Changed Equipment refreshes the Equipment/location snapshot group and
   requires an active eligible replacement and a complete valid Tank Fill set.
 - An unchanged inactive Equipment reference may remain during correction; a
   null relation requires intentional active eligible replacement.
-- The optional Daily Work Log relationship must match operational date,
-  fueling activity type, noncontradictory Equipment context, and one-to-one
-  uniqueness.
+- Existing Daily Work Log relationships retain one-to-one and SetNull
+  compatibility but are not selected or changed in the V2 workflow.
 - Daily Work Log deletion must not delete or rewrite a Fuel Event.
 - Duplicate normalized tank labels within one event are invalid.
 - Optional notes are limited to `2000` characters.
-- Meter and level readings are not part of the model.
+- `HOURS` and `ODOMETER` require a nonnegative reading;
+  `NOT_APPLICABLE` requires a null reading; both fields may be null only for
+  legacy events.
+- Price and gallon facts use fixed-precision Decimal storage. Total cost is
+  calculated server-side with half-up cents rounding.
 
 Equipment Fuel Event concepts explicitly exclude:
 
-- Fleet gas-station purchases.
 - Company fuel cards.
-- Receipts and car washes.
-- Vehicle mileage and temporary assignment.
+- Receipt images and car washes.
+- Temporary vehicle assignment.
 - Timesheet Work Allocation ownership.
 - A duplicate persisted Equipment timeline event.
 - Runtime-configurable fuel types or Tank records.
 
-Fleet purchase pricing and receipt evidence require separate future discovery.
-The older conceptual `FuelPriceReference` does not belong to the confirmed
-Equipment Fuel Event boundary.
+No current-price reference or generalized document subsystem belongs to the
+confirmed Equipment Fuel Event boundary.
 
 ## Supply Request Concepts
 

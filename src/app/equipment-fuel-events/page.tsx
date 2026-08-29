@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { equipmentFuelTypeOptions, fuelTypeLabel } from "@/features/equipment-fuel-events/constants";
+import { equipmentFuelTypeOptions, formatFuelCurrency, formatFuelGallons, fuelTypeLabel } from "@/features/equipment-fuel-events/constants";
 import { displayEquipmentFuelDate } from "@/features/equipment-fuel-events/date";
 import { getEquipmentFuelEvents, getEquipmentFuelFilterOptions } from "@/features/equipment-fuel-events/data";
 import { hasEquipmentFuelFilters, parseEquipmentFuelFilters, type EquipmentFuelSearchParams } from "@/features/equipment-fuel-events/filters";
@@ -19,7 +19,7 @@ export default async function EquipmentFuelEventsPage({ searchParams }: { search
     <main className="page-stack">
       <section className="page-header with-actions">
         <div><p className="eyebrow">Equipment Operations</p><h1>Equipment Fuel Events</h1><p className="summary">Completed operational fueling occurrences with structured Tank Fills and delivered gallons.</p></div>
-        <div className="inline-actions"><Link className="button secondary" href="/equipment-fuel-events/service-personnel">Service Personnel</Link><Link className="button primary" href="/equipment-fuel-events/new">Record Fuel Event</Link></div>
+        <div className="inline-actions"><Link className="button secondary" href="/equipment-fuel-events/gas-stations">Gas Stations</Link><Link className="button secondary" href="/equipment-fuel-events/service-personnel">Service Personnel</Link><Link className="button primary" href="/equipment-fuel-events/new">Record Fuel Event</Link></div>
       </section>
 
       <section className="panel filter-panel" aria-labelledby="fuel-event-filters-heading">
@@ -41,7 +41,7 @@ export default async function EquipmentFuelEventsPage({ searchParams }: { search
         {events.length === 0 ? (
           <div className="empty-state"><h3>{filtersActive ? "No matching Fuel Events" : "No Fuel Events yet"}</h3><p>{filtersActive ? "Clear or adjust the current filters." : "Record the first operational fueling occurrence."}</p>{filtersActive ? <Link className="button secondary" href="/equipment-fuel-events">Clear Filters</Link> : <Link className="button primary" href="/equipment-fuel-events/new">Record Fuel Event</Link>}</div>
         ) : (
-          <div className="table-wrap"><table><thead><tr><th>Date and time</th><th>Equipment</th><th>Fuel</th><th>Tank Fills</th><th>Service person</th><th>Actions</th></tr></thead><tbody>{events.map((event) => <tr key={event.id}><td>{displayEquipmentFuelDate(event.operationalWorkDate)}<span className="subtle">{event.eventTime} local</span></td><td>{event.equipmentDisplayName}<span className="subtle">{event.equipmentNumber ?? "No Equipment number"} · {event.mineName}</span></td><td>{fuelTypeLabel(event.fuelType)}<span className="subtle">{event.totalGallons.toLocaleString()} gal total</span></td><td>{event.tankFills.length}<span className="subtle">{event.tankFills.map((fill) => fill.tankLabel).join(", ")}</span></td><td>{event.fuelServicePersonDisplayNameSnapshot ?? "Not recorded"}</td><td className="action-cell"><Link className="table-action" href={`/equipment-fuel-events/${event.id}`}>View</Link><Link className="table-action" href={`/equipment-fuel-events/${event.id}/edit`}>Correct</Link></td></tr>)}</tbody></table></div>
+          <div className="table-wrap"><table><thead><tr><th>Date and time</th><th>Equipment</th><th>Gas Station</th><th>Fuel</th><th>Tank Fills</th><th>Total cost</th><th>Actions</th></tr></thead><tbody>{events.map((event) => <tr key={event.id}><td>{displayEquipmentFuelDate(event.operationalWorkDate)}<span className="subtle">{event.eventTime} local</span></td><td>{event.equipmentDisplayName}<span className="subtle">{event.equipmentNumber ?? "No Equipment number"}</span></td><td>{event.gasStationNameSnapshot ?? "Not recorded"}<span className="subtle">{event.gasStationCitySnapshot ? `${event.gasStationCitySnapshot}${event.gasStationStateSnapshot ? `, ${event.gasStationStateSnapshot}` : ""}` : "Legacy event"}</span></td><td>{fuelTypeLabel(event.fuelType)}<span className="subtle">{formatFuelGallons(event.totalGallons)} total</span></td><td>{event.tankFills.length}<span className="subtle">{event.tankFills.map((fill) => fill.tankLabel).join(", ")}</span></td><td>{formatFuelCurrency(event.totalCost)}</td><td className="action-cell"><Link className="table-action" href={`/equipment-fuel-events/${event.id}`}>View</Link><Link className="table-action" href={`/equipment-fuel-events/${event.id}/edit`}>Correct</Link></td></tr>)}</tbody></table></div>
         )}
       </section>
     </main>

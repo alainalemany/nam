@@ -69,6 +69,48 @@ function eventData(prefix: string, equipmentId: string, overrides: Record<string
 }
 
 describePostgres("Equipment Fuel Event PostgreSQL invariants", () => {
+  it("persists V2 Decimal facts and keeps an inactive historical Gas Station readable", async () => {
+    const client = new PrismaClient({ datasourceUrl: databaseUrl });
+    try {
+      await withRollback(client, async (transaction, prefix) => {
+        const base = await createBase(transaction, prefix);
+        const station = await transaction.gasStation.create({
+          data: {
+            id: `${prefix}-station`, name: "Wawa", normalizedKey: `${prefix}|wawa|123 main`,
+            address: "123 Main St", cityId: base.city.id, postalCode: "33010",
+          },
+        });
+        const created = await transaction.equipmentFuelEvent.create({
+          data: {
+            ...eventData(prefix, base.equipment.id, {
+              totalGallons: new Prisma.Decimal("12.5"), gasStationId: station.id,
+              gasStationNameSnapshot: station.name, gasStationAddressSnapshot: station.address,
+              gasStationCitySnapshot: base.city.name, gasStationStateSnapshot: base.city.state,
+              gasStationPostalCodeSnapshot: station.postalCode,
+              pricePerGallon: new Prisma.Decimal("3.333"), totalCost: new Prisma.Decimal("41.66"),
+              meterType: "ODOMETER", meterReading: new Prisma.Decimal("4500.125"), receiptReference: "R-100",
+            }),
+            tankFills: {
+              create: [
+                { sequence: 1, tankLabel: "Main", normalizedTankLabel: "main", gallons: new Prisma.Decimal("12.347") },
+                { sequence: 2, tankLabel: "Aux", normalizedTankLabel: "aux", gallons: new Prisma.Decimal("0.153") },
+              ],
+            },
+          },
+        });
+        await transaction.gasStation.update({ where: { id: station.id }, data: { isActive: false } });
+        const historical = await transaction.equipmentFuelEvent.findUniqueOrThrow({ where: { id: created.id }, include: { gasStation: true, tankFills: { orderBy: { sequence: "asc" } } } });
+        expect(historical.totalGallons.toString()).toBe("12.5");
+        expect(historical.totalCost?.toFixed(2)).toBe("41.66");
+        expect(historical.gasStation).toMatchObject({ id: station.id, isActive: false });
+        expect(historical.gasStationNameSnapshot).toBe("Wawa");
+        expect(historical.tankFills.map((fill) => fill.gallons.toString())).toEqual(["12.347", "0.153"]);
+      });
+    } finally {
+      await client.$disconnect();
+    }
+  });
+
   it("validates repeated identity, SetNull behavior, snapshots, and child cascade in a rollback-only transaction", async () => {
     const client = new PrismaClient({ datasourceUrl: databaseUrl });
     try {

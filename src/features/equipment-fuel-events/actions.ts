@@ -12,11 +12,13 @@ import {
 import { getTankLabelSuggestionsForEquipment } from "./data";
 import {
   emptyEquipmentFuelActionState,
+  equipmentFuelEventCorrectionSchema,
   equipmentFuelEventSubmissionSchema,
   equipmentFuelFieldErrors,
   equipmentFuelSubmittedValues,
   fuelServicePersonSchema,
   type EquipmentFuelActionState,
+  type EquipmentFuelEventSubmissionInput,
 } from "./validation";
 
 function parsePayload(formData: FormData): unknown {
@@ -35,16 +37,19 @@ export async function getEquipmentFuelTankLabelSuggestionsAction(
   return getTankLabelSuggestionsForEquipment(equipmentId);
 }
 
-function inputState(formData: FormData):
+function inputState(
+  formData: FormData,
+  schema: typeof equipmentFuelEventSubmissionSchema | typeof equipmentFuelEventCorrectionSchema,
+):
   | {
       ok: true;
-      data: ReturnType<typeof equipmentFuelEventSubmissionSchema.parse>;
+      data: EquipmentFuelEventSubmissionInput;
       values: NonNullable<EquipmentFuelActionState["values"]>;
     }
   | { ok: false; state: EquipmentFuelActionState } {
   const payload = parsePayload(formData);
   const values = equipmentFuelSubmittedValues(payload);
-  const parsed = equipmentFuelEventSubmissionSchema.safeParse(payload);
+  const parsed = schema.safeParse(payload);
   if (parsed.success) {
     if (values) return { ok: true, data: parsed.data, values };
     return {
@@ -91,7 +96,7 @@ export async function createEquipmentFuelEventAction(
   _previousState: EquipmentFuelActionState,
   formData: FormData,
 ) {
-  const parsed = inputState(formData);
+  const parsed = inputState(formData, equipmentFuelEventSubmissionSchema);
   if (!parsed.ok) return parsed.state;
   let id: string;
   try {
@@ -101,7 +106,7 @@ export async function createEquipmentFuelEventAction(
   }
   revalidatePath("/");
   revalidatePath("/equipment-fuel-events");
-  redirect(`/equipment-fuel-events/${id}`);
+  redirect(`/equipment-fuel-events/${id}?result=created`);
 }
 
 export async function correctEquipmentFuelEventAction(
@@ -109,7 +114,7 @@ export async function correctEquipmentFuelEventAction(
   _previousState: EquipmentFuelActionState,
   formData: FormData,
 ) {
-  const parsed = inputState(formData);
+  const parsed = inputState(formData, equipmentFuelEventCorrectionSchema);
   if (!parsed.ok) return parsed.state;
   try {
     await persistEquipmentFuelEvent(parsed.data, eventId);
@@ -118,7 +123,7 @@ export async function correctEquipmentFuelEventAction(
   }
   revalidatePath("/equipment-fuel-events");
   revalidatePath(`/equipment-fuel-events/${eventId}`);
-  redirect(`/equipment-fuel-events/${eventId}`);
+  redirect(`/equipment-fuel-events/${eventId}?result=corrected`);
 }
 
 const referenceInitialState = { ok: true, message: "" };

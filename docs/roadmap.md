@@ -750,8 +750,8 @@ Approved feature architecture:
 
 `docs/architecture/features/equipment-fuel-events.md`
 
-Current status: Product decisions, feature architecture, and V1 foundation are
-complete. Phase 24.1 selected-date Day View participation is implemented.
+Current status: V1, Phase 24.1 Day View participation, and Fuel Events V2 Phase
+1 are implemented. V2 Phase 2A is approved for implementation by ADR-020.
 
 ### Phase 1: Product And Boundary Discovery (Complete)
 
@@ -798,12 +798,28 @@ Phase 24.1 implements the bounded chronological query, historical Equipment and
 Fuel Service Person context, ordered Tank Fill summaries, persisted total, and
 source links without moving fuel interpretation into Day View.
 
-### Phase 5: Future Enhancements
+### Phase 5: Fuel Events V2 Phase 1 (Complete)
+
+- Preserve complete raw form state across recoverable failures.
+- Remove Fuel Service Person and Daily Work Log controls while preserving
+  hidden historical relationships on correction.
+- Stabilize transient Tank Fill row identity and give Notes its own section.
+
+### Phase 6: Fuel Events V2 Phase 2A (Approved)
+
+- Add lightweight reusable Gas Stations with active/inactive management.
+- Add event-level Decimal price, fractional gallons, exact totals, meter facts,
+  and optional receipt reference.
+- Revise create, correction, detail, and success-confirmation presentation.
+- Preserve legacy rows without fabricated backfills.
+
+### Phase 7: Future Enhancements
 
 - Evaluate approved operational totals and reporting only after reliable event
   history exists.
 - Evaluate Equipment usage trends only after enough reliable history exists.
 - Keep global cross-module search and automated forecasting deferred.
+- Keep receipt-image upload deferred.
 
 ## Operational Pilot Readiness Roadmap
 

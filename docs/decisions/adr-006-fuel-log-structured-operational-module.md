@@ -2,7 +2,7 @@
 
 Date: 2026-06-24
 
-Status: Accepted
+Status: Accepted; Equipment Fuel Event pricing direction superseded by ADR-020
 
 Category: Product/data architecture
 
@@ -24,6 +24,14 @@ The current boundary assessment is
 `docs/architecture/equipment-operations.md`. The approved Equipment Fuel Events
 feature architecture is
 `docs/architecture/features/equipment-fuel-events.md`.
+
+## V2 Supersession (2026-08-29)
+
+ADR-020 supersedes this ADR's optional-price and no-gas-station direction for
+Equipment Fuel Events. New V2 Equipment Fuel Events require one reusable Gas
+Station and one event-level historical price per gallon. This ADR remains the
+historical source for the structured-record decision and does not authorize a
+shared Fleet, vendor, accounting, or automatic-price subsystem.
 
 ## Decision
 

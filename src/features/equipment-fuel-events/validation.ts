@@ -1,8 +1,11 @@
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import {
+  equipmentFuelMeterTypeValues,
   equipmentFuelTypeValues,
   maxEventGallons,
+  maxFuelEventCost,
   maxGallonsPerFill,
   maxTankFills,
 } from "./constants";
@@ -58,22 +61,69 @@ const integerFromInput = (label: string, minimum: number, maximum: number) =>
       .max(maximum, `${label} must be ${maximum} or fewer.`),
   );
 
+function decimalValueSchema(
+  label: string,
+  options: { maximum: number | string; allowZero?: boolean },
+) {
+  const invalid = `${label} must be a number with no more than 3 decimal places.`;
+  return z.preprocess(
+    (value) => typeof value === "number" ? String(value) : value,
+    z.string({ message: invalid })
+      .trim()
+      .regex(/^\d+(?:\.\d{1,3})?$/, invalid)
+      .transform((value) => new Prisma.Decimal(value))
+      .refine(
+        (value) => options.allowZero ? value.greaterThanOrEqualTo(0) : value.greaterThan(0),
+        options.allowZero ? `${label} must be zero or greater.` : `${label} must be greater than zero.`,
+      )
+      .refine((value) => value.lessThanOrEqualTo(options.maximum), `${label} must be ${options.maximum} or fewer.`),
+  );
+}
+
+function optionalDecimalFromInput(
+  label: string,
+  options: { maximum: number | string; allowZero?: boolean },
+) {
+  const valueSchema = decimalValueSchema(label, options);
+  return z.preprocess(
+    (value) => typeof value === "string" && value.trim() === "" ? undefined : value,
+    valueSchema.optional(),
+  );
+}
+
+const optionalDisplayText = (maximum: number, message: string) =>
+  z.string().trim().max(maximum, message).optional().transform((value) => value || undefined);
+
 export const equipmentFuelTankFillSchema = z.object({
   sequence: integerFromInput("Sequence", 1, maxTankFills),
   tankLabel: requiredString("Tank label", 100),
-  gallons: integerFromInput("Gallons", 1, maxGallonsPerFill),
+  gallons: decimalValueSchema("Gallons", { maximum: maxGallonsPerFill }),
 });
 
-export const equipmentFuelEventSubmissionSchema = z.object({
+const baseEquipmentFuelEventSubmissionSchema = z.object({
   operationalWorkDate: z.string().refine(isEquipmentFuelDateOnly, "Enter a valid operational work date."),
   eventTime: z.string().refine(isLocalEventTime, "Enter a valid local event time in HH:mm format."),
   equipmentId: requiredString("Equipment", 200),
   fuelType: z.enum(equipmentFuelTypeValues, { message: "Select an approved fuel type." }),
-  notes: z.string().trim().max(2000, "Notes must be 2000 characters or fewer.").optional().transform((value) => value || undefined),
+  gasStationId: z.string().trim().max(200, "Select a valid Gas Station.").optional().transform((value) => value || undefined),
+  pricePerGallon: optionalDecimalFromInput("Price per gallon", { maximum: "9999999.999" }),
+  meterType: z.preprocess(
+    (value) => value === "" ? undefined : value,
+    z.enum(equipmentFuelMeterTypeValues, { message: "Select a valid meter type." }).optional(),
+  ),
+  meterReading: optionalDecimalFromInput("Meter reading", { maximum: "99999999999.999", allowZero: true }),
+  receiptReference: optionalDisplayText(200, "Receipt reference must be 200 characters or fewer."),
+  notes: optionalDisplayText(2000, "Notes must be 2000 characters or fewer."),
   tankFills: z.array(equipmentFuelTankFillSchema).min(1, "Add at least one Tank Fill.").max(maxTankFills, `An event may contain at most ${maxTankFills} Tank Fills.`),
-}).superRefine((value, context) => {
+});
+
+function addAggregateRules(
+  value: z.infer<typeof baseEquipmentFuelEventSubmissionSchema>,
+  context: z.RefinementCtx,
+  requireV2: boolean,
+) {
   const labels = new Map<string, number>();
-  let total = 0;
+  let total = new Prisma.Decimal(0);
   value.tankFills.forEach((fill, index) => {
     if (fill.sequence !== index + 1) {
       context.addIssue({ code: "custom", path: ["tankFills", index, "sequence"], message: "Tank Fill sequence must be contiguous and start at 1." });
@@ -85,14 +135,46 @@ export const equipmentFuelEventSubmissionSchema = z.object({
     } else {
       labels.set(normalized, index);
     }
-    total += fill.gallons;
+    if (Prisma.Decimal.isDecimal(fill.gallons)) total = total.plus(fill.gallons);
   });
-  if (total > maxEventGallons) {
+  if (total.greaterThan(maxEventGallons)) {
     context.addIssue({ code: "custom", path: ["tankFills"], message: `Total delivered gallons must not exceed ${maxEventGallons}.` });
   }
-});
+  if (
+    Prisma.Decimal.isDecimal(value.pricePerGallon) &&
+    total.times(value.pricePerGallon).greaterThan(maxFuelEventCost)
+  ) {
+    context.addIssue({ code: "custom", path: ["pricePerGallon"], message: "Price and delivered gallons produce a total cost above the supported maximum." });
+  }
 
-export type EquipmentFuelEventSubmissionInput = z.infer<typeof equipmentFuelEventSubmissionSchema>;
+  const hasAnyV2Context = Boolean(
+    value.gasStationId || value.pricePerGallon || value.meterType || value.meterReading,
+  );
+  if (requireV2 || hasAnyV2Context) {
+    if (!value.gasStationId) context.addIssue({ code: "custom", path: ["gasStationId"], message: "Gas Station is required." });
+    if (!value.pricePerGallon) context.addIssue({ code: "custom", path: ["pricePerGallon"], message: "Price per gallon is required." });
+    if (!value.meterType) context.addIssue({ code: "custom", path: ["meterType"], message: "Meter type is required." });
+  }
+  if (value.meterType === "HOURS" || value.meterType === "ODOMETER") {
+    if (!value.meterReading) {
+      context.addIssue({ code: "custom", path: ["meterReading"], message: "Meter reading is required for Hours or Odometer." });
+    }
+  } else if (value.meterType === "NOT_APPLICABLE" && value.meterReading) {
+    context.addIssue({ code: "custom", path: ["meterReading"], message: "Meter reading must be blank when the meter type is Not Applicable." });
+  } else if (!value.meterType && value.meterReading) {
+    context.addIssue({ code: "custom", path: ["meterType"], message: "Select a meter type for this reading." });
+  }
+}
+
+export const equipmentFuelEventSubmissionSchema = baseEquipmentFuelEventSubmissionSchema.superRefine(
+  (value, context) => addAggregateRules(value, context, true),
+);
+
+export const equipmentFuelEventCorrectionSchema = baseEquipmentFuelEventSubmissionSchema.superRefine(
+  (value, context) => addAggregateRules(value, context, false),
+);
+
+export type EquipmentFuelEventSubmissionInput = z.infer<typeof baseEquipmentFuelEventSubmissionSchema>;
 
 export const fuelServicePersonSchema = z.object({
   displayName: requiredString("Display name", 200),
@@ -108,9 +190,7 @@ function rawString(value: unknown) {
 export function equipmentFuelSubmittedValues(
   payload: unknown,
 ): EquipmentFuelEventSubmittedValues | undefined {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    return undefined;
-  }
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return undefined;
 
   const source = payload as Record<string, unknown>;
   const rawFills = Array.isArray(source.tankFills) ? source.tankFills : [];
@@ -140,6 +220,11 @@ export function equipmentFuelSubmittedValues(
     eventTime: rawString(source.eventTime),
     equipmentId: rawString(source.equipmentId),
     fuelType: rawString(source.fuelType),
+    gasStationId: rawString(source.gasStationId),
+    pricePerGallon: rawString(source.pricePerGallon),
+    meterType: rawString(source.meterType),
+    meterReading: rawString(source.meterReading),
+    receiptReference: rawString(source.receiptReference),
     notes: rawString(source.notes),
     tankFills,
   };
