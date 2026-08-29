@@ -813,6 +813,18 @@ source links without moving fuel interpretation into Day View.
 - Revise create, correction, detail, and success-confirmation presentation.
 - Preserve legacy rows without fabricated backfills.
 
+### Phase 6.1: Canonical U.S. Geography Reference Data (Implemented; Deployment Pending)
+
+- Add canonical State identity while preserving existing City IDs and consumer
+  foreign keys.
+- Add idempotent offline import for 50 States, District of Columbia, and broad
+  U.S. Census Places.
+- Add non-destructive State and City management with search and State filters.
+- Reuse canonical searchable Cities in Gas Stations and canonical State labels
+  in Mine-derived Equipment context.
+- Keep ZIP data, geocoding, maps, territories, and runtime geography services
+  deferred.
+
 ### Phase 7: Future Enhancements
 
 - Evaluate approved operational totals and reporting only after reliable event

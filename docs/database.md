@@ -25,10 +25,11 @@ relationships, enums, and data modeling notes.
 
 ## Operations Reference Entities
 
-### City, Mine, And Equipment
+### State, City, Mine, And Equipment
 
-The implemented reference hierarchy is `City -> Mine -> Equipment`:
+The implemented reference hierarchy is `State -> City -> Mine -> Equipment`:
 
+- One State owns zero or more City records.
 - One City owns zero or more Mine records.
 - One Mine belongs to one City and owns zero or more Equipment records.
 - One Equipment record belongs to exactly one Mine through required `mineId`;
@@ -36,6 +37,16 @@ The implemented reference hierarchy is `City -> Mine -> Equipment`:
 - Equipment display name is descriptive and may repeat within or across Mines.
 - Nullable Equipment Number is the operational identifier and is unique across
   Equipment records when supplied. Multiple records may omit it.
+
+`State` stores name, official two-letter abbreviation, normalized name key,
+`RecordStatus`, and timestamps. Abbreviation and normalized name are unique.
+
+`City` stores name, canonical `stateId`, normalized name key, `RecordStatus`,
+and timestamps. Normalized City name is unique within State, not globally. The
+legacy nullable State-abbreviation text remains synchronized during the
+backward-compatible transition. Existing City IDs and Mine/Gas Station foreign
+keys are preserved. New City management requires a State, while migration-era
+legacy rows may remain nullable until the controlled import links them.
 
 Equipment create and edit mutations accept an existing canonical `mineId` and
 validate the referenced Mine server-side. They do not create or duplicate City

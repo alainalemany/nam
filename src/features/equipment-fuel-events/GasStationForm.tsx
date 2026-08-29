@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 
+import { searchCityOptionsAction } from "@/features/geography/actions";
 import type { GasStationActionState } from "./gas-station-validation";
 import { emptyGasStationActionState } from "./gas-station-validation";
 
@@ -20,6 +21,10 @@ function errorId(field: string) {
 
 export function GasStationForm({ action, cities, initial }: Props) {
   const [state, formAction, pending] = useActionState(action, emptyGasStationActionState);
+  const [cityOptions, setCityOptions] = useState(cities);
+  const [citySearch, setCitySearch] = useState("");
+  const [searchPending, startSearch] = useTransition();
+  const searchRequest = useRef(0);
   const value = (field: GasStationFormField) => state.status === "error"
     ? state.values[field]
     : initial?.[field] ?? "";
@@ -43,10 +48,31 @@ export function GasStationForm({ action, cities, initial }: Props) {
           {error("address") ? <span className="field-error" id={errorId("address")}>{error("address")}</span> : null}
         </label>
         <label>
+          <span>Find City</span>
+          <input
+            autoComplete="off"
+            onChange={(event) => {
+              const query = event.currentTarget.value;
+              const request = ++searchRequest.current;
+              setCitySearch(query);
+              startSearch(async () => {
+                const options = await searchCityOptionsAction(query, value("cityId") || initial?.cityId);
+                if (request === searchRequest.current) setCityOptions(options);
+              });
+            }}
+            placeholder="Search city or state"
+            type="search"
+            value={citySearch}
+          />
+          <span className="field-hint" aria-live="polite">
+            {searchPending ? "Searching cities..." : "Enter at least 2 characters."}
+          </span>
+        </label>
+        <label>
           <span>City</span>
           <select {...attributes("cityId")} defaultValue={value("cityId")} name="cityId" required>
             <option value="">Select City</option>
-            {cities.map((city) => (
+            {cityOptions.map((city) => (
               <option disabled={city.status !== "ACTIVE" && city.id !== initial?.cityId} key={city.id} value={city.id}>
                 {city.label}{city.status !== "ACTIVE" ? " (inactive)" : ""}
               </option>

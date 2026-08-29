@@ -1,0 +1,15 @@
+{
+  "dataset": "U.S. Census Bureau 2025 Gazetteer — States and Places",
+  "stateSourceUrl": "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2025_Gazetteer/2025_Gaz_state_national.zip",
+  "placeSourceUrl": "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2025_Gazetteer/2025_Gaz_place_national.zip",
+  "stateSourceTextSha256": "0cbac15032fcbe2f0d3d1acee3066bbb30c00eadf2eed7b841f97ff368a79adf",
+  "placeSourceTextSha256": "15f4977a010cc42308f4d5ddc5e19f26ef63fc035f20745333a14b78aa08d3fa",
+  "statesArtifactSha256": "7586242f7ba2319e5a9a06aae1831ea1af455d395c29d641769a85a94e2d91ef",
+  "citiesArtifactSha256": "a22835901f91c02ea26a065ee8920e1cb97878c02034e4951996157f7337ec4c",
+  "stateCount": 51,
+  "cityCount": 31847,
+  "excludedTerritories": [
+    "PR"
+  ],
+  "excludedDuplicatePlaces": 211
+}

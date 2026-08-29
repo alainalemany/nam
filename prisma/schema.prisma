@@ -289,19 +289,38 @@ enum OperationalSafetyChecklistResponseCode {
   NOT_PRESENT
 }
 
+model State {
+  id            String       @id @default(cuid())
+  name          String
+  abbreviation  String       @unique(map: "State_abbreviation_key")
+  normalizedKey String       @unique(map: "State_normalizedKey_key")
+  status        RecordStatus @default(ACTIVE)
+  cities        City[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([name], map: "State_name_key")
+  @@index([status], map: "State_status_idx")
+}
+
 model City {
-  id          String       @id @default(cuid())
-  name        String
-  state       String?
-  status      RecordStatus @default(ACTIVE)
-  notes       String?
-  mines       Mine[]
-  gasStations GasStation[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id             String       @id @default(cuid())
+  name           String
+  state          String?
+  stateId        String?
+  stateReference State?       @relation(fields: [stateId], references: [id], onDelete: Restrict, map: "City_stateId_fkey")
+  normalizedKey  String?
+  status         RecordStatus @default(ACTIVE)
+  notes          String?
+  mines          Mine[]
+  gasStations    GasStation[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@unique([name, state])
+  @@unique([stateId, normalizedKey], map: "City_stateId_normalizedKey_key")
   @@index([status])
+  @@index([stateId], map: "City_stateId_idx")
 }
 
 model Mine {

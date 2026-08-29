@@ -77,6 +77,7 @@ documentation architecture milestone explicitly approves that reorganization.
 | Work Schedule | [Work Schedule Architecture](work-schedule.md) | Approved; V1 foundation and Day View participation implemented |
 | Timesheet | [Timesheet Architecture](timesheets.md) | Approved; V1 foundation and Day View participation implemented |
 | Equipment Fuel Events | [Equipment Fuel Events Architecture](equipment-fuel-events.md) | Approved for V2 Phase 2A; V1 and Phase 1 implemented; reusable Gas Stations, Decimal pricing/gallons, meter facts, receipt reference, and backward-compatible legacy handling authorized |
+| U.S. Geography Reference Data | [U.S. Geography Reference Data Architecture](geography-reference-data.md) | Implemented pending controlled migration/import and deployment approval; shared State and City identity for Mines and Gas Stations |
 | Supply Requests | [Supply Requests Architecture](supply-requests.md) | Architecture Approved; Phases 26.3A through 26.10 accepted; Supply Requests V1 complete and accepted with create, detail, reference management, lifecycle, correction, immutable history, canonical history/filtering, explicit Daily Log Activity linking, and Day View participation available; deferred enhancements remain outside V1 and require separate authorization |
 | Knowledge Base | [Knowledge Base V1 Architecture](knowledge-base.md) | Approved, implemented, independently reviewed, formally accepted, and canonically closed through Phase 28.9; Phase 28 is complete; Phase 29 and future enhancements are not authorized |
 

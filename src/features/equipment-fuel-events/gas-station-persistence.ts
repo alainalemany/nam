@@ -69,11 +69,22 @@ export async function saveGasStation(input: GasStationSubmissionInput, id?: stri
 
       const city = await transaction.city.findUnique({
         where: { id: input.cityId },
-        select: { id: true, status: true },
+        select: {
+          id: true,
+          status: true,
+          stateReference: { select: { status: true } },
+        },
       });
       if (!city) throw new GasStationPersistenceError("The selected City could not be found.", "cityId");
       if ((!existing || existing.cityId !== city.id) && city.status !== "ACTIVE") {
         throw new GasStationPersistenceError("Select an active City.", "cityId");
+      }
+      if (
+        (!existing || existing.cityId !== city.id)
+        && city.stateReference
+        && city.stateReference.status !== "ACTIVE"
+      ) {
+        throw new GasStationPersistenceError("Select a City in an active State.", "cityId");
       }
 
       const data = stationData(input);

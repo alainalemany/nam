@@ -70,3 +70,4 @@ without introducing accounting complexity.
 - `docs/modules.md`
 - `docs/database.md`
 - `docs/decisions/adr-006-fuel-log-structured-operational-module.md`
+- `docs/decisions/adr-021-canonical-us-geography-reference-data.md`

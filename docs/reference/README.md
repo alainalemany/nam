@@ -31,3 +31,11 @@ itself.
 
 Feature behavior and source-verification rules are authoritative in the
 [Dragline Delay Reports Architecture](../architecture/features/dragline-delay-reports.md).
+
+## U.S. Geography
+
+The normalized U.S. Census Gazetteer seed is an executable reference-data
+artifact rather than a prose catalog. Its source, scope, checksums,
+normalization, and controlled import procedure are documented in
+[`data/geography/README.md`](../../data/geography/README.md). Feature behavior is
+authoritative in the [U.S. Geography Reference Data Architecture](../architecture/features/geography-reference-data.md).

@@ -79,6 +79,12 @@ describe("Gas Station reference data", () => {
     await expect(saveGasStation(input)).rejects.toBeInstanceOf(GasStationPersistenceError);
   });
 
+  it("rejects a new station in an inactive canonical State", async () => {
+    const input = gasStationSubmissionSchema.parse({ name: "Wawa", address: "123 Main St", cityId: "city-1", postalCode: "" });
+    tx.city.findUnique.mockResolvedValue({ ...city, stateReference: { status: "INACTIVE" } });
+    await expect(saveGasStation(input)).rejects.toMatchObject({ field: "cityId" });
+  });
+
   it("activates and inactivates without destructive delete", async () => {
     await setGasStationActive("station-1", false);
     expect(mocks.gasStationUpdate).toHaveBeenCalledWith({ where: { id: "station-1" }, data: { isActive: false } });

@@ -49,6 +49,7 @@ describe("Gas Station management routes", () => {
     render(await NewGasStationPage());
     expect(screen.getByLabelText("Station name")).toBeInTheDocument();
     expect(screen.getByLabelText("Address/location (optional)")).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: /Find City/ })).toBeInTheDocument();
     expect(screen.getByLabelText("City")).toBeInTheDocument();
     expect(screen.getByLabelText("ZIP/postal code (optional)")).toBeInTheDocument();
     expect(screen.queryByLabelText(/price/i)).not.toBeInTheDocument();

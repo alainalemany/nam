@@ -57,7 +57,7 @@ fields documented in `docs/database.md` and their feature architecture documents
 
 ## Equipment Reference Data
 
-Equipment records use the canonical `City -> Mine -> Equipment` reference
+Equipment records use the canonical `State -> City -> Mine -> Equipment` reference
 hierarchy. New and edited Equipment select an existing Mine by stable identity;
 the selected Mine supplies City and Mine Type context. The Equipment workflow
 does not create or reconcile Mine or City records from typed names. A currently
@@ -73,6 +73,22 @@ The Equipment history view supports combined feature-owned filtering by
 Equipment category, canonical Mine, Active/Inactive status, and a
 case-insensitive partial search across display name and Equipment number. The
 table remains the canonical Equipment record list and retains its Edit action.
+
+## U.S. Geography Reference Data
+
+States and Cities are reusable operational reference data independent of Mines,
+Gas Stations, and Equipment. Administrators can list, search, create, edit, and
+activate/inactivate both records; Cities can also be filtered by State. City
+identity is unique within State and selectors display `City, ST`.
+
+Mines and Gas Stations consume the same canonical City identity. New consumer
+assignments offer active Cities in active States, while an existing inactive
+selection remains readable and retainable where the consuming workflow permits
+historical editing. No destructive geography delete is exposed.
+
+The initial catalog is loaded by an explicit, idempotent offline import derived
+from the U.S. Census Bureau 2025 Gazetteer. ZIP reference data, postal lookup,
+geocoding, maps, and consumer-owned inline City creation are outside scope.
 
 ## Shift Reports
 

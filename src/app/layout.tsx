@@ -24,6 +24,7 @@ export default function RootLayout({
             </div>
             <nav className="nav-list">
               <Link href="/">Dashboard</Link>
+              <Link href="/reference-data">Reference Data</Link>
               <Link href="/equipment">Equipment</Link>
               <Link href="/daily-logs">Daily Logs</Link>
               <Link href="/dragline-delay-reports">Dragline Delay Reports</Link>

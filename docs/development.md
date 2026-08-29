@@ -315,3 +315,33 @@ docker compose run --rm --no-deps \
 The test rolls back its fixture transactions and verifies that no checklist
 fixture rows remain. The normal suite skips this file unless
 `OPERATIONAL_SAFETY_CHECKLIST_TEST_DATABASE_URL` is set explicitly.
+
+## U.S. Geography Dataset And Import
+
+The committed offline geography artifacts and source provenance live in
+`data/geography/`. Regeneration requires separately downloaded official Census
+Gazetteer State and Place text files; normal application builds and selectors
+require no internet access.
+
+Regenerate reviewed artifacts with:
+
+```bash
+node scripts/geography/normalize-census-gazetteer.mjs \
+  /path/to/2025_Gaz_state_national.txt \
+  /path/to/2025_Gaz_place_national.txt \
+  data/geography
+```
+
+The database import is an explicit deployment operation, not an application
+startup seed. Apply the reviewed geography migration first, verify migration
+status and backup/recovery safeguards, then run against the intentionally
+selected target database:
+
+```bash
+corepack pnpm geography:import
+```
+
+Never guess a database URL or run the import against production during ordinary
+development/testing. Re-running the import reuses normalized State and
+City-within-State matches, preserves IDs and status, and creates only missing
+reference rows.

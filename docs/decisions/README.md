@@ -30,6 +30,7 @@ maintainability.
 | [ADR-018](adr-018-private-operational-safety-checklist-photo-storage.md) | 2026-07-16 | Infrastructure/security architecture | Checklist photo evidence uses private feature-owned metadata and local persistent media storage behind an explicit access gate. |
 | [ADR-019](adr-019-managed-private-overlay-operational-pilot.md) | 2026-07-17 | Infrastructure/security architecture | The controlled operational pilot uses a managed private overlay with Tailscale as the implementation reference and independent key-only SSH recovery. |
 | [ADR-020](adr-020-equipment-fuel-events-v2-station-pricing-and-meter.md) | 2026-08-29 | Product/data architecture | Equipment Fuel Events V2 uses reusable Gas Stations, event-level Decimal pricing, fractional gallons, meter facts, and backward-compatible legacy handling. |
+| [ADR-021](adr-021-canonical-us-geography-reference-data.md) | 2026-08-29 | Data/application architecture | U.S. States and Cities use shared database reference records and an offline idempotent Census Gazetteer import. |
 
 ## Categories
 
@@ -48,10 +49,12 @@ Data architecture and boundaries:
 - ADR-001
 - ADR-005
 - ADR-020
+- ADR-021
 
 Application architecture:
 
 - ADR-015
+- ADR-021
 
 Infrastructure and deployment:
 

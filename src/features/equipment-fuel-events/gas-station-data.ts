@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 
+import { getCitySelectorOptions } from "@/features/geography/data";
 import { prisma } from "@/lib/prisma";
 
 export type GasStationManagementFilters = {
@@ -26,12 +27,14 @@ export async function getGasStationManagementList(filters: GasStationManagementF
       { postalCode: { contains: filters.q, mode: "insensitive" } },
       { city: { name: { contains: filters.q, mode: "insensitive" } } },
       { city: { state: { contains: filters.q, mode: "insensitive" } } },
+      { city: { stateReference: { name: { contains: filters.q, mode: "insensitive" } } } },
+      { city: { stateReference: { abbreviation: { contains: filters.q, mode: "insensitive" } } } },
     ];
   }
   return prisma.gasStation.findMany({
     where,
     include: {
-      city: true,
+      city: { include: { stateReference: true } },
       _count: { select: { fuelEvents: true } },
     },
     orderBy: [{ isActive: "desc" }, { name: "asc" }, { id: "asc" }],
@@ -40,22 +43,12 @@ export async function getGasStationManagementList(filters: GasStationManagementF
 }
 
 export async function getGasStationForEdit(id: string) {
-  return prisma.gasStation.findUnique({ where: { id }, include: { city: true } });
+  return prisma.gasStation.findUnique({
+    where: { id },
+    include: { city: { include: { stateReference: true } } },
+  });
 }
 
-export async function getGasStationCityOptions(selectedCityId?: string | null) {
-  const cities = await prisma.city.findMany({
-    where: {
-      OR: [
-        { status: "ACTIVE" },
-        ...(selectedCityId ? [{ id: selectedCityId }] : []),
-      ],
-    },
-    orderBy: [{ name: "asc" }, { state: "asc" }],
-  });
-  return cities.map((city) => ({
-    id: city.id,
-    label: `${city.name}${city.state ? `, ${city.state}` : ""}`,
-    status: city.status,
-  }));
+export async function getGasStationCityOptions(selectedCityId?: string | null, query?: string) {
+  return getCitySelectorOptions({ selectedCityId, query, limit: 50 });
 }

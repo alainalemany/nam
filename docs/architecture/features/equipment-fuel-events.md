@@ -11,6 +11,7 @@ Bounded Context: Equipment Fuel Events and feature-owned Gas Station reference d
 Depends On:
 
 - Operations reference data for Equipment, Mine, and City context
+- Canonical U.S. geography reference data for Gas Station City selection
 - `docs/architecture/equipment-operations.md`
 - `docs/application-state-and-data-flow.md`
 - `docs/ui-architecture.md`
@@ -24,6 +25,7 @@ Related Documents:
 - `docs/roadmap.md`
 - `docs/decisions/adr-006-fuel-log-structured-operational-module.md`
 - `docs/decisions/adr-020-equipment-fuel-events-v2-station-pricing-and-meter.md`
+- `docs/decisions/adr-021-canonical-us-geography-reference-data.md`
 
 Last Reviewed: 2026-08-29
 
@@ -77,6 +79,8 @@ persisted.
 
 The normalized key covers the normalized name, address, City identity, and
 postal code so different locations of the same station brand may coexist.
+Gas Station entry searches active Cities in active States from the shared
+geography layer and does not create City records inline.
 Stations are retired through inactivation, never destructive delete. New Fuel
 Events select active stations; an unchanged inactive historical station remains
 valid on correction and remains displayable through snapshots.

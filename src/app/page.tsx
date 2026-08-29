@@ -125,8 +125,8 @@ export default function Home() {
             associations.
           </p>
         </div>
-        <a className="button primary" href="/equipment">
-          Open Equipment
+        <a className="button primary" href="/reference-data">
+          Open Reference Data
         </a>
       </section>
     </main>

@@ -1,3 +1,4 @@
+import { cityDisplayLabel } from "@/features/geography/normalization";
 import { prisma } from "@/lib/prisma";
 
 import { buildEquipmentWhere, type EquipmentFilters } from "./filters";
@@ -8,7 +9,7 @@ export async function getEquipment(filters: EquipmentFilters = {}) {
     include: {
       mine: {
         include: {
-          city: true,
+          city: { include: { stateReference: true } },
         },
       },
     },
@@ -19,16 +20,14 @@ export async function getEquipment(filters: EquipmentFilters = {}) {
 export async function getEquipmentMineOptions(includeInactive = false) {
   const mines = await prisma.mine.findMany({
     where: includeInactive ? undefined : { status: "ACTIVE" },
-    include: { city: true },
+    include: { city: { include: { stateReference: true } } },
     orderBy: [{ city: { name: "asc" } }, { name: "asc" }, { id: "asc" }],
   });
 
   return mines.map((mine) => ({
     id: mine.id,
-    label: `${mine.name} (${mine.city.name}${
-      mine.city.state ? `, ${mine.city.state}` : ""
-    })`,
-    cityLabel: `${mine.city.name}${mine.city.state ? `, ${mine.city.state}` : ""}`,
+    label: `${mine.name} (${cityDisplayLabel(mine.city)})`,
+    cityLabel: cityDisplayLabel(mine.city),
     mineType: mine.type,
     status: mine.status,
   }));

@@ -120,6 +120,7 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Understand current architecture | [Architecture Overview](architecture.md) |
 | Understand Equipment Operations boundaries | [Equipment Operations Architecture Assessment](architecture/equipment-operations.md) |
 | Understand Equipment Fuel Events architecture | [Equipment Fuel Events Architecture](architecture/features/equipment-fuel-events.md) |
+| Understand U.S. geography reference data | [U.S. Geography Reference Data Architecture](architecture/features/geography-reference-data.md) |
 | Understand Dragline Delay Reports architecture | [Dragline Delay Reports Architecture](architecture/features/dragline-delay-reports.md) |
 | Understand Supply Requests architecture | [Supply Requests Architecture](architecture/features/supply-requests.md) |
 | Understand Knowledge Base V1 architecture | [Knowledge Base V1 Architecture](architecture/features/knowledge-base.md) |

@@ -11,6 +11,7 @@ import {
   parseEquipmentFilters,
   type EquipmentSearchParams,
 } from "@/features/equipment/filters";
+import { cityDisplayLabel } from "@/features/geography/normalization";
 
 export const dynamic = "force-dynamic";
 
@@ -158,8 +159,7 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
                     <td>{optionLabel(equipmentCategoryOptions, item.category)}</td>
                     <td>{item.mine.name}</td>
                     <td>
-                      {item.mine.city.name}
-                      {item.mine.city.state ? `, ${item.mine.city.state}` : ""}
+                      {cityDisplayLabel(item.mine.city)}
                     </td>
                     <td>{optionLabel(recordStatusOptions, item.status)}</td>
                     <td>
