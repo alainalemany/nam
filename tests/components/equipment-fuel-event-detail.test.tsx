@@ -40,6 +40,9 @@ describe("Equipment Fuel Event detail", () => {
     expect(screen.queryByText(/White Rock/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Historic Pat/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Daily Work Log/)).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tank Fills" })).toBeInTheDocument();
+    expect(screen.getByText("Main Tank")).toBeInTheDocument();
+    expect(screen.getByText("Auxiliary")).toBeInTheDocument();
     expect(screen.getByText("12.347 gal")).toBeInTheDocument();
     expect(screen.getByText("$3.457")).toBeInTheDocument();
     expect(screen.getAllByText("$43.21").length).toBeGreaterThan(0);

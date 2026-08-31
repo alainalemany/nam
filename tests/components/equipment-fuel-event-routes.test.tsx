@@ -1,4 +1,5 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { Prisma } from "@prisma/client";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -74,7 +75,42 @@ describe("Equipment Fuel Event routes", () => {
     render(await EquipmentFuelEventsPage({ searchParams: Promise.resolve({ fuelType: "DIESEL" }) }));
     expect(screen.getByRole("heading", { name: "Equipment Fuel Events" })).toBeInTheDocument();
     expect(screen.getByText("Historic Dragline")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View" })).toHaveAttribute("href", "/equipment-fuel-events/event-1");
+    expect(screen.getByRole("link", { name: "Correct" })).toHaveAttribute("href", "/equipment-fuel-events/event-1/edit");
     expect(mocks.getEvents).toHaveBeenCalledWith(expect.objectContaining({ fuelType: "DIESEL" }));
+  });
+
+  it("shows authoritative aggregate gallons without Tank Fill summary details", async () => {
+    mocks.getEvents.mockResolvedValue([
+      event({
+        id: "event-integer",
+        equipmentDisplayName: "Integer Equipment",
+        totalGallons: new Prisma.Decimal("15.000"),
+        tankFills: [
+          { ...event().tankFills[0], id: "fill-a", tankLabel: "Main fuel tank" },
+          { ...event().tankFills[0], id: "fill-b", tankLabel: "Auxiliary tank" },
+          { ...event().tankFills[0], id: "fill-c", tankLabel: "Transfer tank" },
+        ],
+      }),
+      event({ id: "event-fraction", equipmentDisplayName: "Fraction Equipment", totalGallons: new Prisma.Decimal("15.500") }),
+      event({ id: "event-max-precision", equipmentDisplayName: "Precision Equipment", totalGallons: new Prisma.Decimal("15.347") }),
+    ]);
+
+    render(await EquipmentFuelEventsPage({ searchParams: Promise.resolve({}) }));
+
+    expect(screen.getByRole("columnheader", { name: "Total gallons" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Tank Fills" })).not.toBeInTheDocument();
+    expect(screen.getByText("15 gal")).toBeInTheDocument();
+    expect(screen.getByText("15.5 gal")).toBeInTheDocument();
+    expect(screen.getByText("15.347 gal")).toBeInTheDocument();
+    expect(screen.queryByText("Main fuel tank")).not.toBeInTheDocument();
+    expect(screen.queryByText("Auxiliary tank")).not.toBeInTheDocument();
+    expect(screen.queryByText("Transfer tank")).not.toBeInTheDocument();
+
+    const integerRow = screen.getByText("Integer Equipment").closest("tr");
+    expect(integerRow).not.toBeNull();
+    expect(within(integerRow!).queryByText("3")).not.toBeInTheDocument();
+    expect(within(integerRow!).getAllByText("15 gal")).toHaveLength(1);
   });
 
   it("renders the create route without legacy person or Daily Log controls", async () => {
