@@ -1,3 +1,15 @@
+import type { WorkScheduleAssignmentInitialValues } from "./types";
+
+export type ScheduleRangeHydrationResult =
+  | {
+      status: "success";
+      assignments: WorkScheduleAssignmentInitialValues[];
+    }
+  | {
+      status: "error";
+      message: string;
+    };
+
 export type ScheduleRangeSubmittedValues = {
   startDate: string;
   endDate: string;

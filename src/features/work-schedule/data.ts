@@ -111,6 +111,28 @@ export async function getDailyAssignmentsForDate(date: string) {
   });
 }
 
+export async function getAssignmentsForDateRange(
+  primaryEmployeeId: string,
+  startDate: string,
+  endDate: string,
+) {
+  return prisma.dailyAssignment.findMany({
+    where: {
+      assignmentDate: {
+        gte: parseDateOnly(startDate),
+        lte: parseDateOnly(endDate),
+      },
+      weeklySchedule: { primaryEmployeeId },
+    },
+    include: {
+      plannedEquipment: true,
+      actualEquipment: true,
+      crewMembers: true,
+    },
+    orderBy: { assignmentDate: "asc" },
+  });
+}
+
 type WorkScheduleContextAssignment = Awaited<
   ReturnType<typeof getDailyAssignmentsForDate>
 >[number];
@@ -403,6 +425,78 @@ function crewUnknown(
   );
 }
 
+type EditableAssignmentRecord = Awaited<
+  ReturnType<typeof getAssignmentsForDateRange>
+>[number];
+
+export function workScheduleAssignmentInitialValuesFromRecord(
+  assignment: EditableAssignmentRecord,
+): WorkScheduleAssignmentInitialValues {
+  const values: WorkScheduleAssignmentInitialValues = {
+    assignmentDate: dateInputValue(assignment.assignmentDate),
+    dayOfWeek: assignment.dayOfWeek,
+    plannedStatus: assignment.plannedStatus,
+    plannedShift: assignment.plannedShift,
+    plannedEquipmentId: assignment.plannedEquipmentId ?? "",
+    actualStatus: assignment.actualStatus,
+    actualShift: assignment.actualShift,
+    actualEquipmentId: assignment.actualEquipmentId ?? "",
+    plannedPrimaryEmployeeId:
+      assignment.crewMembers.find(
+        (member) => member.phase === "PLANNED" && member.role === "PRIMARY_EMPLOYEE",
+      )?.employeeId ?? "",
+    plannedPrimaryDisplayName:
+      crewDisplayName(assignment.crewMembers, "PLANNED", "PRIMARY_EMPLOYEE") ?? "",
+    plannedPartnerEmployeeId:
+      assignment.crewMembers.find(
+        (member) => member.phase === "PLANNED" && member.role === "PARTNER",
+      )?.employeeId ?? "",
+    plannedPartnerDisplayName:
+      crewDisplayName(assignment.crewMembers, "PLANNED", "PARTNER") ?? "",
+    plannedPartnerUnknown: crewUnknown(assignment.crewMembers, "PLANNED", "PARTNER"),
+    actualPrimaryEmployeeId:
+      assignment.crewMembers.find(
+        (member) => member.phase === "ACTUAL" && member.role === "PRIMARY_EMPLOYEE",
+      )?.employeeId ?? "",
+    actualPrimaryDisplayName:
+      crewDisplayName(assignment.crewMembers, "ACTUAL", "PRIMARY_EMPLOYEE") ?? "",
+    actualPartnerEmployeeId:
+      assignment.crewMembers.find(
+        (member) => member.phase === "ACTUAL" && member.role === "PARTNER",
+      )?.employeeId ?? "",
+    actualPartnerDisplayName:
+      crewDisplayName(assignment.crewMembers, "ACTUAL", "PARTNER") ?? "",
+    actualPartnerUnknown: crewUnknown(assignment.crewMembers, "ACTUAL", "PARTNER"),
+    changeReason: assignment.changeReason ?? "",
+    plannedNotes: assignment.plannedNotes ?? "",
+    actualNotes: assignment.actualNotes ?? "",
+  };
+
+  if (values.plannedStatus !== "NON_WORKING") return values;
+
+  return {
+    ...values,
+    plannedShift: "UNKNOWN",
+    plannedEquipmentId: "",
+    plannedPrimaryEmployeeId: "",
+    plannedPrimaryDisplayName: "",
+    plannedPartnerEmployeeId: "",
+    plannedPartnerDisplayName: "",
+    plannedPartnerUnknown: false,
+    actualStatus: "NON_WORKING",
+    actualShift: "UNKNOWN",
+    actualEquipmentId: "",
+    actualPrimaryEmployeeId: "",
+    actualPrimaryDisplayName: "",
+    actualPartnerEmployeeId: "",
+    actualPartnerDisplayName: "",
+    actualPartnerUnknown: false,
+    changeReason: "",
+    plannedNotes: "",
+    actualNotes: "",
+  };
+}
+
 export function defaultWorkScheduleInitialValues(
   weekStartDate = dateInputValue(nextMonday()),
   primaryEmployeeId = "",
@@ -500,59 +594,43 @@ export function workScheduleInitialValuesFromRecord(
         return defaultAssignment;
       }
 
-      return {
-        assignmentDate: defaultAssignment.assignmentDate,
-        dayOfWeek: assignment.dayOfWeek,
-        plannedStatus: assignment.plannedStatus,
-        plannedShift: assignment.plannedShift,
-        plannedEquipmentId: assignment.plannedEquipmentId ?? "",
-        actualStatus: assignment.actualStatus,
-        actualShift: assignment.actualShift,
-        actualEquipmentId: assignment.actualEquipmentId ?? "",
-        plannedPrimaryEmployeeId:
-          assignment.crewMembers.find(
-            (member) => member.phase === "PLANNED" && member.role === "PRIMARY_EMPLOYEE",
-          )?.employeeId ?? "",
-        plannedPrimaryDisplayName:
-          crewDisplayName(assignment.crewMembers, "PLANNED", "PRIMARY_EMPLOYEE") ?? "",
-        plannedPartnerEmployeeId:
-          assignment.crewMembers.find(
-            (member) => member.phase === "PLANNED" && member.role === "PARTNER",
-          )?.employeeId ?? "",
-        plannedPartnerDisplayName:
-          crewDisplayName(assignment.crewMembers, "PLANNED", "PARTNER") ?? "",
-        plannedPartnerUnknown: crewUnknown(assignment.crewMembers, "PLANNED", "PARTNER"),
-        actualPrimaryEmployeeId:
-          assignment.crewMembers.find(
-            (member) => member.phase === "ACTUAL" && member.role === "PRIMARY_EMPLOYEE",
-          )?.employeeId ?? "",
-        actualPrimaryDisplayName:
-          crewDisplayName(assignment.crewMembers, "ACTUAL", "PRIMARY_EMPLOYEE") ?? "",
-        actualPartnerEmployeeId:
-          assignment.crewMembers.find(
-            (member) => member.phase === "ACTUAL" && member.role === "PARTNER",
-          )?.employeeId ?? "",
-        actualPartnerDisplayName:
-          crewDisplayName(assignment.crewMembers, "ACTUAL", "PARTNER") ?? "",
-        actualPartnerUnknown: crewUnknown(assignment.crewMembers, "ACTUAL", "PARTNER"),
-        changeReason: assignment.changeReason ?? "",
-        plannedNotes: assignment.plannedNotes ?? "",
-        actualNotes: assignment.actualNotes ?? "",
-      };
+      return workScheduleAssignmentInitialValuesFromRecord(assignment);
     }),
   };
 }
 
-export function scheduleRangeInitialValuesFromRecord(
+export async function scheduleRangeInitialValuesFromRecord(
   schedule: NonNullable<Awaited<ReturnType<typeof getWeeklySchedule>>>,
-): ScheduleRangeFormInitialValues {
+  selectedRange?: { startDate: string; endDate: string },
+): Promise<ScheduleRangeFormInitialValues> {
   const weekly = workScheduleInitialValuesFromRecord(schedule);
-  const startDate = weekly.assignments[0]?.assignmentDate ?? weekly.weekStartDate;
-  const endDate = weekly.assignments.at(-1)?.assignmentDate ??
-    dateInputValue(endOfOperationalWeek(schedule.weekStartDate));
+  const startDate = selectedRange?.startDate ??
+    (schedule.assignments[0]
+      ? dateInputValue(schedule.assignments[0].assignmentDate)
+      : weekly.weekStartDate);
+  const endDate = selectedRange?.endDate ??
+    (schedule.assignments.at(-1)
+      ? dateInputValue(schedule.assignments.at(-1)!.assignmentDate)
+      : dateInputValue(endOfOperationalWeek(schedule.weekStartDate)));
+  const defaultRange = defaultScheduleRangeInitialValues(
+    startDate,
+    endDate,
+    schedule.primaryEmployeeId ?? "",
+  );
+  const persistedAssignments = schedule.primaryEmployeeId
+    ? await getAssignmentsForDateRange(schedule.primaryEmployeeId, startDate, endDate)
+    : schedule.assignments;
+  const persistedByDate = new Map(persistedAssignments.map((assignment) => [
+    dateInputValue(assignment.assignmentDate),
+    workScheduleAssignmentInitialValuesFromRecord(assignment),
+  ]));
+
   return {
     ...weekly,
     startDate,
     endDate,
+    assignments: defaultRange.assignments.map((assignment) =>
+      persistedByDate.get(assignment.assignmentDate) ?? assignment,
+    ),
   };
 }

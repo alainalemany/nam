@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  loadScheduleRangeAssignmentsAction,
   saveScheduleRangeAction,
 } from "@/features/work-schedule/range-actions";
 import { emptyScheduleRangeFormState } from "@/features/work-schedule/range-state";
@@ -14,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   assignmentUpsert: vi.fn(),
   employeeFindMany: vi.fn(),
   equipmentFindMany: vi.fn(),
+  rangeAssignmentFindMany: vi.fn(),
   redirect: vi.fn(),
 }));
 
@@ -24,7 +26,10 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 vi.mock("@/lib/prisma", () => ({
-  prisma: { $transaction: mocks.transaction },
+  prisma: {
+    $transaction: mocks.transaction,
+    dailyAssignment: { findMany: mocks.rangeAssignmentFindMany },
+  },
 }));
 
 const employees = [
@@ -135,6 +140,7 @@ beforeEach(() => {
     .mockResolvedValueOnce({ id: "week-2" });
   mocks.scheduleUpdate.mockImplementation(({ where }) => Promise.resolve({ id: where.id }));
   mocks.assignmentUpsert.mockResolvedValue({ id: "assignment" });
+  mocks.rangeAssignmentFindMany.mockResolvedValue([]);
   mocks.transaction.mockImplementation((callback) => callback({
     weeklySchedule: {
       findMany: mocks.scheduleFindMany,
@@ -148,6 +154,73 @@ beforeEach(() => {
 });
 
 describe("Work Schedule range action", () => {
+  it("hydrates persisted assignments across both weekly records by employee and date", async () => {
+    const persisted = buildDateRange(parseDateOnly("2026-08-31"), parseDateOnly("2026-09-08"))
+      .map((date, index) => ({
+        ...existingAssignment(date.assignmentDate, index === 1 ? "NON_WORKING" : "SCHEDULED"),
+        dayOfWeek: date.dayOfWeek,
+        plannedShift: index === 0 ? "DAY" : index === 1 ? "UNKNOWN" : "NIGHT",
+        plannedEquipmentId: index === 1 ? null : "equipment-1",
+        crewMembers: index === 1 ? [] : [
+          {
+            phase: "PLANNED",
+            role: "PRIMARY_EMPLOYEE",
+            employeeId: "employee-1",
+            displayName: "Alex Operator",
+            isUnknown: false,
+          },
+          {
+            phase: "PLANNED",
+            role: "PARTNER",
+            employeeId: "partner-1",
+            displayName: "Jordan Partner",
+            isUnknown: false,
+          },
+        ],
+      }));
+    persisted[1] = {
+      ...persisted[1],
+      plannedEquipmentId: "equipment-1",
+      crewMembers: persisted[0].crewMembers,
+    };
+    mocks.rangeAssignmentFindMany.mockResolvedValue(persisted);
+
+    const result = await loadScheduleRangeAssignmentsAction(
+      "employee-1",
+      "2026-08-31",
+      "2026-09-08",
+    );
+
+    expect(mocks.rangeAssignmentFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        assignmentDate: {
+          gte: parseDateOnly("2026-08-31"),
+          lte: parseDateOnly("2026-09-08"),
+        },
+        weeklySchedule: { primaryEmployeeId: "employee-1" },
+      },
+    }));
+    expect(result.status).toBe("success");
+    if (result.status === "success") {
+      expect(result.assignments).toHaveLength(9);
+      expect(result.assignments[0]).toMatchObject({
+        assignmentDate: "2026-08-31",
+        plannedShift: "DAY",
+      });
+      expect(result.assignments[1]).toMatchObject({
+        assignmentDate: "2026-09-01",
+        plannedStatus: "NON_WORKING",
+        plannedEquipmentId: "",
+        plannedPartnerEmployeeId: "",
+      });
+      expect(result.assignments[7]).toMatchObject({
+        assignmentDate: "2026-09-07",
+        plannedShift: "NIGHT",
+        plannedPartnerEmployeeId: "partner-1",
+      });
+    }
+  });
+
   it("saves August 31-September 8 into two weekly records in one transaction", async () => {
     await expect(saveScheduleRangeAction(emptyScheduleRangeFormState, rangeForm()))
       .rejects.toThrow(/redirect:\/work-schedule\?saved=range/);

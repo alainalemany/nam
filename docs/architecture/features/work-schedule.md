@@ -450,6 +450,14 @@ Schedule-range editor expectations:
 - Optional received date/time and schedule-level notes when included in V1.
 - One readable row or card for every calendar date in order, without a visual
   split at Sunday/Monday.
+- When an edit range expands, load persisted Daily Assignments for the primary
+  Employee by calendar date across every intersecting Weekly Schedule before
+  introducing the new rows. Existing in-session rows take precedence over the
+  hydration result so range changes cannot revert unsaved edits. Dates absent
+  from the canonical records receive new-row defaults only after the lookup
+  succeeds; lookup failure blocks save rather than exposing unsafe blank rows.
+- When an edit range contracts, remove out-of-range rows from the submitted
+  form without deleting or otherwise mutating their persisted assignments.
 - Planned section for each day.
 - Actual section for each day.
 - Equipment selector for planned and actual equipment where applicable.

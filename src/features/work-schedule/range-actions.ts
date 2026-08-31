@@ -7,12 +7,17 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 
 import {
+  getAssignmentsForDateRange,
+  workScheduleAssignmentInitialValuesFromRecord,
+} from "./data";
+import {
   buildDailyAssignmentWriteData,
   type EmployeeSnapshotSource,
   type EquipmentSnapshotSource,
   type ExistingAssignmentSnapshot,
 } from "./persistence";
 import {
+  MAX_SCHEDULE_RANGE_DAYS,
   scheduleRangeFormSchema,
   scheduleWeekStarts,
   type ScheduleRangeFormInput,
@@ -20,9 +25,16 @@ import {
 import {
   emptyScheduleRangeFormState,
   type ScheduleRangeFormState,
+  type ScheduleRangeHydrationResult,
   type ScheduleRangeSubmittedValues,
 } from "./range-state";
-import { endOfOperationalWeek, normalizePrimaryEmployeeKey, parseDateOnly } from "./validation";
+import {
+  buildDateRange,
+  endOfOperationalWeek,
+  isValidDateOnlyString,
+  normalizePrimaryEmployeeKey,
+  parseDateOnly,
+} from "./validation";
 
 class ScheduleRangeConflictError extends Error {
   constructor(readonly dates: string[]) {
@@ -153,6 +165,47 @@ type ExistingSchedule = Prisma.WeeklyScheduleGetPayload<{
 
 function isPrismaError(error: unknown, code: string) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === code;
+}
+
+export async function loadScheduleRangeAssignmentsAction(
+  primaryEmployeeId: string,
+  startDate: string,
+  endDate: string,
+): Promise<ScheduleRangeHydrationResult> {
+  if (!primaryEmployeeId ||
+    !isValidDateOnlyString(startDate) ||
+    !isValidDateOnlyString(endDate)) {
+    return { status: "error", message: "Choose a valid schedule range and try again." };
+  }
+
+  const dates = buildDateRange(parseDateOnly(startDate), parseDateOnly(endDate));
+  if (dates.length === 0 || dates.length > MAX_SCHEDULE_RANGE_DAYS) {
+    return {
+      status: "error",
+      message: `Schedule ranges may include up to ${MAX_SCHEDULE_RANGE_DAYS} days.`,
+    };
+  }
+
+  try {
+    const assignments = await getAssignmentsForDateRange(
+      primaryEmployeeId,
+      startDate,
+      endDate,
+    );
+    const hydrated = assignments.map(workScheduleAssignmentInitialValuesFromRecord);
+    if (new Set(hydrated.map((assignment) => assignment.assignmentDate)).size !== hydrated.length) {
+      return {
+        status: "error",
+        message: "Existing schedule data could not be resolved safely for this range.",
+      };
+    }
+    return { status: "success", assignments: hydrated };
+  } catch {
+    return {
+      status: "error",
+      message: "Existing assignments could not be loaded. No schedule changes were made.",
+    };
+  }
 }
 
 export async function saveScheduleRangeAction(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   dailyAssignmentStatusOptions,
@@ -12,6 +12,7 @@ import {
 } from "./constants";
 import type {
   ScheduleRangeFormState,
+  ScheduleRangeHydrationResult,
 } from "./range-state";
 import {
   emptyScheduleRangeFormState,
@@ -31,6 +32,7 @@ type Props = {
   employeeOptions: WorkScheduleEmployeeOption[];
   equipmentOptions: WorkScheduleSelectOption[];
   initialValues: ScheduleRangeFormInitialValues;
+  loadAssignments?: (startDate: string, endDate: string) => Promise<ScheduleRangeHydrationResult>;
   supervisorOptions: WorkScheduleEmployeeOption[];
 };
 
@@ -76,14 +78,36 @@ function rowsForRange(
   endDate: string,
   existing: Assignment[],
   primaryEmployeeId: string,
+  hydrated: Assignment[] = [],
 ) {
   if (!isValidDateOnlyString(startDate) || !isValidDateOnlyString(endDate)) return existing;
   const byDate = new Map(existing.map((assignment) => [assignment.assignmentDate, assignment]));
+  const hydratedByDate = new Map(
+    hydrated.map((assignment) => [assignment.assignmentDate, assignment]),
+  );
   return buildDateRange(parseDateOnly(startDate), parseDateOnly(endDate)).map((date) => ({
     ...blankAssignment(date.assignmentDate, date.dayOfWeek, primaryEmployeeId),
+    ...hydratedByDate.get(date.assignmentDate),
     ...byDate.get(date.assignmentDate),
     ...date,
   }));
+}
+
+function employeeOptionsWithSelected(
+  options: WorkScheduleEmployeeOption[],
+  selectedId?: string,
+  displayName?: string,
+) {
+  if (!selectedId || options.some((option) => option.id === selectedId)) return options;
+  return [
+    ...options,
+    {
+      id: selectedId,
+      label: displayName || "Previously selected employee",
+      isActive: false,
+      isSupervisor: false,
+    },
+  ];
 }
 
 function displayRangeDay(value: string) {
@@ -109,6 +133,7 @@ export function ScheduleRangeForm({
   employeeOptions,
   equipmentOptions,
   initialValues,
+  loadAssignments,
   supervisorOptions,
 }: Props) {
   const [state, formAction, pending] = useActionState(action, emptyScheduleRangeFormState);
@@ -127,6 +152,9 @@ export function ScheduleRangeForm({
     initialValues.primaryEmployeeId ?? "",
   ));
   const [overwriteConfirmed, setOverwriteConfirmed] = useState(false);
+  const [hydrating, setHydrating] = useState(false);
+  const [hydrationError, setHydrationError] = useState("");
+  const hydrationRequest = useRef(0);
 
   const maximumEndDate = useMemo(() => isValidDateOnlyString(startDate)
     ? dateInputValue(addDays(parseDateOnly(startDate), MAX_SCHEDULE_RANGE_DAYS - 1))
@@ -135,6 +163,9 @@ export function ScheduleRangeForm({
   useEffect(() => {
     const submitted = state.submittedValues;
     if (!submitted) return;
+    hydrationRequest.current += 1;
+    setHydrating(false);
+    setHydrationError("");
     setStartDate(submitted.startDate);
     setEndDate(submitted.endDate);
     setStatus(submitted.status as WeeklyScheduleStatusValue);
@@ -168,10 +199,53 @@ export function ScheduleRangeForm({
       currentIndex === index ? { ...assignment, ...update } : assignment,
     ));
   const rebuildRows = (nextStart: string, nextEnd: string) => {
-    if (!isValidDateOnlyString(nextStart) || !isValidDateOnlyString(nextEnd)) return;
+    if (!isValidDateOnlyString(nextStart) || !isValidDateOnlyString(nextEnd)) {
+      hydrationRequest.current += 1;
+      setHydrating(false);
+      return;
+    }
     const next = buildDateRange(parseDateOnly(nextStart), parseDateOnly(nextEnd));
-    if (next.length > MAX_SCHEDULE_RANGE_DAYS) return;
-    setAssignments((current) => rowsForRange(nextStart, nextEnd, current, primaryEmployeeId));
+    if (next.length === 0 || next.length > MAX_SCHEDULE_RANGE_DAYS) {
+      hydrationRequest.current += 1;
+      setHydrating(false);
+      return;
+    }
+
+    const visibleDates = new Set(assignments.map((assignment) => assignment.assignmentDate));
+    const introducesDates = next.some((date) => !visibleDates.has(date.assignmentDate));
+    if (!loadAssignments || initialValues.isNew || !introducesDates) {
+      hydrationRequest.current += 1;
+      setHydrating(false);
+      setHydrationError("");
+      setAssignments((current) => rowsForRange(nextStart, nextEnd, current, primaryEmployeeId));
+      return;
+    }
+
+    const request = ++hydrationRequest.current;
+    setHydrating(true);
+    setHydrationError("");
+    void loadAssignments(nextStart, nextEnd)
+      .then((result) => {
+        if (request !== hydrationRequest.current) return;
+        if (result.status === "error") {
+          setHydrationError(result.message);
+          setHydrating(false);
+          return;
+        }
+        setAssignments((current) => rowsForRange(
+          nextStart,
+          nextEnd,
+          current,
+          primaryEmployeeId,
+          result.assignments,
+        ));
+        setHydrating(false);
+      })
+      .catch(() => {
+        if (request !== hydrationRequest.current) return;
+        setHydrationError("Existing assignments could not be loaded. No schedule changes were made.");
+        setHydrating(false);
+      });
   };
   const changePlannedStatus = (index: number, plannedStatus: DailyAssignmentStatusValue) => {
     if (plannedStatus === "NON_WORKING") {
@@ -211,6 +285,8 @@ export function ScheduleRangeForm({
   return (
     <form action={formAction} className="form-stack">
       {state.status === "error" ? <div className="form-alert" role="alert">{state.message}</div> : null}
+      {hydrationError ? <div className="form-alert" role="alert">{hydrationError}</div> : null}
+      {hydrating ? <p className="subtle" role="status">Loading existing assignments for this range...</p> : null}
       {state.status === "conflict" ? (
         <section className="form-alert schedule-conflict" role="alert" aria-labelledby="schedule-conflict-heading">
           <h2 id="schedule-conflict-heading">Existing schedule data found</h2>
@@ -306,6 +382,26 @@ export function ScheduleRangeForm({
             const cancelled = assignment.plannedStatus === "CANCELLED";
             const inactive = off || cancelled;
             const error = (field: string) => assignmentError(index, field);
+            const plannedPrimaryOptions = employeeOptionsWithSelected(
+              employeeOptions,
+              assignment.plannedPrimaryEmployeeId,
+              assignment.plannedPrimaryDisplayName,
+            );
+            const plannedPartnerOptions = employeeOptionsWithSelected(
+              employeeOptions,
+              assignment.plannedPartnerEmployeeId,
+              assignment.plannedPartnerDisplayName,
+            );
+            const actualPrimaryOptions = employeeOptionsWithSelected(
+              employeeOptions,
+              assignment.actualPrimaryEmployeeId,
+              assignment.actualPrimaryDisplayName,
+            );
+            const actualPartnerOptions = employeeOptionsWithSelected(
+              employeeOptions,
+              assignment.actualPartnerEmployeeId,
+              assignment.actualPartnerDisplayName,
+            );
             return (
               <fieldset className={`activity-card work-schedule-day${inactive ? " work-schedule-day--inactive" : ""}${off ? " work-schedule-day--non-working" : ""}${cancelled ? " work-schedule-day--cancelled" : ""}`} key={assignment.assignmentDate}>
                 <legend>{displayRangeDay(assignment.assignmentDate)}</legend>
@@ -318,8 +414,8 @@ export function ScheduleRangeForm({
                 <div className="form-grid">
                   <label><span>Shift</span><select disabled={inactive} name="plannedShift" value={assignment.plannedShift} aria-invalid={Boolean(error("plannedShift"))} onChange={(event) => updateAssignment(index, { plannedShift: event.target.value as ShiftValue })}>{shiftOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{hiddenWhenDisabled("plannedShift", assignment.plannedShift, inactive)}<FieldError id={`range-${index}-shift-error`} message={error("plannedShift")} /></label>
                   <label><span>Equipment</span><select disabled={inactive} name="plannedEquipmentId" value={assignment.plannedEquipmentId ?? ""} aria-invalid={Boolean(error("plannedEquipmentId"))} onChange={(event) => updateAssignment(index, { plannedEquipmentId: event.target.value })}><option value="">No equipment selected</option>{equipmentOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select>{hiddenWhenDisabled("plannedEquipmentId", assignment.plannedEquipmentId ?? "", inactive)}<FieldError id={`range-${index}-equipment-error`} message={error("plannedEquipmentId")} /></label>
-                  <label><span>Primary employee</span><select disabled={inactive} name="plannedPrimaryEmployeeId" value={assignment.plannedPrimaryEmployeeId ?? ""} onChange={(event) => updateAssignment(index, { plannedPrimaryEmployeeId: event.target.value })}><option value="">Use schedule employee</option>{employeeOptions.map((option) => <option disabled={!option.isActive && option.id !== assignment.plannedPrimaryEmployeeId} key={option.id} value={option.id}>{option.label}</option>)}</select>{hiddenWhenDisabled("plannedPrimaryEmployeeId", assignment.plannedPrimaryEmployeeId ?? "", inactive)}</label>
-                  <label><span>Planned partner</span><select disabled={inactive || Boolean(assignment.plannedPartnerUnknown)} name="plannedPartnerEmployeeId" value={assignment.plannedPartnerEmployeeId ?? ""} onChange={(event) => updateAssignment(index, { plannedPartnerEmployeeId: event.target.value })}><option value="">No planned partner</option>{employeeOptions.map((option) => <option disabled={!option.isActive && option.id !== assignment.plannedPartnerEmployeeId} key={option.id} value={option.id}>{option.label}</option>)}</select>{hiddenWhenDisabled("plannedPartnerEmployeeId", assignment.plannedPartnerEmployeeId ?? "", inactive || Boolean(assignment.plannedPartnerUnknown))}</label>
+                  <label><span>Primary employee</span><select disabled={inactive} name="plannedPrimaryEmployeeId" value={assignment.plannedPrimaryEmployeeId ?? ""} onChange={(event) => updateAssignment(index, { plannedPrimaryEmployeeId: event.target.value })}><option value="">Use schedule employee</option>{plannedPrimaryOptions.map((option) => <option disabled={!option.isActive && option.id !== assignment.plannedPrimaryEmployeeId} key={option.id} value={option.id}>{option.label}</option>)}</select>{hiddenWhenDisabled("plannedPrimaryEmployeeId", assignment.plannedPrimaryEmployeeId ?? "", inactive)}</label>
+                  <label><span>Planned partner</span><select disabled={inactive || Boolean(assignment.plannedPartnerUnknown)} name="plannedPartnerEmployeeId" value={assignment.plannedPartnerEmployeeId ?? ""} onChange={(event) => updateAssignment(index, { plannedPartnerEmployeeId: event.target.value })}><option value="">No planned partner</option>{plannedPartnerOptions.map((option) => <option disabled={!option.isActive && option.id !== assignment.plannedPartnerEmployeeId} key={option.id} value={option.id}>{option.label}</option>)}</select>{hiddenWhenDisabled("plannedPartnerEmployeeId", assignment.plannedPartnerEmployeeId ?? "", inactive || Boolean(assignment.plannedPartnerUnknown))}</label>
                   <label className="checkbox-row"><input disabled={inactive} name={`plannedPartnerUnknown-${index}`} type="checkbox" checked={Boolean(assignment.plannedPartnerUnknown)} onChange={(event) => updateAssignment(index, { plannedPartnerUnknown: event.target.checked, plannedPartnerEmployeeId: event.target.checked ? "" : assignment.plannedPartnerEmployeeId })} /><span>Planned partner unknown</span></label>
                 </div>
                 <label className="full-width-field"><span>Planned notes</span><textarea disabled={inactive} name="plannedNotes" rows={2} value={assignment.plannedNotes ?? ""} onChange={(event) => updateAssignment(index, { plannedNotes: event.target.value })} />{hiddenWhenDisabled("plannedNotes", assignment.plannedNotes ?? "", inactive)}</label>
@@ -330,8 +426,8 @@ export function ScheduleRangeForm({
                     <label><span>Actual status</span><select disabled={inactive} name="actualStatus" value={assignment.actualStatus} onChange={(event) => updateAssignment(index, { actualStatus: event.target.value as DailyAssignmentStatusValue })}>{rangeStatusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{hiddenWhenDisabled("actualStatus", assignment.actualStatus, inactive)}</label>
                     <label><span>Actual shift</span><select disabled={inactive} name="actualShift" value={assignment.actualShift} onChange={(event) => updateAssignment(index, { actualShift: event.target.value as ShiftValue })}>{shiftOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{hiddenWhenDisabled("actualShift", assignment.actualShift, inactive)}</label>
                     <label><span>Actual equipment</span><select disabled={inactive} name="actualEquipmentId" value={assignment.actualEquipmentId ?? ""} onChange={(event) => updateAssignment(index, { actualEquipmentId: event.target.value })}><option value="">No equipment selected</option>{equipmentOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select>{hiddenWhenDisabled("actualEquipmentId", assignment.actualEquipmentId ?? "", inactive)}</label>
-                    <label><span>Actual primary</span><select disabled={inactive} name="actualPrimaryEmployeeId" value={assignment.actualPrimaryEmployeeId ?? ""} onChange={(event) => updateAssignment(index, { actualPrimaryEmployeeId: event.target.value })}><option value="">Not recorded</option>{employeeOptions.map((option) => <option disabled={!option.isActive && option.id !== assignment.actualPrimaryEmployeeId} key={option.id} value={option.id}>{option.label}</option>)}</select>{hiddenWhenDisabled("actualPrimaryEmployeeId", assignment.actualPrimaryEmployeeId ?? "", inactive)}</label>
-                    <label><span>Actual partner</span><select disabled={inactive || Boolean(assignment.actualPartnerUnknown)} name="actualPartnerEmployeeId" value={assignment.actualPartnerEmployeeId ?? ""} onChange={(event) => updateAssignment(index, { actualPartnerEmployeeId: event.target.value })}><option value="">Not recorded</option>{employeeOptions.map((option) => <option disabled={!option.isActive && option.id !== assignment.actualPartnerEmployeeId} key={option.id} value={option.id}>{option.label}</option>)}</select>{hiddenWhenDisabled("actualPartnerEmployeeId", assignment.actualPartnerEmployeeId ?? "", inactive || Boolean(assignment.actualPartnerUnknown))}</label>
+                    <label><span>Actual primary</span><select disabled={inactive} name="actualPrimaryEmployeeId" value={assignment.actualPrimaryEmployeeId ?? ""} onChange={(event) => updateAssignment(index, { actualPrimaryEmployeeId: event.target.value })}><option value="">Not recorded</option>{actualPrimaryOptions.map((option) => <option disabled={!option.isActive && option.id !== assignment.actualPrimaryEmployeeId} key={option.id} value={option.id}>{option.label}</option>)}</select>{hiddenWhenDisabled("actualPrimaryEmployeeId", assignment.actualPrimaryEmployeeId ?? "", inactive)}</label>
+                    <label><span>Actual partner</span><select disabled={inactive || Boolean(assignment.actualPartnerUnknown)} name="actualPartnerEmployeeId" value={assignment.actualPartnerEmployeeId ?? ""} onChange={(event) => updateAssignment(index, { actualPartnerEmployeeId: event.target.value })}><option value="">Not recorded</option>{actualPartnerOptions.map((option) => <option disabled={!option.isActive && option.id !== assignment.actualPartnerEmployeeId} key={option.id} value={option.id}>{option.label}</option>)}</select>{hiddenWhenDisabled("actualPartnerEmployeeId", assignment.actualPartnerEmployeeId ?? "", inactive || Boolean(assignment.actualPartnerUnknown))}</label>
                     <label className="checkbox-row"><input disabled={inactive} name={`actualPartnerUnknown-${index}`} type="checkbox" checked={Boolean(assignment.actualPartnerUnknown)} onChange={(event) => updateAssignment(index, { actualPartnerUnknown: event.target.checked, actualPartnerEmployeeId: event.target.checked ? "" : assignment.actualPartnerEmployeeId })} /><span>Actual partner unknown</span></label>
                   </div>
                   <label className="full-width-field"><span>Change reason</span><textarea disabled={off} name="changeReason" rows={2} value={assignment.changeReason ?? ""} onChange={(event) => updateAssignment(index, { changeReason: event.target.value })} />{hiddenWhenDisabled("changeReason", assignment.changeReason ?? "", off)}</label>
@@ -345,7 +441,7 @@ export function ScheduleRangeForm({
 
       <div className="form-actions">
         <a className="button secondary" href={cancelHref}>Cancel</a>
-        <button className="button primary" disabled={pending || (state.status === "conflict" && !overwriteConfirmed)} type="submit">{pending ? "Saving..." : state.status === "conflict" ? "Confirm and save range" : "Save schedule"}</button>
+        <button className="button primary" disabled={pending || hydrating || Boolean(hydrationError) || (state.status === "conflict" && !overwriteConfirmed)} type="submit">{pending ? "Saving..." : state.status === "conflict" ? "Confirm and save range" : "Save schedule"}</button>
       </div>
     </form>
   );
