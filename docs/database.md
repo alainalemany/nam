@@ -959,6 +959,12 @@ Prisma schema.
 Represents one Monday-through-Sunday schedule planning container for the primary
 employee whose schedule is being entered.
 
+The user-facing schedule-range workflow is intentionally not a database entity.
+Each submitted date is assigned to its containing WeeklySchedule, and a range
+that crosses a Sunday/Monday boundary writes multiple WeeklySchedule aggregates
+in one transaction. Only DailyAssignment rows inside the submitted range are
+upserted; assignments elsewhere in an affected week are preserved.
+
 Implemented fields:
 
 - id

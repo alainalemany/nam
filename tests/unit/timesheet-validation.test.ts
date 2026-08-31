@@ -10,6 +10,7 @@ import {
   normalizeReferenceKey,
   normalizeSupportPersonKey,
   parseDateOnly,
+  startOfPayrollWeek,
 } from "@/features/timesheets/calculations";
 import {
   supportPersonSchema,
@@ -72,6 +73,25 @@ describe("Timesheet minute calculations", () => {
       { workDate: "2026-07-13", workedMinutes: 1_200, regularMinutes: 1_200, overtimeMinutes: 0 },
       { workDate: "2026-07-15", workedMinutes: 1_200, regularMinutes: 1_200, overtimeMinutes: 0 },
       { workDate: "2026-07-17", workedMinutes: 720, regularMinutes: 0, overtimeMinutes: 720 },
+    ]);
+  });
+
+  it("keeps overtime accounting separate across the August 31 and September 7 payroll weeks", () => {
+    expect(startOfPayrollWeek(parseDateOnly("2026-09-06"))).toEqual(parseDateOnly("2026-08-31"));
+    expect(startOfPayrollWeek(parseDateOnly("2026-09-07"))).toEqual(parseDateOnly("2026-09-07"));
+
+    const firstWeek = allocateWeeklyOvertime([
+      { workDate: "2026-08-31", workedMinutes: 2_400 },
+      { workDate: "2026-09-06", workedMinutes: 600 },
+    ]);
+    const secondWeek = allocateWeeklyOvertime([
+      { workDate: "2026-09-07", workedMinutes: 600 },
+      { workDate: "2026-09-08", workedMinutes: 600 },
+    ]);
+    expect(firstWeek[1]).toMatchObject({ regularMinutes: 0, overtimeMinutes: 600 });
+    expect(secondWeek).toEqual([
+      { workDate: "2026-09-07", workedMinutes: 600, regularMinutes: 600, overtimeMinutes: 0 },
+      { workDate: "2026-09-08", workedMinutes: 600, regularMinutes: 600, overtimeMinutes: 0 },
     ]);
   });
 

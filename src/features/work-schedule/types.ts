@@ -53,6 +53,21 @@ export type WorkScheduleFormInitialValues = {
   assignments: WorkScheduleAssignmentInitialValues[];
 };
 
+export type ScheduleRangeFormInitialValues = {
+  isNew: boolean;
+  startDate: string;
+  endDate: string;
+  status: WeeklyScheduleStatusValue;
+  primaryEmployeeId?: string;
+  primaryEmployeeDisplayName: string;
+  assignedByEmployeeId?: string;
+  assignedByDisplayName: string;
+  receivedAt?: string;
+  sourceNote?: string;
+  scheduleNotes?: string;
+  assignments: WorkScheduleAssignmentInitialValues[];
+};
+
 export type WorkScheduleDayViewCrewParticipant = {
   label: string;
   state: "known" | "unknown" | "not_recorded";

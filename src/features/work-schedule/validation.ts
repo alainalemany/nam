@@ -90,6 +90,28 @@ export function buildWeekDates(weekStartDate: Date) {
   });
 }
 
+export function isValidDateOnlyString(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = parseDateOnly(value);
+  return !Number.isNaN(parsed.getTime()) && dateInputValue(parsed) === value;
+}
+
+export function buildDateRange(startDate: Date, endDate: Date) {
+  const start = toDateOnly(startDate);
+  const end = toDateOnly(endDate);
+  if (end < start) return [];
+
+  const length = Math.floor((end.getTime() - start.getTime()) / DAY_MS) + 1;
+  return Array.from({ length }, (_, index) => {
+    const date = addDays(start, index);
+    const utcDay = date.getUTCDay();
+    return {
+      assignmentDate: dateInputValue(date),
+      dayOfWeek: utcDay === 0 ? 7 : utcDay,
+    };
+  });
+}
+
 export function nextMonday(from = new Date()) {
   const today = toDateOnly(from);
   const day = today.getUTCDay();

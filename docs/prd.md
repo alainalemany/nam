@@ -497,7 +497,9 @@ Dragline number is the primary equipment identifier for this workflow.
 
 ## Work Schedule Requirements
 
-NAM Dashboard must support a Work Schedule module for logging and managing weekly work assignments.
+NAM Dashboard must support a Work Schedule module for logging and managing
+planned work assignments through a continuous date-range entry and edit
+workflow while retaining calendar-week browsing.
 
 Work Schedule represents employee assignments to equipment. The meaningful
 operational record is the assignment connecting date, employee or crew, shift,
@@ -507,6 +509,24 @@ The Weekly Schedule is the planning container for one operational week. Each
 scheduled working day is an independent Daily Assignment so one day's equipment,
 crew, shift, cancellation, or actual work can change without rewriting the
 whole week.
+
+The primary create/edit workflow must accept a required Start Date and End Date
+and present every included calendar day as one continuous sequence, including
+when the range crosses Sunday/Monday. The persistence boundary must group those
+dates into their containing Monday-through-Sunday Weekly Schedule records and
+save the complete multi-week operation atomically. Assignments outside the
+submitted range must remain unchanged.
+
+Before replacing existing planned data on an included date, the workflow must
+identify the conflicting dates and require explicit confirmation. Off days use
+the existing non-working status semantics and do not require shift, Equipment,
+or crew fields. A Night assignment remains attached to the date on which the
+shift starts.
+
+No persisted schedule-range entity is required. WeeklySchedule and
+DailyAssignment remain the canonical Work Schedule storage model. Weekly
+Timesheets and their 2,400-minute overtime boundary remain independent and
+must not combine accounting across the range workflow's week boundaries.
 
 The operator usually receives the next week's schedule by SMS on Friday, sometimes Saturday. The system should allow the schedule to be entered manually in English even if the original message was written in Spanish.
 

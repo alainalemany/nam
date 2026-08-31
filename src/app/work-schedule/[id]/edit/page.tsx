@@ -2,11 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { updateWeeklyScheduleAction } from "@/features/work-schedule/actions";
+import { saveScheduleRangeAction } from "@/features/work-schedule/range-actions";
 import {
   getWeeklySchedule,
   getWorkScheduleFormOptions,
+  scheduleRangeInitialValuesFromRecord,
   workScheduleInitialValuesFromRecord,
 } from "@/features/work-schedule/data";
+import { ScheduleRangeForm } from "@/features/work-schedule/ScheduleRangeForm";
 import { WorkScheduleForm } from "@/features/work-schedule/WorkScheduleForm";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +48,7 @@ export default async function EditWorkSchedulePage({
         <div>
           <p className="eyebrow">Planning</p>
           <h1 id="page-title">Edit Work Schedule</h1>
-          <p className="summary">Update the weekly grid while preserving planned and actual assignment context.</p>
+          <p className="summary">Update a continuous date range while preserving weekly storage and assignment history.</p>
         </div>
         <Link className="button secondary" href={`/work-schedule/${schedule.id}`}>
           Back to Schedule
@@ -53,15 +56,26 @@ export default async function EditWorkSchedulePage({
       </section>
 
       <section className="panel" aria-label="Work Schedule form">
-        <WorkScheduleForm
-          action={action}
-          cancelHref={`/work-schedule/${schedule.id}`}
-          employeeOptions={options.employeeOptions}
-          equipmentOptions={options.equipmentOptions}
-          initialValues={workScheduleInitialValuesFromRecord(schedule)}
-          submitLabel="Update Work Schedule"
-          supervisorOptions={options.supervisorOptions}
-        />
+        {schedule.primaryEmployeeId ? (
+          <ScheduleRangeForm
+            action={saveScheduleRangeAction}
+            cancelHref={`/work-schedule/${schedule.id}`}
+            employeeOptions={options.employeeOptions}
+            equipmentOptions={options.equipmentOptions}
+            initialValues={scheduleRangeInitialValuesFromRecord(schedule)}
+            supervisorOptions={options.supervisorOptions}
+          />
+        ) : (
+          <WorkScheduleForm
+            action={action}
+            cancelHref={`/work-schedule/${schedule.id}`}
+            employeeOptions={options.employeeOptions}
+            equipmentOptions={options.equipmentOptions}
+            initialValues={workScheduleInitialValuesFromRecord(schedule)}
+            submitLabel="Update Work Schedule"
+            supervisorOptions={options.supervisorOptions}
+          />
+        )}
       </section>
     </main>
   );

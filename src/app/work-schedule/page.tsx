@@ -14,8 +14,17 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function WorkSchedulePage() {
+type WorkSchedulePageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function WorkSchedulePage({ searchParams }: WorkSchedulePageProps) {
   const schedules = await getWeeklySchedules();
+  const params = await searchParams;
+  const saved = params?.saved === "range";
+  const startDate = typeof params?.startDate === "string" ? params.startDate : undefined;
+  const endDate = typeof params?.endDate === "string" ? params.endDate : undefined;
+  const weeks = typeof params?.weeks === "string" ? params.weeks : undefined;
 
   return (
     <main className="page-stack">
@@ -24,13 +33,20 @@ export default async function WorkSchedulePage() {
           <p className="eyebrow">Planning</p>
           <h1 id="page-title">Work Schedule</h1>
           <p className="summary">
-            Enter weekly equipment assignments, planned crew, and actual work outcomes.
+            Create schedules across continuous date ranges, then browse the canonical calendar weeks.
           </p>
         </div>
         <Link className="button primary" href="/work-schedule/new">
-          New Weekly Schedule
+          New Schedule
         </Link>
       </section>
+
+      {saved ? (
+        <div className="success-confirmation" role="status">
+          <strong>Schedule saved successfully.</strong>
+          {startDate && endDate ? <p>{startDate} through {endDate}{weeks ? ` across ${weeks} calendar ${weeks === "1" ? "week" : "weeks"}` : ""}.</p> : null}
+        </div>
+      ) : null}
 
       <section className="panel table-panel" aria-labelledby="work-schedule-list-heading">
         <div className="section-heading">
@@ -41,7 +57,7 @@ export default async function WorkSchedulePage() {
         {schedules.length === 0 ? (
           <div className="empty-state">
             <h3>No Work Schedules yet</h3>
-            <p>Create a weekly schedule to preserve planned and actual assignments.</p>
+            <p>Create a schedule range to preserve planned and actual assignments.</p>
             <Link className="button primary" href="/work-schedule/new">
               Add Work Schedule
             </Link>
@@ -95,4 +111,3 @@ export default async function WorkSchedulePage() {
     </main>
   );
 }
-

@@ -30,8 +30,6 @@ type CrewMember = {
   isUnknown: boolean;
 };
 
-const inactiveAssignmentStatuses = new Set(["NON_WORKING", "CANCELLED"]);
-
 function meaningfulText(value: string | null | undefined) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
@@ -162,11 +160,6 @@ function hasActualAssignment(assignment: {
     Boolean(meaningfulText(assignment.actualEquipmentDisplayName));
 }
 
-function isActiveAssignment(assignment: { plannedStatus: string; actualStatus: string }) {
-  return !inactiveAssignmentStatuses.has(assignment.plannedStatus) &&
-    !inactiveAssignmentStatuses.has(assignment.actualStatus);
-}
-
 export default async function WorkScheduleDetailPage({
   params,
 }: WorkScheduleDetailPageProps) {
@@ -181,7 +174,6 @@ export default async function WorkScheduleDetailPage({
     schedule.weekStartDate,
     schedule.primaryEmployeeKey,
   );
-  const activeAssignments = schedule.assignments.filter(isActiveAssignment);
 
   return (
     <main className="page-stack">
@@ -245,11 +237,11 @@ export default async function WorkScheduleDetailPage({
       <section className="panel table-panel" aria-labelledby="assignments-heading">
         <div className="section-heading">
           <h2 id="assignments-heading">Daily assignments</h2>
-          <span className="count-pill">{activeAssignments.length}</span>
+          <span className="count-pill">{schedule.assignments.length}</span>
         </div>
 
         <div className="record-list">
-          {activeAssignments.map((assignment) => {
+          {schedule.assignments.map((assignment) => {
             const plannedEquipment = equipmentSummary(
               assignment.plannedEquipmentDisplayName,
               assignment.plannedEquipmentNumber,

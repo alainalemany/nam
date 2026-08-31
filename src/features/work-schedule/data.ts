@@ -9,8 +9,10 @@ import {
   weeklyScheduleStatusOptions,
 } from "./constants";
 import {
+  buildDateRange,
   buildWeekDates,
   dateInputValue,
+  endOfOperationalWeek,
   nextMonday,
   normalizePrimaryEmployeeKey,
   parseDateOnly,
@@ -20,6 +22,7 @@ import type {
   WorkScheduleDayViewCrewParticipant,
   WorkScheduleAssignmentInitialValues,
   WorkScheduleFormInitialValues,
+  ScheduleRangeFormInitialValues,
 } from "./types";
 
 export async function getWeeklySchedules() {
@@ -440,6 +443,28 @@ export function defaultWorkScheduleInitialValues(
   };
 }
 
+export function defaultScheduleRangeInitialValues(
+  startDate = dateInputValue(nextMonday()),
+  endDate = dateInputValue(endOfOperationalWeek(parseDateOnly(startDate))),
+  primaryEmployeeId = "",
+): ScheduleRangeFormInitialValues {
+  const weekly = defaultWorkScheduleInitialValues(startDate, primaryEmployeeId);
+  return {
+    ...weekly,
+    startDate,
+    endDate,
+    assignments: buildDateRange(parseDateOnly(startDate), parseDateOnly(endDate)).map((day) => ({
+      ...weekly.assignments[0],
+      ...day,
+      plannedPrimaryEmployeeId: primaryEmployeeId,
+      actualStatus: "UNKNOWN",
+      actualShift: "UNKNOWN",
+      actualEquipmentId: "",
+      actualPrimaryEmployeeId: "",
+    })),
+  };
+}
+
 export function workScheduleInitialValuesFromRecord(
   schedule: NonNullable<Awaited<ReturnType<typeof getWeeklySchedule>>>,
 ): WorkScheduleFormInitialValues {
@@ -515,5 +540,19 @@ export function workScheduleInitialValuesFromRecord(
         actualNotes: assignment.actualNotes ?? "",
       };
     }),
+  };
+}
+
+export function scheduleRangeInitialValuesFromRecord(
+  schedule: NonNullable<Awaited<ReturnType<typeof getWeeklySchedule>>>,
+): ScheduleRangeFormInitialValues {
+  const weekly = workScheduleInitialValuesFromRecord(schedule);
+  const startDate = weekly.assignments[0]?.assignmentDate ?? weekly.weekStartDate;
+  const endDate = weekly.assignments.at(-1)?.assignmentDate ??
+    dateInputValue(endOfOperationalWeek(schedule.weekStartDate));
+  return {
+    ...weekly,
+    startDate,
+    endDate,
   };
 }

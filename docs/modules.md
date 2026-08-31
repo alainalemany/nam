@@ -583,17 +583,21 @@ View.
 
 ## Work Schedule
 
-The Work Schedule module tracks the operator's weekly employee-to-equipment
-assignments and schedule changes.
+The Work Schedule module tracks the operator's date-specific employee-to-
+equipment assignments and schedule changes while storing them in canonical
+Monday-through-Sunday weekly containers.
 
-Current implementation status: V1 foundation implemented with manual weekly
-schedule list, canonical Employee reference management and schedule
-relationships, create, detail, edit workflows, and Day View participation.
+Current implementation status: V1 foundation implemented with continuous
+date-range create/edit, manual weekly schedule browsing, canonical Employee
+reference management and schedule relationships, detail workflows, and Day
+View participation.
 Timesheet reconciliation, SMS import, and automation remain deferred.
 
 ### Purpose
 
-Capture the schedule received from a supervisor and turn it into a clean, editable weekly calendar inside NAM Dashboard.
+Capture the schedule received from a supervisor and turn it into a clean,
+editable continuous calendar sequence inside NAM Dashboard without exposing
+calendar-week persistence boundaries during entry.
 
 The module should help the operator know where they are expected to work each
 day, who they were expected to work with, what equipment was assigned, and what
@@ -619,8 +623,11 @@ Schedule for the rest of the week: Saturday at 137 and Sunday remains off. Next 
 
 ### Required Capabilities
 
-- Create a Weekly Schedule as the planning container for one operational week.
-- Enter independent Daily Assignments for Monday through Sunday.
+- Create or update the required Weekly Schedule planning containers from one
+  Start Date/End Date workflow.
+- Enter one independent Daily Assignment for every date in the selected range.
+- Present Sunday/Monday crossings as one continuous entry sequence.
+- Keep Monday-through-Sunday weekly views for browsing and operational review.
 - Preserve planned assignment details separately from actual assignment details.
 - Record the primary employee whose schedule is being entered.
 - Select known primary and planned/actual crew participants from active
@@ -628,12 +635,18 @@ Schedule for the rest of the week: Saturday at 137 and Sunday remains off. Next 
 - Record the supervisor or source who communicated the schedule using the
   user-facing label "Assigned By" and existing supervisor eligibility.
 - Mark days as scheduled, non-working, unknown, or cancelled.
+- Present non-working days as Off and omit requirements that do not apply to
+  Off days.
 - Assign planned and actual equipment when known.
 - Derive normal mine and city context from Equipment while preserving
   historical display context for the assignment.
 - Preserve planned and actual crew or partner information, including unknown or
   replacement partners.
 - Edit an existing schedule when a newer supervisor message changes the plan.
+- Warn and require explicit confirmation before replacing existing planned
+  assignments inside the selected range.
+- Preserve every assignment outside the submitted range and save all affected
+  weekly records atomically.
 - Record notes from the original message or update message.
 - View the current week and next week quickly.
 - Support manual entry as the primary and preferred workflow.
@@ -646,6 +659,8 @@ A scheduled day may later result in a Shift Report, Daily Inspection, Daily Log,
 
 Work Schedule records planned and assigned work context. Timesheet records
 pay-facing time worked. Daily Log records what happened operationally.
+The range workflow does not change Timesheet payroll-week ownership or weekly
+overtime calculations.
 
 ### V1 Boundary
 

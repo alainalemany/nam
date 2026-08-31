@@ -421,6 +421,75 @@ th {
   padding: 12px;
 }
 
+.schedule-range-days {
+  max-width: 980px;
+}
+
+.schedule-range-days .activity-card {
+  border-left-width: 4px;
+}
+
+.schedule-shift-badge {
+  align-self: end;
+  border: 1px solid #9fb2c3;
+  border-radius: 999px;
+  background: #eef5fb;
+  color: #284b68;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.schedule-shift-badge--night {
+  border-color: #8992b9;
+  background: #eef0ff;
+  color: #373f79;
+}
+
+.schedule-shift-badge--off {
+  border-color: #aeb7bf;
+  background: #e2e7eb;
+  color: #48545e;
+}
+
+.schedule-actual-details {
+  border-top: 1px solid #d7dde3;
+  padding-top: 12px;
+}
+
+.schedule-actual-details summary {
+  cursor: pointer;
+  color: #34424d;
+  font-weight: 800;
+}
+
+.schedule-actual-details[open] {
+  display: grid;
+  gap: 16px;
+}
+
+.schedule-conflict {
+  border-color: #d8ad57;
+  background: #fff9e8;
+  color: #6d4a05;
+}
+
+.schedule-conflict h2,
+.schedule-conflict p {
+  margin: 0;
+}
+
+.confirmation-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.confirmation-choice input {
+  width: auto;
+  margin-top: 3px;
+}
+
 label,
 .full-width-field {
   display: grid;

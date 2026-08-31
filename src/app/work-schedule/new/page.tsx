@@ -1,11 +1,11 @@
 import Link from "next/link";
 
-import { createWeeklyScheduleAction } from "@/features/work-schedule/actions";
+import { saveScheduleRangeAction } from "@/features/work-schedule/range-actions";
 import {
-  defaultWorkScheduleInitialValues,
+  defaultScheduleRangeInitialValues,
   getWorkScheduleFormOptions,
 } from "@/features/work-schedule/data";
-import { WorkScheduleForm } from "@/features/work-schedule/WorkScheduleForm";
+import { ScheduleRangeForm } from "@/features/work-schedule/ScheduleRangeForm";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,7 @@ export default async function NewWorkSchedulePage() {
           <p className="eyebrow">Planning</p>
           <h1 id="page-title">New Work Schedule</h1>
           <p className="summary">
-            Build a Monday-Sunday schedule while preserving planned and actual values separately.
+            Enter one continuous schedule range. NAM keeps calendar-week records aligned behind the scenes.
           </p>
         </div>
         <Link className="button secondary" href="/work-schedule">
@@ -28,14 +28,13 @@ export default async function NewWorkSchedulePage() {
       </section>
 
       <section className="panel" aria-label="Work Schedule form">
-        <WorkScheduleForm
-          action={createWeeklyScheduleAction}
+        <ScheduleRangeForm
+          action={saveScheduleRangeAction}
           cancelHref="/work-schedule"
           employeeOptions={options.employeeOptions}
           equipmentOptions={options.equipmentOptions}
-          initialValues={defaultWorkScheduleInitialValues(undefined, options.defaultPrimaryEmployeeId)}
+          initialValues={defaultScheduleRangeInitialValues(undefined, undefined, options.defaultPrimaryEmployeeId)}
           supervisorOptions={options.supervisorOptions}
-          submitLabel="Save Work Schedule"
         />
       </section>
     </main>

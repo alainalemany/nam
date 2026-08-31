@@ -39,7 +39,7 @@ Related Documents:
 - `docs/architecture/features/day-view.md`
 - `docs/decisions/adr-004-manual-work-schedule-entry.md`
 
-Last Reviewed: 2026-08-18
+Last Reviewed: 2026-08-31
 
 ## 1. Purpose
 
@@ -64,7 +64,9 @@ repository-wide implementation standards in `docs/feature-architecture.md`.
 
 Work Schedule is responsible for:
 
-- Creating and editing one personal weekly schedule planning container.
+- Creating and editing planned assignments through one continuous date range.
+- Mapping each submitted date to its canonical Monday-through-Sunday weekly
+  planning container.
 - Owning independent daily assignment records for each scheduled workday.
 - Recording the employee whose schedule is being entered.
 - Recording the supervisor or source who assigned or communicated the schedule.
@@ -75,7 +77,7 @@ Work Schedule is responsible for:
 - Linking planned and actual assignments to Equipment where known.
 - Preserving enough equipment, mine, and city context for historical schedule
   accuracy when reference data changes later.
-- Supporting weekly grid entry and review.
+- Supporting continuous range entry plus weekly browse/review.
 - Exposing feature-owned reads for weekly lookup, selected-date lookup, and
   Day View participation.
 - Owning feature-specific validation, mutation flow, query helpers, constants,
@@ -83,8 +85,9 @@ Work Schedule is responsible for:
 
 V1 foundation should include:
 
-- Manual weekly schedule entry.
-- Monday-through-Sunday weekly grid.
+- Manual continuous date-range schedule entry.
+- Responsive, date-ordered day rows that do not split the entry experience at
+  Sunday/Monday boundaries.
 - One Weekly Schedule per canonical primary Employee and week.
 - Independent Daily Assignment records under the weekly schedule.
 - Planned and actual assignment fields preserved independently.
@@ -100,7 +103,8 @@ Implemented V1 foundation:
 - Work Schedule data model and migration.
 - Canonical Employee model, management surfaces, and Work Schedule relations.
 - Feature-owned list, create, detail, and edit routes.
-- Weekly grid entry for Monday-through-Sunday assignments.
+- Continuous date-range entry and edit that atomically updates one or more
+  Monday-through-Sunday Weekly Schedules.
 - Planned and actual assignment fields, crew snapshots, Assigned By, and
   equipment/location display snapshots.
 - Feature-owned Server Actions, validation, query helpers, and proportional
@@ -138,15 +142,16 @@ membership, or schedule source context.
 
 ## 4. User Workflow
 
-The V1 workflow is manual and weekly:
+The V1 workflow is manual and range-oriented:
 
 1. The operator receives the official schedule from a supervisor, usually by
    SMS on Friday or Saturday.
-2. The operator opens Work Schedule and selects or creates the next operational
-   week.
+2. The operator opens Work Schedule and selects a Start Date and End Date for
+   the known schedule.
 3. The operator records who assigned or communicated the schedule using the
    user-facing label "Assigned By".
-4. The operator enters planned daily assignments in a weekly grid.
+4. The operator enters planned daily assignments in one continuous date list,
+   even when the dates cross a Sunday/Monday boundary.
 5. For each day, the operator records whether the day is scheduled,
    non-working, unknown, or cancelled.
 6. For scheduled days, the operator records planned shift, planned equipment,
@@ -155,8 +160,10 @@ The V1 workflow is manual and weekly:
    overwriting the original plan.
 8. If equipment, shift, location, partner, or work status differs from the plan,
    the operator records the actual values and a change reason or note.
-9. The operator reviews current, upcoming, and historical weeks from Work
-   Schedule and, in a follow-up milestone, from Day View.
+9. On save, Work Schedule warns before replacing existing planned assignments
+   in the selected range and requires explicit confirmation.
+10. The operator reviews current, upcoming, and historical weeks from Work
+    Schedule and selected-date context from Day View.
 
 The UI should support fast manual entry from a source message, but the source
 message remains reference text. ADR-004 keeps SMS import and natural-language
@@ -209,8 +216,9 @@ V1 should use these conceptual records:
 | Daily Assignment | One independent date-specific assignment within the Weekly Schedule. |
 | Assignment Crew Member | Assignment-owned planned or actual crew participant, such as primary employee or partner. |
 
-The week is the planning and data-entry unit. The day is the operational and
-historical unit.
+The date range is the user-facing planning-entry unit. The week remains the
+canonical persistence, browsing, and compatibility unit. The day is the
+operational and historical unit. No persisted range aggregate is introduced.
 
 Daily Assignments should not span multiple dates. A multi-day work pattern is
 represented by several Daily Assignments because equipment, shift, crew,
@@ -393,9 +401,14 @@ filtering may be added later if historical schedule volume proves it useful.
 
 V1 mutation responsibilities should include:
 
-- Create a Weekly Schedule.
-- Save the weekly grid as one coherent user action.
-- Create, update, or clear Daily Assignments for dates inside the week.
+- Accept one Start Date/End Date schedule submission.
+- Determine the Monday-through-Sunday Weekly Schedule bucket for every date.
+- Create or update all required Weekly Schedules as one coherent user action.
+- Upsert only Daily Assignments inside the submitted range.
+- Preserve unrelated Daily Assignments outside the submitted range, including
+  assignments in affected weekly containers.
+- Detect existing planned data on submitted dates and require explicit
+  confirmation before replacement.
 - Mark a day non-working, unknown, scheduled, or cancelled.
 - Edit planned assignment values.
 - Confirm or update actual assignment values.
@@ -403,34 +416,40 @@ V1 mutation responsibilities should include:
 - Preserve historical equipment and location snapshots on edit unless the
   corresponding planned or actual equipment selection intentionally changes.
 
-The safest V1 save behavior is one atomic Server Action for the weekly grid.
-The action should validate the full week, then use a Prisma transaction to write
-the Weekly Schedule, Daily Assignments, crew participants, and snapshots
-together. This prevents partial weekly saves where some days persist and others
-fail.
+The range save uses one atomic Server Action and one Prisma transaction. The
+action validates the complete range, loads conflict state and canonical
+references inside a serializable transaction, then writes every affected Weekly Schedule,
+Daily Assignment, crew participant, and snapshot together. Any failure rolls
+back the complete multi-week save. The mutation must not use a week-level
+delete/reset operation because dates outside the selected range are unrelated
+data.
 
 Destructive deletion should be conservative. Archive or clear behavior is
 preferred until delete semantics are approved.
 
 ## 7. UI Composition
 
-Work Schedule should use a Weekly Grid as the primary UI.
+Work Schedule should use a continuous date list as the primary create/edit UI.
+The existing weekly view remains the browse/review UI.
 
 Expected V1 surfaces:
 
 - Weekly Schedule list or archive.
-- New weekly schedule page.
-- Weekly Schedule detail/edit grid.
+- New schedule-range page.
+- Schedule-range edit page seeded from an existing weekly record and extendable
+  across week boundaries.
+- Weekly Schedule detail view.
 - Route-level loading and error states.
 
-Weekly Grid expectations:
+Schedule-range editor expectations:
 
-- Header with week range, previous week, current week, and next week controls.
+- Required Start Date and End Date controls with a 31-day maximum range.
 - Assigned By field in the schedule header.
 - Canonical Employee selectors for the primary employee, Assigned By, and
   known planned/actual crew participants.
 - Optional received date/time and schedule-level notes when included in V1.
-- Monday through Sunday rows or cards.
+- One readable row or card for every calendar date in order, without a visual
+  split at Sunday/Monday.
 - Planned section for each day.
 - Actual section for each day.
 - Equipment selector for planned and actual equipment where applicable.
@@ -438,17 +457,19 @@ Weekly Grid expectations:
 - Crew entry that distinguishes primary employee and partner.
 - Non-working, unknown, scheduled, and cancelled day handling.
 - Validation feedback near the affected day and field.
-- Save action for the full weekly grid.
+- Clear Day, Night, and Off presentation using humanized labels.
+- Explicit overwrite confirmation listing conflicting dates.
+- Save action for the full range and green success confirmation after commit.
 
-The desktop layout may use a table-like grid when it remains readable. Narrow
-screens should stack the seven days as compact cards rather than forcing an
-unusable wide table.
+Desktop and narrow screens use a vertical list of compact date cards rather
+than a range-wide horizontal grid. Actual assignment/change fields may be
+progressively disclosed while remaining editable and preserved.
 
 The UI should distinguish create/edit mode from historical review mode. Older
 weeks should remain readable even if editing is still allowed.
 
-The grid should support efficient manual entry, including repeating or copying
-common planned values, but V1 should avoid a generic drag-and-drop calendar.
+The range list should support efficient manual entry without becoming a
+generic drag-and-drop calendar.
 
 ## 8. Validation And Error Handling
 
@@ -456,6 +477,10 @@ Validation belongs at the Work Schedule Server Action boundary.
 
 V1 validation should cover:
 
+- Start Date and End Date are required Gregorian date-only values.
+- End Date is on or after Start Date.
+- A range contains no more than 31 dates.
+- Exactly one ordered Daily Assignment is submitted for every included date.
 - Week start must be Monday.
 - Week end must be the corresponding Sunday.
 - Daily Assignment date must belong to the Weekly Schedule week.
@@ -479,6 +504,7 @@ V1 validation should cover:
   eligible supervisor Employee.
 - Equipment IDs must refer to valid Equipment records when provided.
 - Night shifts are stored against the date they start.
+- Off/non-working dates do not require shift, Equipment, or crew values.
 
 User-facing errors should identify the affected day and field. Database or
 transaction errors should be summarized without exposing raw database details.
@@ -490,6 +516,12 @@ feature.
 
 V1 test priorities:
 
+- Single-week and multi-week date ranges.
+- The August 31-September 8 Day/Off/Night example.
+- Existing assignment conflict detection and explicit confirmation.
+- Preservation of assignments outside a submitted range.
+- Complete rollback when any affected weekly write fails.
+- Timesheet week and overtime-boundary regression coverage.
 - Week-boundary helpers, including Monday start and Sunday end.
 - Date-only assignment behavior.
 - Weekly-grid validation.
@@ -613,7 +645,12 @@ Work Schedule V1 architecture is successful when:
   entry.
 - Historical assignment display does not silently change when equipment
   reference data changes later.
-- Weekly grid entry can save the week coherently.
+- Continuous range entry can save one or more weekly aggregates coherently
+  without exposing the split to the operator.
+- Existing assignments outside the selected range remain unchanged, and
+  conflicts inside the range require confirmation.
+- Multi-week persistence is atomic and Timesheet calendar-week accounting is
+  unchanged.
 - Day View composes Work Schedule context through a feature-owned read helper
   without owning schedule interpretation.
 - Timesheet, Daily Work Logs, Shift Reports, and other modules remain

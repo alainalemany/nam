@@ -137,7 +137,7 @@ describe("Work Schedule detail summary", () => {
     expect(screen.getByText("Cover White Rock all week")).toBeInTheDocument();
   });
 
-  it("counts and renders only active assignments", async () => {
+  it("keeps Off and cancelled dates visible in the canonical weekly view", async () => {
     await renderPage(schedule({
       assignments: [
         assignment(),
@@ -157,12 +157,12 @@ describe("Work Schedule detail summary", () => {
       ],
     }));
 
-    expect(screen.getByText("1", { selector: ".count-pill" })).toBeInTheDocument();
+    expect(screen.getByText("3", { selector: ".count-pill" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /Monday/ })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /Saturday/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /Sunday/ })).not.toBeInTheDocument();
-    expect(screen.queryByText("Non-working")).not.toBeInTheDocument();
-    expect(screen.queryByText("Cancelled")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Saturday/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Sunday/ })).toBeInTheDocument();
+    expect(screen.getByText(/Non-working/)).toBeInTheDocument();
+    expect(screen.getByText(/Cancelled/)).toBeInTheDocument();
   });
 
   it("formats known, single-person, and unknown-partner crews naturally", async () => {
