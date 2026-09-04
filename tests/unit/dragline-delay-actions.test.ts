@@ -148,7 +148,7 @@ describe("Dragline Delay Report lifecycle Server Actions", () => {
   it("passes Shared Downtime Blocks and child descriptions through the Server Action", async () => {
     const downtimeBlocks = [
       {
-        sequence: 1,
+        sequence: 2,
         startTime: "05:10",
         dayOffset: 0,
         durationMinutes: "400",

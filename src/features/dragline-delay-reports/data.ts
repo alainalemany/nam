@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { calculateDraglineShiftTotals } from "./calculations";
 import { getDraglineDelayCode } from "./catalog";
 import { formatStationNotation } from "./station";
+import { orderDraglineDelayReportTimelineItems } from "./timeline-order";
 import {
   splitEventStartMinute,
   type DraglineDelayReportShift,
@@ -227,6 +228,14 @@ type ReportDetail = NonNullable<Awaited<ReturnType<typeof getDraglineDelayReport
 export function draglineDelayReportToFormInitial(
   report: ReportDetail,
 ): DraglineDelayReportFormInitialValues {
+  const combinedTimelineOrder = orderDraglineDelayReportTimelineItems(
+    report.timelineEntries,
+    report.downtimeBlocks,
+  );
+  const combinedSequenceById = new Map(
+    combinedTimelineOrder.map((item, index) => [item.value.id, index + 1]),
+  );
+
   return {
     operationalWorkDate: report.operationalWorkDate.toISOString().slice(0, 10),
     shift: report.shift as "DAY" | "NIGHT",
@@ -270,6 +279,7 @@ export function draglineDelayReportToFormInitial(
       return {
         clientId: entry.id,
         id: entry.id,
+        sequence: combinedSequenceById.get(entry.id),
         startTime: clockTime,
         dayOffset,
         delayCode: entry.delayCode,
@@ -287,6 +297,7 @@ export function draglineDelayReportToFormInitial(
       return {
         clientId: block.id,
         id: block.id,
+        sequence: combinedSequenceById.get(block.id),
         startTime: clockTime,
         dayOffset,
         durationMinutes: String(block.durationMinutes),

@@ -240,6 +240,8 @@ Conceptual fields and rules:
   completion and correction.
 - Optional live Lake reference plus Lake display-name snapshot.
 - Optional nonnegative integer Normal Digging and Benchfill bucket counts.
+  Benchfill's create-form visual `0` is not a database default; null remains a
+  valid persisted value and historical values are not normalized.
 - Optional normalized `stationStartFeet` and `stationEndFeet` values. Drafts may
   retain Start without End; End may never exist without Start. Completion and
   correction validation require the two values to be paired when either is
@@ -316,7 +318,9 @@ Conceptual fields:
 
 - Durable child identity.
 - Parent report reference.
-- Stable sequence used to order entries with equal actual start times.
+- Positive sequence participating in one report-wide persisted editable order
+  shared with Shared Downtime Blocks; it also breaks equal-time chronology ties
+  for completion validation.
 - Integer `startMinuteOffset` from operational-date midnight. Timeline entries
   begin no earlier than the selected shift start and may continue beyond its
   scheduled end within the existing two-calendar-day `0..2879` representation.
@@ -350,12 +354,18 @@ unknown and must not be invented.
 Conceptual fields:
 
 - Durable child identity and parent report relation with cascade ownership.
-- Positive display sequence unique within the report.
+- Positive sequence participating in the same report-wide persisted editable
+  order as normal Timeline Entries. Existing table-local uniqueness constraints
+  remain sufficient because application validation assigns one contiguous
+  sequence across the combined item set.
 - Integer `startMinuteOffset` using normal DDR actual-time, overnight, extended
   timeline, and scheduled-window clipping semantics.
 - Positive whole-number `durationMinutes` owned by the block.
 - Optional bounded block description/notes.
 - One or more ordered owned Activities.
+
+Moving a block changes only its report-wide sequence and carries the full
+parent/activity unit. Activity sequence remains scoped to the parent block.
 
 The block contributes exactly one interval to the existing downtime union.
 

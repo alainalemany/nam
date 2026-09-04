@@ -788,6 +788,13 @@ Each report owns a chronological timeline. Each entry records actual start
 time, one official code, description/context, duration when applicable, and an
 explicit semantic distinction indicating whether it causes machine downtime.
 
+Normal Timeline Rows and Shared Downtime Blocks participate in one persisted
+manual operational order. Either type may move above or below the other, and a
+block moves with all of its child Activities as one unit. Child Activity order
+is independent within the block. Start Time edits do not automatically replace
+the operator's chosen mixed order; chronological completion validation remains
+separate and still requires final Code 13 — Shift Change.
+
 - Actual integer-minute times are allowed; the digital workflow is not limited
   to paper-style ten-minute rows.
 - Multiple entries may have the same start time.
@@ -837,6 +844,11 @@ The structured report includes:
 - Comments.
 - Optional Safety Items Found.
 - Optional Action Taken.
+
+On a brand-new report, Benchfill Buckets visually initializes to `0` while
+remaining optional, editable, and clearable. This is a create-form convenience
+only: existing blank/null, zero, and nonzero report values display unchanged,
+and persistence has no Benchfill default or historical backfill.
 
 Depth is manually entered; no automatic source is inferred. Fuel is manually
 entered at report level and remains independent from Equipment Fuel Events in

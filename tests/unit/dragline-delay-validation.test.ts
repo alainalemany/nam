@@ -61,7 +61,7 @@ describe("Dragline Delay Report validation", () => {
       ...validInput,
       downtimeBlocks: [
         {
-          sequence: 1,
+          sequence: 2,
           startTime: "05:10",
           dayOffset: 0,
           durationMinutes: "400",
@@ -98,7 +98,7 @@ describe("Dragline Delay Report validation", () => {
       ...validInput,
       downtimeBlocks: [
         {
-          sequence: 1,
+          sequence: 2,
           startTime: "17:20",
           dayOffset: 0,
           durationMinutes: "30",
@@ -221,7 +221,7 @@ describe("Dragline Delay Report validation", () => {
       completionInput({
         downtimeBlocks: [
           {
-            sequence: 1,
+            sequence: 3,
             startTime: "17:10",
             dayOffset: 0,
             durationMinutes: "30",
@@ -430,6 +430,64 @@ describe("Dragline Delay Report validation", () => {
       ],
     });
     expect(result.success).toBe(true);
+  });
+
+  it("requires one contiguous sequence across normal rows and Shared Downtime Blocks", () => {
+    const sharedOrder = draglineDelayReportSubmissionSchema.safeParse({
+      ...validInput,
+      timelineEntries: [
+        validInput.timelineEntries[0],
+        { ...validInput.timelineEntries[0], sequence: 3, delayCode: "34" },
+      ],
+      downtimeBlocks: [
+        {
+          sequence: 2,
+          startTime: "09:00",
+          dayOffset: 0,
+          durationMinutes: "20",
+          activities: [
+            {
+              sequence: 1,
+              catalogVersion: 1,
+              delayCode: "35",
+              description: "Inspection",
+            },
+          ],
+        },
+      ],
+    });
+    expect(sharedOrder.success).toBe(true);
+
+    const duplicate = draglineDelayReportSubmissionSchema.safeParse({
+      ...validInput,
+      downtimeBlocks: [
+        {
+          sequence: 1,
+          startTime: "09:00",
+          dayOffset: 0,
+          durationMinutes: "20",
+          activities: [
+            {
+              sequence: 1,
+              catalogVersion: 1,
+              delayCode: "35",
+              description: "Inspection",
+            },
+          ],
+        },
+      ],
+    });
+    expect(duplicate.success).toBe(false);
+    if (!duplicate.success) {
+      expect(duplicate.error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: ["downtimeBlocks", 0, "sequence"],
+            message: expect.stringContaining("share one contiguous order"),
+          }),
+        ]),
+      );
+    }
   });
 
   it("allows a Draft with no saved timeline rows but requires an Operator", () => {

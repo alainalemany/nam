@@ -20,6 +20,7 @@ import { calculateDraglineShiftTotals } from "./calculations";
 import { formatDraglineDurationMinutes } from "./duration";
 import { filterDraglineLakesForMine } from "./lakes";
 import { calculateStationAdvance, parseStationNotation } from "./station";
+import { orderDraglineDelayReportTimelineItems } from "./timeline-order";
 import { normalizeEventStartTime } from "./time";
 import type {
   DraglineDelayReportFormInitialValues,
@@ -146,6 +147,60 @@ function moveItem<T>(items: T[], index: number, offset: -1 | 1) {
   const next = [...items];
   [next[index], next[target]] = [next[target], next[index]];
   return next;
+}
+
+type TimelineOrderItem =
+  | { kind: "entry"; clientId: string }
+  | { kind: "block"; clientId: string };
+
+type SubmittedTimelineItem =
+  | { kind: "entry"; value: DraglineDelayReportTimelineFormRow }
+  | { kind: "block"; value: DraglineDelayReportDowntimeBlockFormRow };
+
+function initialTimelineOrder(
+  timelineEntries: DraglineDelayReportTimelineFormRow[],
+  downtimeBlocks: DraglineDelayReportDowntimeBlockFormRow[],
+): TimelineOrderItem[] {
+  const ordered = orderDraglineDelayReportTimelineItems(
+    timelineEntries.map((entry, index) => ({
+      id: entry.clientId,
+      sequence: entry.sequence ?? index + 1,
+      startMinuteOffset: (() => {
+        try {
+          return normalizeEventStartTime(entry.startTime, entry.dayOffset);
+        } catch {
+          return Number.MAX_SAFE_INTEGER;
+        }
+      })(),
+    })),
+    downtimeBlocks.map((block, index) => ({
+      id: block.clientId,
+      sequence: block.sequence ?? timelineEntries.length + index + 1,
+      startMinuteOffset: (() => {
+        try {
+          return normalizeEventStartTime(block.startTime, block.dayOffset);
+        } catch {
+          return Number.MAX_SAFE_INTEGER;
+        }
+      })(),
+    })),
+  );
+
+  return ordered.map((item) => ({
+    kind: item.kind,
+    clientId: item.value.id,
+  }));
+}
+
+function isSubmittedTimelineEntry(entry: DraglineDelayReportTimelineFormRow) {
+  return Boolean(
+    entry.id ||
+      entry.startTime ||
+      entry.delayCode ||
+      entry.description.trim() ||
+      entry.durationMinutes ||
+      entry.causesDowntime,
+  );
 }
 
 function DelayCodeField({
@@ -419,16 +474,27 @@ export function DraglineDelayReportForm({
   const [operators, setOperators] = useState(
     initialValues.operators.length ? initialValues.operators : [emptyOperator()],
   );
-  const [timelineEntries, setTimelineEntries] = useState(
-    initialValues.timelineEntries.length
+  const [initialTimelineState] = useState(() => {
+    const timelineEntries = initialValues.timelineEntries.length
       ? initialValues.timelineEntries
-      : [emptyTimelineEntry()],
+      : [emptyTimelineEntry()];
+    const downtimeBlocks = initialValues.downtimeBlocks ?? [];
+    return {
+      timelineEntries,
+      downtimeBlocks,
+      order: initialTimelineOrder(timelineEntries, downtimeBlocks),
+    };
+  });
+  const [timelineEntries, setTimelineEntries] = useState(
+    initialTimelineState.timelineEntries,
   );
   const pendingTimelineFocusClientId = useRef<string | null>(null);
   const [downtimeBlocks, setDowntimeBlocks] = useState(
-    initialValues.downtimeBlocks ?? [],
+    initialTimelineState.downtimeBlocks,
   );
+  const [timelineOrder, setTimelineOrder] = useState(initialTimelineState.order);
   const pendingDowntimeBlockFocusClientId = useRef<string | null>(null);
+  const pendingDowntimeBlockActivityFocusClientId = useRef<string | null>(null);
   const [groundChecks, setGroundChecks] = useState(initialValues.groundChecks);
 
   function addTimelineEntry() {
@@ -436,6 +502,10 @@ export function DraglineDelayReportForm({
     const entry = emptyTimelineEntry();
     pendingTimelineFocusClientId.current = entry.clientId;
     setTimelineEntries((current) => [...current, entry]);
+    setTimelineOrder((current) => [
+      ...current,
+      { kind: "entry", clientId: entry.clientId },
+    ]);
   }
 
   function addDowntimeBlock() {
@@ -443,6 +513,81 @@ export function DraglineDelayReportForm({
     const block = emptyDowntimeBlock();
     pendingDowntimeBlockFocusClientId.current = block.clientId;
     setDowntimeBlocks((current) => [...current, block]);
+    setTimelineOrder((current) => [
+      ...current,
+      { kind: "block", clientId: block.clientId },
+    ]);
+  }
+
+  function addDowntimeBlockActivity(blockIndex: number) {
+    if (downtimeBlocks[blockIndex].activities.length >= 100) return;
+    const activity = emptyDowntimeBlockActivity();
+    pendingDowntimeBlockActivityFocusClientId.current = activity.clientId;
+    updateDowntimeBlock(blockIndex, {
+      activities: [...downtimeBlocks[blockIndex].activities, activity],
+    });
+  }
+
+  function moveTimelineItem(index: number, offset: -1 | 1) {
+    const nextOrder = moveItem(timelineOrder, index, offset);
+    if (nextOrder === timelineOrder) return;
+    const position = new Map(
+      nextOrder.map((item, itemIndex) => [item.clientId, itemIndex]),
+    );
+    setTimelineOrder(nextOrder);
+    setTimelineEntries((current) =>
+      [...current].sort(
+        (left, right) =>
+          position.get(left.clientId)! - position.get(right.clientId)!,
+      ),
+    );
+    setDowntimeBlocks((current) =>
+      [...current].sort(
+        (left, right) =>
+          position.get(left.clientId)! - position.get(right.clientId)!,
+      ),
+    );
+  }
+
+  function removeTimelineEntry(clientId: string) {
+    const removedPosition = timelineOrder.findIndex(
+      (item) => item.kind === "entry" && item.clientId === clientId,
+    );
+    const remainingEntries = timelineEntries.filter(
+      (entry) => entry.clientId !== clientId,
+    );
+    const remainingOrder = timelineOrder.filter(
+      (item) => !(item.kind === "entry" && item.clientId === clientId),
+    );
+    if (remainingEntries.length) {
+      setTimelineEntries(remainingEntries);
+      setTimelineOrder(remainingOrder);
+      return;
+    }
+
+    const replacement = emptyTimelineEntry();
+    const insertionIndex = Math.min(
+      Math.max(removedPosition, 0),
+      remainingOrder.length,
+    );
+    const nextOrder = [...remainingOrder];
+    nextOrder.splice(insertionIndex, 0, {
+      kind: "entry",
+      clientId: replacement.clientId,
+    });
+    setTimelineEntries([replacement]);
+    setTimelineOrder(nextOrder);
+  }
+
+  function removeDowntimeBlock(clientId: string) {
+    setDowntimeBlocks((current) =>
+      current.filter((block) => block.clientId !== clientId),
+    );
+    setTimelineOrder((current) =>
+      current.filter(
+        (item) => !(item.kind === "block" && item.clientId === clientId),
+      ),
+    );
   }
 
   function focusErrorPath(path: string) {
@@ -499,6 +644,23 @@ export function DraglineDelayReportForm({
     startTime.focus({ preventScroll: true });
   }, [downtimeBlocks]);
 
+  useEffect(() => {
+    const clientId = pendingDowntimeBlockActivityFocusClientId.current;
+    if (!clientId) return;
+
+    const activity = formRef.current?.querySelector<HTMLElement>(
+      `[data-ddr-downtime-block-activity-client-id="${clientId}"]`,
+    );
+    const delayCode = activity?.querySelector<HTMLSelectElement>(
+      "select[aria-label^='Delay Code for Shared Downtime Block']",
+    );
+    if (!activity || !delayCode) return;
+
+    pendingDowntimeBlockActivityFocusClientId.current = null;
+    activity.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    delayCode.focus({ preventScroll: true });
+  }, [downtimeBlocks]);
+
   const selectedEquipment = equipmentOptions.find(
     (option) => option.id === equipmentId,
   );
@@ -512,14 +674,25 @@ export function DraglineDelayReportForm({
     selectedEquipment?.mineId,
     lakeId,
   );
-  const submittedTimeline = timelineEntries.filter(
-    (entry) =>
-      entry.id ||
-      entry.startTime ||
-      entry.delayCode ||
-      entry.description.trim() ||
-      entry.durationMinutes ||
-      entry.causesDowntime,
+  const submittedTimeline = timelineEntries.filter(isSubmittedTimelineEntry);
+  const submittedTimelineItems = timelineOrder.reduce<SubmittedTimelineItem[]>(
+    (items, item) => {
+    if (item.kind === "entry") {
+      const entry = timelineEntries.find(
+        (candidate) => candidate.clientId === item.clientId,
+      );
+      if (entry && isSubmittedTimelineEntry(entry)) {
+        items.push({ kind: "entry", value: entry });
+      }
+      return items;
+    }
+    const block = downtimeBlocks.find(
+      (candidate) => candidate.clientId === item.clientId,
+    );
+    if (block) items.push({ kind: "block", value: block });
+    return items;
+    },
+    [],
   );
   const totals = useMemo(() => {
     try {
@@ -589,32 +762,40 @@ export function DraglineDelayReportForm({
       sequence: index + 1,
       employeeId: operator.employeeId,
     })),
-    timelineEntries: submittedTimeline.map((entry, index) => ({
-      id: entry.id,
-      sequence: index + 1,
-      startTime: entry.startTime,
-      dayOffset: entry.dayOffset,
-      catalogVersion: DRAGLINE_DELAY_CODE_CATALOG_VERSION,
-      delayCode: entry.delayCode,
-      description: entry.description,
-      durationMinutes: entry.durationMinutes,
-      causesDowntime: entry.causesDowntime,
-    })),
-    downtimeBlocks: downtimeBlocks.map((block, blockIndex) => ({
-      id: block.id,
-      sequence: blockIndex + 1,
-      startTime: block.startTime,
-      dayOffset: block.dayOffset,
-      durationMinutes: block.durationMinutes,
-      description: block.description,
-      activities: block.activities.map((activity, activityIndex) => ({
-        id: activity.id,
-        sequence: activityIndex + 1,
-        catalogVersion: DRAGLINE_DELAY_CODE_CATALOG_VERSION,
-        delayCode: activity.delayCode,
-        description: activity.description,
-      })),
-    })),
+    timelineEntries: submittedTimelineItems.flatMap((item, itemIndex) =>
+      item.kind === "entry"
+        ? [{
+            id: item.value.id,
+            sequence: itemIndex + 1,
+            startTime: item.value.startTime,
+            dayOffset: item.value.dayOffset,
+            catalogVersion: DRAGLINE_DELAY_CODE_CATALOG_VERSION,
+            delayCode: item.value.delayCode,
+            description: item.value.description,
+            durationMinutes: item.value.durationMinutes,
+            causesDowntime: item.value.causesDowntime,
+          }]
+        : [],
+    ),
+    downtimeBlocks: submittedTimelineItems.flatMap((item, itemIndex) =>
+      item.kind === "block"
+        ? [{
+            id: item.value.id,
+            sequence: itemIndex + 1,
+            startTime: item.value.startTime,
+            dayOffset: item.value.dayOffset,
+            durationMinutes: item.value.durationMinutes,
+            description: item.value.description,
+            activities: item.value.activities.map((activity, activityIndex) => ({
+              id: activity.id,
+              sequence: activityIndex + 1,
+              catalogVersion: DRAGLINE_DELAY_CODE_CATALOG_VERSION,
+              delayCode: activity.delayCode,
+              description: activity.description,
+            })),
+          }]
+        : [],
+    ),
     groundChecks: groundChecks
       .filter((groundCheck) => groundCheck.id || groundCheck.startTime)
       .map((groundCheck, index) => ({
@@ -973,10 +1154,14 @@ export function DraglineDelayReportForm({
 
       <section
         aria-describedby={
-          hasError(state, "timelineEntries") ? errorId("timelineEntries") : undefined
+          hasError(state, "timelineEntries")
+            ? errorId("timelineEntries")
+            : hasError(state, "downtimeBlocks")
+              ? errorId("downtimeBlocks")
+              : undefined
         }
         aria-labelledby="ddr-timeline-heading"
-        className={`panel form-section${hasError(state, "timelineEntries") ? " ddr-invalid-section" : ""}`}
+        className={`panel form-section${hasError(state, "timelineEntries") || hasError(state, "downtimeBlocks") ? " ddr-invalid-section" : ""}`}
         data-ddr-error-path="timelineEntries"
         tabIndex={-1}
       >
@@ -1007,12 +1192,22 @@ export function DraglineDelayReportForm({
           </div>
         </div>
         <p className="subtle full-width-field">
-          Same-time rows are valid. Only checked downtime rows contribute to the
-          interval-union total.
+          Timeline Rows and Shared Downtime Blocks share one manual order. A
+          block moves as one unit; its Activities keep their own internal order.
+          Same-time items are valid, and downtime still uses the interval-union
+          total.
         </p>
         {firstError(state, "timelineEntries")}
+        {firstError(state, "downtimeBlocks")}
         <div className="ddr-timeline-list full-width-field">
-          {timelineEntries.map((entry, index) => (
+          {timelineOrder.map((orderedItem, orderIndex) => {
+            if (orderedItem.kind === "entry") {
+              const index = timelineEntries.findIndex(
+                (entry) => entry.clientId === orderedItem.clientId,
+              );
+              const entry = timelineEntries[index];
+              if (!entry) return null;
+              return (
             <fieldset
               className={`ddr-timeline-row${hasNestedError(state, `timelineEntries.${index}`) ? " ddr-invalid-row" : ""}`}
               data-ddr-error-path={`timelineEntries.${index}`}
@@ -1127,57 +1322,38 @@ export function DraglineDelayReportForm({
               <div className="inline-actions ddr-row-actions">
                 <button
                   className="button secondary"
-                  disabled={index === 0}
+                  disabled={orderIndex === 0}
                   type="button"
-                  onClick={() =>
-                    setTimelineEntries((current) => moveItem(current, index, -1))
-                  }
+                  onClick={() => moveTimelineItem(orderIndex, -1)}
                 >
                   Move up
                 </button>
                 <button
                   className="button secondary"
-                  disabled={index === timelineEntries.length - 1}
+                  disabled={orderIndex === timelineOrder.length - 1}
                   type="button"
-                  onClick={() =>
-                    setTimelineEntries((current) => moveItem(current, index, 1))
-                  }
+                  onClick={() => moveTimelineItem(orderIndex, 1)}
                 >
                   Move down
                 </button>
                 <button
                   className="button danger"
                   type="button"
-                  onClick={() =>
-                    setTimelineEntries((current) => {
-                      const next = current.filter((_, entryIndex) => entryIndex !== index);
-                      return next.length ? next : [emptyTimelineEntry()];
-                    })
-                  }
+                  onClick={() => removeTimelineEntry(entry.clientId)}
                 >
                   Remove
                 </button>
               </div>
             </fieldset>
-          ))}
-          <div
-            className={`ddr-downtime-block-list${hasError(state, "downtimeBlocks") ? " ddr-invalid-section" : ""}`}
-            data-ddr-error-path="downtimeBlocks"
-            tabIndex={-1}
-          >
-            <div>
-              <p className="eyebrow">One downtime period, multiple activities</p>
-              <h3>Shared Downtime Blocks</h3>
-              <p className="subtle">
-                The block owns the downtime. Activities preserve official codes and
-                notes without invented individual durations.
-              </p>
-            </div>
-            {firstError(state, "downtimeBlocks")}
-            {downtimeBlocks.length === 0 ? (
-              <p className="subtle">No Shared Downtime Blocks recorded.</p>
-            ) : null}
-            {downtimeBlocks.map((block, blockIndex) => (
+              );
+            }
+
+            const blockIndex = downtimeBlocks.findIndex(
+              (block) => block.clientId === orderedItem.clientId,
+            );
+            const block = downtimeBlocks[blockIndex];
+            if (!block) return null;
+            return (
               <fieldset
                 className={`ddr-downtime-block${hasNestedError(state, `downtimeBlocks.${blockIndex}`) ? " ddr-invalid-row" : ""}`}
                 data-ddr-downtime-block-client-id={block.clientId}
@@ -1296,16 +1472,10 @@ export function DraglineDelayReportForm({
                     </div>
                     <button
                       className="button secondary"
+                      data-ddr-add-activity-position="top"
                       disabled={block.activities.length >= 100}
                       type="button"
-                      onClick={() =>
-                        updateDowntimeBlock(blockIndex, {
-                          activities: [
-                            ...block.activities,
-                            emptyDowntimeBlockActivity(),
-                          ],
-                        })
-                      }
+                      onClick={() => addDowntimeBlockActivity(blockIndex)}
                     >
                       Add Activity
                     </button>
@@ -1320,6 +1490,7 @@ export function DraglineDelayReportForm({
                   {block.activities.map((activity, activityIndex) => (
                     <fieldset
                       className={`ddr-downtime-block-activity${hasNestedError(state, `downtimeBlocks.${blockIndex}.activities.${activityIndex}`) ? " ddr-invalid-row" : ""}`}
+                      data-ddr-downtime-block-activity-client-id={activity.clientId}
                       data-ddr-error-path={`downtimeBlocks.${blockIndex}.activities.${activityIndex}`}
                       key={activity.clientId}
                       tabIndex={-1}
@@ -1426,51 +1597,47 @@ export function DraglineDelayReportForm({
                       </div>
                     </fieldset>
                   ))}
+                  <div className="inline-actions ddr-downtime-block-activity-bottom-actions">
+                    <button
+                      className="button secondary"
+                      data-ddr-add-activity-position="bottom"
+                      disabled={block.activities.length >= 100}
+                      type="button"
+                      onClick={() => addDowntimeBlockActivity(blockIndex)}
+                    >
+                      Add Activity
+                    </button>
+                  </div>
                 </div>
 
                 <div className="inline-actions ddr-row-actions">
                   <button
                     className="button secondary"
-                    disabled={blockIndex === 0}
+                    disabled={orderIndex === 0}
                     type="button"
-                    onClick={() =>
-                      setDowntimeBlocks((current) =>
-                        moveItem(current, blockIndex, -1),
-                      )
-                    }
+                    onClick={() => moveTimelineItem(orderIndex, -1)}
                   >
                     Move Block Up
                   </button>
                   <button
                     className="button secondary"
-                    disabled={blockIndex === downtimeBlocks.length - 1}
+                    disabled={orderIndex === timelineOrder.length - 1}
                     type="button"
-                    onClick={() =>
-                      setDowntimeBlocks((current) =>
-                        moveItem(current, blockIndex, 1),
-                      )
-                    }
+                    onClick={() => moveTimelineItem(orderIndex, 1)}
                   >
                     Move Block Down
                   </button>
                   <button
                     className="button danger"
                     type="button"
-                    onClick={() =>
-                      setDowntimeBlocks((current) =>
-                        current.filter(
-                          (_, currentBlockIndex) =>
-                            currentBlockIndex !== blockIndex,
-                        ),
-                      )
-                    }
+                    onClick={() => removeDowntimeBlock(block.clientId)}
                   >
                     Remove Shared Downtime Block
                   </button>
                 </div>
               </fieldset>
-            ))}
-          </div>
+            );
+          })}
           <div className="inline-actions ddr-timeline-bottom-actions">
             <button
               className="button ddr-add-timeline-button"

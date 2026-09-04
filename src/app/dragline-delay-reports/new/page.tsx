@@ -20,7 +20,7 @@ export default async function NewDraglineDelayReportPage() {
     supervisorId: "",
     lakeId: "",
     normalDiggingBuckets: "",
-    benchfillBuckets: "",
+    benchfillBuckets: "0",
     stationStart: "",
     stationEnd: "",
     depthFeet: "",

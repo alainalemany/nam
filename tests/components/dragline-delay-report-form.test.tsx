@@ -338,7 +338,12 @@ describe("DraglineDelayReportForm", () => {
     const block = screen.getByRole("group", {
       name: "Shared Downtime Block 1",
     });
-    fireEvent.click(within(block).getByRole("button", { name: "Add Activity" }));
+    expect(
+      within(block).getAllByRole("button", { name: "Add Activity" }),
+    ).toHaveLength(2);
+    fireEvent.click(
+      within(block).getAllByRole("button", { name: "Add Activity" })[0],
+    );
     fireEvent.change(
       screen.getByLabelText(
         "Delay Code for Shared Downtime Block 1 Activity 2",
@@ -378,6 +383,11 @@ describe("DraglineDelayReportForm", () => {
     expect(
       screen.getByRole("group", { name: "Shared Downtime Block 2" }),
     ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("group", { name: "Shared Downtime Block 2" }),
+      ).getAllByRole("button", { name: "Add Activity" }),
+    ).toHaveLength(2);
     fireEvent.click(
       within(block).getByRole("button", {
         name: "Remove Shared Downtime Block",
@@ -386,6 +396,142 @@ describe("DraglineDelayReportForm", () => {
     expect(
       screen.getAllByRole("group", { name: /Shared Downtime Block \d/ }),
     ).toHaveLength(1);
+  });
+
+  it("uses equivalent top and bottom Add Activity controls without disturbing child state", async () => {
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    renderForm();
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Add Shared Downtime Block" })[0],
+    );
+    const block = screen.getByRole("group", {
+      name: "Shared Downtime Block 1",
+    });
+    const firstDescription = within(block).getByLabelText(
+      "Description / Notes for Shared Downtime Block 1 Activity 1",
+    );
+    fireEvent.change(firstDescription, { target: { value: "Keep first note" } });
+
+    let addActivity = within(block).getAllByRole("button", {
+      name: "Add Activity",
+    });
+    expect(addActivity[0]).toHaveAttribute("data-ddr-add-activity-position", "top");
+    expect(addActivity[1]).toHaveAttribute(
+      "data-ddr-add-activity-position",
+      "bottom",
+    );
+    fireEvent.click(addActivity[0]);
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText(
+          "Delay Code for Shared Downtime Block 1 Activity 2",
+        ),
+      ).toHaveFocus(),
+    );
+    expect(within(block).getAllByRole("group", { name: /Activity/ })).toHaveLength(2);
+    expect(firstDescription).toHaveValue("Keep first note");
+
+    addActivity = within(block).getAllByRole("button", { name: "Add Activity" });
+    fireEvent.click(addActivity[1]);
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText(
+          "Delay Code for Shared Downtime Block 1 Activity 3",
+        ),
+      ).toHaveFocus(),
+    );
+    expect(within(block).getAllByRole("group", { name: /Activity/ })).toHaveLength(3);
+    expect(firstDescription).toHaveValue("Keep first note");
+    expect(scrollIntoView).toHaveBeenCalledTimes(3);
+  });
+
+  it("moves Timeline Rows and Shared Downtime Blocks through one persisted order", async () => {
+    let submittedPayload: Record<string, any> | undefined;
+    const action = vi.fn(async (_state, formData: FormData) => {
+      submittedPayload = JSON.parse(String(formData.get("payload")));
+      return { status: "idle" as const, message: "", fieldErrors: {} };
+    });
+    renderForm(action, {
+      initialValues: {
+        ...initialValues,
+        timelineEntries: [
+          {
+            clientId: "row-1",
+            sequence: 1,
+            startTime: "05:23",
+            dayOffset: 0,
+            delayCode: "26",
+            description: "First normal row",
+            durationMinutes: "",
+            causesDowntime: false,
+          },
+          {
+            clientId: "row-2",
+            sequence: 2,
+            startTime: "06:27",
+            dayOffset: 0,
+            delayCode: "34",
+            description: "Second normal row",
+            durationMinutes: "",
+            causesDowntime: false,
+          },
+        ],
+        downtimeBlocks: [
+          {
+            clientId: "block-1",
+            sequence: 3,
+            startTime: "05:35",
+            dayOffset: 0,
+            durationMinutes: "30",
+            description: "Shared work",
+            activities: [
+              {
+                clientId: "activity-1",
+                delayCode: "35",
+                description: "Preserved child",
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const firstRow = screen.getByRole("group", { name: "Timeline row 1" });
+    const secondRow = screen.getByRole("group", { name: "Timeline row 2" });
+    const block = screen.getByRole("group", { name: "Shared Downtime Block 1" });
+    fireEvent.click(within(block).getByRole("button", { name: "Move Block Up" }));
+    expect(
+      block.compareDocumentPosition(secondRow) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    fireEvent.click(within(firstRow).getByRole("button", { name: "Move down" }));
+    expect(
+      block.compareDocumentPosition(firstRow) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    fireEvent.click(within(secondRow).getByRole("button", { name: "Move up" }));
+    expect(
+      secondRow.compareDocumentPosition(firstRow) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    fireEvent.click(within(secondRow).getByRole("button", { name: "Move down" }));
+    expect(
+      screen.getByLabelText(
+        "Description / Notes for Shared Downtime Block 1 Activity 1",
+      ),
+    ).toHaveValue("Preserved child");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save Draft Report" }));
+    await waitFor(() => expect(action).toHaveBeenCalledOnce());
+    expect(submittedPayload?.downtimeBlocks).toEqual([
+      expect.objectContaining({ sequence: 1, description: "Shared work" }),
+    ]);
+    expect(submittedPayload?.timelineEntries).toEqual([
+      expect.objectContaining({ sequence: 2, description: "First normal row" }),
+      expect.objectContaining({ sequence: 3, description: "Second normal row" }),
+    ]);
   });
 
   it("preserves nested Shared Downtime Block state and focuses human-readable errors", async () => {
@@ -419,13 +565,21 @@ describe("DraglineDelayReportForm", () => {
     const block = screen.getByRole("group", {
       name: "Shared Downtime Block 1",
     });
-    fireEvent.click(within(block).getByRole("button", { name: "Add Activity" }));
+    fireEvent.click(
+      within(block).getAllByRole("button", { name: "Add Activity" })[0],
+    );
     fireEvent.change(
       screen.getByLabelText(
         "Description / Notes for Shared Downtime Block 1 Activity 2",
       ),
       { target: { value: "Preserve this activity note" } },
     );
+    fireEvent.click(
+      within(block).getByRole("button", { name: "Move Block Up" }),
+    );
+    fireEvent.change(screen.getByLabelText("Benchfill Buckets"), {
+      target: { value: "" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Save Draft Report" }));
 
     const alert = await screen.findByRole("alert");
@@ -443,6 +597,12 @@ describe("DraglineDelayReportForm", () => {
       "Description / Notes for Shared Downtime Block 1 Activity 2",
     );
     expect(activityDescription).toHaveValue("Preserve this activity note");
+    expect(screen.getByLabelText("Benchfill Buckets")).toHaveValue(null);
+    expect(
+      block.compareDocumentPosition(
+        screen.getByRole("group", { name: "Timeline row 1" }),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(
       screen.getByLabelText(
         "Delay Code for Shared Downtime Block 1 Activity 2",

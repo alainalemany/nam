@@ -487,7 +487,7 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
             ],
             downtimeBlocks: [
               {
-                sequence: 1,
+                sequence: 2,
                 startTime: "05:10",
                 dayOffset: 0,
                 durationMinutes: 400,
@@ -525,7 +525,7 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
         });
         expect(initial.downtimeBlocks).toHaveLength(1);
         expect(initial.downtimeBlocks[0]).toMatchObject({
-          sequence: 1,
+          sequence: 2,
           startMinuteOffset: 310,
           durationMinutes: 400,
           description: "Scheduled PM — multiple tasks",
@@ -615,6 +615,213 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
           delayCodeCategory: "MECHANICAL",
           description: "Resocketed hoist rope",
         });
+      });
+    } finally {
+      await client.$disconnect();
+    }
+  });
+
+  it("persists mixed row/block order through Draft save, completion, and correction", async () => {
+    const client = new PrismaClient({ datasourceUrl: databaseUrl });
+    try {
+      await withRollback(client, async (transaction, prefix) => {
+        const references = await createReferences(transaction, prefix);
+        const original = validInput(references, {
+          operationalWorkDate: "2026-09-04",
+          shift: "DAY",
+          groundChecks: [],
+          timelineEntries: [
+            {
+              sequence: 1,
+              startTime: "05:23",
+              dayOffset: 0,
+              catalogVersion: 1,
+              delayCode: "26",
+              description: "First normal row",
+              durationMinutes: "",
+              causesDowntime: false,
+            },
+            {
+              sequence: 3,
+              startTime: "06:27",
+              dayOffset: 0,
+              catalogVersion: 1,
+              delayCode: "34",
+              description: "Second normal row",
+              durationMinutes: "",
+              causesDowntime: false,
+            },
+          ],
+          downtimeBlocks: [
+            {
+              sequence: 2,
+              startTime: "05:35",
+              dayOffset: 0,
+              durationMinutes: 30,
+              description: "Shared block",
+              activities: [
+                {
+                  sequence: 1,
+                  catalogVersion: 1,
+                  delayCode: "35",
+                  description: "Preserved child",
+                },
+              ],
+            },
+          ],
+        });
+        const created = await persistDraglineDelayReportInTransaction(
+          transaction,
+          original,
+        );
+        const draft = await transaction.draglineDelayReport.findUniqueOrThrow({
+          where: { id: created.id },
+          include: {
+            timelineEntries: { orderBy: { sequence: "asc" } },
+            downtimeBlocks: {
+              include: { activities: { orderBy: { sequence: "asc" } } },
+            },
+          },
+        });
+        expect([
+          draft.timelineEntries[0].sequence,
+          draft.downtimeBlocks[0].sequence,
+          draft.timelineEntries[1].sequence,
+        ]).toEqual([1, 2, 3]);
+
+        const savedDraft = draglineDelayReportSubmissionSchema.parse({
+          ...original,
+          recordVersion: 1,
+          timelineEntries: original.timelineEntries.map((entry, index) => ({
+            ...entry,
+            id: draft.timelineEntries[index].id,
+            sequence: index + 2,
+          })),
+          downtimeBlocks: original.downtimeBlocks.map((block, blockIndex) => ({
+            ...block,
+            id: draft.downtimeBlocks[blockIndex].id,
+            sequence: 1,
+            activities: block.activities.map((activity, activityIndex) => ({
+              ...activity,
+              id: draft.downtimeBlocks[blockIndex].activities[activityIndex].id,
+            })),
+          })),
+        });
+        await persistDraglineDelayReportInTransaction(
+          transaction,
+          savedDraft,
+          draft.id,
+        );
+        const reloadedDraft = await transaction.draglineDelayReport.findUniqueOrThrow({
+          where: { id: draft.id },
+          include: {
+            timelineEntries: { orderBy: { sequence: "asc" } },
+            downtimeBlocks: {
+              include: { activities: { orderBy: { sequence: "asc" } } },
+            },
+          },
+        });
+        expect(reloadedDraft.downtimeBlocks[0]).toMatchObject({
+          sequence: 1,
+          id: draft.downtimeBlocks[0].id,
+        });
+        expect(reloadedDraft.timelineEntries.map((entry) => entry.sequence)).toEqual([
+          2,
+          3,
+        ]);
+        expect(reloadedDraft.downtimeBlocks[0].activities[0]).toMatchObject({
+          id: draft.downtimeBlocks[0].activities[0].id,
+          description: "Preserved child",
+        });
+
+        const completion = draglineDelayReportCompletionSchema.parse({
+          ...savedDraft,
+          recordVersion: 2,
+          endingHourMeter: 12012,
+          timelineEntries: [
+            ...savedDraft.timelineEntries,
+            {
+              sequence: 4,
+              startTime: "17:20",
+              dayOffset: 0,
+              catalogVersion: 1,
+              delayCode: "13",
+              description: "Shift Change",
+              durationMinutes: "",
+              causesDowntime: false,
+            },
+          ],
+        });
+        await completeDraglineDelayReportInTransaction(
+          transaction,
+          completion,
+          draft.id,
+        );
+        const completed = await transaction.draglineDelayReport.findUniqueOrThrow({
+          where: { id: draft.id },
+          include: {
+            timelineEntries: { orderBy: { sequence: "asc" } },
+            downtimeBlocks: {
+              include: { activities: { orderBy: { sequence: "asc" } } },
+            },
+          },
+        });
+        expect(completed).toMatchObject({ status: "COMPLETED", recordVersion: 3 });
+        expect(completed.timelineEntries.at(-1)).toMatchObject({
+          sequence: 4,
+          delayCode: "13",
+        });
+
+        const correction = draglineDelayReportCompletionSchema.parse({
+          ...completion,
+          recordVersion: 3,
+          timelineEntries: completion.timelineEntries.map((entry, index) => ({
+            ...entry,
+            id: completed.timelineEntries[index].id,
+            sequence: index === 0 ? 3 : index === 1 ? 1 : 4,
+          })),
+          downtimeBlocks: completion.downtimeBlocks.map((block, blockIndex) => ({
+            ...block,
+            id: completed.downtimeBlocks[blockIndex].id,
+            sequence: 2,
+            activities: block.activities.map((activity, activityIndex) => ({
+              ...activity,
+              id: completed.downtimeBlocks[blockIndex].activities[activityIndex].id,
+            })),
+          })),
+        });
+        await correctDraglineDelayReportInTransaction(
+          transaction,
+          correction,
+          draft.id,
+          "Corrected operational ordering.",
+        );
+        const corrected = await transaction.draglineDelayReport.findUniqueOrThrow({
+          where: { id: draft.id },
+          include: {
+            timelineEntries: { orderBy: { sequence: "asc" } },
+            downtimeBlocks: {
+              include: { activities: { orderBy: { sequence: "asc" } } },
+            },
+            corrections: true,
+          },
+        });
+        expect(corrected).toMatchObject({ status: "COMPLETED", recordVersion: 4 });
+        expect(corrected.timelineEntries.map((entry) => entry.sequence)).toEqual([
+          1,
+          3,
+          4,
+        ]);
+        expect(corrected.downtimeBlocks[0]).toMatchObject({
+          sequence: 2,
+          id: draft.downtimeBlocks[0].id,
+        });
+        expect(corrected.downtimeBlocks[0].activities[0].id).toBe(
+          draft.downtimeBlocks[0].activities[0].id,
+        );
+        expect(corrected.corrections).toEqual([
+          expect.objectContaining({ reason: "Corrected operational ordering." }),
+        ]);
       });
     } finally {
       await client.$disconnect();
@@ -1151,7 +1358,7 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
           recordVersion: 1,
           downtimeBlocks: [
             {
-              sequence: 1,
+              sequence: 5,
               startTime: "17:10",
               dayOffset: 0,
               durationMinutes: 30,

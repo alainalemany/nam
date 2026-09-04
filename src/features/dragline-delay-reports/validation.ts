@@ -293,13 +293,6 @@ export const draglineDelayReportSubmissionSchema = z
     }> = [];
 
     value.timelineEntries.forEach((entry, index) => {
-      if (entry.sequence !== index + 1) {
-        context.addIssue({
-          code: "custom",
-          path: ["timelineEntries", index, "sequence"],
-          message: "Timeline order must be contiguous and start at 1.",
-        });
-      }
       if (entry.id) {
         if (timelineIds.has(entry.id)) {
           context.addIssue({
@@ -394,13 +387,6 @@ export const draglineDelayReportSubmissionSchema = z
       durationMinutes: number;
     }> = [];
     value.downtimeBlocks.forEach((block, blockIndex) => {
-      if (block.sequence !== blockIndex + 1) {
-        context.addIssue({
-          code: "custom",
-          path: ["downtimeBlocks", blockIndex, "sequence"],
-          message: "Shared Downtime Block order must be contiguous and start at 1.",
-        });
-      }
       if (block.id) {
         if (downtimeBlockIds.has(block.id)) {
           context.addIssue({
@@ -495,6 +481,27 @@ export const draglineDelayReportSubmissionSchema = z
       }
     });
 
+    const combinedTimelineSequences = [
+      ...value.timelineEntries.map((entry, index) => ({
+        sequence: entry.sequence,
+        path: ["timelineEntries", index, "sequence"] as const,
+      })),
+      ...value.downtimeBlocks.map((block, index) => ({
+        sequence: block.sequence,
+        path: ["downtimeBlocks", index, "sequence"] as const,
+      })),
+    ].sort((left, right) => left.sequence - right.sequence);
+    combinedTimelineSequences.forEach((item, index) => {
+      if (item.sequence !== index + 1) {
+        context.addIssue({
+          code: "custom",
+          path: [...item.path],
+          message:
+            "Timeline Rows and Shared Downtime Blocks must share one contiguous order starting at 1.",
+        });
+      }
+    });
+
     try {
       calculateDraglineShiftTotals(
         value.shift,
@@ -550,7 +557,7 @@ export const draglineDelayReportCompletionSchema =
       try {
         return [{
           startMinuteOffset: normalizeEventStartTime(block.startTime, block.dayOffset),
-          sequence: 0,
+          sequence: block.sequence,
           delayCode: "",
         }];
       } catch {

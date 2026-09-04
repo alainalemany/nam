@@ -172,5 +172,99 @@ describe("Dragline Delay Report persisted-total reads", () => {
         ],
       }),
     ]);
+    expect(initial.benchfillBuckets).toBe("");
+  });
+
+  it.each([
+    [null, ""],
+    [0, "0"],
+    [27, "27"],
+  ])("preserves an existing Benchfill Buckets value of %s", (value, expected) => {
+    const initial = draglineDelayReportToFormInitial({
+      operationalWorkDate: new Date("2026-09-03T00:00:00.000Z"),
+      shift: "DAY",
+      equipmentId: "equipment-1",
+      startingHourMeter: 100,
+      endingHourMeter: null,
+      supervisorId: null,
+      lakeId: null,
+      normalDiggingBuckets: null,
+      benchfillBuckets: value,
+      stationStartFeet: null,
+      stationEndFeet: null,
+      depthFeet: null,
+      fuelGallons: null,
+      cableDragFeet: null,
+      hoistFeet: null,
+      comments: null,
+      safetyItemsFound: null,
+      actionTaken: null,
+      recordVersion: 1,
+      operators: [],
+      timelineEntries: [],
+      groundChecks: [],
+      downtimeBlocks: [],
+    } as never);
+
+    expect(initial.benchfillBuckets).toBe(expected);
+  });
+
+  it("hydrates persisted mixed order and upgrades legacy per-type order in form state", () => {
+    const baseReport = {
+      operationalWorkDate: new Date("2026-09-03T00:00:00.000Z"),
+      shift: "DAY",
+      equipmentId: "equipment-1",
+      startingHourMeter: 100,
+      endingHourMeter: null,
+      supervisorId: null,
+      lakeId: null,
+      normalDiggingBuckets: null,
+      benchfillBuckets: null,
+      stationStartFeet: null,
+      stationEndFeet: null,
+      depthFeet: null,
+      fuelGallons: null,
+      cableDragFeet: null,
+      hoistFeet: null,
+      comments: null,
+      safetyItemsFound: null,
+      actionTaken: null,
+      recordVersion: 1,
+      operators: [],
+      groundChecks: [],
+    };
+    const entry = (id: string, sequence: number, startMinuteOffset: number) => ({
+      id,
+      sequence,
+      startMinuteOffset,
+      delayCode: "26",
+      description: id,
+      durationMinutes: null,
+      causesDowntime: false,
+    });
+    const block = (sequence: number, startMinuteOffset: number) => ({
+      id: "block-1",
+      sequence,
+      startMinuteOffset,
+      durationMinutes: 20,
+      description: "block",
+      activities: [],
+    });
+
+    const mixed = draglineDelayReportToFormInitial({
+      ...baseReport,
+      timelineEntries: [entry("row-1", 1, 323), entry("row-2", 3, 387)],
+      downtimeBlocks: [block(2, 335)],
+    } as never);
+    expect(mixed.timelineEntries.map((item) => item.sequence)).toEqual([1, 3]);
+    expect(mixed.downtimeBlocks[0].sequence).toBe(2);
+
+    const legacy = draglineDelayReportToFormInitial({
+      ...baseReport,
+      timelineEntries: [entry("row-1", 1, 387)],
+      downtimeBlocks: [block(1, 335)],
+    } as never);
+    expect(legacy.downtimeBlocks[0].sequence).toBe(1);
+    expect(legacy.timelineEntries[0].sequence).toBe(2);
   });
 });

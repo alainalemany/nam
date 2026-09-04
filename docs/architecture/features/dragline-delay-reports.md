@@ -32,7 +32,7 @@ Related Documents:
 - `docs/reference/README.md`
 - `docs/reference/dragline-delay-reports/delay-code-catalog-v1.md`
 
-Last Reviewed: 2026-09-03
+Last Reviewed: 2026-09-04
 
 Implementation Status: DDR-1 through DDR-3 are implemented as an independent
 usable Draft, completion, and correction workflow. The aggregate includes
@@ -332,6 +332,17 @@ Each saved entry has:
 - Optional integer duration minutes when duration is applicable.
 - Explicit `causesDowntime` meaning.
 
+Normal Timeline Rows and Shared Downtime Blocks use their existing positive
+`sequence` fields as one report-wide persisted editable order. The operator may
+move either type above or below the other without automatic re-sorting after a
+Start Time edit. A block moves with all of its Activities as one unit. Activity
+sequence remains separate and contiguous only inside its parent block.
+
+Reports saved before combined ordering may contain colliding per-type sequence
+values. Reads retain their established chronological integration for that
+legacy shape; the next successful Draft save, completion, or correction writes
+one contiguous shared sequence without a data backfill or schema change.
+
 Multiple entries may share one start time. Equal start times are valid and do
 not violate uniqueness. Concurrent activities remain separate child records.
 Draft editing must preserve submitted child identities and reject unknown or
@@ -505,7 +516,10 @@ subsystem.
 Depth is a manually entered numeric measurement in feet. It is not calculated
 or derived from another feature.
 
-All DDR-2 fields remain optional while Draft. Section Start may be saved before
+All DDR-2 fields remain optional while Draft. Benchfill Buckets visually starts
+at `0` on a brand-new report only, remains editable and clearable, and still
+persists blank as null. Existing null, zero, and nonzero values render exactly
+as persisted. Section Start may be saved before
 Section End is known; Section End requires Section Start, and Advance remains
 unavailable until both are present. Completion/correction require the two
 values to be paired when either is recorded. Bucket and measurement storage
@@ -678,8 +692,14 @@ Delay Code, derived Category, optional Description / Notes, Move Up, Move Down,
 and Remove controls. No child duration control exists. Adding a block scrolls
 and focuses its Start Time without resetting normal rows or other blocks.
 
+Each Shared Downtime Block provides `Add Activity` above and below its child
+list. Both controls append exactly one Activity, preserve existing child values
+and order, and scroll/focus the new Activity consistently.
+
 Read-only Operational Timeline presentation merges normal rows and Shared
-Downtime Blocks by start time. A block is shown as one downtime period with its
+Downtime Blocks by their persisted combined order. Legacy reports that predate
+that shared sequence retain the prior chronological merge until next saved. A
+block is shown as one downtime period with its
 formatted total and an ordered child-activity list so children are never
 presented as independent downtime events.
 

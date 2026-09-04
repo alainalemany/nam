@@ -425,7 +425,9 @@ The feature owns:
   entry.
 - Optional Shared Downtime Blocks for one known downtime period containing
   ordered official-code Activities with individual notes but no invented child
-  durations; normal Timeline Rows remain unchanged.
+  durations. Normal Timeline Rows and Shared Downtime Blocks share one
+  persisted editable order; either type may move across the other, while each
+  block moves as one unit and child Activities retain their internal order.
 - Explicit per-entry downtime meaning, integer-minute interval-union downtime,
   and runtime derived from a 720-minute shift.
 - Production/progress fields, normalized stations and derived Advance, manual

@@ -38,6 +38,7 @@ export type DraglineDelayReportOperatorFormRow = {
 export type DraglineDelayReportTimelineFormRow = {
   clientId: string;
   id?: string;
+  sequence?: number;
   startTime: string;
   dayOffset: 0 | 1;
   delayCode: string;
@@ -65,6 +66,7 @@ export type DraglineDelayReportDowntimeBlockActivityFormRow = {
 export type DraglineDelayReportDowntimeBlockFormRow = {
   clientId: string;
   id?: string;
+  sequence?: number;
   startTime: string;
   dayOffset: 0 | 1;
   durationMinutes: string;

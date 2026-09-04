@@ -5,6 +5,7 @@ import { getDraglineDelayReportById } from "@/features/dragline-delay-reports/da
 import { formatDraglineDurationMinutes } from "@/features/dragline-delay-reports/duration";
 import { calculateStationAdvance, formatStationNotation } from "@/features/dragline-delay-reports/station";
 import { formatEventStartMinute } from "@/features/dragline-delay-reports/time";
+import { orderDraglineDelayReportTimelineItems } from "@/features/dragline-delay-reports/timeline-order";
 
 function displayDate(date: Date) {
   return new Intl.DateTimeFormat("en-US", {
@@ -25,27 +26,9 @@ export default async function DraglineDelayReportDetailPage({
   const report = await getDraglineDelayReportById(id);
   if (!report) notFound();
   const missingLabel = report.status === "DRAFT" ? "Not recorded in Draft" : "Not recorded";
-  const timelineItems = [
-    ...report.timelineEntries.map((entry) => ({
-      kind: "entry" as const,
-      startMinuteOffset: entry.startMinuteOffset,
-      sequence: entry.sequence,
-      value: entry,
-    })),
-    ...(report.downtimeBlocks ?? []).map((block) => ({
-      kind: "block" as const,
-      startMinuteOffset: block.startMinuteOffset,
-      sequence: block.sequence,
-      value: block,
-    })),
-  ].sort(
-    (left, right) =>
-      left.startMinuteOffset - right.startMinuteOffset ||
-      (left.kind === right.kind
-        ? left.sequence - right.sequence
-        : left.kind === "block"
-          ? -1
-          : 1),
+  const timelineItems = orderDraglineDelayReportTimelineItems(
+    report.timelineEntries,
+    report.downtimeBlocks ?? [],
   );
 
   return (

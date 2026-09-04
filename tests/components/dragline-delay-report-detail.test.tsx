@@ -243,4 +243,55 @@ describe("Dragline Delay Report Completed detail", () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
+
+  it("renders the persisted mixed manual order instead of regrouping or re-sorting items", async () => {
+    const report = completedReport();
+    mocks.getReport.mockResolvedValue({
+      ...report,
+      timelineEntries: [
+        {
+          ...report.timelineEntries[0],
+          id: "timeline-early",
+          sequence: 1,
+          startMinuteOffset: 323,
+          delayCode: "26",
+          delayCodeDescription: "Surveying",
+          description: "First normal item",
+        },
+        {
+          ...report.timelineEntries[0],
+          id: "timeline-later-sequence",
+          sequence: 3,
+          startMinuteOffset: 320,
+          delayCode: "34",
+          delayCodeDescription: "Other (Explain)",
+          description: "Third persisted item",
+        },
+      ],
+      downtimeBlocks: [
+        {
+          ...report.downtimeBlocks[0],
+          sequence: 2,
+          startMinuteOffset: 335,
+          description: "Second persisted block",
+        },
+      ],
+    });
+    render(
+      await DraglineDelayReportDetailPage({
+        params: Promise.resolve({ id: "report-1" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    const first = screen.getByText("First normal item");
+    const second = screen.getByText("Second persisted block");
+    const third = screen.getByText("Third persisted item");
+    expect(
+      first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      second.compareDocumentPosition(third) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
 });
