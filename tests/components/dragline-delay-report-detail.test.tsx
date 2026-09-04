@@ -79,6 +79,42 @@ function completedReport() {
       createdAt: new Date(),
       updatedAt: new Date(),
     }],
+    downtimeBlocks: [{
+      id: "downtime-block-1",
+      reportId: "report-1",
+      sequence: 1,
+      startMinuteOffset: 310,
+      durationMinutes: 400,
+      description: "Scheduled PM — multiple maintenance and inspection tasks",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      activities: [
+        {
+          id: "downtime-activity-1",
+          downtimeBlockId: "downtime-block-1",
+          sequence: 1,
+          delayCodeCatalogVersion: 1,
+          delayCode: "35",
+          delayCodeDescription: "Startup Check",
+          delayCodeCategory: "OPERATIONAL",
+          description: "Startup inspection and grease checks",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: "downtime-activity-2",
+          downtimeBlockId: "downtime-block-1",
+          sequence: 2,
+          delayCodeCatalogVersion: 1,
+          delayCode: "36",
+          delayCodeDescription: "Daily PM",
+          delayCodeCategory: "OPERATIONAL",
+          description: "Bucket greasing and routine service",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+    }],
     groundChecks: [],
     corrections: [{
       id: "correction-1",
@@ -176,5 +212,35 @@ describe("Dragline Delay Report Completed detail", () => {
       }),
     );
     expect(screen.getByRole("status")).toHaveTextContent(message);
+  });
+
+  it("renders a Shared Downtime Block once with ordered child codes and notes", async () => {
+    mocks.getReport.mockResolvedValue(completedReport());
+    render(
+      await DraglineDelayReportDetailPage({
+        params: Promise.resolve({ id: "report-1" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    expect(screen.getByText("Shared Downtime Block")).toBeInTheDocument();
+    expect(screen.getByText("6 h 40 min downtime")).toBeInTheDocument();
+    expect(
+      screen.getByText("Scheduled PM — multiple maintenance and inspection tasks"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("35 — Startup Check")).toBeInTheDocument();
+    expect(screen.getByText("Startup inspection and grease checks")).toBeInTheDocument();
+    expect(screen.getByText("36 — Daily PM")).toBeInTheDocument();
+    expect(screen.getByText("Bucket greasing and routine service")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Child activities add no separate downtime/),
+    ).toBeInTheDocument();
+
+    const blockTime = screen.getByText("5:10 AM");
+    const shiftChangeTime = screen.getByText("4:59 PM");
+    expect(
+      blockTime.compareDocumentPosition(shiftChangeTime) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });

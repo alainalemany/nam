@@ -73,6 +73,7 @@ const initialValues = {
   actionTaken: "",
   operators: [{ clientId: "operator-row-1", employeeId: "operator-1" }],
   timelineEntries: [],
+  downtimeBlocks: [],
   groundChecks: [],
 };
 
@@ -284,6 +285,175 @@ describe("DraglineDelayReportForm", () => {
     expect(scrollIntoView).toHaveBeenCalledTimes(2);
     expect(scrollIntoView.mock.contexts.at(-1)).toBe(
       screen.getByRole("group", { name: "Timeline row 3" }),
+    );
+  });
+
+  it("adds, edits, reorders, and removes Shared Downtime Blocks and child Activities", async () => {
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    renderForm();
+
+    const addBlockButtons = screen.getAllByRole("button", {
+      name: "Add Shared Downtime Block",
+    });
+    expect(addBlockButtons).toHaveLength(2);
+    expect(addBlockButtons[0]).toHaveClass("ddr-add-downtime-block-button");
+    fireEvent.click(addBlockButtons[0]);
+
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText("Start Time for Shared Downtime Block 1"),
+      ).toHaveFocus(),
+    );
+    fireEvent.change(
+      screen.getByLabelText("Start Time for Shared Downtime Block 1"),
+      { target: { value: "05:10" } },
+    );
+    fireEvent.change(
+      screen.getByLabelText("Total Duration for Shared Downtime Block 1"),
+      { target: { value: "400" } },
+    );
+    fireEvent.change(
+      screen.getByLabelText(
+        "Block Description / Notes for Shared Downtime Block 1",
+      ),
+      { target: { value: "Scheduled PM — multiple tasks" } },
+    );
+    fireEvent.change(
+      screen.getByLabelText(
+        "Delay Code for Shared Downtime Block 1 Activity 1",
+      ),
+      { target: { value: "35" } },
+    );
+    fireEvent.change(
+      screen.getByLabelText(
+        "Description / Notes for Shared Downtime Block 1 Activity 1",
+      ),
+      { target: { value: "Startup inspection and grease checks" } },
+    );
+
+    const block = screen.getByRole("group", {
+      name: "Shared Downtime Block 1",
+    });
+    fireEvent.click(within(block).getByRole("button", { name: "Add Activity" }));
+    fireEvent.change(
+      screen.getByLabelText(
+        "Delay Code for Shared Downtime Block 1 Activity 2",
+      ),
+      { target: { value: "36" } },
+    );
+    fireEvent.change(
+      screen.getByLabelText(
+        "Description / Notes for Shared Downtime Block 1 Activity 2",
+      ),
+      { target: { value: "Bucket greasing and routine service" } },
+    );
+
+    expect(screen.queryByLabelText(/Activity 1 duration/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText("6 h 40 min").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("5 h 20 min").length).toBeGreaterThan(0);
+
+    fireEvent.click(
+      within(
+        screen.getByRole("group", { name: "Activity 2" }),
+      ).getByRole("button", { name: "Move up" }),
+    );
+    expect(
+      screen.getByLabelText(
+        "Description / Notes for Shared Downtime Block 1 Activity 1",
+      ),
+    ).toHaveValue("Bucket greasing and routine service");
+
+    fireEvent.click(
+      within(
+        screen.getByRole("group", { name: "Activity 2" }),
+      ).getByRole("button", { name: "Remove Activity" }),
+    );
+    expect(screen.queryByRole("group", { name: "Activity 2" })).not.toBeInTheDocument();
+
+    fireEvent.click(addBlockButtons[1]);
+    expect(
+      screen.getByRole("group", { name: "Shared Downtime Block 2" }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      within(block).getByRole("button", {
+        name: "Remove Shared Downtime Block",
+      }),
+    );
+    expect(
+      screen.getAllByRole("group", { name: /Shared Downtime Block \d/ }),
+    ).toHaveLength(1);
+  });
+
+  it("preserves nested Shared Downtime Block state and focuses human-readable errors", async () => {
+    const action = vi.fn(async () => ({
+      status: "error" as const,
+      message: "Required or invalid fields need attention. Your entered values were preserved.",
+      fieldErrors: {
+        "downtimeBlocks.0.activities.1.delayCode": [
+          "Select an official Delay Code from Catalog V1.",
+        ],
+      },
+    }));
+    renderForm(action);
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Add Shared Downtime Block" })[0],
+    );
+    fireEvent.change(
+      screen.getByLabelText("Start Time for Shared Downtime Block 1"),
+      { target: { value: "05:10" } },
+    );
+    fireEvent.change(
+      screen.getByLabelText("Total Duration for Shared Downtime Block 1"),
+      { target: { value: "400" } },
+    );
+    fireEvent.change(
+      screen.getByLabelText(
+        "Block Description / Notes for Shared Downtime Block 1",
+      ),
+      { target: { value: "Preserve this block note" } },
+    );
+    const block = screen.getByRole("group", {
+      name: "Shared Downtime Block 1",
+    });
+    fireEvent.click(within(block).getByRole("button", { name: "Add Activity" }));
+    fireEvent.change(
+      screen.getByLabelText(
+        "Description / Notes for Shared Downtime Block 1 Activity 2",
+      ),
+      { target: { value: "Preserve this activity note" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save Draft Report" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(
+      within(alert).getByRole("button", {
+        name: /Shared Downtime Block 1 — Activity 2 — Delay Code/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(
+        "Block Description / Notes for Shared Downtime Block 1",
+      ),
+    ).toHaveValue("Preserve this block note");
+    const activityDescription = screen.getByLabelText(
+      "Description / Notes for Shared Downtime Block 1 Activity 2",
+    );
+    expect(activityDescription).toHaveValue("Preserve this activity note");
+    expect(
+      screen.getByLabelText(
+        "Delay Code for Shared Downtime Block 1 Activity 2",
+      ),
+    ).toHaveAttribute("aria-invalid", "true");
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText(
+          "Delay Code for Shared Downtime Block 1 Activity 2",
+        ),
+      ).toHaveFocus(),
     );
   });
 

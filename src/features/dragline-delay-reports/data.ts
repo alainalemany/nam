@@ -25,6 +25,18 @@ const detailInclude = {
       { id: "asc" as const },
     ],
   },
+  downtimeBlocks: {
+    orderBy: [
+      { startMinuteOffset: "asc" as const },
+      { sequence: "asc" as const },
+      { id: "asc" as const },
+    ],
+    include: {
+      activities: {
+        orderBy: [{ sequence: "asc" as const }, { id: "asc" as const }],
+      },
+    },
+  },
   groundChecks: {
     orderBy: [
       { startMinuteOffset: "asc" as const },
@@ -45,6 +57,9 @@ const totalsInclude = {
     },
   },
   groundChecks: { select: { startMinuteOffset: true } },
+  downtimeBlocks: {
+    select: { startMinuteOffset: true, durationMinutes: true },
+  },
 } satisfies Prisma.DraglineDelayReportInclude;
 
 function calculatePersistedTotals(report: {
@@ -56,6 +71,10 @@ function calculatePersistedTotals(report: {
     delayCode: string;
   }>;
   groundChecks: Array<{ startMinuteOffset: number }>;
+  downtimeBlocks?: Array<{
+    startMinuteOffset: number;
+    durationMinutes: number;
+  }>;
 }) {
   if (report.shift !== "DAY" && report.shift !== "NIGHT") {
     throw new Error("Dragline Delay Report shift must be Day or Night.");
@@ -65,6 +84,7 @@ function calculatePersistedTotals(report: {
     report.shift as DraglineDelayReportShift,
     report.timelineEntries,
     report.groundChecks,
+    report.downtimeBlocks ?? [],
   );
 }
 
@@ -80,9 +100,14 @@ export async function getDraglineDelayReports() {
     take: 250,
   });
 
-  return reports.map(({ timelineEntries, groundChecks, ...report }) => ({
+  return reports.map(({ timelineEntries, groundChecks, downtimeBlocks, ...report }) => ({
     ...report,
-    ...calculatePersistedTotals({ ...report, timelineEntries, groundChecks }),
+    ...calculatePersistedTotals({
+      ...report,
+      timelineEntries,
+      groundChecks,
+      downtimeBlocks,
+    }),
   }));
 }
 
@@ -253,6 +278,26 @@ export function draglineDelayReportToFormInitial(
           entry.durationMinutes == null ? "" : String(entry.durationMinutes),
         causesDowntime: entry.causesDowntime,
         category: getDraglineDelayCode(entry.delayCode)?.category,
+      };
+    }),
+    downtimeBlocks: report.downtimeBlocks.map((block) => {
+      const { clockTime, dayOffset } = splitEventStartMinute(
+        block.startMinuteOffset,
+      );
+      return {
+        clientId: block.id,
+        id: block.id,
+        startTime: clockTime,
+        dayOffset,
+        durationMinutes: String(block.durationMinutes),
+        description: block.description ?? "",
+        activities: block.activities.map((activity) => ({
+          clientId: activity.id,
+          id: activity.id,
+          delayCode: activity.delayCode,
+          description: activity.description ?? "",
+          category: getDraglineDelayCode(activity.delayCode)?.category,
+        })),
       };
     }),
     groundChecks: report.groundChecks.map((groundCheck) => {

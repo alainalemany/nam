@@ -10,6 +10,7 @@ import { hasFinalShiftChangeEntry } from "./lifecycle";
 import { parseStationNotation } from "./station";
 import {
   normalizeEventStartTime,
+  validateEventInterval,
   validateScheduledShiftStart,
 } from "./time";
 
@@ -151,6 +152,39 @@ export const draglineDelayReportGroundCheckSchema = z.object({
   dayOffset: z.union([z.literal(0), z.literal(1)]),
 });
 
+export const draglineDelayReportDowntimeBlockActivitySchema = z.object({
+  id: optionalId,
+  sequence: positiveWholeNumberInput("Activity sequence"),
+  catalogVersion: z.literal(DRAGLINE_DELAY_CODE_CATALOG_VERSION),
+  delayCode: z.string().trim().min(1, "Delay Code is required."),
+  description: z
+    .string()
+    .trim()
+    .max(1000, "Description must be 1000 characters or fewer.")
+    .optional()
+    .transform((value) => value || undefined),
+});
+
+export const draglineDelayReportDowntimeBlockSchema = z.object({
+  id: optionalId,
+  sequence: positiveWholeNumberInput("Shared Downtime Block sequence"),
+  startTime: z
+    .string()
+    .regex(/^[0-2]\d:[0-5]\d$/, "Enter a valid Shared Downtime Block start time."),
+  dayOffset: z.union([z.literal(0), z.literal(1)]),
+  durationMinutes: positiveWholeNumberInput("Shared Downtime Block duration"),
+  description: z
+    .string()
+    .trim()
+    .max(1000, "Block Description / Notes must be 1000 characters or fewer.")
+    .optional()
+    .transform((value) => value || undefined),
+  activities: z
+    .array(draglineDelayReportDowntimeBlockActivitySchema)
+    .min(1, "Add at least one Activity.")
+    .max(100, "A Shared Downtime Block may contain at most 100 Activities."),
+});
+
 export const draglineDelayReportSubmissionSchema = z
   .object({
     operationalWorkDate: z
@@ -184,6 +218,10 @@ export const draglineDelayReportSubmissionSchema = z
     timelineEntries: z
       .array(draglineDelayReportTimelineEntrySchema)
       .max(200, "A report may contain at most 200 timeline entries."),
+    downtimeBlocks: z
+      .array(draglineDelayReportDowntimeBlockSchema)
+      .max(100, "A report may contain at most 100 Shared Downtime Blocks.")
+      .default([]),
     groundChecks: z
       .array(draglineDelayReportGroundCheckSchema)
       .max(100, "A report may contain at most 100 Ground Checks.")
@@ -349,11 +387,120 @@ export const draglineDelayReportSubmissionSchema = z
       }
     });
 
+    const downtimeBlockIds = new Set<string>();
+    const downtimeBlockActivityIds = new Set<string>();
+    const calculationDowntimeBlocks: Array<{
+      startMinuteOffset: number;
+      durationMinutes: number;
+    }> = [];
+    value.downtimeBlocks.forEach((block, blockIndex) => {
+      if (block.sequence !== blockIndex + 1) {
+        context.addIssue({
+          code: "custom",
+          path: ["downtimeBlocks", blockIndex, "sequence"],
+          message: "Shared Downtime Block order must be contiguous and start at 1.",
+        });
+      }
+      if (block.id) {
+        if (downtimeBlockIds.has(block.id)) {
+          context.addIssue({
+            code: "custom",
+            path: ["downtimeBlocks", blockIndex, "id"],
+            message: "Shared Downtime Block identity is duplicated.",
+          });
+        }
+        downtimeBlockIds.add(block.id);
+      }
+
+      block.activities.forEach((activity, activityIndex) => {
+        if (activity.sequence !== activityIndex + 1) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "downtimeBlocks",
+              blockIndex,
+              "activities",
+              activityIndex,
+              "sequence",
+            ],
+            message: "Activity order must be contiguous and start at 1.",
+          });
+        }
+        if (activity.id) {
+          if (downtimeBlockActivityIds.has(activity.id)) {
+            context.addIssue({
+              code: "custom",
+              path: [
+                "downtimeBlocks",
+                blockIndex,
+                "activities",
+                activityIndex,
+                "id",
+              ],
+              message: "Activity row identity is duplicated.",
+            });
+          }
+          downtimeBlockActivityIds.add(activity.id);
+        }
+        if (!getDraglineDelayCode(activity.delayCode)) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "downtimeBlocks",
+              blockIndex,
+              "activities",
+              activityIndex,
+              "delayCode",
+            ],
+            message: "Select an official Delay Code from Catalog V1.",
+          });
+        } else if (activity.delayCode === DRAGLINE_SHIFT_CHANGE_DELAY_CODE) {
+          context.addIssue({
+            code: "custom",
+            path: [
+              "downtimeBlocks",
+              blockIndex,
+              "activities",
+              activityIndex,
+              "delayCode",
+            ],
+            message: "Code 13 — Shift Change must remain a normal Timeline row.",
+          });
+        }
+      });
+
+      try {
+        const startMinuteOffset = normalizeEventStartTime(
+          block.startTime,
+          block.dayOffset,
+        );
+        validateEventInterval(
+          value.shift,
+          startMinuteOffset,
+          block.durationMinutes,
+        );
+        calculationDowntimeBlocks.push({
+          startMinuteOffset,
+          durationMinutes: block.durationMinutes,
+        });
+      } catch (error) {
+        context.addIssue({
+          code: "custom",
+          path: ["downtimeBlocks", blockIndex, "startTime"],
+          message:
+            error instanceof Error
+              ? error.message.replace("Event", "Shared Downtime Block")
+              : "Shared Downtime Block start time is invalid.",
+        });
+      }
+    });
+
     try {
       calculateDraglineShiftTotals(
         value.shift,
         calculationEntries,
         calculationGroundChecks,
+        calculationDowntimeBlocks,
       );
     } catch (error) {
       context.addIssue({
@@ -399,7 +546,18 @@ export const draglineDelayReportCompletionSchema =
         return [];
       }
     });
-    if (!hasFinalShiftChangeEntry(chronology)) {
+    const blockChronology = value.downtimeBlocks.flatMap((block) => {
+      try {
+        return [{
+          startMinuteOffset: normalizeEventStartTime(block.startTime, block.dayOffset),
+          sequence: 0,
+          delayCode: "",
+        }];
+      } catch {
+        return [];
+      }
+    });
+    if (!hasFinalShiftChangeEntry([...chronology, ...blockChronology])) {
       context.addIssue({
         code: "custom",
         path: ["timelineEntries"],
@@ -469,6 +627,10 @@ export function normalizeDraglineDelayReportSubmission(
     timelineEntries: input.timelineEntries.map((entry) => ({
       ...entry,
       startMinuteOffset: normalizeEventStartTime(entry.startTime, entry.dayOffset),
+    })),
+    downtimeBlocks: input.downtimeBlocks.map((block) => ({
+      ...block,
+      startMinuteOffset: normalizeEventStartTime(block.startTime, block.dayOffset),
     })),
     groundChecks: input.groundChecks.map((groundCheck) => ({
       ...groundCheck,

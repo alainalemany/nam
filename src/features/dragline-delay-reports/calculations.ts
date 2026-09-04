@@ -21,6 +21,11 @@ export type GroundCheckDowntimeInput = Readonly<{
   startMinuteOffset: number;
 }>;
 
+export type SharedDowntimeBlockInput = Readonly<{
+  startMinuteOffset: number;
+  durationMinutes: number;
+}>;
+
 export const DRAGLINE_GROUND_CHECK_DOWNTIME_MINUTES = 10;
 
 export function calculateDraglineDowntime(
@@ -98,6 +103,7 @@ export function calculateDraglineShiftTotals(
   shift: DraglineDelayReportShift,
   entries: readonly TimelineDowntimeInput[],
   groundChecks: readonly GroundCheckDowntimeInput[] = [],
+  downtimeBlocks: readonly SharedDowntimeBlockInput[] = [],
 ) {
   const downTimeMinutes = calculateDraglineDowntime(shift, [
     ...entries.map((entry) => ({
@@ -110,6 +116,11 @@ export function calculateDraglineShiftTotals(
     ...groundChecks.map((groundCheck) => ({
       startMinuteOffset: groundCheck.startMinuteOffset,
       durationMinutes: DRAGLINE_GROUND_CHECK_DOWNTIME_MINUTES,
+      causesDowntime: true,
+    })),
+    ...downtimeBlocks.map((block) => ({
+      startMinuteOffset: block.startMinuteOffset,
+      durationMinutes: block.durationMinutes,
       causesDowntime: true,
     })),
   ]);

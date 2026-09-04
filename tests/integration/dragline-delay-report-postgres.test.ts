@@ -460,6 +460,167 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
     }
   });
 
+  it("persists and edits Shared Downtime Blocks with ordered activity snapshots", async () => {
+    const client = new PrismaClient({ datasourceUrl: databaseUrl });
+    try {
+      await withRollback(client, async (transaction, prefix) => {
+        const references = await createReferences(transaction, prefix);
+        const created = await persistDraglineDelayReportInTransaction(
+          transaction,
+          validInput(references, {
+            operationalWorkDate: "2026-09-03",
+            shift: "DAY",
+            timelineEntries: [
+              {
+                sequence: 1,
+                startTime: "11:40",
+                dayOffset: 0,
+                catalogVersion: 1,
+                delayCode: "26",
+                description: "Overlapping ordinary downtime",
+                durationMinutes: 20,
+                causesDowntime: true,
+              },
+            ],
+            groundChecks: [
+              { sequence: 1, startTime: "06:20", dayOffset: 0 },
+            ],
+            downtimeBlocks: [
+              {
+                sequence: 1,
+                startTime: "05:10",
+                dayOffset: 0,
+                durationMinutes: 400,
+                description: "Scheduled PM — multiple tasks",
+                activities: [
+                  {
+                    sequence: 1,
+                    catalogVersion: 1,
+                    delayCode: "35",
+                    description: "Startup inspection and grease checks",
+                  },
+                  {
+                    sequence: 2,
+                    catalogVersion: 1,
+                    delayCode: "36",
+                    description: "Bucket greasing and routine service",
+                  },
+                ],
+              },
+            ],
+          }),
+        );
+
+        const initial = await transaction.draglineDelayReport.findUniqueOrThrow({
+          where: { id: created.id },
+          include: {
+            downtimeBlocks: {
+              include: { activities: { orderBy: { sequence: "asc" } } },
+            },
+          },
+        });
+        expect(initial).toMatchObject({
+          downTimeMinutes: 410,
+          runTimeMinutes: 310,
+        });
+        expect(initial.downtimeBlocks).toHaveLength(1);
+        expect(initial.downtimeBlocks[0]).toMatchObject({
+          sequence: 1,
+          startMinuteOffset: 310,
+          durationMinutes: 400,
+          description: "Scheduled PM — multiple tasks",
+        });
+        expect(initial.downtimeBlocks[0].activities).toMatchObject([
+          {
+            sequence: 1,
+            delayCode: "35",
+            delayCodeDescription: "Startup Check",
+            delayCodeCategory: "OPERATIONAL",
+            description: "Startup inspection and grease checks",
+          },
+          {
+            sequence: 2,
+            delayCode: "36",
+            delayCodeDescription: "Daily PM",
+            delayCodeCategory: "OPERATIONAL",
+            description: "Bucket greasing and routine service",
+          },
+        ]);
+
+        const block = initial.downtimeBlocks[0];
+        const [firstActivity, secondActivity] = block.activities;
+        await persistDraglineDelayReportInTransaction(
+          transaction,
+          validInput(references, {
+            operationalWorkDate: "2026-09-03",
+            shift: "DAY",
+            recordVersion: 1,
+            timelineEntries: [],
+            groundChecks: [],
+            downtimeBlocks: [
+              {
+                id: block.id,
+                sequence: 1,
+                startTime: "05:10",
+                dayOffset: 0,
+                durationMinutes: 400,
+                description: "Updated PM note",
+                activities: [
+                  {
+                    id: secondActivity.id,
+                    sequence: 1,
+                    catalogVersion: 1,
+                    delayCode: "36",
+                    description: "Updated Daily PM note",
+                  },
+                  {
+                    id: firstActivity.id,
+                    sequence: 2,
+                    catalogVersion: 1,
+                    delayCode: "35",
+                    description: "Startup check retained",
+                  },
+                  {
+                    sequence: 3,
+                    catalogVersion: 1,
+                    delayCode: "52",
+                    description: "Resocketed hoist rope",
+                  },
+                ],
+              },
+            ],
+          }),
+          created.id,
+        );
+
+        const after = await transaction.draglineDelayReport.findUniqueOrThrow({
+          where: { id: created.id },
+          include: {
+            downtimeBlocks: {
+              include: { activities: { orderBy: { sequence: "asc" } } },
+            },
+          },
+        });
+        expect(after).toMatchObject({
+          downTimeMinutes: 400,
+          runTimeMinutes: 320,
+          recordVersion: 2,
+        });
+        expect(after.downtimeBlocks[0].id).toBe(block.id);
+        expect(after.downtimeBlocks[0].activities.map((activity) => activity.id))
+          .toEqual([secondActivity.id, firstActivity.id, expect.any(String)]);
+        expect(after.downtimeBlocks[0].activities[2]).toMatchObject({
+          delayCode: "52",
+          delayCodeDescription: "Other (Explain)",
+          delayCodeCategory: "MECHANICAL",
+          description: "Resocketed hoist rope",
+        });
+      });
+    } finally {
+      await client.$disconnect();
+    }
+  });
+
   it("persists progressive Draft Section states and rejects End-only at the database", async () => {
     const client = new PrismaClient({ datasourceUrl: databaseUrl });
     try {
@@ -632,6 +793,7 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
         });
         const nightInput = validInput(references, {
           shift: "NIGHT",
+          groundChecks: [],
           timelineEntries: [
             {
               sequence: 1,
@@ -987,6 +1149,23 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
         });
         const completionBase = validCompletionInput(references, {
           recordVersion: 1,
+          downtimeBlocks: [
+            {
+              sequence: 1,
+              startTime: "17:10",
+              dayOffset: 0,
+              durationMinutes: 30,
+              description: "Scheduled service",
+              activities: [
+                {
+                  sequence: 1,
+                  catalogVersion: 1,
+                  delayCode: "36",
+                  description: "Daily PM",
+                },
+              ],
+            },
+          ],
         });
         const completion = draglineDelayReportCompletionSchema.parse({
           ...completionBase,
@@ -1014,6 +1193,9 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
             operators: { orderBy: { sequence: "asc" } },
             timelineEntries: { orderBy: { sequence: "asc" } },
             groundChecks: { orderBy: { sequence: "asc" } },
+            downtimeBlocks: {
+              include: { activities: { orderBy: { sequence: "asc" } } },
+            },
           },
         });
         const correctionInput = draglineDelayReportCompletionSchema.parse({
@@ -1033,6 +1215,14 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
             ...groundCheck,
             id: completed.groundChecks[index].id,
           })),
+          downtimeBlocks: completion.downtimeBlocks.map((block, blockIndex) => ({
+            ...block,
+            id: completed.downtimeBlocks[blockIndex].id,
+            activities: block.activities.map((activity, activityIndex) => ({
+              ...activity,
+              id: completed.downtimeBlocks[blockIndex].activities[activityIndex].id,
+            })),
+          })),
         });
         const first = await correctDraglineDelayReportInTransaction(
           transaction,
@@ -1047,6 +1237,9 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
           include: {
             timelineEntries: { orderBy: { sequence: "asc" } },
             groundChecks: { orderBy: { sequence: "asc" } },
+            downtimeBlocks: {
+              include: { activities: { orderBy: { sequence: "asc" } } },
+            },
             corrections: { orderBy: { sequence: "asc" } },
           },
         });
@@ -1062,6 +1255,14 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
         expect(afterFirst.groundChecks.map((entry) => entry.id)).toEqual(
           completed.groundChecks.map((entry) => entry.id),
         );
+        expect(afterFirst.downtimeBlocks[0].id).toBe(
+          completed.downtimeBlocks[0].id,
+        );
+        expect(afterFirst.downtimeBlocks[0].activities[0]).toMatchObject({
+          id: completed.downtimeBlocks[0].activities[0].id,
+          delayCode: "36",
+          description: "Daily PM",
+        });
         expect(afterFirst.corrections[0]).toMatchObject({
           sequence: 1,
           reason: "Corrected Ending Hour Meter from signed shift paperwork.",
@@ -1197,6 +1398,9 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
       expect(rows.map((row) => row.migration_name)).toContain(
         "20260826000100_dragline_delay_report_draft_section_start",
       );
+      expect(rows.map((row) => row.migration_name)).toContain(
+        "20260903000100_dragline_delay_report_shared_downtime_blocks",
+      );
     } finally {
       await client.$disconnect();
     }
@@ -1262,6 +1466,46 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
       );
       expect([...byName.keys()]).toHaveLength(5);
       expect(byName.get("DraglineDelayReportCorrection_report_fkey")).toBe("c");
+    } finally {
+      await client.$disconnect();
+    }
+  });
+
+  it("installs Shared Downtime Block ownership and integrity constraints", async () => {
+    const client = new PrismaClient({ datasourceUrl: databaseUrl });
+    try {
+      const constraints = await client.$queryRaw<
+        Array<{ conname: string; confdeltype: string; definition: string }>
+      >`
+        SELECT conname, confdeltype::text, pg_get_constraintdef(oid) AS definition
+        FROM pg_constraint
+        WHERE conname IN (
+          'DraglineDelayReportDowntimeBlock_report_fkey',
+          'DraglineDelayReportDowntimeBlockActivity_block_fkey',
+          'DraglineDelayReportDowntimeBlock_sequence_check',
+          'DraglineDelayReportDowntimeBlock_start_check',
+          'DraglineDelayReportDowntimeBlock_duration_check',
+          'DraglineDelayReportDowntimeBlockActivity_sequence_check',
+          'DraglineDelayReportDowntimeBlockActivity_catalog_check',
+          'DraglineDelayReportDowntimeBlockActivity_shift_change_check'
+        )
+      `;
+      const byName = new Map(
+        constraints.map((constraint) => [constraint.conname, constraint]),
+      );
+      expect([...byName.keys()]).toHaveLength(8);
+      expect(
+        byName.get("DraglineDelayReportDowntimeBlock_report_fkey")?.confdeltype,
+      ).toBe("c");
+      expect(
+        byName.get("DraglineDelayReportDowntimeBlockActivity_block_fkey")
+          ?.confdeltype,
+      ).toBe("c");
+      expect(
+        byName.get(
+          "DraglineDelayReportDowntimeBlockActivity_shift_change_check",
+        )?.definition,
+      ).toMatch(/"delayCode" <> '13'/);
     } finally {
       await client.$disconnect();
     }

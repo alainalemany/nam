@@ -32,6 +32,7 @@ export default async function NewDraglineDelayReportPage() {
     actionTaken: "",
     operators: [],
     timelineEntries: [],
+    downtimeBlocks: [],
     groundChecks: [],
   };
 

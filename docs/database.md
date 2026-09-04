@@ -213,7 +213,8 @@ model, generic attachment model, or implemented schema.
 
 Status: DDR-1 root, ordered Operator, and stable Timeline Entry persistence;
 DDR-2 Lake, Ground Check, production/progress, measurement, and closing-note
-persistence; and DDR-3 completion/correction persistence are implemented in
+persistence; DDR-3 completion/correction persistence; and additive Shared
+Downtime Block parent/activity persistence are implemented in
 `prisma/schema.prisma`. The feature is governed by
 `docs/architecture/features/dragline-delay-reports.md`.
 
@@ -262,8 +263,8 @@ unchanged; feature validation and a database check restrict this aggregate to
 
 The tuple `(equipmentId, operationalWorkDate, shift)` is unique. Mine and City
 derive through Equipment and are not independent inputs. The root owns ordered
-operator participants, timeline entries, Ground Check entries, and immutable
-lightweight correction events.
+operator participants, timeline entries, Shared Downtime Blocks, Ground Check
+entries, and immutable lightweight correction events.
 
 The source front does not itself establish meter precision, but confirmed
 digital product direction now requires nonnegative whole numbers and rejects
@@ -340,6 +341,41 @@ Report-owned Operator and Timeline Entry rows cascade when the report is
 deleted. Live Equipment, supervisor, and operator Employee references use
 `SetNull`; their report-owned snapshots retain historical display meaning.
 
+### DraglineDelayReportDowntimeBlock
+
+Implemented optional report-owned parent for one known continuous downtime
+interval containing multiple coded activities whose individual durations are
+unknown and must not be invented.
+
+Conceptual fields:
+
+- Durable child identity and parent report relation with cascade ownership.
+- Positive display sequence unique within the report.
+- Integer `startMinuteOffset` using normal DDR actual-time, overnight, extended
+  timeline, and scheduled-window clipping semantics.
+- Positive whole-number `durationMinutes` owned by the block.
+- Optional bounded block description/notes.
+- One or more ordered owned Activities.
+
+The block contributes exactly one interval to the existing downtime union.
+
+### DraglineDelayReportDowntimeBlockActivity
+
+Implemented ordered child of one Shared Downtime Block.
+
+Conceptual fields:
+
+- Durable child identity and parent block relation with cascade ownership.
+- Positive display sequence unique within the block.
+- Delay Code catalog version, official code, exact description snapshot, and
+  derived category snapshot.
+- Optional operator-authored description/notes.
+
+Activities have no start, duration, or downtime flag in V1 and contribute zero
+additional downtime. Code 13 — Shift Change is excluded because it remains the
+required final normal Timeline Entry with unchanged zero-downtime semantics.
+Existing reports receive no converted or synthesized block data.
+
 ### DraglineDelayReportGroundCheck
 
 Implemented repeatable ordered Ground Check time owned by DDR-2.
@@ -380,8 +416,10 @@ identity because NAM Dashboard has no reliable authenticated-user concept.
 ### Derived Data Rules
 
 - Timeline intervals use half-open integer-minute ranges.
-- Down Time is the union length of all downtime-causing intervals and must be
-  within `0..720`.
+- Down Time is the union length of all normal downtime-causing Timeline Entry
+  intervals, each Shared Downtime Block interval exactly once, and fixed
+  ten-minute Ground Check intervals, and must be within `0..720`.
+- Shared Downtime Block activities never enter the interval union.
 - Run Time is `720 - Down Time`.
 - Client-entered totals are never authoritative.
 - User-facing Section input preserves normalized section number/offset or

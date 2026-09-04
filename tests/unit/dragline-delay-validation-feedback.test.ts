@@ -29,6 +29,14 @@ describe("Dragline Delay Report validation feedback", () => {
     expect(formatDraglineDelayReportErrorPath("stationStart")).toBe(
       "Section Start",
     );
+    expect(
+      formatDraglineDelayReportErrorPath("downtimeBlocks.1.durationMinutes"),
+    ).toBe("Shared Downtime Block 2 — Duration");
+    expect(
+      formatDraglineDelayReportErrorPath(
+        "downtimeBlocks.0.activities.2.delayCode",
+      ),
+    ).toBe("Shared Downtime Block 1 — Activity 3 — Delay Code");
   });
 
   it("builds an ordered readable summary without duplicate entries", () => {
@@ -67,6 +75,18 @@ describe("Dragline Delay Report validation feedback", () => {
     ]);
     expect(draglineDelayReportErrorTargetPaths("timelineEntries")).toEqual([
       "timelineEntries",
+      "form",
+    ]);
+    expect(
+      draglineDelayReportErrorTargetPaths(
+        "downtimeBlocks.0.activities.2.delayCode",
+      ),
+    ).toEqual([
+      "downtimeBlocks.0.activities.2.delayCode",
+      "downtimeBlocks.0.activities.2",
+      "downtimeBlocks.0.activities",
+      "downtimeBlocks.0",
+      "downtimeBlocks",
       "form",
     ]);
   });

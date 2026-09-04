@@ -219,6 +219,12 @@ h3 {
   color: #ffffff;
 }
 
+.button.ddr-add-downtime-block-button {
+  border-color: #2f855a;
+  background: #e8f5ee;
+  color: #145c3a;
+}
+
 .ddr-ground-check-info {
   margin: 0;
   border-left: 3px solid #1f6feb;
@@ -1510,6 +1516,91 @@ textarea {
   justify-content: flex-end;
 }
 
+.ddr-timeline-add-actions {
+  justify-content: flex-end;
+}
+
+.ddr-downtime-block-list,
+.ddr-downtime-block-activities {
+  display: grid;
+  gap: 14px;
+}
+
+.ddr-downtime-block-list {
+  border-top: 2px solid #b8ddc8;
+  margin-top: 4px;
+  padding-top: 18px;
+}
+
+.ddr-downtime-block {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  border: 2px solid #8bc4a4;
+  border-radius: 10px;
+  background: #f3fbf6;
+  margin: 0;
+  padding: 16px;
+}
+
+.ddr-downtime-block > legend,
+.ddr-downtime-block-activity > legend {
+  padding: 0 6px;
+  color: #17633f;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.ddr-downtime-block-fields,
+.ddr-downtime-block-activity-fields {
+  display: grid;
+  align-items: end;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(125px, 1fr));
+}
+
+.ddr-downtime-block-activities {
+  border-top: 1px solid #b8ddc8;
+  padding-top: 14px;
+}
+
+.ddr-downtime-block-activity {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid #b8ddc8;
+  border-radius: 8px;
+  background: #ffffff;
+  margin: 0;
+  padding: 14px;
+}
+
+.ddr-downtime-block-detail {
+  display: grid;
+  gap: 10px;
+  border-left: 5px solid #2f855a;
+  background: #f3fbf6;
+  padding: 14px 16px;
+}
+
+.ddr-downtime-block-detail-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ddr-downtime-block-detail ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.ddr-downtime-block-detail li p {
+  margin: 3px 0 0;
+}
+
 .ddr-timeline-bottom-actions {
   justify-content: flex-end;
 }
@@ -1530,6 +1621,11 @@ textarea {
   }
 
   .ddr-timeline-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ddr-downtime-block-fields,
+  .ddr-downtime-block-activity-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1568,7 +1664,9 @@ textarea {
 
   .ddr-employee-field,
   .ddr-code-field,
-  .ddr-timeline-fields {
+  .ddr-timeline-fields,
+  .ddr-downtime-block-fields,
+  .ddr-downtime-block-activity-fields {
     grid-template-columns: 1fr;
   }
 

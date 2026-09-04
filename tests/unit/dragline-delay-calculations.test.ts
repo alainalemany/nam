@@ -116,6 +116,68 @@ describe("Dragline downtime interval union", () => {
     ).toEqual({ downTimeMinutes: 60, runTimeMinutes: 660 });
   });
 
+  it("counts one Shared Downtime Block exactly once regardless of child activities", () => {
+    const activities = ["35", "36", "52"];
+    expect(activities).toHaveLength(3);
+    expect(
+      calculateDraglineShiftTotals("DAY", [], [], [
+        { startMinuteOffset: 310, durationMinutes: 400 },
+      ]),
+    ).toEqual({ downTimeMinutes: 400, runTimeMinutes: 320 });
+  });
+
+  it("unions a fully contained Ground Check with a Shared Downtime Block", () => {
+    expect(
+      calculateDraglineShiftTotals(
+        "DAY",
+        [],
+        [{ startMinuteOffset: 380 }],
+        [{ startMinuteOffset: 310, durationMinutes: 400 }],
+      ),
+    ).toEqual({ downTimeMinutes: 400, runTimeMinutes: 320 });
+  });
+
+  it("adds only the unique Ground Check portion beyond a Shared Downtime Block", () => {
+    expect(
+      calculateDraglineShiftTotals(
+        "DAY",
+        [],
+        [{ startMinuteOffset: 705 }],
+        [{ startMinuteOffset: 310, durationMinutes: 400 }],
+      ),
+    ).toEqual({ downTimeMinutes: 405, runTimeMinutes: 315 });
+  });
+
+  it("unions ordinary timeline downtime with a Shared Downtime Block", () => {
+    expect(
+      calculateDraglineShiftTotals("DAY", [delay(700, 20)], [], [
+        { startMinuteOffset: 310, durationMinutes: 400 },
+      ]),
+    ).toEqual({ downTimeMinutes: 410, runTimeMinutes: 310 });
+  });
+
+  it("unions overlapping Shared Downtime Blocks", () => {
+    expect(
+      calculateDraglineShiftTotals("DAY", [], [], [
+        { startMinuteOffset: 310, durationMinutes: 400 },
+        { startMinuteOffset: 690, durationMinutes: 60 },
+      ]),
+    ).toEqual({ downTimeMinutes: 440, runTimeMinutes: 280 });
+  });
+
+  it("clips Shared Downtime Blocks to the fixed scheduled shift window", () => {
+    expect(
+      calculateDraglineShiftTotals("DAY", [], [], [
+        { startMinuteOffset: 1000, durationMinutes: 60 },
+      ]),
+    ).toEqual({ downTimeMinutes: 20, runTimeMinutes: 700 });
+    expect(
+      calculateDraglineShiftTotals("NIGHT", [], [], [
+        { startMinuteOffset: 1730, durationMinutes: 60 },
+      ]),
+    ).toEqual({ downTimeMinutes: 10, runTimeMinutes: 710 });
+  });
+
   it("unions a partially overlapping Ground Check with timeline downtime", () => {
     expect(
       calculateDraglineShiftTotals("DAY", [delay(370, 15)], [

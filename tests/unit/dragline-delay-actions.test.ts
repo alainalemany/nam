@@ -145,6 +145,61 @@ describe("Dragline Delay Report lifecycle Server Actions", () => {
     expect(mocks.persist).not.toHaveBeenCalled();
   });
 
+  it("passes Shared Downtime Blocks and child descriptions through the Server Action", async () => {
+    const downtimeBlocks = [
+      {
+        sequence: 1,
+        startTime: "05:10",
+        dayOffset: 0,
+        durationMinutes: "400",
+        description: "Scheduled PM",
+        activities: [
+          {
+            sequence: 1,
+            catalogVersion: 1,
+            delayCode: "35",
+            description: "Startup inspection and grease checks",
+          },
+          {
+            sequence: 2,
+            catalogVersion: 1,
+            delayCode: "36",
+            description: "Bucket greasing and routine service",
+          },
+        ],
+      },
+    ];
+    await expect(
+      updateDraglineDelayReportAction(
+        "report-1",
+        emptyDraglineDelayReportActionState,
+        mutationFormData("draft", { downtimeBlocks }),
+      ),
+    ).rejects.toThrow("redirect:/dragline-delay-reports/report-1?saved=updated");
+
+    expect(mocks.persist).toHaveBeenCalledWith(
+      expect.objectContaining({
+        downtimeBlocks: [
+          expect.objectContaining({
+            durationMinutes: 400,
+            description: "Scheduled PM",
+            activities: [
+              expect.objectContaining({
+                delayCode: "35",
+                description: "Startup inspection and grease checks",
+              }),
+              expect.objectContaining({
+                delayCode: "36",
+                description: "Bucket greasing and routine service",
+              }),
+            ],
+          }),
+        ],
+      }),
+      "report-1",
+    );
+  });
+
   it("returns completion field errors without persistence", async () => {
     const result = await updateDraglineDelayReportAction(
       "report-1",

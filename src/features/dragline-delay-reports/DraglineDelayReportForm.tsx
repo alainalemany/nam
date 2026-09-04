@@ -23,6 +23,8 @@ import { calculateStationAdvance, parseStationNotation } from "./station";
 import { normalizeEventStartTime } from "./time";
 import type {
   DraglineDelayReportFormInitialValues,
+  DraglineDelayReportDowntimeBlockActivityFormRow,
+  DraglineDelayReportDowntimeBlockFormRow,
   DraglineDelayReportGroundCheckFormRow,
   DraglineDelayReportOperatorFormRow,
   DraglineDelayReportTimelineFormRow,
@@ -83,6 +85,25 @@ function emptyGroundCheck(): DraglineDelayReportGroundCheckFormRow {
     clientId: clientRowId("ground-check"),
     startTime: "",
     dayOffset: 0,
+  };
+}
+
+function emptyDowntimeBlockActivity(): DraglineDelayReportDowntimeBlockActivityFormRow {
+  return {
+    clientId: clientRowId("downtime-block-activity"),
+    delayCode: "",
+    description: "",
+  };
+}
+
+function emptyDowntimeBlock(): DraglineDelayReportDowntimeBlockFormRow {
+  return {
+    clientId: clientRowId("downtime-block"),
+    startTime: "",
+    dayOffset: 0,
+    durationMinutes: "",
+    description: "",
+    activities: [emptyDowntimeBlockActivity()],
   };
 }
 
@@ -191,6 +212,84 @@ function DelayCodeField({
           )}
         </select>
         {firstError(state, `timelineEntries.${index}.delayCode`)}
+      </label>
+      <p className="subtle">
+        Category: {selected?.category ?? "Derived from selected code"}
+      </p>
+    </div>
+  );
+}
+
+function DowntimeBlockActivityCodeField({
+  activity,
+  blockIndex,
+  activityIndex,
+  state,
+  onChange,
+}: {
+  activity: DraglineDelayReportDowntimeBlockActivityFormRow;
+  blockIndex: number;
+  activityIndex: number;
+  state: DraglineDelayReportActionState;
+  onChange: (
+    values: Partial<DraglineDelayReportDowntimeBlockActivityFormRow>,
+  ) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const visible = searchDraglineDelayCodes(query).filter(
+    (code) => code.code !== DRAGLINE_SHIFT_CHANGE_DELAY_CODE,
+  );
+  const selected = getDraglineDelayCode(activity.delayCode);
+  const grouped = groupDraglineDelayCodes(
+    selected &&
+      selected.code !== DRAGLINE_SHIFT_CHANGE_DELAY_CODE &&
+      !visible.some((candidate) => candidate.code === selected.code)
+      ? [selected, ...visible]
+      : visible,
+  );
+  const path = `downtimeBlocks.${blockIndex}.activities.${activityIndex}.delayCode`;
+
+  return (
+    <div className="ddr-code-field">
+      <label>
+        <span>Find Delay Code</span>
+        <input
+          aria-label={`Find Delay Code for Shared Downtime Block ${blockIndex + 1} Activity ${activityIndex + 1}`}
+          autoComplete="off"
+          placeholder="Code or description"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+      </label>
+      <label>
+        <span>Delay Code</span>
+        <select
+          {...errorAttributes(state, path)}
+          aria-label={`Delay Code for Shared Downtime Block ${blockIndex + 1} Activity ${activityIndex + 1}`}
+          value={activity.delayCode}
+          onChange={(event) => {
+            const next = getDraglineDelayCode(event.target.value);
+            onChange({
+              delayCode: event.target.value,
+              category: next?.category,
+            });
+          }}
+        >
+          <option value="">Select official code</option>
+          {grouped.map((group) =>
+            group.entries.length ? (
+              <optgroup key={group.category} label={group.category}>
+                {group.entries.map((code) => (
+                  <option key={code.code} value={code.code}>
+                    {code.code} — {code.description}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null,
+          )}
+        </select>
+        {firstError(state, path)}
       </label>
       <p className="subtle">
         Category: {selected?.category ?? "Derived from selected code"}
@@ -326,6 +425,10 @@ export function DraglineDelayReportForm({
       : [emptyTimelineEntry()],
   );
   const pendingTimelineFocusClientId = useRef<string | null>(null);
+  const [downtimeBlocks, setDowntimeBlocks] = useState(
+    initialValues.downtimeBlocks ?? [],
+  );
+  const pendingDowntimeBlockFocusClientId = useRef<string | null>(null);
   const [groundChecks, setGroundChecks] = useState(initialValues.groundChecks);
 
   function addTimelineEntry() {
@@ -333,6 +436,13 @@ export function DraglineDelayReportForm({
     const entry = emptyTimelineEntry();
     pendingTimelineFocusClientId.current = entry.clientId;
     setTimelineEntries((current) => [...current, entry]);
+  }
+
+  function addDowntimeBlock() {
+    if (downtimeBlocks.length >= 100) return;
+    const block = emptyDowntimeBlock();
+    pendingDowntimeBlockFocusClientId.current = block.clientId;
+    setDowntimeBlocks((current) => [...current, block]);
   }
 
   function focusErrorPath(path: string) {
@@ -371,6 +481,23 @@ export function DraglineDelayReportForm({
     row.scrollIntoView?.({ behavior: "smooth", block: "center" });
     startTime.focus({ preventScroll: true });
   }, [timelineEntries]);
+
+  useEffect(() => {
+    const clientId = pendingDowntimeBlockFocusClientId.current;
+    if (!clientId) return;
+
+    const block = formRef.current?.querySelector<HTMLElement>(
+      `[data-ddr-downtime-block-client-id="${clientId}"]`,
+    );
+    const startTime = block?.querySelector<HTMLInputElement>(
+      'input[data-ddr-downtime-block-start="true"]',
+    );
+    if (!block || !startTime) return;
+
+    pendingDowntimeBlockFocusClientId.current = null;
+    block.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    startTime.focus({ preventScroll: true });
+  }, [downtimeBlocks]);
 
   const selectedEquipment = equipmentOptions.find(
     (option) => option.id === equipmentId,
@@ -412,11 +539,18 @@ export function DraglineDelayReportForm({
             groundCheck.dayOffset,
           ),
         })),
+        downtimeBlocks.map((block) => ({
+          startMinuteOffset: normalizeEventStartTime(
+            block.startTime,
+            block.dayOffset,
+          ),
+          durationMinutes: Number(block.durationMinutes),
+        })),
       );
     } catch {
       return null;
     }
-  }, [groundChecks, shift, submittedTimeline]);
+  }, [downtimeBlocks, groundChecks, shift, submittedTimeline]);
   const advanceFeet = useMemo(() => {
     if (!stationStart.trim() || !stationEnd.trim()) return null;
     try {
@@ -466,6 +600,21 @@ export function DraglineDelayReportForm({
       durationMinutes: entry.durationMinutes,
       causesDowntime: entry.causesDowntime,
     })),
+    downtimeBlocks: downtimeBlocks.map((block, blockIndex) => ({
+      id: block.id,
+      sequence: blockIndex + 1,
+      startTime: block.startTime,
+      dayOffset: block.dayOffset,
+      durationMinutes: block.durationMinutes,
+      description: block.description,
+      activities: block.activities.map((activity, activityIndex) => ({
+        id: activity.id,
+        sequence: activityIndex + 1,
+        catalogVersion: DRAGLINE_DELAY_CODE_CATALOG_VERSION,
+        delayCode: activity.delayCode,
+        description: activity.description,
+      })),
+    })),
     groundChecks: groundChecks
       .filter((groundCheck) => groundCheck.id || groundCheck.startTime)
       .map((groundCheck, index) => ({
@@ -494,6 +643,38 @@ export function DraglineDelayReportForm({
     setTimelineEntries((current) =>
       current.map((entry, entryIndex) =>
         entryIndex === index ? { ...entry, ...values } : entry,
+      ),
+    );
+  }
+
+  function updateDowntimeBlock(
+    index: number,
+    values: Partial<DraglineDelayReportDowntimeBlockFormRow>,
+  ) {
+    setDowntimeBlocks((current) =>
+      current.map((block, blockIndex) =>
+        blockIndex === index ? { ...block, ...values } : block,
+      ),
+    );
+  }
+
+  function updateDowntimeBlockActivity(
+    blockIndex: number,
+    activityIndex: number,
+    values: Partial<DraglineDelayReportDowntimeBlockActivityFormRow>,
+  ) {
+    setDowntimeBlocks((current) =>
+      current.map((block, currentBlockIndex) =>
+        currentBlockIndex === blockIndex
+          ? {
+              ...block,
+              activities: block.activities.map((activity, currentActivityIndex) =>
+                currentActivityIndex === activityIndex
+                  ? { ...activity, ...values }
+                  : activity,
+              ),
+            }
+          : block,
       ),
     );
   }
@@ -576,6 +757,9 @@ export function DraglineDelayReportForm({
                       ...groundCheck,
                       dayOffset: 0,
                     })),
+                  );
+                  setDowntimeBlocks((current) =>
+                    current.map((block) => ({ ...block, dayOffset: 0 })),
                   );
                 }
               }}
@@ -801,15 +985,26 @@ export function DraglineDelayReportForm({
             <p className="eyebrow">Actual-time operational record</p>
             <h2 id="ddr-timeline-heading">Timeline</h2>
           </div>
-          <button
-            className="button ddr-add-timeline-button"
-            data-ddr-add-timeline-position="top"
-            disabled={timelineEntries.length >= 200}
-            type="button"
-            onClick={addTimelineEntry}
-          >
-            Add Timeline Row
-          </button>
+          <div className="inline-actions ddr-timeline-add-actions">
+            <button
+              className="button ddr-add-timeline-button"
+              data-ddr-add-timeline-position="top"
+              disabled={timelineEntries.length >= 200}
+              type="button"
+              onClick={addTimelineEntry}
+            >
+              Add Timeline Row
+            </button>
+            <button
+              className="button ddr-add-downtime-block-button"
+              data-ddr-add-downtime-block-position="top"
+              disabled={downtimeBlocks.length >= 100}
+              type="button"
+              onClick={addDowntimeBlock}
+            >
+              Add Shared Downtime Block
+            </button>
+          </div>
         </div>
         <p className="subtle full-width-field">
           Same-time rows are valid. Only checked downtime rows contribute to the
@@ -965,6 +1160,317 @@ export function DraglineDelayReportForm({
               </div>
             </fieldset>
           ))}
+          <div
+            className={`ddr-downtime-block-list${hasError(state, "downtimeBlocks") ? " ddr-invalid-section" : ""}`}
+            data-ddr-error-path="downtimeBlocks"
+            tabIndex={-1}
+          >
+            <div>
+              <p className="eyebrow">One downtime period, multiple activities</p>
+              <h3>Shared Downtime Blocks</h3>
+              <p className="subtle">
+                The block owns the downtime. Activities preserve official codes and
+                notes without invented individual durations.
+              </p>
+            </div>
+            {firstError(state, "downtimeBlocks")}
+            {downtimeBlocks.length === 0 ? (
+              <p className="subtle">No Shared Downtime Blocks recorded.</p>
+            ) : null}
+            {downtimeBlocks.map((block, blockIndex) => (
+              <fieldset
+                className={`ddr-downtime-block${hasNestedError(state, `downtimeBlocks.${blockIndex}`) ? " ddr-invalid-row" : ""}`}
+                data-ddr-downtime-block-client-id={block.clientId}
+                data-ddr-error-path={`downtimeBlocks.${blockIndex}`}
+                key={block.clientId}
+                tabIndex={-1}
+              >
+                <legend>Shared Downtime Block {blockIndex + 1}</legend>
+                {firstError(state, `downtimeBlocks.${blockIndex}.sequence`)}
+                {firstError(state, `downtimeBlocks.${blockIndex}.id`)}
+                <div className="ddr-downtime-block-fields">
+                  <label>
+                    <span>Start Time</span>
+                    <input
+                      {...errorAttributes(
+                        state,
+                        `downtimeBlocks.${blockIndex}.startTime`,
+                      )}
+                      aria-label={`Start Time for Shared Downtime Block ${blockIndex + 1}`}
+                      data-ddr-downtime-block-start="true"
+                      type="time"
+                      value={block.startTime}
+                      onChange={(event) =>
+                        updateDowntimeBlock(blockIndex, {
+                          startTime: event.target.value,
+                        })
+                      }
+                    />
+                    {firstError(
+                      state,
+                      `downtimeBlocks.${blockIndex}.startTime`,
+                    )}
+                  </label>
+                  {shift === "NIGHT" ? (
+                    <label>
+                      <span>Calendar Day</span>
+                      <select
+                        {...errorAttributes(
+                          state,
+                          `downtimeBlocks.${blockIndex}.dayOffset`,
+                        )}
+                        aria-label={`Calendar Day for Shared Downtime Block ${blockIndex + 1}`}
+                        value={block.dayOffset}
+                        onChange={(event) =>
+                          updateDowntimeBlock(blockIndex, {
+                            dayOffset: Number(event.target.value) as 0 | 1,
+                          })
+                        }
+                      >
+                        <option value={0}>Operational date</option>
+                        <option value={1}>Next day</option>
+                      </select>
+                      {firstError(
+                        state,
+                        `downtimeBlocks.${blockIndex}.dayOffset`,
+                      )}
+                    </label>
+                  ) : null}
+                  <label>
+                    <span>Total Duration (minutes)</span>
+                    <input
+                      {...errorAttributes(
+                        state,
+                        `downtimeBlocks.${blockIndex}.durationMinutes`,
+                      )}
+                      aria-label={`Total Duration for Shared Downtime Block ${blockIndex + 1}`}
+                      inputMode="numeric"
+                      min="1"
+                      step="1"
+                      type="number"
+                      value={block.durationMinutes}
+                      onChange={(event) =>
+                        updateDowntimeBlock(blockIndex, {
+                          durationMinutes: event.target.value,
+                        })
+                      }
+                    />
+                    {firstError(
+                      state,
+                      `downtimeBlocks.${blockIndex}.durationMinutes`,
+                    )}
+                  </label>
+                  <label className="ddr-description-field">
+                    <span>Block Description / Notes (optional)</span>
+                    <textarea
+                      {...errorAttributes(
+                        state,
+                        `downtimeBlocks.${blockIndex}.description`,
+                      )}
+                      aria-label={`Block Description / Notes for Shared Downtime Block ${blockIndex + 1}`}
+                      maxLength={1000}
+                      rows={2}
+                      value={block.description}
+                      onChange={(event) =>
+                        updateDowntimeBlock(blockIndex, {
+                          description: event.target.value,
+                        })
+                      }
+                    />
+                    {firstError(
+                      state,
+                      `downtimeBlocks.${blockIndex}.description`,
+                    )}
+                  </label>
+                </div>
+
+                <div
+                  className="ddr-downtime-block-activities"
+                  data-ddr-error-path={`downtimeBlocks.${blockIndex}.activities`}
+                  tabIndex={-1}
+                >
+                  <div className="section-heading">
+                    <div>
+                      <h4>Activities</h4>
+                      <p className="subtle">No individual duration is required.</p>
+                    </div>
+                    <button
+                      className="button secondary"
+                      disabled={block.activities.length >= 100}
+                      type="button"
+                      onClick={() =>
+                        updateDowntimeBlock(blockIndex, {
+                          activities: [
+                            ...block.activities,
+                            emptyDowntimeBlockActivity(),
+                          ],
+                        })
+                      }
+                    >
+                      Add Activity
+                    </button>
+                  </div>
+                  {firstError(
+                    state,
+                    `downtimeBlocks.${blockIndex}.activities`,
+                  )}
+                  {block.activities.length === 0 ? (
+                    <p className="subtle">Add at least one Activity.</p>
+                  ) : null}
+                  {block.activities.map((activity, activityIndex) => (
+                    <fieldset
+                      className={`ddr-downtime-block-activity${hasNestedError(state, `downtimeBlocks.${blockIndex}.activities.${activityIndex}`) ? " ddr-invalid-row" : ""}`}
+                      data-ddr-error-path={`downtimeBlocks.${blockIndex}.activities.${activityIndex}`}
+                      key={activity.clientId}
+                      tabIndex={-1}
+                    >
+                      <legend>Activity {activityIndex + 1}</legend>
+                      {firstError(
+                        state,
+                        `downtimeBlocks.${blockIndex}.activities.${activityIndex}.sequence`,
+                      )}
+                      {firstError(
+                        state,
+                        `downtimeBlocks.${blockIndex}.activities.${activityIndex}.id`,
+                      )}
+                      {firstError(
+                        state,
+                        `downtimeBlocks.${blockIndex}.activities.${activityIndex}.catalogVersion`,
+                      )}
+                      <div className="ddr-downtime-block-activity-fields">
+                        <DowntimeBlockActivityCodeField
+                          activity={activity}
+                          activityIndex={activityIndex}
+                          blockIndex={blockIndex}
+                          onChange={(values) =>
+                            updateDowntimeBlockActivity(
+                              blockIndex,
+                              activityIndex,
+                              values,
+                            )
+                          }
+                          state={state}
+                        />
+                        <label className="ddr-description-field">
+                          <span>Description / Notes (optional)</span>
+                          <textarea
+                            {...errorAttributes(
+                              state,
+                              `downtimeBlocks.${blockIndex}.activities.${activityIndex}.description`,
+                            )}
+                            aria-label={`Description / Notes for Shared Downtime Block ${blockIndex + 1} Activity ${activityIndex + 1}`}
+                            maxLength={1000}
+                            rows={2}
+                            value={activity.description}
+                            onChange={(event) =>
+                              updateDowntimeBlockActivity(
+                                blockIndex,
+                                activityIndex,
+                                { description: event.target.value },
+                              )
+                            }
+                          />
+                          {firstError(
+                            state,
+                            `downtimeBlocks.${blockIndex}.activities.${activityIndex}.description`,
+                          )}
+                        </label>
+                      </div>
+                      <div className="inline-actions ddr-row-actions">
+                        <button
+                          className="button secondary"
+                          disabled={activityIndex === 0}
+                          type="button"
+                          onClick={() =>
+                            updateDowntimeBlock(blockIndex, {
+                              activities: moveItem(
+                                block.activities,
+                                activityIndex,
+                                -1,
+                              ),
+                            })
+                          }
+                        >
+                          Move up
+                        </button>
+                        <button
+                          className="button secondary"
+                          disabled={activityIndex === block.activities.length - 1}
+                          type="button"
+                          onClick={() =>
+                            updateDowntimeBlock(blockIndex, {
+                              activities: moveItem(
+                                block.activities,
+                                activityIndex,
+                                1,
+                              ),
+                            })
+                          }
+                        >
+                          Move down
+                        </button>
+                        <button
+                          className="button danger"
+                          type="button"
+                          onClick={() =>
+                            updateDowntimeBlock(blockIndex, {
+                              activities: block.activities.filter(
+                                (_, currentActivityIndex) =>
+                                  currentActivityIndex !== activityIndex,
+                              ),
+                            })
+                          }
+                        >
+                          Remove Activity
+                        </button>
+                      </div>
+                    </fieldset>
+                  ))}
+                </div>
+
+                <div className="inline-actions ddr-row-actions">
+                  <button
+                    className="button secondary"
+                    disabled={blockIndex === 0}
+                    type="button"
+                    onClick={() =>
+                      setDowntimeBlocks((current) =>
+                        moveItem(current, blockIndex, -1),
+                      )
+                    }
+                  >
+                    Move Block Up
+                  </button>
+                  <button
+                    className="button secondary"
+                    disabled={blockIndex === downtimeBlocks.length - 1}
+                    type="button"
+                    onClick={() =>
+                      setDowntimeBlocks((current) =>
+                        moveItem(current, blockIndex, 1),
+                      )
+                    }
+                  >
+                    Move Block Down
+                  </button>
+                  <button
+                    className="button danger"
+                    type="button"
+                    onClick={() =>
+                      setDowntimeBlocks((current) =>
+                        current.filter(
+                          (_, currentBlockIndex) =>
+                            currentBlockIndex !== blockIndex,
+                        ),
+                      )
+                    }
+                  >
+                    Remove Shared Downtime Block
+                  </button>
+                </div>
+              </fieldset>
+            ))}
+          </div>
           <div className="inline-actions ddr-timeline-bottom-actions">
             <button
               className="button ddr-add-timeline-button"
@@ -974,6 +1480,15 @@ export function DraglineDelayReportForm({
               onClick={addTimelineEntry}
             >
               Add Timeline Row
+            </button>
+            <button
+              className="button ddr-add-downtime-block-button"
+              data-ddr-add-downtime-block-position="bottom"
+              disabled={downtimeBlocks.length >= 100}
+              type="button"
+              onClick={addDowntimeBlock}
+            >
+              Add Shared Downtime Block
             </button>
           </div>
         </div>

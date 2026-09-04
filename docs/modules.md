@@ -423,6 +423,9 @@ The feature owns:
   is required in Draft and Ending may remain blank while Draft.
 - A stable concurrent timeline using one source-verified official code per
   entry.
+- Optional Shared Downtime Blocks for one known downtime period containing
+  ordered official-code Activities with individual notes but no invented child
+  durations; normal Timeline Rows remain unchanged.
 - Explicit per-entry downtime meaning, integer-minute interval-union downtime,
   and runtime derived from a 720-minute shift.
 - Production/progress fields, normalized stations and derived Advance, manual

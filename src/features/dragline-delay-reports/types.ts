@@ -54,6 +54,24 @@ export type DraglineDelayReportGroundCheckFormRow = {
   dayOffset: 0 | 1;
 };
 
+export type DraglineDelayReportDowntimeBlockActivityFormRow = {
+  clientId: string;
+  id?: string;
+  delayCode: string;
+  description: string;
+  category?: DraglineDelayCodeCategory;
+};
+
+export type DraglineDelayReportDowntimeBlockFormRow = {
+  clientId: string;
+  id?: string;
+  startTime: string;
+  dayOffset: 0 | 1;
+  durationMinutes: string;
+  description: string;
+  activities: DraglineDelayReportDowntimeBlockActivityFormRow[];
+};
+
 export type DraglineDelayReportFormInitialValues = {
   operationalWorkDate: string;
   shift: DraglineDelayReportShift;
@@ -76,5 +94,6 @@ export type DraglineDelayReportFormInitialValues = {
   recordVersion?: number;
   operators: DraglineDelayReportOperatorFormRow[];
   timelineEntries: DraglineDelayReportTimelineFormRow[];
+  downtimeBlocks: DraglineDelayReportDowntimeBlockFormRow[];
   groundChecks: DraglineDelayReportGroundCheckFormRow[];
 };

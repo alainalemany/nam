@@ -26,6 +26,7 @@ const fieldLabels: Record<string, string> = {
   correctionReason: "Correction Reason",
   operators: "Operators",
   timelineEntries: "Timeline",
+  downtimeBlocks: "Shared Downtime Blocks",
   groundChecks: "Ground Checks",
   recordVersion: "Report Version",
   form: "Report",
@@ -46,6 +47,24 @@ const timelineFieldLabels: Record<string, string> = {
 const groundCheckFieldLabels: Record<string, string> = {
   startTime: "Time",
   dayOffset: "Calendar Day",
+  sequence: "Order",
+  id: "Row Identity",
+};
+
+const downtimeBlockFieldLabels: Record<string, string> = {
+  startTime: "Start Time",
+  dayOffset: "Calendar Day",
+  durationMinutes: "Duration",
+  description: "Block Description / Notes",
+  activities: "Activities",
+  sequence: "Order",
+  id: "Block Identity",
+};
+
+const downtimeBlockActivityFieldLabels: Record<string, string> = {
+  catalogVersion: "Delay Code Catalog",
+  delayCode: "Delay Code",
+  description: "Description / Notes",
   sequence: "Order",
   id: "Row Identity",
 };
@@ -78,6 +97,21 @@ export function formatDraglineDelayReportErrorPath(path: string) {
     return `${rowLabel} — ${groundCheckFieldLabels[groundCheck[2]] ?? humanizeField(groundCheck[2])}`;
   }
 
+  const downtimeBlockActivity =
+    /^downtimeBlocks\.(\d+)\.activities\.(\d+)(?:\.(\w+))?$/.exec(path);
+  if (downtimeBlockActivity) {
+    const rowLabel = `Shared Downtime Block ${Number(downtimeBlockActivity[1]) + 1} — Activity ${Number(downtimeBlockActivity[2]) + 1}`;
+    if (!downtimeBlockActivity[3]) return rowLabel;
+    return `${rowLabel} — ${downtimeBlockActivityFieldLabels[downtimeBlockActivity[3]] ?? humanizeField(downtimeBlockActivity[3])}`;
+  }
+
+  const downtimeBlock = /^downtimeBlocks\.(\d+)(?:\.(\w+))?$/.exec(path);
+  if (downtimeBlock) {
+    const rowLabel = `Shared Downtime Block ${Number(downtimeBlock[1]) + 1}`;
+    if (!downtimeBlock[2]) return rowLabel;
+    return `${rowLabel} — ${downtimeBlockFieldLabels[downtimeBlock[2]] ?? humanizeField(downtimeBlock[2])}`;
+  }
+
   return fieldLabels[path] ?? humanizeField(path.split(".").at(-1) ?? "Report");
 }
 
@@ -101,7 +135,18 @@ export function draglineDelayReportErrorSummary(
 }
 
 export function draglineDelayReportErrorTargetPaths(path: string) {
-  const nested = /^(operators|timelineEntries|groundChecks)\.(\d+)\./.exec(path);
+  const blockActivity = /^(downtimeBlocks)\.(\d+)\.(activities)\.(\d+)\./.exec(path);
+  if (blockActivity) {
+    return [
+      path,
+      `${blockActivity[1]}.${blockActivity[2]}.${blockActivity[3]}.${blockActivity[4]}`,
+      `${blockActivity[1]}.${blockActivity[2]}.${blockActivity[3]}`,
+      `${blockActivity[1]}.${blockActivity[2]}`,
+      blockActivity[1],
+      "form",
+    ];
+  }
+  const nested = /^(operators|timelineEntries|groundChecks|downtimeBlocks)\.(\d+)\./.exec(path);
   if (nested) return [path, `${nested[1]}.${nested[2]}`, nested[1], "form"];
   if (path === "recordVersion" || path === "form") return [path, "form"];
   return [path, "form"];

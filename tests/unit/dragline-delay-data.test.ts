@@ -15,6 +15,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 import {
+  draglineDelayReportToFormInitial,
   getDraglineDelayReportById,
   getDraglineDelayReports,
 } from "@/features/dragline-delay-reports/data";
@@ -42,6 +43,7 @@ function persistedReport(status: "DRAFT" | "COMPLETED") {
       delayCode: "13",
     }],
     groundChecks: [{ startMinuteOffset: 380 }],
+    downtimeBlocks: [],
   };
 }
 
@@ -75,5 +77,100 @@ describe("Dragline Delay Report persisted-total reads", () => {
       timelineEntries: persisted.timelineEntries,
       groundChecks: persisted.groundChecks,
     });
+  });
+
+  it("loads existing reports without blocks and unions persisted Shared Downtime Blocks when present", async () => {
+    const existing = persistedReport("DRAFT");
+    const withBlock = {
+      ...persistedReport("COMPLETED"),
+      id: "report-with-block",
+      timelineEntries: [persistedReport("COMPLETED").timelineEntries[1]],
+      groundChecks: [{ startMinuteOffset: 380 }],
+      downtimeBlocks: [{ startMinuteOffset: 310, durationMinutes: 400 }],
+    };
+    mocks.findMany.mockResolvedValue([existing, withBlock]);
+
+    const reports = await getDraglineDelayReports();
+
+    expect(reports[0]).toMatchObject({
+      id: "draft-report",
+      downTimeMinutes: 30,
+    });
+    expect(reports[1]).toMatchObject({
+      id: "report-with-block",
+      downTimeMinutes: 400,
+      runTimeMinutes: 320,
+    });
+    expect(reports[0]).not.toHaveProperty("downtimeBlocks");
+  });
+
+  it("maps persisted Shared Downtime Blocks and ordered child notes into correction form state", () => {
+    const initial = draglineDelayReportToFormInitial({
+      operationalWorkDate: new Date("2026-09-03T00:00:00.000Z"),
+      shift: "DAY",
+      equipmentId: "equipment-1",
+      startingHourMeter: 100,
+      endingHourMeter: 110,
+      supervisorId: "supervisor-1",
+      lakeId: null,
+      normalDiggingBuckets: null,
+      benchfillBuckets: null,
+      stationStartFeet: null,
+      stationEndFeet: null,
+      depthFeet: null,
+      fuelGallons: null,
+      cableDragFeet: null,
+      hoistFeet: null,
+      comments: null,
+      safetyItemsFound: null,
+      actionTaken: null,
+      recordVersion: 4,
+      operators: [],
+      timelineEntries: [],
+      groundChecks: [],
+      downtimeBlocks: [
+        {
+          id: "block-1",
+          startMinuteOffset: 310,
+          durationMinutes: 400,
+          description: "Scheduled PM",
+          activities: [
+            {
+              id: "activity-1",
+              delayCode: "35",
+              description: "Startup inspection",
+            },
+            {
+              id: "activity-2",
+              delayCode: "36",
+              description: "Routine service",
+            },
+          ],
+        },
+      ],
+    } as never);
+
+    expect(initial.downtimeBlocks).toEqual([
+      expect.objectContaining({
+        clientId: "block-1",
+        id: "block-1",
+        startTime: "05:10",
+        dayOffset: 0,
+        durationMinutes: "400",
+        description: "Scheduled PM",
+        activities: [
+          expect.objectContaining({
+            id: "activity-1",
+            delayCode: "35",
+            description: "Startup inspection",
+          }),
+          expect.objectContaining({
+            id: "activity-2",
+            delayCode: "36",
+            description: "Routine service",
+          }),
+        ],
+      }),
+    ]);
   });
 });

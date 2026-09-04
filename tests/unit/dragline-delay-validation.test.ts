@@ -56,6 +56,200 @@ describe("Dragline Delay Report validation", () => {
     expect(result.endingHourMeter).toBeUndefined();
   });
 
+  it("accepts Shared Downtime Blocks without child durations and normalizes the block interval", () => {
+    const parsed = draglineDelayReportSubmissionSchema.parse({
+      ...validInput,
+      downtimeBlocks: [
+        {
+          sequence: 1,
+          startTime: "05:10",
+          dayOffset: 0,
+          durationMinutes: "400",
+          description: "Scheduled PM — multiple tasks",
+          activities: [
+            {
+              sequence: 1,
+              catalogVersion: 1,
+              delayCode: "35",
+              description: "Startup inspection and grease checks",
+            },
+            {
+              sequence: 2,
+              catalogVersion: 1,
+              delayCode: "36",
+              description: "Bucket greasing and routine service",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(parsed.downtimeBlocks[0]).toMatchObject({
+      durationMinutes: 400,
+      description: "Scheduled PM — multiple tasks",
+    });
+    expect(parsed.downtimeBlocks[0].activities).toHaveLength(2);
+    expect(normalizeDraglineDelayReportSubmission(parsed).downtimeBlocks[0])
+      .toMatchObject({ startMinuteOffset: 310, durationMinutes: 400 });
+  });
+
+  it("accepts a Shared Downtime Block in the factual post-shift timeline", () => {
+    const parsed = draglineDelayReportSubmissionSchema.parse({
+      ...validInput,
+      downtimeBlocks: [
+        {
+          sequence: 1,
+          startTime: "17:20",
+          dayOffset: 0,
+          durationMinutes: "30",
+          activities: [
+            {
+              sequence: 1,
+              catalogVersion: 1,
+              delayCode: "35",
+              description: "Post-shift factual activity",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(normalizeDraglineDelayReportSubmission(parsed).downtimeBlocks[0])
+      .toMatchObject({ startMinuteOffset: 1040, durationMinutes: 30 });
+  });
+
+  it.each([
+    ["empty activities", { activities: [] }, "Add at least one Activity."],
+    ["invalid duration", { durationMinutes: "0" }, "greater than zero"],
+    ["invalid start", { startTime: "04:59" }, "Shared Downtime Block"],
+  ])("rejects a Shared Downtime Block with %s", (_label, override, message) => {
+    const result = draglineDelayReportSubmissionSchema.safeParse({
+      ...validInput,
+      downtimeBlocks: [
+        {
+          sequence: 1,
+          startTime: "05:10",
+          dayOffset: 0,
+          durationMinutes: "400",
+          activities: [
+            {
+              sequence: 1,
+              catalogVersion: 1,
+              delayCode: "35",
+              description: "Startup check",
+            },
+          ],
+          ...override,
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.message.includes(message)))
+        .toBe(true);
+    }
+  });
+
+  it("rejects Code 13 and duplicate child identity inside Shared Downtime Blocks", () => {
+    const result = draglineDelayReportSubmissionSchema.safeParse({
+      ...validInput,
+      downtimeBlocks: [
+        {
+          id: "block-1",
+          sequence: 1,
+          startTime: "05:10",
+          dayOffset: 0,
+          durationMinutes: "400",
+          activities: [
+            {
+              id: "activity-1",
+              sequence: 1,
+              catalogVersion: 1,
+              delayCode: "13",
+              description: "Must remain a normal row",
+            },
+            {
+              id: "activity-1",
+              sequence: 2,
+              catalogVersion: 1,
+              delayCode: "36",
+              description: "Daily PM",
+            },
+          ],
+        },
+        {
+          id: "block-1",
+          sequence: 2,
+          startTime: "06:00",
+          dayOffset: 0,
+          durationMinutes: "30",
+          activities: [
+            {
+              id: "activity-2",
+              sequence: 1,
+              catalogVersion: 1,
+              delayCode: "35",
+              description: "Second block",
+            },
+          ],
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: ["downtimeBlocks", 0, "activities", 0, "delayCode"],
+            message: expect.stringContaining("normal Timeline row"),
+          }),
+          expect.objectContaining({
+            path: ["downtimeBlocks", 0, "activities", 1, "id"],
+            message: "Activity row identity is duplicated.",
+          }),
+          expect.objectContaining({
+            path: ["downtimeBlocks", 1, "id"],
+            message: "Shared Downtime Block identity is duplicated.",
+          }),
+        ]),
+      );
+    }
+  });
+
+  it("keeps Code 13 as the final chronological event when blocks participate by start time", () => {
+    const result = draglineDelayReportCompletionSchema.safeParse(
+      completionInput({
+        downtimeBlocks: [
+          {
+            sequence: 1,
+            startTime: "17:10",
+            dayOffset: 0,
+            durationMinutes: "30",
+            activities: [
+              {
+                sequence: 1,
+                catalogVersion: 1,
+                delayCode: "36",
+                description: "Late service",
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: ["timelineEntries"],
+            message: "Final timeline entry must be 13 — Shift Change.",
+          }),
+        ]),
+      );
+    }
+  });
+
   it.each(["SWING", "OTHER", "UNKNOWN"])("rejects global shift value %s", (shift) => {
     expect(
       draglineDelayReportSubmissionSchema.safeParse({ ...validInput, shift }).success,

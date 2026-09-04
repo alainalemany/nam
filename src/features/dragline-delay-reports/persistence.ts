@@ -20,6 +20,7 @@ import {
 const reportInclude = {
   operators: true,
   timelineEntries: true,
+  downtimeBlocks: { include: { activities: true } },
   groundChecks: true,
   corrections: true,
 } satisfies Prisma.DraglineDelayReportInclude;
@@ -359,6 +360,138 @@ async function persistGroundChecks(
   }
 }
 
+async function persistDowntimeBlockActivities(
+  transaction: Prisma.TransactionClient,
+  downtimeBlockId: string,
+  activities: Array<{
+    id?: string;
+    sequence: number;
+    delayCode: string;
+    description?: string;
+  }>,
+) {
+  const retainedIds = activities.flatMap((activity) =>
+    activity.id ? [activity.id] : [],
+  );
+  await transaction.draglineDelayReportDowntimeBlockActivity.deleteMany({
+    where: { downtimeBlockId, id: { notIn: retainedIds } },
+  });
+  if (retainedIds.length) {
+    await transaction.draglineDelayReportDowntimeBlockActivity.updateMany({
+      where: { downtimeBlockId, id: { in: retainedIds } },
+      data: { sequence: { increment: 1000 } },
+    });
+  }
+
+  for (const activity of activities) {
+    const delayCode = getDraglineDelayCode(activity.delayCode);
+    if (!delayCode || delayCode.code === "13") {
+      throw new DraglineDelayReportPersistenceError(
+        delayCode
+          ? "Code 13 — Shift Change must remain a normal Timeline row."
+          : "Select an official Delay Code from Catalog V1.",
+        "downtimeBlocks",
+      );
+    }
+    const data = {
+      sequence: activity.sequence,
+      delayCodeCatalogVersion: DRAGLINE_DELAY_CODE_CATALOG_VERSION,
+      delayCode: delayCode.code,
+      delayCodeDescription: delayCode.description,
+      delayCodeCategory: delayCode.category as DraglineDelayCodeCategory,
+      description: activity.description ?? null,
+    };
+    if (activity.id) {
+      await transaction.draglineDelayReportDowntimeBlockActivity.update({
+        where: { id: activity.id },
+        data,
+      });
+    } else {
+      await transaction.draglineDelayReportDowntimeBlockActivity.create({
+        data: { downtimeBlockId, ...data },
+      });
+    }
+  }
+}
+
+async function persistDowntimeBlocks(
+  transaction: Prisma.TransactionClient,
+  reportId: string,
+  blocks: Array<{
+    id?: string;
+    sequence: number;
+    startMinuteOffset: number;
+    durationMinutes: number;
+    description?: string;
+    activities: Array<{
+      id?: string;
+      sequence: number;
+      delayCode: string;
+      description?: string;
+    }>;
+  }>,
+) {
+  const retainedIds = blocks.flatMap((block) => (block.id ? [block.id] : []));
+  await transaction.draglineDelayReportDowntimeBlock.deleteMany({
+    where: { reportId, id: { notIn: retainedIds } },
+  });
+  if (retainedIds.length) {
+    await transaction.draglineDelayReportDowntimeBlock.updateMany({
+      where: { reportId, id: { in: retainedIds } },
+      data: { sequence: { increment: 1000 } },
+    });
+  }
+
+  for (const block of blocks) {
+    const data = {
+      sequence: block.sequence,
+      startMinuteOffset: block.startMinuteOffset,
+      durationMinutes: block.durationMinutes,
+      description: block.description ?? null,
+    };
+    if (block.id) {
+      await transaction.draglineDelayReportDowntimeBlock.update({
+        where: { id: block.id },
+        data,
+      });
+      await persistDowntimeBlockActivities(
+        transaction,
+        block.id,
+        block.activities,
+      );
+    } else {
+      await transaction.draglineDelayReportDowntimeBlock.create({
+        data: {
+          reportId,
+          ...data,
+          activities: {
+            create: block.activities.map((activity) => {
+              const delayCode = getDraglineDelayCode(activity.delayCode);
+              if (!delayCode || delayCode.code === "13") {
+                throw new DraglineDelayReportPersistenceError(
+                  delayCode
+                    ? "Code 13 — Shift Change must remain a normal Timeline row."
+                    : "Select an official Delay Code from Catalog V1.",
+                  "downtimeBlocks",
+                );
+              }
+              return {
+                sequence: activity.sequence,
+                delayCodeCatalogVersion: DRAGLINE_DELAY_CODE_CATALOG_VERSION,
+                delayCode: delayCode.code,
+                delayCodeDescription: delayCode.description,
+                delayCodeCategory:
+                  delayCode.category as DraglineDelayCodeCategory,
+                description: activity.description ?? null,
+              };
+            }),
+          },
+        },
+      });
+    }
+  }
+}
+
 export async function persistDraglineDelayReportInTransaction(
   transaction: Prisma.TransactionClient,
   input: DraglineDelayReportSubmissionInput,
@@ -424,6 +557,15 @@ export async function persistDraglineDelayReportInTransaction(
   const existingGroundCheckIds = new Set(
     existing?.groundChecks.map((groundCheck) => groundCheck.id),
   );
+  const existingDowntimeBlocks = new Map(
+    existing?.downtimeBlocks.map((block) => [block.id, block]),
+  );
+  const existingDowntimeBlockIds = new Set(existingDowntimeBlocks.keys());
+  const existingDowntimeBlockActivityIds = new Map(
+    existing?.downtimeBlocks.flatMap((block) =>
+      block.activities.map((activity) => [activity.id, block.id] as const),
+    ),
+  );
   assertOwnedChildIds(
     input.operators.map((operator) => operator.id),
     existingOperatorIds,
@@ -439,6 +581,26 @@ export async function persistDraglineDelayReportInTransaction(
     existingGroundCheckIds,
     "Ground Check row",
   );
+  assertOwnedChildIds(
+    input.downtimeBlocks.map((block) => block.id),
+    existingDowntimeBlockIds,
+    "Shared Downtime Block",
+  );
+  input.downtimeBlocks.forEach((block, blockIndex) => {
+    block.activities.forEach((activity, activityIndex) => {
+      if (!activity.id) return;
+      if (
+        !block.id ||
+        existingDowntimeBlockActivityIds.get(activity.id) !== block.id
+      ) {
+        throw new DraglineDelayReportPersistenceError(
+          "Activity row no longer belongs to this Shared Downtime Block. Reload before saving.",
+          `downtimeBlocks.${blockIndex}.activities.${activityIndex}.id`,
+          "stale",
+        );
+      }
+    });
+  });
   if (!existing && input.operators.some((operator) => operator.id)) {
     throw new DraglineDelayReportPersistenceError(
       "New Operator rows must not include IDs.",
@@ -452,6 +614,16 @@ export async function persistDraglineDelayReportInTransaction(
   if (!existing && input.groundChecks.some((groundCheck) => groundCheck.id)) {
     throw new DraglineDelayReportPersistenceError(
       "New Ground Check rows must not include IDs.",
+    );
+  }
+  if (
+    !existing &&
+    input.downtimeBlocks.some(
+      (block) => block.id || block.activities.some((activity) => activity.id),
+    )
+  ) {
+    throw new DraglineDelayReportPersistenceError(
+      "New Shared Downtime Blocks and Activities must not include IDs.",
     );
   }
 
@@ -484,6 +656,7 @@ export async function persistDraglineDelayReportInTransaction(
     input.shift,
     normalized.timelineEntries,
     normalized.groundChecks,
+    normalized.downtimeBlocks,
   );
   const people = await resolveEmployees(transaction, input, existing);
   const lake = await resolveLake(
@@ -558,6 +731,28 @@ export async function persistDraglineDelayReportInTransaction(
             startMinuteOffset: groundCheck.startMinuteOffset,
           })),
         },
+        downtimeBlocks: {
+          create: normalized.downtimeBlocks.map((block) => ({
+            sequence: block.sequence,
+            startMinuteOffset: block.startMinuteOffset,
+            durationMinutes: block.durationMinutes,
+            description: block.description ?? null,
+            activities: {
+              create: block.activities.map((activity) => {
+                const delayCode = getDraglineDelayCode(activity.delayCode)!;
+                return {
+                  sequence: activity.sequence,
+                  delayCodeCatalogVersion: DRAGLINE_DELAY_CODE_CATALOG_VERSION,
+                  delayCode: delayCode.code,
+                  delayCodeDescription: delayCode.description,
+                  delayCodeCategory:
+                    delayCode.category as DraglineDelayCodeCategory,
+                  description: activity.description ?? null,
+                };
+              }),
+            },
+          })),
+        },
       },
       select: { id: true, recordVersion: true },
     });
@@ -586,6 +781,11 @@ export async function persistDraglineDelayReportInTransaction(
     normalized.timelineEntries,
   );
   await persistGroundChecks(transaction, existing.id, normalized.groundChecks);
+  await persistDowntimeBlocks(
+    transaction,
+    existing.id,
+    normalized.downtimeBlocks,
+  );
 
   if (operation === "correct") {
     const sequence =

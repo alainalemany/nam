@@ -802,6 +802,7 @@ model DraglineDelayReport {
   completedAt             DateTime?
   operators               DraglineDelayReportOperator[]
   timelineEntries         DraglineDelayReportTimelineEntry[]
+  downtimeBlocks          DraglineDelayReportDowntimeBlock[]
   groundChecks            DraglineDelayReportGroundCheck[]
   corrections             DraglineDelayReportCorrection[]
   createdAt               DateTime                           @default(now())
@@ -877,6 +878,39 @@ model DraglineDelayReportTimelineEntry {
   @@unique([reportId, sequence], map: "DraglineDelayReportTimeline_report_sequence_key")
   @@index([reportId, startMinuteOffset, sequence], map: "DraglineDelayReportTimeline_chronology_idx")
   @@index([delayCode], map: "DraglineDelayReportTimeline_code_idx")
+}
+
+model DraglineDelayReportDowntimeBlock {
+  id                String                                     @id @default(cuid())
+  reportId          String
+  report            DraglineDelayReport                        @relation(fields: [reportId], references: [id], onDelete: Cascade, map: "DraglineDelayReportDowntimeBlock_report_fkey")
+  sequence          Int
+  startMinuteOffset Int
+  durationMinutes   Int
+  description       String?
+  activities        DraglineDelayReportDowntimeBlockActivity[]
+  createdAt         DateTime                                   @default(now())
+  updatedAt         DateTime                                   @updatedAt
+
+  @@unique([reportId, sequence], map: "DraglineDelayReportDowntimeBlock_report_sequence_key")
+  @@index([reportId, startMinuteOffset, sequence], map: "DraglineDelayReportDowntimeBlock_chronology_idx")
+}
+
+model DraglineDelayReportDowntimeBlockActivity {
+  id                      String                                   @id @default(cuid())
+  downtimeBlockId         String
+  downtimeBlock           DraglineDelayReportDowntimeBlock         @relation(fields: [downtimeBlockId], references: [id], onDelete: Cascade, map: "DraglineDelayReportDowntimeBlockActivity_block_fkey")
+  sequence                Int
+  delayCodeCatalogVersion Int
+  delayCode               String
+  delayCodeDescription    String
+  delayCodeCategory       DraglineDelayCodeCategory
+  description             String?
+  createdAt               DateTime                                 @default(now())
+  updatedAt               DateTime                                 @updatedAt
+
+  @@unique([downtimeBlockId, sequence], map: "DraglineDelayReportDowntimeBlockActivity_block_sequence_key")
+  @@index([delayCode], map: "DraglineDelayReportDowntimeBlockActivity_code_idx")
 }
 
 model WeeklySchedule {

@@ -25,6 +25,28 @@ export default async function DraglineDelayReportDetailPage({
   const report = await getDraglineDelayReportById(id);
   if (!report) notFound();
   const missingLabel = report.status === "DRAFT" ? "Not recorded in Draft" : "Not recorded";
+  const timelineItems = [
+    ...report.timelineEntries.map((entry) => ({
+      kind: "entry" as const,
+      startMinuteOffset: entry.startMinuteOffset,
+      sequence: entry.sequence,
+      value: entry,
+    })),
+    ...(report.downtimeBlocks ?? []).map((block) => ({
+      kind: "block" as const,
+      startMinuteOffset: block.startMinuteOffset,
+      sequence: block.sequence,
+      value: block,
+    })),
+  ].sort(
+    (left, right) =>
+      left.startMinuteOffset - right.startMinuteOffset ||
+      (left.kind === right.kind
+        ? left.sequence - right.sequence
+        : left.kind === "block"
+          ? -1
+          : 1),
+  );
 
   return (
     <main className="page-stack">
@@ -131,9 +153,9 @@ export default async function DraglineDelayReportDetailPage({
       <section className="panel table-panel" aria-labelledby="ddr-timeline-detail-heading">
         <div className="section-heading">
           <h2 id="ddr-timeline-detail-heading">Operational Timeline</h2>
-          <span className="count-pill">{report.timelineEntries.length}</span>
+          <span className="count-pill">{timelineItems.length}</span>
         </div>
-        {report.timelineEntries.length === 0 ? (
+        {timelineItems.length === 0 ? (
           <div className="empty-state">
             <h3>No timeline entries yet</h3>
             <p>This Draft can be saved before the first operational activity is recorded.</p>
@@ -152,25 +174,73 @@ export default async function DraglineDelayReportDetailPage({
                 </tr>
               </thead>
               <tbody>
-                {report.timelineEntries.map((entry) => (
-                  <tr key={entry.id}>
-                    <td>{formatEventStartMinute(entry.startMinuteOffset)}</td>
-                    <td>
-                      {entry.delayCode} — {entry.delayCodeDescription}
-                      <span className="subtle">
-                        Catalog V{entry.delayCodeCatalogVersion}
-                      </span>
-                    </td>
-                    <td>{entry.delayCodeCategory}</td>
-                    <td>
-                      {entry.durationMinutes == null
-                        ? "Not recorded"
-                        : `${entry.durationMinutes} min`}
-                    </td>
-                    <td>{entry.causesDowntime ? "Yes" : "No"}</td>
-                    <td>{entry.description ?? "—"}</td>
-                  </tr>
-                ))}
+                {timelineItems.map((item) => {
+                  if (item.kind === "entry") {
+                    const entry = item.value;
+                    return (
+                      <tr key={`entry-${entry.id}`}>
+                        <td>{formatEventStartMinute(entry.startMinuteOffset)}</td>
+                        <td>
+                          {entry.delayCode} — {entry.delayCodeDescription}
+                          <span className="subtle">
+                            Catalog V{entry.delayCodeCatalogVersion}
+                          </span>
+                        </td>
+                        <td>{entry.delayCodeCategory}</td>
+                        <td>
+                          {entry.durationMinutes == null
+                            ? "Not recorded"
+                            : `${entry.durationMinutes} min`}
+                        </td>
+                        <td>{entry.causesDowntime ? "Yes" : "No"}</td>
+                        <td>{entry.description ?? "—"}</td>
+                      </tr>
+                    );
+                  }
+
+                  const block = item.value;
+                  return (
+                    <tr key={`block-${block.id}`}>
+                      <td>{formatEventStartMinute(block.startMinuteOffset)}</td>
+                      <td colSpan={5}>
+                        <article className="ddr-downtime-block-detail">
+                          <div className="ddr-downtime-block-detail-header">
+                            <div>
+                              <strong>Shared Downtime Block</strong>
+                              <p>{block.description ?? "No block note recorded."}</p>
+                            </div>
+                            <strong>
+                              {formatDraglineDurationMinutes(block.durationMinutes)} downtime
+                            </strong>
+                          </div>
+                          <p className="subtle">
+                            One downtime period, multiple activities. Child activities
+                            add no separate downtime.
+                          </p>
+                          <div>
+                            <strong>Activities</strong>
+                            <ol>
+                              {block.activities.map((activity) => (
+                                <li key={activity.id}>
+                                  <strong>
+                                    {activity.delayCode} — {activity.delayCodeDescription}
+                                  </strong>{" "}
+                                  <span className="subtle">
+                                    {activity.delayCodeCategory} · Catalog V
+                                    {activity.delayCodeCatalogVersion}
+                                  </span>
+                                  {activity.description ? (
+                                    <p>{activity.description}</p>
+                                  ) : null}
+                                </li>
+                              ))}
+                            </ol>
+                          </div>
+                        </article>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

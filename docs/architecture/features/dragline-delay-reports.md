@@ -32,14 +32,16 @@ Related Documents:
 - `docs/reference/README.md`
 - `docs/reference/dragline-delay-reports/delay-code-catalog-v1.md`
 
-Last Reviewed: 2026-08-28
+Last Reviewed: 2026-09-03
 
 Implementation Status: DDR-1 through DDR-3 are implemented as an independent
 usable Draft, completion, and correction workflow. The aggregate includes
 canonical references, production/progress facts, normalized calculations,
 stable repeated children, explicit completion, Completed read-only detail,
 reasoned correction history, optimistic concurrency, complete failure-state
-preservation, and explicit mutation feedback.
+preservation, explicit mutation feedback, and optional Shared Downtime Blocks
+for one known downtime interval containing multiple coded activities without
+invented child durations.
 
 ## 1. Purpose
 
@@ -179,6 +181,7 @@ Dragline Delay Reports own:
 - Nonnegative whole-number Starting and Ending Hour Meter report facts, with
   Ending optional while Draft.
 - Ordered, stable operational timeline entries.
+- Optional ordered Shared Downtime Blocks with ordered coded child activities.
 - Delay Code selection and historical catalog snapshots.
 - Explicit per-entry downtime meaning.
 - Server-authoritative downtime and runtime calculations.
@@ -356,19 +359,47 @@ timeline model. For example, `23:50` is 1430, next-day `00:10` is 1450, and
 next-day `06:00` is 1800, while all remain owned by the report's operational
 work date.
 
+### Shared Downtime Blocks
+
+A normal Timeline Row remains the correct structure when one event owns a known
+start time and an individual duration. A Shared Downtime Block is an optional,
+separate report-owned timeline structure for the narrower case where one
+continuous Dragline downtime period is known while multiple maintenance,
+inspection, service, or other officially coded activities occur inside it and
+their individual durations are unknown or should not be invented.
+
+Each block stores stable identity, display sequence, actual local start time,
+the same operational day-offset semantics as normal timeline entries, positive
+whole-number total duration minutes, optional block description/notes, and one
+or more ordered activities. Each activity stores stable identity, display
+sequence, official Delay Code and catalog/category snapshots, and optional
+operator-authored description/notes. Activities have no start time, duration,
+or downtime flag in V1. Their order is display order, not asserted clock-time
+sequence.
+
+The block owns downtime exactly once. Its children add zero downtime regardless
+of count, repeated codes, category, or descriptive wording. Code 13 — Shift
+Change is excluded from block activities and remains a normal Timeline Row so
+its existing final-event and zero-downtime behavior is unchanged. Shared blocks
+are additive: existing reports and existing normal timeline entries are not
+converted.
+
 ## 11. Downtime And Runtime
 
 The scheduled report duration is always 720 integer minutes even when its
 factual timeline continues past the scheduled shift end.
 
 Downtime is the union of all timeline intervals whose entries explicitly cause
-machine downtime plus every recorded Ground Check's fixed ten-minute interval.
-It is not the sum of all timeline or Ground Check durations.
+machine downtime, each Shared Downtime Block interval exactly once, and every
+recorded Ground Check's fixed ten-minute interval. It is not the sum of all
+timeline, activity, block, or Ground Check rows.
 
 Server-authoritative calculation:
 
-1. Convert every downtime entry and every fixed ten-minute Ground Check into a
-   half-open normalized interval `[startMinute, startMinute + durationMinutes)`.
+1. Convert every downtime entry, every Shared Downtime Block, and every fixed
+   ten-minute Ground Check into a half-open normalized interval
+   `[startMinute, startMinute + durationMinutes)`. Block children do not enter
+   this calculation.
 2. Clip each interval to the scheduled Day `[300, 1020)` or Night
    `[1020, 1740)` calculation window; discard intervals entirely outside it.
 3. Sort the remaining intervals by start minute and then end minute.
@@ -397,6 +428,11 @@ Examples:
 - Two overlapping downtime intervals contribute only their unique union.
 - Ground Checks use the same interval union as timeline downtime, so overlapping
   Ground Checks or overlap with timeline downtime are counted only once.
+- A Ground Check or normal downtime row wholly inside a Shared Downtime Block
+  adds zero unique downtime; partial overlaps add only the unique portion.
+- Shared Downtime Blocks use the existing Day `[300, 1020)` and Night
+  `[1020, 1740)` calculation windows. A factual block may begin after scheduled
+  shift end, but only its portion inside the fixed 720-minute window contributes.
 
 Client-side previews may use the same pure helper for immediate feedback, but
 the Server Action and persistence boundary recalculate the authoritative
@@ -523,7 +559,8 @@ DRAFT -> COMPLETED
 - The server reloads the full aggregate, applies the approved completion
   validation, recalculates derived facts, and transitions atomically.
 - Completion requires Ending Hour Meter, at least one Operator, a Supervisor,
-  a valid timeline, and final normalized Code 13 — Shift Change.
+  a valid timeline, and final normalized Code 13 — Shift Change after normal
+  rows and Shared Downtime Blocks are ordered by start time.
 - Normal Digging Buckets, Benchfill Buckets, Lake, paired-or-blank Sections,
   Depth, Fuel, Cable Drag, Hoist, Ground Checks, Comments, Safety Items Found,
   and Action Taken remain optional.
@@ -547,6 +584,12 @@ DRAFT -> COMPLETED
   full immutable aggregate versions, approval workflow, or generic audit
   infrastructure.
 
+Shared Downtime Blocks and their ordered activities participate in the same
+Draft, completion, and correction aggregate semantics as other owned children:
+stable identities are preserved, unknown/stolen/duplicated identities are
+rejected, and the complete nested state is written atomically with the report
+version transition.
+
 The correction event stores no authenticated actor because the current
 single-user application has no reliable authentication identity. It does not
 store full aggregate snapshots or field-level diffs.
@@ -563,7 +606,8 @@ Expected flow:
    aggregate with Zod.
 4. The server reloads authoritative Equipment, Employee, and Delay Code data.
 5. The server generates reference snapshots and recalculates normalized time,
-   downtime, runtime, section, and Advance values applicable to the slice.
+   Shared Downtime Block intervals, downtime, runtime, section, and Advance
+   values applicable to the slice.
 6. Prisma writes the root and owned children in one transaction.
 7. The transaction uses expected `recordVersion` stale-write protection and
    increments the version exactly once on success.
@@ -626,6 +670,19 @@ the row list so the action remains visible as a long report grows. Either
 control appends exactly one stable row, scrolls that row into view, and focuses
 its Start time without changing existing row values or order.
 
+The same top and bottom action areas also provide a clearly labeled
+`Add Shared Downtime Block` action. Each added block is a visually distinct
+container with Start Time, Total Duration, optional Block Description / Notes,
+and repeatable Activities. Each Activity retains Find Delay Code, official
+Delay Code, derived Category, optional Description / Notes, Move Up, Move Down,
+and Remove controls. No child duration control exists. Adding a block scrolls
+and focuses its Start Time without resetting normal rows or other blocks.
+
+Read-only Operational Timeline presentation merges normal rows and Shared
+Downtime Blocks by start time. A block is shown as one downtime period with its
+formatted total and an ordered child-activity list so children are never
+presented as independent downtime events.
+
 Concurrent rows with equal start times must remain visible and independently
 editable. Overnight presentation should communicate next-day chronology without
 requiring repeated full calendar dates.
@@ -648,6 +705,11 @@ DDR-specific server validation includes:
 - No client authority over code description or category snapshots.
 - Valid local start time, operational day offset, stable sequence, and child
   identity.
+- Valid Shared Downtime Block start, positive whole-number total duration,
+  stable block identity/order, and at least one ordered child Activity.
+- Official child Delay Code membership with derived catalog/category snapshots,
+  optional bounded block/activity notes, and explicit exclusion of Code 13.
+- No child Activity duration requirement or accepted downtime contribution.
 - Required positive integer duration for a downtime-causing entry.
 - Interval-union result and runtime within `0..720`.
 - Section notation parsing, offset normalization, and server-derived Advance.
@@ -672,6 +734,12 @@ Validation errors should map to the report section and repeated row where
 practical. Stale writes should instruct the operator to reload and reconcile;
 they must not silently overwrite newer saved work.
 
+Nested block errors use human-readable labels such as `Shared Downtime Block 2
+— Duration` and `Shared Downtime Block 1 — Activity 3 — Delay Code`. Failed
+Draft saves, completion, correction, stale-version checks, and persistence
+errors retain every block field, child code, child description, and child order
+alongside all existing DDR form state.
+
 ## 19. Testing Strategy
 
 Testing follows `docs/testing-strategy.md` and the disposable-PostgreSQL safety
@@ -686,6 +754,9 @@ rules in `docs/development.md`.
 - Equal-time deterministic sequence ordering.
 - Half-open interval union for disjoint, overlapping, nested, touching, and
   concurrent downtime intervals.
+- Shared Downtime Block single-interval contribution, block-to-block overlap,
+  normal-row overlap, Ground Check overlap, and shift-window clipping without
+  child multiplication.
 - Exclusion of non-downtime duration from downtime.
 - Runtime derivation from 720 minutes.
 - Section parsing, normalized absolute feet, boundary crossing, and derived
@@ -696,6 +767,8 @@ rules in `docs/development.md`.
 ### Mutation And Persistence Tests
 
 - Atomic Draft creation with root and ordered operators/timeline rows.
+- Atomic Shared Downtime Block/activity creation and editing with stable parent
+  and child identities, sequence, catalog/category snapshots, and descriptions.
 - Stable child identity across repeated Draft saves.
 - Unknown, duplicate, or stolen child identity rejection.
 - Equipment/date/shift uniqueness and concurrent first-save behavior.
@@ -706,6 +779,8 @@ rules in `docs/development.md`.
 - Correction reason, same stable identity, correction event, and correction
   versus concurrent-edit races.
 - Full rollback when any owned child or derived-value write fails.
+- Completion and correction preservation/editing of Shared Downtime Blocks under
+  the existing stable-identity and record-version semantics.
 
 ### Route And Component Tests
 
@@ -713,6 +788,9 @@ rules in `docs/development.md`.
 - Multiple ordered operators and supervisor eligibility.
 - Searchable grouped Delay Code selection with no Category input.
 - Concurrent equal-time timeline rows and overnight presentation.
+- Add/remove/reorder Shared Downtime Blocks and Activities, nested validation
+  feedback, failure-state preservation, and no child duration field.
+- Chronologically merged read-only block presentation with visible child notes.
 - Derived downtime/runtime and Section/Advance presentation.
 - Repeatable Ground Check times.
 - No Daily Log, Day View, attachment, or photo side effects.
@@ -802,6 +880,8 @@ The architecture is successful when:
   overnight chronology are deterministic.
 - Overlapping downtime is counted once and concurrent non-downtime work adds no
   downtime.
+- Each Shared Downtime Block contributes one interval while its coded children
+  add no downtime, and existing reports without blocks remain unchanged.
 - Equipment and Employee references use canonical records while snapshots
   preserve history.
 - Section and Advance calculations preserve normalized numeric meaning.
