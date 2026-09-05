@@ -437,6 +437,9 @@ The feature owns:
   to active Lakes belonging to the selected Equipment's Mine.
 - Explicit Complete Report behavior requiring Ending Hour Meter, at least one
   Operator, a Supervisor, and final chronological Code 13 — Shift Change.
+- Draft completion from either Edit Draft or read-only detail through the same
+  authoritative validation, concurrency, and persistence path; detail remains
+  otherwise read-only.
 - Completed read-only detail and an explicit correction form that revalidates
   the complete aggregate while keeping status and stable report identity.
 

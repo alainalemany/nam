@@ -15,6 +15,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 import {
+  draglineDelayReportToCompletionPayload,
   draglineDelayReportToFormInitial,
   getDraglineDelayReportById,
   getDraglineDelayReports,
@@ -266,5 +267,89 @@ describe("Dragline Delay Report persisted-total reads", () => {
     } as never);
     expect(legacy.downtimeBlocks[0].sequence).toBe(1);
     expect(legacy.timelineEntries[0].sequence).toBe(2);
+  });
+
+  it("builds a complete persisted aggregate payload for detail-view completion", () => {
+    const payload = draglineDelayReportToCompletionPayload({
+      operationalWorkDate: new Date("2026-09-03T00:00:00.000Z"),
+      shift: "DAY",
+      equipmentId: "equipment-1",
+      startingHourMeter: 100,
+      endingHourMeter: 110,
+      supervisorId: "supervisor-1",
+      lakeId: null,
+      normalDiggingBuckets: 12,
+      benchfillBuckets: 0,
+      stationStartFeet: 1600,
+      stationEndFeet: 1620,
+      depthFeet: null,
+      fuelGallons: null,
+      cableDragFeet: null,
+      hoistFeet: null,
+      comments: "Shift complete",
+      safetyItemsFound: null,
+      actionTaken: null,
+      recordVersion: 4,
+      operators: [{ id: "operator-row-1", employeeId: "employee-1" }],
+      timelineEntries: [{
+        id: "timeline-1",
+        sequence: 2,
+        startMinuteOffset: 1020,
+        delayCode: "13",
+        description: "Shift Change",
+        durationMinutes: null,
+        causesDowntime: false,
+      }],
+      groundChecks: [{ id: "ground-check-1", startMinuteOffset: 600 }],
+      downtimeBlocks: [{
+        id: "block-1",
+        sequence: 1,
+        startMinuteOffset: 310,
+        durationMinutes: 30,
+        description: "Maintenance",
+        activities: [{
+          id: "activity-1",
+          delayCode: "35",
+          description: "Startup inspection",
+        }],
+      }],
+    } as never, 3);
+
+    expect(payload).toMatchObject({
+      operationalWorkDate: "2026-09-03",
+      recordVersion: 3,
+      benchfillBuckets: "0",
+      operators: [{
+        id: "operator-row-1",
+        sequence: 1,
+        employeeId: "employee-1",
+      }],
+      timelineEntries: [{
+        id: "timeline-1",
+        sequence: 2,
+        startTime: "17:00",
+        dayOffset: 0,
+        catalogVersion: 1,
+        delayCode: "13",
+      }],
+      downtimeBlocks: [{
+        id: "block-1",
+        sequence: 1,
+        startTime: "05:10",
+        durationMinutes: "30",
+        activities: [{
+          id: "activity-1",
+          sequence: 1,
+          catalogVersion: 1,
+          delayCode: "35",
+        }],
+      }],
+      groundChecks: [{
+        id: "ground-check-1",
+        sequence: 1,
+        startTime: "10:00",
+        dayOffset: 0,
+      }],
+    });
   });
 });

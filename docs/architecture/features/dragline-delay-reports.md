@@ -570,6 +570,9 @@ DRAFT -> COMPLETED
 ### Completed
 
 - Completion is an explicit Server Action, not a side effect of ordinary save.
+- A Draft may invoke that same completion action from either Edit Draft or its
+  read-only detail view. Detail remains read-only apart from this explicit
+  lifecycle action.
 - The server reloads the full aggregate, applies the approved completion
   validation, recalculates derived facts, and transitions atomically.
 - Completion requires Ending Hour Meter, at least one Operator, a Supervisor,
@@ -642,6 +645,7 @@ Implemented DDR-1 through DDR-3 feature-owned surfaces:
 - Production, work-area/progress, operational-context, Ground Check, and
   closing-note Draft sections.
 - Completed read-only detail.
+- Draft read-only detail with explicit Edit Draft and Complete Report actions.
 - Explicit Correct Report workflow and ordered correction-event summary.
 
 The read-only detail view emphasizes operational date and shift as its primary

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { completeDraglineDelayReportFromDetailAction } from "@/features/dragline-delay-reports/actions";
 import { getDraglineDelayReportById } from "@/features/dragline-delay-reports/data";
+import { DraglineDelayReportCompletionAction } from "@/features/dragline-delay-reports/DraglineDelayReportCompletionAction";
 import { formatDraglineDurationMinutes } from "@/features/dragline-delay-reports/duration";
 import { calculateStationAdvance, formatStationNotation } from "@/features/dragline-delay-reports/station";
 import { formatEventStartMinute } from "@/features/dragline-delay-reports/time";
@@ -59,12 +61,22 @@ export default async function DraglineDelayReportDetailPage({
             Back
           </Link>
           {report.status === "DRAFT" ? (
-            <Link
-              className="button primary"
-              href={`/dragline-delay-reports/${id}/edit`}
-            >
-              Edit Draft
-            </Link>
+            <>
+              <Link
+                className="button secondary"
+                href={`/dragline-delay-reports/${id}/edit`}
+              >
+                Edit Draft
+              </Link>
+              <DraglineDelayReportCompletionAction
+                action={completeDraglineDelayReportFromDetailAction.bind(
+                  null,
+                  id,
+                  report.recordVersion,
+                )}
+                editHref={`/dragline-delay-reports/${id}/edit`}
+              />
+            </>
           ) : (
             <Link
               className="button primary"

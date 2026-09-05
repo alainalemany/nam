@@ -5,6 +5,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import {
+  draglineDelayReportToCompletionPayload,
+  getDraglineDelayReportById,
+} from "./data";
+import {
   completeDraglineDelayReport,
   correctDraglineDelayReport,
   DraglineDelayReportPersistenceError,
@@ -137,6 +141,37 @@ export async function updateDraglineDelayReportAction(
   redirect(
     `/dragline-delay-reports/${reportId}?saved=${completing ? "completed" : "updated"}`,
   );
+}
+
+export async function completeDraglineDelayReportFromDetailAction(
+  reportId: string,
+  expectedRecordVersion: number,
+  previousState: DraglineDelayReportActionState,
+  _formData: FormData,
+) {
+  const report = await getDraglineDelayReportById(reportId);
+  if (!report) {
+    return {
+      status: "error" as const,
+      message: "Dragline Delay Report could not be found.",
+      fieldErrors: {},
+    };
+  }
+  if (report.status !== "DRAFT") {
+    revalidatePath(`/dragline-delay-reports/${reportId}`);
+    redirect(`/dragline-delay-reports/${reportId}`);
+  }
+
+  const formData = new FormData();
+  formData.set("intent", "complete");
+  formData.set(
+    "payload",
+    JSON.stringify(
+      draglineDelayReportToCompletionPayload(report, expectedRecordVersion),
+    ),
+  );
+
+  return updateDraglineDelayReportAction(reportId, previousState, formData);
 }
 
 export async function correctDraglineDelayReportAction(

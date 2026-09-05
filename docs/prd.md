@@ -724,7 +724,10 @@ and base data, Ending Hour Meter, at least one Operator, a Supervisor, and Code
 times, stable sequence is the tie-breaker and the highest-sequence final row
 must be Code 13. Code 13 never completes a report automatically and does not
 need to occur at an exact boundary minute beyond normal timeline-window
-validation.
+validation. A Draft may be completed from either Edit Draft or the read-only
+detail view; both entry points use the same authoritative completion validation,
+optimistic concurrency, and atomic persistence path. Detail remains read-only
+apart from that explicit lifecycle action.
 
 Normal Digging Buckets, Benchfill Buckets, Lake, Sections, Depth, Fuel, Cable
 Drag, Hoist, Ground Checks, Comments, Safety Items Found, and Action Taken

@@ -3,7 +3,10 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 import { calculateDraglineShiftTotals } from "./calculations";
-import { getDraglineDelayCode } from "./catalog";
+import {
+  DRAGLINE_DELAY_CODE_CATALOG_VERSION,
+  getDraglineDelayCode,
+} from "./catalog";
 import { formatStationNotation } from "./station";
 import { orderDraglineDelayReportTimelineItems } from "./timeline-order";
 import {
@@ -322,5 +325,54 @@ export function draglineDelayReportToFormInitial(
         dayOffset,
       };
     }),
+  };
+}
+
+export function draglineDelayReportToCompletionPayload(
+  report: ReportDetail,
+  recordVersion = report.recordVersion,
+) {
+  const values = draglineDelayReportToFormInitial(report);
+
+  return {
+    ...values,
+    recordVersion,
+    operators: values.operators.map((operator, index) => ({
+      id: operator.id,
+      sequence: index + 1,
+      employeeId: operator.employeeId,
+    })),
+    timelineEntries: values.timelineEntries.map((entry, index) => ({
+      id: entry.id,
+      sequence: entry.sequence ?? index + 1,
+      startTime: entry.startTime,
+      dayOffset: entry.dayOffset,
+      catalogVersion: DRAGLINE_DELAY_CODE_CATALOG_VERSION,
+      delayCode: entry.delayCode,
+      description: entry.description,
+      durationMinutes: entry.durationMinutes,
+      causesDowntime: entry.causesDowntime,
+    })),
+    downtimeBlocks: values.downtimeBlocks.map((block, index) => ({
+      id: block.id,
+      sequence: block.sequence ?? values.timelineEntries.length + index + 1,
+      startTime: block.startTime,
+      dayOffset: block.dayOffset,
+      durationMinutes: block.durationMinutes,
+      description: block.description,
+      activities: block.activities.map((activity, activityIndex) => ({
+        id: activity.id,
+        sequence: activityIndex + 1,
+        catalogVersion: DRAGLINE_DELAY_CODE_CATALOG_VERSION,
+        delayCode: activity.delayCode,
+        description: activity.description,
+      })),
+    })),
+    groundChecks: values.groundChecks.map((groundCheck, index) => ({
+      id: groundCheck.id,
+      sequence: index + 1,
+      startTime: groundCheck.startTime,
+      dayOffset: groundCheck.dayOffset,
+    })),
   };
 }

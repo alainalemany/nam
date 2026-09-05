@@ -1,7 +1,25 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import React from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ getReport: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  actionState: undefined as
+    | { status: "idle" | "error"; message: string; fieldErrors: Record<string, string[]> }
+    | undefined,
+  getReport: vi.fn(),
+}));
+
+vi.mock("react", async (importOriginal) => {
+  const actual = await importOriginal<typeof React>();
+  return {
+    ...actual,
+    useActionState: vi.fn((_action, initialState) => [
+      mocks.actionState ?? initialState,
+      vi.fn(),
+      false,
+    ]),
+  };
+});
 
 vi.mock("@/features/dragline-delay-reports/data", async () => {
   const actual = await vi.importActual<
@@ -15,6 +33,10 @@ import DraglineDelayReportDetailPage from "@/app/dragline-delay-reports/[id]/pag
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+});
+
+beforeEach(() => {
+  mocks.actionState = undefined;
 });
 
 function completedReport() {
@@ -151,6 +173,45 @@ describe("Dragline Delay Report Completed detail", () => {
     });
     expect(heading.nextElementSibling).toHaveTextContent("Dragline 1");
     expect(heading.nextElementSibling).toHaveClass("summary");
+    expect(screen.getByRole("link", { name: "Back" })).toHaveAttribute(
+      "href",
+      "/dragline-delay-reports",
+    );
+    expect(screen.getByRole("link", { name: "Edit Draft" })).toHaveAttribute(
+      "href",
+      "/dragline-delay-reports/report-1/edit",
+    );
+    expect(screen.getByRole("button", { name: "Complete Report" })).toBeInTheDocument();
+  });
+
+  it("surfaces direct-completion errors with the existing Edit Draft route", async () => {
+    mocks.actionState = {
+      status: "error",
+      message: "Cannot complete report yet. Required or invalid fields need attention.",
+      fieldErrors: { endingHourMeter: ["Ending Hour Meter is required."] },
+    };
+    mocks.getReport.mockResolvedValue({
+      ...completedReport(),
+      status: "DRAFT",
+      recordVersion: 2,
+      completedAt: null,
+      corrections: [],
+    });
+
+    render(
+      await DraglineDelayReportDetailPage({
+        params: Promise.resolve({ id: "report-1" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Cannot complete report yet. Required or invalid fields need attention.",
+    );
+    expect(screen.getByRole("link", { name: "Review in Edit Draft" })).toHaveAttribute(
+      "href",
+      "/dragline-delay-reports/report-1/edit",
+    );
   });
 
   it("is read-only by default and displays completion and correction history", async () => {
@@ -176,6 +237,7 @@ describe("Dragline Delay Report Completed detail", () => {
       "/dragline-delay-reports/report-1/correct",
     );
     expect(screen.queryByRole("link", { name: "Edit Draft" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Complete Report" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Save Draft/ })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Correction History" })).toBeInTheDocument();
     expect(

@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   persist: vi.fn(),
   complete: vi.fn(),
   correct: vi.fn(),
+  getReport: vi.fn(),
+  completionPayload: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -23,21 +25,23 @@ vi.mock("@/features/dragline-delay-reports/persistence", async () => {
     correctDraglineDelayReport: mocks.correct,
   };
 });
+vi.mock("@/features/dragline-delay-reports/data", () => ({
+  draglineDelayReportToCompletionPayload: mocks.completionPayload,
+  getDraglineDelayReportById: mocks.getReport,
+}));
 
 import {
+  completeDraglineDelayReportFromDetailAction,
   correctDraglineDelayReportAction,
   updateDraglineDelayReportAction,
 } from "@/features/dragline-delay-reports/actions";
 import { DraglineDelayReportPersistenceError } from "@/features/dragline-delay-reports/persistence";
 import { emptyDraglineDelayReportActionState } from "@/features/dragline-delay-reports/validation";
 
-function mutationFormData(
-  intent: "draft" | "complete" | "correct",
+function mutationPayload(
   overrides: Record<string, unknown> = {},
 ) {
-  const data = new FormData();
-  data.set("intent", intent);
-  data.set("payload", JSON.stringify({
+  return {
     operationalWorkDate: "2026-08-18",
     shift: "DAY",
     equipmentId: "dragline-1",
@@ -71,7 +75,16 @@ function mutationFormData(
     groundChecks: [],
     correctionReason: "Corrected Ending Hour Meter from signed shift paperwork.",
     ...overrides,
-  }));
+  };
+}
+
+function mutationFormData(
+  intent: "draft" | "complete" | "correct",
+  overrides: Record<string, unknown> = {},
+) {
+  const data = new FormData();
+  data.set("intent", intent);
+  data.set("payload", JSON.stringify(mutationPayload(overrides)));
   return data;
 }
 
@@ -81,6 +94,10 @@ describe("Dragline Delay Report lifecycle Server Actions", () => {
     mocks.persist.mockResolvedValue({ id: "report-1", recordVersion: 3 });
     mocks.complete.mockResolvedValue({ id: "report-1", recordVersion: 3 });
     mocks.correct.mockResolvedValue({ id: "report-1", recordVersion: 3 });
+    mocks.getReport.mockResolvedValue({ status: "DRAFT", recordVersion: 2 });
+    mocks.completionPayload.mockImplementation(
+      (_report, recordVersion) => mutationPayload({ recordVersion }),
+    );
   });
 
   it("keeps Save Draft independent from Code 13", async () => {
@@ -143,6 +160,134 @@ describe("Dragline Delay Report lifecycle Server Actions", () => {
       "report-1",
     );
     expect(mocks.persist).not.toHaveBeenCalled();
+  });
+
+  it("completes a valid persisted Draft from detail through the existing completion action", async () => {
+    await expect(
+      completeDraglineDelayReportFromDetailAction(
+        "report-1",
+        2,
+        emptyDraglineDelayReportActionState,
+        new FormData(),
+      ),
+    ).rejects.toThrow("redirect:/dragline-delay-reports/report-1?saved=completed");
+
+    expect(mocks.getReport).toHaveBeenCalledWith("report-1");
+    expect(mocks.completionPayload).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "DRAFT" }),
+      2,
+    );
+    expect(mocks.complete).toHaveBeenCalledWith(
+      expect.objectContaining({ recordVersion: 2 }),
+      "report-1",
+    );
+    expect(mocks.persist).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "Ending Hour Meter",
+      { endingHourMeter: "" },
+      "endingHourMeter",
+    ],
+    ["Supervisor", { supervisorId: "" }, "supervisorId"],
+    ["final Code 13", { timelineEntries: [] }, "timelineEntries"],
+    [
+      "paired Sections",
+      { stationStart: "18+5", stationEnd: "" },
+      "stationEnd",
+    ],
+    [
+      "Shared Downtime Block activities",
+      {
+        timelineEntries: [{
+          sequence: 2,
+          startTime: "16:59",
+          dayOffset: 0,
+          catalogVersion: 1,
+          delayCode: "13",
+          description: "Shift Change",
+          durationMinutes: "",
+          causesDowntime: false,
+        }],
+        downtimeBlocks: [{
+          sequence: 1,
+          startTime: "05:10",
+          dayOffset: 0,
+          durationMinutes: "30",
+          description: "Maintenance",
+          activities: [{
+            sequence: 1,
+            catalogVersion: 1,
+            delayCode: "13",
+            description: "Invalid child",
+          }],
+        }],
+      },
+      "downtimeBlocks.0.activities.0.delayCode",
+    ],
+  ])(
+    "keeps an invalid direct completion atomic when %s validation fails",
+    async (_label, overrides, errorPath) => {
+      mocks.completionPayload.mockReturnValue(mutationPayload(overrides));
+
+      const result = await completeDraglineDelayReportFromDetailAction(
+        "report-1",
+        2,
+        emptyDraglineDelayReportActionState,
+        new FormData(),
+      );
+
+      expect(result.message).toContain("Cannot complete report yet");
+      expect(result.fieldErrors[errorPath]).toBeDefined();
+      expect(mocks.complete).not.toHaveBeenCalled();
+      expect(mocks.persist).not.toHaveBeenCalled();
+    },
+  );
+
+  it("passes the detail page recordVersion through existing stale-write protection", async () => {
+    mocks.getReport.mockResolvedValue({ status: "DRAFT", recordVersion: 3 });
+    mocks.complete.mockRejectedValueOnce(
+      new DraglineDelayReportPersistenceError(
+        "This report changed elsewhere; reload before completing.",
+        "recordVersion",
+        "stale",
+      ),
+    );
+
+    const result = await completeDraglineDelayReportFromDetailAction(
+      "report-1",
+      2,
+      emptyDraglineDelayReportActionState,
+      new FormData(),
+    );
+
+    expect(mocks.completionPayload).toHaveBeenCalledWith(
+      expect.objectContaining({ recordVersion: 3 }),
+      2,
+    );
+    expect(mocks.complete).toHaveBeenCalledWith(
+      expect.objectContaining({ recordVersion: 2 }),
+      "report-1",
+    );
+    expect(result.fieldErrors.recordVersion).toEqual([
+      "This report changed elsewhere; reload before completing.",
+    ]);
+  });
+
+  it("does not offer a second completion transition after the report is already Completed", async () => {
+    mocks.getReport.mockResolvedValue({ status: "COMPLETED", recordVersion: 3 });
+
+    await expect(
+      completeDraglineDelayReportFromDetailAction(
+        "report-1",
+        2,
+        emptyDraglineDelayReportActionState,
+        new FormData(),
+      ),
+    ).rejects.toThrow("redirect:/dragline-delay-reports/report-1");
+    expect(mocks.completionPayload).not.toHaveBeenCalled();
+    expect(mocks.complete).not.toHaveBeenCalled();
   });
 
   it("passes Shared Downtime Blocks and child descriptions through the Server Action", async () => {
