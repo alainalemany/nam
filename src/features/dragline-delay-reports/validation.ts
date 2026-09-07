@@ -6,6 +6,7 @@ import {
   getDraglineDelayCode,
 } from "./catalog";
 import { calculateDraglineShiftTotals } from "./calculations";
+import { DRAGLINE_DELAY_REPORT_CUT_TYPE_VALUES } from "./cut-types";
 import { hasFinalShiftChangeEntry } from "./lifecycle";
 import { parseStationNotation } from "./station";
 import {
@@ -198,9 +199,16 @@ export const draglineDelayReportSubmissionSchema = z
     startingHourMeter: wholeNumberInput("Starting Hour Meter"),
     endingHourMeter: optionalWholeNumberInput("Ending Hour Meter"),
     supervisorId: optionalId,
+    dayShiftFieldLeadId: optionalId,
+    nightShiftFieldLeadId: optionalId,
     lakeId: optionalId,
     normalDiggingBuckets: optionalWholeNumberInput("Normal Digging Buckets"),
     benchfillBuckets: optionalWholeNumberInput("Benchfill Buckets"),
+    cutType: z.preprocess(
+      (value) => (value === "" || value == null ? undefined : value),
+      z.enum(DRAGLINE_DELAY_REPORT_CUT_TYPE_VALUES).optional(),
+    ),
+    cutNote: optionalText("Cut Note", 1000),
     stationStart: optionalStationInput,
     stationEnd: optionalStationInput,
     depthFeet: optionalWholeNumberInput("Depth"),
@@ -228,13 +236,6 @@ export const draglineDelayReportSubmissionSchema = z
       .default([]),
   })
   .superRefine((value, context) => {
-    if (!value.stationStart && value.stationEnd) {
-      context.addIssue({
-        code: "custom",
-        path: ["stationStart"],
-        message: "Enter Section Start when Section End is recorded.",
-      });
-    }
     for (const [field, station] of [
       ["stationStart", value.stationStart],
       ["stationEnd", value.stationEnd],
@@ -243,13 +244,13 @@ export const draglineDelayReportSubmissionSchema = z
       try {
         const parsedStation = parseStationNotation(station);
         if (parsedStation.absoluteFeet > POSTGRES_INTEGER_MAX) {
-          throw new Error("Section is outside the supported range.");
+          throw new Error("Station is outside the supported range.");
         }
       } catch (error) {
         context.addIssue({
           code: "custom",
           path: [field],
-          message: error instanceof Error ? error.message : "Section is invalid.",
+          message: error instanceof Error ? error.message : "Station is invalid.",
         });
       }
     }
@@ -520,13 +521,6 @@ export const draglineDelayReportSubmissionSchema = z
 
 export const draglineDelayReportCompletionSchema =
   draglineDelayReportSubmissionSchema.superRefine((value, context) => {
-    if (value.stationStart && !value.stationEnd) {
-      context.addIssue({
-        code: "custom",
-        path: ["stationEnd"],
-        message: "Enter both Section Start and Section End, or leave both blank.",
-      });
-    }
     if (value.endingHourMeter == null) {
       context.addIssue({
         code: "custom",

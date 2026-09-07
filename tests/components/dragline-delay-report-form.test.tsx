@@ -59,9 +59,13 @@ const initialValues = {
   startingHourMeter: "12345",
   endingHourMeter: "",
   supervisorId: "supervisor-1",
+  dayShiftFieldLeadId: "",
+  nightShiftFieldLeadId: "",
   lakeId: "lake-12",
   normalDiggingBuckets: "10",
   benchfillBuckets: "2",
+  cutType: "PRODUCTION" as const,
+  cutNote: "Hard top layer near east wall.",
   stationStart: "16+0",
   stationEnd: "16+20",
   depthFeet: "65",
@@ -88,23 +92,25 @@ function renderForm(
   })),
   options: {
     allowComplete?: boolean;
+    employeeOptions?: typeof employeeOptions;
     initialValues?: DraglineDelayReportFormInitialValues;
     mode?: "draft" | "correction";
     submitLabel?: string;
   } = {},
 ) {
+  const visibleEmployeeOptions = options.employeeOptions ?? employeeOptions;
   return render(
     <DraglineDelayReportForm
       action={action}
       cancelHref="/dragline-delay-reports"
-      employeeOptions={employeeOptions}
+      employeeOptions={visibleEmployeeOptions}
       equipmentOptions={equipmentOptions}
       initialValues={options.initialValues ?? initialValues}
       lakeOptions={lakeOptions}
       allowComplete={options.allowComplete}
       mode={options.mode}
       submitLabel={options.submitLabel ?? "Save Draft Report"}
-      supervisorOptions={employeeOptions.filter((employee) => employee.isSupervisor)}
+      supervisorOptions={visibleEmployeeOptions.filter((employee) => employee.isSupervisor)}
     />,
   );
 }
@@ -617,30 +623,78 @@ describe("DraglineDelayReportForm", () => {
     );
   });
 
-  it("renders DDR-2 fields, filters Lakes by Mine, and previews absolute Advance", () => {
+  it("renders Work Area fields, filters Lakes, and previews Advance only for two valid Stations", () => {
     renderForm();
     expect(screen.getAllByText("12 h").length).toBeGreaterThan(0);
     expect(screen.getAllByText("0 h").length).toBeGreaterThan(0);
     expect(screen.getByLabelText("Lake")).toHaveValue("lake-12");
     expect(screen.getByRole("option", { name: "Lake 12" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Other Mine Lake" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Cut Type")).toHaveValue("PRODUCTION");
+    expect(screen.getByRole("option", { name: "Extended Key Cut" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Cut Note")).toHaveValue(
+      "Hard top layer near east wall.",
+    );
     expect(screen.getByText("20 ft")).toBeInTheDocument();
 
-    expect(screen.getByLabelText("Section Start")).toHaveValue("16+0");
-    fireEvent.change(screen.getByLabelText("Section End"), {
+    expect(screen.getByLabelText("Station Start")).toHaveValue("16+0");
+    fireEvent.change(screen.getByLabelText("Station End"), {
       target: { value: "" },
     });
-    expect(screen.getByText("Enter Section End to calculate")).toBeInTheDocument();
+    expect(screen.getByText("—")).toBeInTheDocument();
     expect(screen.queryByText("20 ft")).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Section Start"), {
+    fireEvent.change(screen.getByLabelText("Station Start"), {
       target: { value: "16+90" },
     });
-    fireEvent.change(screen.getByLabelText("Section End"), {
+    fireEvent.change(screen.getByLabelText("Station End"), {
       target: { value: "17+20" },
     });
     expect(screen.getByText("30 ft")).toBeInTheDocument();
-    expect(screen.getByLabelText("Section Start")).toHaveValue("16+90");
+    expect(screen.getByLabelText("Station Start")).toHaveValue("16+90");
+  });
+
+  it("offers searchable optional Day and Night Shift Field Leads", () => {
+    renderForm();
+    expect(screen.getByLabelText("Day Shift Field Lead")).toHaveValue("");
+    expect(screen.getByLabelText("Night Shift Field Lead")).toHaveValue("");
+
+    fireEvent.change(screen.getByLabelText("Find Day Shift Field Lead"), {
+      target: { value: "Alex" },
+    });
+    fireEvent.change(screen.getByLabelText("Day Shift Field Lead"), {
+      target: { value: "operator-1" },
+    });
+    fireEvent.change(screen.getByLabelText("Night Shift Field Lead"), {
+      target: { value: "supervisor-1" },
+    });
+
+    expect(screen.getByLabelText("Day Shift Field Lead")).toHaveValue("operator-1");
+    expect(screen.getByLabelText("Night Shift Field Lead")).toHaveValue("supervisor-1");
+  });
+
+  it("keeps an inactive current Field Lead selectable", () => {
+    const inactiveFieldLead = {
+      id: "inactive-lead",
+      label: "Pat Former Lead (inactive)",
+      displayName: "Pat Former Lead",
+      employeeCode: "300",
+      isActive: false,
+      isSupervisor: false,
+    };
+    renderForm(undefined, {
+      employeeOptions: [...employeeOptions, inactiveFieldLead],
+      initialValues: {
+        ...initialValues,
+        dayShiftFieldLeadId: inactiveFieldLead.id,
+      },
+    });
+
+    const selector = screen.getByLabelText("Day Shift Field Lead");
+    expect(selector).toHaveValue(inactiveFieldLead.id);
+    expect(
+      within(selector).getByRole("option", { name: inactiveFieldLead.label }),
+    ).not.toBeDisabled();
   });
 
   it("keeps the established Edit form module order", () => {
@@ -701,10 +755,10 @@ describe("DraglineDelayReportForm", () => {
     fireEvent.change(screen.getByLabelText("Normal Digging Buckets"), {
       target: { value: "99" },
     });
-    fireEvent.change(screen.getByLabelText("Section Start"), {
+    fireEvent.change(screen.getByLabelText("Station Start"), {
       target: { value: "18+5" },
     });
-    fireEvent.change(screen.getByLabelText("Section End"), {
+    fireEvent.change(screen.getByLabelText("Station End"), {
       target: { value: "" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Add Ground Check" }));
@@ -720,8 +774,8 @@ describe("DraglineDelayReportForm", () => {
       "preserve this context",
     );
     expect(screen.getByLabelText("Normal Digging Buckets")).toHaveValue(99);
-    expect(screen.getByLabelText("Section Start")).toHaveValue("18+5");
-    expect(screen.getByLabelText("Section End")).toHaveValue("");
+    expect(screen.getByLabelText("Station Start")).toHaveValue("18+5");
+    expect(screen.getByLabelText("Station End")).toHaveValue("");
     expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("10:00");
   });
 
@@ -984,39 +1038,53 @@ describe("DraglineDelayReportForm", () => {
     expect(screen.getByLabelText("Delay Code for row 1")).toHaveValue("34");
   });
 
-  it("identifies the missing member of a Section pair without losing other values", async () => {
+  it("preserves Cut, independent Station, and Field Lead values after validation failure", async () => {
     const action = vi.fn(async () => ({
       status: "error" as const,
       message: "Cannot complete report yet.",
       fieldErrors: {
-        stationEnd: [
-          "Enter both Section Start and Section End, or leave both blank.",
-        ],
+        cutNote: ["Cut Note must be 1000 characters or fewer."],
       },
     }));
     renderForm(action, { allowComplete: true });
-    fireEvent.change(screen.getByLabelText("Section End"), {
+    fireEvent.change(screen.getByLabelText("Cut Type"), {
+      target: { value: "KEY_CUT" },
+    });
+    fireEvent.change(screen.getByLabelText("Cut Note"), {
+      target: { value: "Keep this cut context" },
+    });
+    fireEvent.change(screen.getByLabelText("Station Start"), {
       target: { value: "" },
     });
-    fireEvent.change(screen.getByLabelText("Normal Digging Buckets"), {
-      target: { value: "77" },
+    fireEvent.change(screen.getByLabelText("Station End"), {
+      target: { value: "18+20" },
+    });
+    fireEvent.change(screen.getByLabelText("Day Shift Field Lead"), {
+      target: { value: "operator-1" },
+    });
+    fireEvent.change(screen.getByLabelText("Night Shift Field Lead"), {
+      target: { value: "supervisor-1" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Complete Report" }));
 
     expect(
-      await screen.findAllByText(/Enter both Section Start and Section End/),
+      await screen.findAllByText(/Cut Note must be 1000 characters or fewer/),
     ).toHaveLength(2);
     expect(
       within(screen.getByRole("alert")).getByRole("button", {
-        name: /Section End: Enter both Section Start and Section End/,
+        name: /Cut Note: Cut Note must be 1000 characters or fewer/,
       }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/Section End/)).toHaveAttribute(
+    expect(screen.getByLabelText(/Cut Note/)).toHaveAttribute(
       "aria-describedby",
-      "ddr-stationEnd-error",
+      "ddr-cutNote-error",
     );
-    expect(screen.getByLabelText(/Section End/)).toHaveValue("");
-    expect(screen.getByLabelText("Normal Digging Buckets")).toHaveValue(77);
+    expect(screen.getByLabelText("Cut Type")).toHaveValue("KEY_CUT");
+    expect(screen.getByLabelText(/Cut Note/)).toHaveValue("Keep this cut context");
+    expect(screen.getByLabelText("Station Start")).toHaveValue("");
+    expect(screen.getByLabelText("Station End")).toHaveValue("18+20");
+    expect(screen.getByLabelText("Day Shift Field Lead")).toHaveValue("operator-1");
+    expect(screen.getByLabelText("Night Shift Field Lead")).toHaveValue("supervisor-1");
   });
 
   it("shows stale completion without discarding unsaved values", async () => {

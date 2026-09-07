@@ -14,6 +14,10 @@ const validInput = {
   startingHourMeter: "12345",
   endingHourMeter: "",
   supervisorId: "supervisor-1",
+  dayShiftFieldLeadId: "",
+  nightShiftFieldLeadId: "",
+  cutType: "PRODUCTION",
+  cutNote: "",
   operators: [{ sequence: 1, employeeId: "operator-1" }],
   timelineEntries: [
     {
@@ -541,83 +545,79 @@ describe("Dragline Delay Report validation", () => {
     }
   });
 
-  it("allows progressive Draft Section entry while rejecting End-only", () => {
-    expect(
-      draglineDelayReportSubmissionSchema.safeParse({
+  it.each([
+    ["neither", "", "", undefined, undefined],
+    ["Start only", "18+5", "", 1805, undefined],
+    ["End only", "", "18+20", undefined, 1820],
+    ["both", "18+5", "18+20", 1805, 1820],
+  ])(
+    "allows %s Station values for Draft and Complete",
+    (_label, stationStart, stationEnd, stationStartFeet, stationEndFeet) => {
+      const draft = draglineDelayReportSubmissionSchema.parse({
         ...validInput,
-        stationStart: "",
-        stationEnd: "",
-      }).success,
-    ).toBe(true);
+        stationStart,
+        stationEnd,
+      });
+      expect(normalizeDraglineDelayReportSubmission(draft)).toMatchObject({
+        stationStartFeet,
+        stationEndFeet,
+      });
+      expect(
+        draglineDelayReportCompletionSchema.safeParse(
+          completionInput({ stationStart, stationEnd }),
+        ).success,
+      ).toBe(true);
+    },
+  );
 
-    const startOnly = draglineDelayReportSubmissionSchema.parse({
+  it.each([
+    ["Station Start", { stationStart: "invalid", stationEnd: "" }, "stationStart"],
+    ["Station End", { stationStart: "", stationEnd: "invalid" }, "stationEnd"],
+  ])("rejects malformed %s independently", (_label, values, path) => {
+    const result = draglineDelayReportSubmissionSchema.safeParse({
       ...validInput,
-      stationStart: "18+5",
-      stationEnd: "",
+      ...values,
     });
-    expect(normalizeDraglineDelayReportSubmission(startOnly)).toMatchObject({
-      stationStartFeet: 1805,
-      stationEndFeet: undefined,
-    });
-
-    const endOnly = draglineDelayReportSubmissionSchema.safeParse({
-      ...validInput,
-      stationStart: "",
-      stationEnd: "18+20",
-    });
-    expect(endOnly.success).toBe(false);
-    if (!endOnly.success) {
-      expect(endOnly.error.issues).toContainEqual(
-        expect.objectContaining({
-          path: ["stationStart"],
-          message: "Enter Section Start when Section End is recorded.",
-        }),
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({ path: [path], message: expect.stringContaining("Station") }),
       );
     }
-
-    expect(
-      draglineDelayReportSubmissionSchema.safeParse({
-        ...validInput,
-        stationStart: "invalid",
-        stationEnd: "",
-      }).success,
-    ).toBe(false);
-
-    const parsed = draglineDelayReportSubmissionSchema.parse({
-      ...validInput,
-      stationStart: "16+0",
-      stationEnd: "16+20",
-    });
-    expect(normalizeDraglineDelayReportSubmission(parsed)).toMatchObject({
-      stationStartFeet: 1600,
-      stationEndFeet: 1620,
-    });
   });
 
-  it("keeps Section Start and End paired for completion", () => {
-    const startOnly = draglineDelayReportCompletionSchema.safeParse(
-      completionInput({ stationStart: "18+5", stationEnd: "" }),
-    );
-    expect(startOnly.success).toBe(false);
-    if (!startOnly.success) {
-      expect(startOnly.error.issues).toContainEqual(
-        expect.objectContaining({
-          path: ["stationEnd"],
-          message: "Enter both Section Start and Section End, or leave both blank.",
-        }),
-      );
-    }
+  it.each([
+    "PRODUCTION",
+    "KEY_CUT",
+    "FACE_CUT",
+    "BOX_CUT",
+    "EXTENDED_KEY_CUT",
+    "OTHER",
+  ])("accepts Cut Type %s and one shared optional Cut Note", (cutType) => {
+    const parsed = draglineDelayReportSubmissionSchema.parse({
+      ...validInput,
+      cutType,
+      cutNote: "Operational cut context.",
+    });
+    expect(parsed).toMatchObject({ cutType, cutNote: "Operational cut context." });
+  });
 
+  it("keeps Cut Type nullable for history and rejects unsupported values", () => {
     expect(
-      draglineDelayReportCompletionSchema.safeParse(
-        completionInput({ stationStart: "", stationEnd: "" }),
-      ).success,
-    ).toBe(true);
+      draglineDelayReportSubmissionSchema.parse({ ...validInput, cutType: "" }).cutType,
+    ).toBeUndefined();
     expect(
-      draglineDelayReportCompletionSchema.safeParse(
-        completionInput({ stationStart: "18+5", stationEnd: "18+20" }),
-      ).success,
-    ).toBe(true);
+      draglineDelayReportSubmissionSchema.safeParse({
+        ...validInput,
+        cutType: "UNSUPPORTED",
+      }).success,
+    ).toBe(false);
+    expect(
+      draglineDelayReportSubmissionSchema.safeParse({
+        ...validInput,
+        cutNote: "x".repeat(1001),
+      }).success,
+    ).toBe(false);
   });
 
   it("normalizes ordered Ground Check times and enforces the report shift window", () => {

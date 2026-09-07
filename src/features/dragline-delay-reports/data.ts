@@ -206,6 +206,8 @@ export async function getDraglineDelayReportFormOptions(reportId?: string) {
           operator.employeeId ? [operator.employeeId] : [],
         ),
         ...(report.supervisorId ? [report.supervisorId] : []),
+        ...(report.dayShiftFieldLeadId ? [report.dayShiftFieldLeadId] : []),
+        ...(report.nightShiftFieldLeadId ? [report.nightShiftFieldLeadId] : []),
       ]
     : [];
   const [equipment, employees, lakes] = await Promise.all([
@@ -247,6 +249,8 @@ export function draglineDelayReportToFormInitial(
     endingHourMeter:
       report.endingHourMeter == null ? "" : String(report.endingHourMeter),
     supervisorId: report.supervisorId ?? "",
+    dayShiftFieldLeadId: report.dayShiftFieldLeadId ?? "",
+    nightShiftFieldLeadId: report.nightShiftFieldLeadId ?? "",
     lakeId: report.lakeId ?? "",
     normalDiggingBuckets:
       report.normalDiggingBuckets == null
@@ -254,6 +258,8 @@ export function draglineDelayReportToFormInitial(
         : String(report.normalDiggingBuckets),
     benchfillBuckets:
       report.benchfillBuckets == null ? "" : String(report.benchfillBuckets),
+    cutType: report.cutType ?? "",
+    cutNote: report.cutNote ?? "",
     stationStart:
       report.stationStartFeet == null
         ? ""

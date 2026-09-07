@@ -729,10 +729,12 @@ detail view; both entry points use the same authoritative completion validation,
 optimistic concurrency, and atomic persistence path. Detail remains read-only
 apart from that explicit lifecycle action.
 
-Normal Digging Buckets, Benchfill Buckets, Lake, Sections, Depth, Fuel, Cable
-Drag, Hoist, Ground Checks, Comments, Safety Items Found, and Action Taken
-remain optional at completion. Section Start and End still must be both present
-or both absent. Every successful correction keeps the report Completed,
+Normal Digging Buckets, Benchfill Buckets, Lake, Cut Type, Cut Note, Station
+Start, Station End, Depth, Fuel, Cable Drag, Hoist, Ground Checks, Comments,
+Safety Items Found, Action Taken, Day Shift Field Lead, and Night Shift Field
+Lead remain optional at completion. Station Start and Station End are
+independently optional; an entered value must be valid station notation. Every
+successful correction keeps the report Completed,
 increments `recordVersion`, and appends a reason, timestamp, and previous/to
 version transition; it does not store full aggregate versions or field diffs.
 
@@ -747,13 +749,18 @@ The report header includes:
 - Ending Hour Meter.
 - One or more ordered operators.
 - Supervisor.
+- Optional Day Shift Field Lead.
+- Optional Night Shift Field Lead.
 
 Equipment must be canonical Dragline Equipment. Mine and City derive through
-Equipment rather than separate selection. Operators and supervisor use the
-existing canonical Employee model. New supervisor selection uses existing
-supervisor eligibility. Report-owned name/code snapshots preserve historical
-meaning. Work Schedule may later provide convenience context, but it is not a
-creation, save, completion, or correction dependency.
+Equipment rather than separate selection. Operators, supervisor, and both
+Field Leads use the existing canonical Employee model. New supervisor
+selection uses existing supervisor eligibility. Each optional Field Lead may
+be selected independently regardless of report shift. Report-owned name/code
+snapshots preserve historical meaning, and inactive current selections follow
+the existing Employee-selector convention. Work Schedule may later provide
+convenience context, but it is not a creation, save, completion, or correction
+dependency.
 
 Starting and Ending Hour Meter values are nonnegative whole numbers; decimals
 are invalid. Starting Hour Meter is required on the Draft header. Ending Hour
@@ -813,22 +820,26 @@ separate and still requires final Code 13 — Shift Change.
 - Run Time is server-derived as `720 - Down Time`.
 - Client-entered runtime or downtime totals are never authoritative.
 
-### Section And Advance
+### Station And Advance
 
-Section values use the operational 100-foot convention. Familiar notation may
+Station values are location references using the operational 100-foot
+convention. Familiar notation may
 be used for input and display, but storage must preserve normalized numeric
 meaning.
 
 ```text
-absolute feet = section number * 100 + offset feet
+absolute feet = station number * 100 + offset feet
 advance = absolute value of (ending absolute feet - starting absolute feet)
 ```
 
 Offset accepts one or two digits from `0` through `99`. `16+0 -> 16+20`
 derives 20 feet and `16+90 -> 17+20` derives 30 feet of Advance. Advance is
 calculated by NAM and is not manually re-entered. Increasing and decreasing
-section order both produce the positive distance progressed; no Direction
-value is inferred.
+station order both produce the positive distance progressed; no Direction
+value is inferred. Station Start and Station End are independently optional
+for Draft, Complete, direct completion, and correction. Advance is unavailable,
+and is never displayed as `0 ft`, unless both station values are present and
+valid. Cut Type and stationing remain independent.
 
 ### Production And End-Of-Shift Facts
 
@@ -837,7 +848,12 @@ The structured report includes:
 - Normal Digging Buckets.
 - Benchfill Buckets.
 - Canonical Lake selected from active Lakes belonging to the Equipment's Mine.
-- Section Start and Section End with derived Advance.
+- Controlled optional Cut Type: Production, Key Cut, Face Cut, Box Cut,
+  Extended Key Cut, or Other.
+- Optional Cut Note of at most 1000 characters for every Cut Type, including
+  Other; there is no separate Other-description field.
+- Independently optional Station Start and Station End with derived Advance
+  only when both are present and valid.
 - Derived Run Time and Down Time.
 - Manual Depth in feet.
 - Manual Fuel in gallons.
@@ -852,6 +868,15 @@ On a brand-new report, Benchfill Buckets visually initializes to `0` while
 remaining optional, editable, and clearable. This is a create-form convenience
 only: existing blank/null, zero, and nonzero report values display unchanged,
 and persistence has no Benchfill default or historical backfill.
+
+On a brand-new report, Cut Type initializes to Production in application form
+state. Cut Type remains nullable in persistence and has no database default, so
+existing reports remain null/Not recorded until explicitly edited. Cut Note is
+optional for every Cut Type. In Work Area and Progress, Lake and Cut Type share
+the first row, Cut Note receives a wide row, and Station Start, Station End,
+and Advance remain together before Depth. Read-only detail shows neutral
+missing-state wording for historical null Cut Type/Note and unavailable
+Advance.
 
 Depth is manually entered; no automatic source is inferred. Fuel is manually
 entered at report level and remains independent from Equipment Fuel Events in

@@ -1,4 +1,5 @@
 import type { DraglineDelayCodeCategory } from "./catalog";
+import type { DraglineDelayReportCutTypeValue } from "./cut-types";
 import type { DraglineDelayReportShift } from "./time";
 
 export type DraglineEquipmentOption = {
@@ -81,9 +82,13 @@ export type DraglineDelayReportFormInitialValues = {
   startingHourMeter: string;
   endingHourMeter: string;
   supervisorId: string;
+  dayShiftFieldLeadId: string;
+  nightShiftFieldLeadId: string;
   lakeId: string;
   normalDiggingBuckets: string;
   benchfillBuckets: string;
+  cutType: DraglineDelayReportCutTypeValue | "";
+  cutNote: string;
   stationStart: string;
   stationEnd: string;
   depthFeet: string;

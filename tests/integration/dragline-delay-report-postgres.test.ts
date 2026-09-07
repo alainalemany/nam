@@ -182,9 +182,13 @@ function validInput(
     startingHourMeter: 12000,
     endingHourMeter: "",
     supervisorId: references.supervisor.id,
+    dayShiftFieldLeadId: references.secondOperator.id,
+    nightShiftFieldLeadId: references.supervisor.id,
     lakeId: references.lake.id,
     normalDiggingBuckets: 120,
     benchfillBuckets: 15,
+    cutType: "PRODUCTION",
+    cutNote: "Hard top layer near east wall.",
     stationStart: "50+60",
     stationEnd: "50+30",
     depthFeet: 65,
@@ -339,10 +343,18 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
           equipmentDisplayName: references.dragline.displayName,
           mineName: references.mine.name,
           supervisorDisplayName: references.supervisor.displayName,
+          dayShiftFieldLeadId: references.secondOperator.id,
+          dayShiftFieldLeadDisplayName: references.secondOperator.displayName,
+          dayShiftFieldLeadEmployeeCode: references.secondOperator.employeeCode,
+          nightShiftFieldLeadId: references.supervisor.id,
+          nightShiftFieldLeadDisplayName: references.supervisor.displayName,
+          nightShiftFieldLeadEmployeeCode: references.supervisor.employeeCode,
           lakeId: references.lake.id,
           lakeDisplayNameSnapshot: references.lake.name,
           normalDiggingBuckets: 120,
           benchfillBuckets: 15,
+          cutType: "PRODUCTION",
+          cutNote: "Hard top layer near east wall.",
           stationStartFeet: 5060,
           stationEndFeet: 5030,
           depthFeet: 65,
@@ -828,7 +840,7 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
     }
   });
 
-  it("persists progressive Draft Section states and rejects End-only at the database", async () => {
+  it("persists all four independent Station null/populated combinations", async () => {
     const client = new PrismaClient({ datasourceUrl: databaseUrl });
     try {
       await withRollback(client, async (transaction, prefix) => {
@@ -849,6 +861,14 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
             stationEnd: "",
           }),
         );
+        const endOnly = await persistDraglineDelayReportInTransaction(
+          transaction,
+          validInput(references, {
+            operationalWorkDate: "2026-08-24",
+            stationStart: "",
+            stationEnd: "18+20",
+          }),
+        );
         const both = await persistDraglineDelayReportInTransaction(
           transaction,
           validInput(references, {
@@ -858,6 +878,12 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
           }),
         );
 
+        expect(
+          await transaction.draglineDelayReport.findUniqueOrThrow({
+            where: { id: endOnly.id },
+            select: { stationStartFeet: true, stationEndFeet: true },
+          }),
+        ).toEqual({ stationStartFeet: null, stationEndFeet: 1820 });
         expect(
           await transaction.draglineDelayReport.findUniqueOrThrow({
             where: { id: neither.id },
@@ -877,26 +903,16 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
           }),
         ).toEqual({ stationStartFeet: 1805, stationEndFeet: 1820 });
 
-        await transaction.$executeRawUnsafe("SAVEPOINT ddr_end_only_check");
-        let endOnlyRejected = false;
-        try {
-          await transaction.draglineDelayReport.update({
-            where: { id: startOnly.id },
-            data: { stationStartFeet: null, stationEndFeet: 1820 },
-          });
-        } catch {
-          endOnlyRejected = true;
-          await transaction.$executeRawUnsafe(
-            "ROLLBACK TO SAVEPOINT ddr_end_only_check",
-          );
-        }
-        expect(endOnlyRejected).toBe(true);
+        await transaction.draglineDelayReport.update({
+          where: { id: startOnly.id },
+          data: { stationStartFeet: null, stationEndFeet: 1820 },
+        });
         expect(
           await transaction.draglineDelayReport.findUniqueOrThrow({
             where: { id: startOnly.id },
             select: { stationStartFeet: true, stationEndFeet: true },
           }),
-        ).toEqual({ stationStartFeet: 1805, stationEndFeet: null });
+        ).toEqual({ stationStartFeet: null, stationEndFeet: 1820 });
       });
     } finally {
       await client.$disconnect();
@@ -939,6 +955,20 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
         await expect(
           persistDraglineDelayReportInTransaction(
             transaction,
+            validInput(references, { dayShiftFieldLeadId: "missing-employee" }),
+          ),
+        ).rejects.toMatchObject({ field: "dayShiftFieldLeadId" });
+        await expect(
+          persistDraglineDelayReportInTransaction(
+            transaction,
+            validInput(references, {
+              nightShiftFieldLeadId: references.inactiveOperator.id,
+            }),
+          ),
+        ).rejects.toMatchObject({ field: "nightShiftFieldLeadId" });
+        await expect(
+          persistDraglineDelayReportInTransaction(
+            transaction,
             validInput(references, { lakeId: references.otherMineLake.id }),
           ),
         ).rejects.toMatchObject({ field: "lakeId" });
@@ -948,6 +978,56 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
             validInput(references, { lakeId: references.inactiveLake.id }),
           ),
         ).rejects.toMatchObject({ field: "lakeId" });
+      });
+    } finally {
+      await client.$disconnect();
+    }
+  });
+
+  it("preserves inactive current Field Leads and their original snapshots", async () => {
+    const client = new PrismaClient({ datasourceUrl: databaseUrl });
+    try {
+      await withRollback(client, async (transaction, prefix) => {
+        const references = await createReferences(transaction, prefix);
+        const created = await persistDraglineDelayReportInTransaction(
+          transaction,
+          validInput(references),
+        );
+        await transaction.employee.updateMany({
+          where: {
+            id: {
+              in: [references.secondOperator.id, references.supervisor.id],
+            },
+          },
+          data: { displayName: "Renamed Inactive Lead", isActive: false },
+        });
+
+        const saved = await persistDraglineDelayReportInTransaction(
+          transaction,
+          validInput(references, { recordVersion: 1 }),
+          created.id,
+        );
+        expect(saved.recordVersion).toBe(2);
+        expect(
+          await transaction.draglineDelayReport.findUniqueOrThrow({
+            where: { id: created.id },
+            select: {
+              dayShiftFieldLeadId: true,
+              dayShiftFieldLeadDisplayName: true,
+              dayShiftFieldLeadEmployeeCode: true,
+              nightShiftFieldLeadId: true,
+              nightShiftFieldLeadDisplayName: true,
+              nightShiftFieldLeadEmployeeCode: true,
+            },
+          }),
+        ).toEqual({
+          dayShiftFieldLeadId: references.secondOperator.id,
+          dayShiftFieldLeadDisplayName: references.secondOperator.displayName,
+          dayShiftFieldLeadEmployeeCode: references.secondOperator.employeeCode,
+          nightShiftFieldLeadId: references.supervisor.id,
+          nightShiftFieldLeadDisplayName: references.supervisor.displayName,
+          nightShiftFieldLeadEmployeeCode: references.supervisor.employeeCode,
+        });
       });
     } finally {
       await client.$disconnect();
@@ -1191,6 +1271,7 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
         );
         await transaction.equipment.delete({ where: { id: references.dragline.id } });
         await transaction.employee.delete({ where: { id: references.operator.id } });
+        await transaction.employee.delete({ where: { id: references.secondOperator.id } });
         await transaction.employee.delete({ where: { id: references.supervisor.id } });
         await transaction.lake.delete({ where: { id: references.lake.id } });
         const historical = await transaction.draglineDelayReport.findUniqueOrThrow({
@@ -1202,6 +1283,10 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
           equipmentDisplayName: references.dragline.displayName,
           supervisorId: null,
           supervisorDisplayName: references.supervisor.displayName,
+          dayShiftFieldLeadId: null,
+          dayShiftFieldLeadDisplayName: references.secondOperator.displayName,
+          nightShiftFieldLeadId: null,
+          nightShiftFieldLeadDisplayName: references.supervisor.displayName,
           lakeId: null,
           lakeDisplayNameSnapshot: references.lake.name,
         });
@@ -1241,6 +1326,10 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
           lakeId: "",
           normalDiggingBuckets: "",
           benchfillBuckets: "",
+          cutType: "",
+          cutNote: "",
+          dayShiftFieldLeadId: "",
+          nightShiftFieldLeadId: "",
           stationStart: "",
           stationEnd: "",
           depthFeet: "",
@@ -1310,6 +1399,10 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
           lakeId: null,
           normalDiggingBuckets: null,
           benchfillBuckets: null,
+          cutType: null,
+          cutNote: null,
+          dayShiftFieldLeadId: null,
+          nightShiftFieldLeadId: null,
           stationStartFeet: null,
           stationEndFeet: null,
           depthFeet: null,
@@ -1410,6 +1503,12 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
           recordVersion: 2,
           endingHourMeter: 12013,
           comments: "First corrected value",
+          cutType: "KEY_CUT",
+          cutNote: "Starting new side of lake after dragline relocation.",
+          stationStart: "",
+          stationEnd: "22+40",
+          dayShiftFieldLeadId: references.supervisor.id,
+          nightShiftFieldLeadId: references.secondOperator.id,
           operators: completion.operators.map((operator, index) => ({
             ...operator,
             id: completed.operators[index].id,
@@ -1455,6 +1554,16 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
           status: "COMPLETED",
           recordVersion: 3,
           endingHourMeter: 12013,
+          cutType: "KEY_CUT",
+          cutNote: "Starting new side of lake after dragline relocation.",
+          stationStartFeet: null,
+          stationEndFeet: 2240,
+          dayShiftFieldLeadId: references.supervisor.id,
+          dayShiftFieldLeadDisplayName: references.supervisor.displayName,
+          dayShiftFieldLeadEmployeeCode: references.supervisor.employeeCode,
+          nightShiftFieldLeadId: references.secondOperator.id,
+          nightShiftFieldLeadDisplayName: references.secondOperator.displayName,
+          nightShiftFieldLeadEmployeeCode: references.secondOperator.employeeCode,
         });
         expect(afterFirst.timelineEntries.map((entry) => entry.id)).toEqual(
           completed.timelineEntries.map((entry) => entry.id),
@@ -1608,12 +1717,15 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
       expect(rows.map((row) => row.migration_name)).toContain(
         "20260903000100_dragline_delay_report_shared_downtime_blocks",
       );
+      expect(rows.map((row) => row.migration_name)).toContain(
+        "20260906000100_dragline_delay_report_work_area_field_leads",
+      );
     } finally {
       await client.$disconnect();
     }
   });
 
-  it("installs the DDR-2 constraints and intended deletion behavior", async () => {
+  it("keeps individual Station checks, removes pairing, and installs new DDR constraints", async () => {
     const client = new PrismaClient({ datasourceUrl: databaseUrl });
     try {
       const constraints = await client.$queryRaw<
@@ -1625,28 +1737,59 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
           'Lake_mine_fkey',
           'DraglineDelayReport_lake_fkey',
           'DraglineDelayReportGroundCheck_report_fkey',
-          'DraglineDelayReport_station_pair_check',
           'DraglineDelayReport_normal_buckets_check',
           'DraglineDelayReport_depth_check',
           'DraglineDelayReport_fuel_check',
           'DraglineDelayReportGroundCheck_sequence_check',
-          'DraglineDelayReportGroundCheck_start_check'
+          'DraglineDelayReportGroundCheck_start_check',
+          'DraglineDelayReport_station_start_check',
+          'DraglineDelayReport_station_end_check',
+          'DraglineDelayReport_cut_note_check',
+          'DraglineDelayReport_day_shift_field_lead_fkey',
+          'DraglineDelayReport_night_shift_field_lead_fkey'
         )
       `;
       const byName = new Map(
         constraints.map((constraint) => [constraint.conname, constraint]),
       );
-      expect([...byName.keys()]).toHaveLength(9);
+      expect([...byName.keys()]).toHaveLength(13);
       expect(byName.get("Lake_mine_fkey")?.confdeltype).toBe("r");
       expect(byName.get("DraglineDelayReport_lake_fkey")?.confdeltype).toBe("n");
       expect(
         byName.get("DraglineDelayReportGroundCheck_report_fkey")?.confdeltype,
       ).toBe("c");
       expect(
-        byName.get("DraglineDelayReport_station_pair_check")?.definition,
-      ).toMatch(
-        /"stationEndFeet" IS NULL.*OR.*"stationStartFeet" IS NOT NULL/,
-      );
+        byName.get("DraglineDelayReport_day_shift_field_lead_fkey")?.confdeltype,
+      ).toBe("n");
+      expect(
+        byName.get("DraglineDelayReport_night_shift_field_lead_fkey")?.confdeltype,
+      ).toBe("n");
+      expect(
+        byName.get("DraglineDelayReport_station_start_check")?.definition,
+      ).toContain('"stationStartFeet" >= 0');
+      expect(
+        byName.get("DraglineDelayReport_station_end_check")?.definition,
+      ).toContain('"stationEndFeet" >= 0');
+
+      const pairConstraint = await client.$queryRaw<Array<{ count: bigint }>>`
+        SELECT COUNT(*) AS count
+        FROM pg_constraint
+        WHERE conname = 'DraglineDelayReport_station_pair_check'
+      `;
+      expect(Number(pairConstraint[0].count)).toBe(0);
+
+      const cutTypeColumn = await client.$queryRaw<
+        Array<{ column_default: string | null; is_nullable: string }>
+      >`
+        SELECT column_default, is_nullable
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'DraglineDelayReport'
+          AND column_name = 'cutType'
+      `;
+      expect(cutTypeColumn).toEqual([
+        { column_default: null, is_nullable: "YES" },
+      ]);
     } finally {
       await client.$disconnect();
     }

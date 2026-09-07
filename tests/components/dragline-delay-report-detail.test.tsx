@@ -57,10 +57,18 @@ function completedReport() {
     supervisorId: "supervisor-1",
     supervisorDisplayName: "Sam Supervisor",
     supervisorEmployeeCode: "200",
+    dayShiftFieldLeadId: "operator-1",
+    dayShiftFieldLeadDisplayName: "Alex Operator",
+    dayShiftFieldLeadEmployeeCode: "100",
+    nightShiftFieldLeadId: null,
+    nightShiftFieldLeadDisplayName: null,
+    nightShiftFieldLeadEmployeeCode: null,
     lakeId: null,
     lakeDisplayNameSnapshot: null,
     normalDiggingBuckets: null,
     benchfillBuckets: null,
+    cutType: "KEY_CUT",
+    cutNote: "Starting new side of lake after dragline relocation.",
     stationStartFeet: 1600,
     stationEndFeet: 1620,
     depthFeet: null,
@@ -244,8 +252,15 @@ describe("Dragline Delay Report Completed detail", () => {
       screen.getByText("Corrected Ending Hour Meter from signed shift paperwork."),
     ).toBeInTheDocument();
     expect(screen.getByText("2 → 3")).toBeInTheDocument();
-    expect(screen.getByText("Section Start")).toBeInTheDocument();
-    expect(screen.getByText("Section End")).toBeInTheDocument();
+    expect(screen.getByText("Station Start")).toBeInTheDocument();
+    expect(screen.getByText("Station End")).toBeInTheDocument();
+    expect(screen.getByText("Key Cut")).toBeInTheDocument();
+    expect(
+      screen.getByText("Starting new side of lake after dragline relocation."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Day Shift Field Lead")).toBeInTheDocument();
+    expect(screen.getAllByText("Alex Operator").length).toBeGreaterThan(0);
+    expect(screen.getByText("Night Shift Field Lead")).toBeInTheDocument();
     expect(screen.getByText("16+00")).toBeInTheDocument();
     expect(screen.getByText("16+20")).toBeInTheDocument();
     expect(screen.getByText("9 h 45 min")).toBeInTheDocument();
@@ -260,6 +275,52 @@ describe("Dragline Delay Report Completed detail", () => {
       "Closing Notes",
       "Correction History",
     ]);
+  });
+
+  it.each([
+    [null, null],
+    [1600, null],
+    [null, 1620],
+  ])("shows unavailable Advance for incomplete Station values", async (start, end) => {
+    mocks.getReport.mockResolvedValue({
+      ...completedReport(),
+      stationStartFeet: start,
+      stationEndFeet: end,
+    });
+    render(
+      await DraglineDelayReportDetailPage({
+        params: Promise.resolve({ id: "report-1" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    const advance = screen.getByText("Advance").parentElement;
+    expect(advance).toHaveTextContent("—");
+    expect(advance).not.toHaveTextContent("0 ft");
+  });
+
+  it("renders historical null Cut and Field Leads neutrally", async () => {
+    mocks.getReport.mockResolvedValue({
+      ...completedReport(),
+      cutType: null,
+      cutNote: null,
+      dayShiftFieldLeadId: null,
+      dayShiftFieldLeadDisplayName: null,
+      dayShiftFieldLeadEmployeeCode: null,
+    });
+    render(
+      await DraglineDelayReportDetailPage({
+        params: Promise.resolve({ id: "report-1" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    expect(screen.getByText("Cut Type").parentElement).toHaveTextContent(
+      "Not recorded",
+    );
+    expect(screen.getByText("Cut Note").parentElement).toHaveTextContent(
+      "Not recorded",
+    );
   });
 
   it.each([

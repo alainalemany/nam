@@ -214,7 +214,7 @@ model, generic attachment model, or implemented schema.
 Status: DDR-1 root, ordered Operator, and stable Timeline Entry persistence;
 DDR-2 Lake, Ground Check, production/progress, measurement, and closing-note
 persistence; DDR-3 completion/correction persistence; and additive Shared
-Downtime Block parent/activity persistence are implemented in
+Downtime Block plus Cut Context/Field Lead refinements are implemented in
 `prisma/schema.prisma`. The feature is governed by
 `docs/architecture/features/dragline-delay-reports.md`.
 
@@ -238,14 +238,22 @@ Conceptual fields and rules:
 - Optional-while-Draft live supervisor Employee reference plus limited
   display-name and employee-code snapshots; Supervisor is required for
   completion and correction.
+- Optional Day Shift Field Lead and Night Shift Field Lead Employee references,
+  each with nullable display-name and employee-code snapshots. Both use
+  `SetNull` deletion behavior and neither is required by report shift or status.
 - Optional live Lake reference plus Lake display-name snapshot.
 - Optional nonnegative integer Normal Digging and Benchfill bucket counts.
   Benchfill's create-form visual `0` is not a database default; null remains a
   valid persisted value and historical values are not normalized.
-- Optional normalized `stationStartFeet` and `stationEndFeet` values. Drafts may
-  retain Start without End; End may never exist without Start. Completion and
-  correction validation require the two values to be paired when either is
-  recorded.
+- Nullable `DraglineDelayReportCutType` with values `PRODUCTION`, `KEY_CUT`,
+  `FACE_CUT`, `BOX_CUT`, `EXTENDED_KEY_CUT`, and `OTHER`. It has no database
+  default; only a brand-new application form initializes `PRODUCTION`, so
+  historical null values are not backfilled.
+- Optional `cutNote` text of at most 1000 nonblank characters when present. It
+  applies to every Cut Type, including Other, with no separate description.
+- Optional normalized `stationStartFeet` and `stationEndFeet` values. Both are
+  nullable and independently optional in Draft, completion, and correction.
+  Cut Type does not change station requiredness.
 - Optional nonnegative integer Depth feet, Fuel gallons, Cable Drag feet, and
   Hoist feet.
 - Optional Comments, Safety Items Found, and Action Taken text.
@@ -432,13 +440,14 @@ identity because NAM Dashboard has no reliable authenticated-user concept.
 - Shared Downtime Block activities never enter the interval union.
 - Run Time is `720 - Down Time`.
 - Client-entered totals are never authoritative.
-- User-facing Section input preserves normalized section number/offset or
+- User-facing Station input preserves normalized station number/offset or
   deterministic absolute feet, not notation-only text.
-- Section offset accepts one or two digits in the range `0..99`.
-- Draft persistence allows neither Section value, Start only, or Start and End;
-  a database check rejects End without Start.
+- Station offset accepts one or two digits in the range `0..99`.
+- Draft, completion, and correction persistence allow neither Station value,
+  Start only, End only, or both; no station-pair database constraint remains.
 - Advance is the absolute difference between ending and starting absolute feet
-  and is server-derived rather than persisted.
+  and is server-derived rather than persisted only when both values exist.
+  Incomplete stationing is unavailable, never `0 ft`.
 - Depth, Cable Drag, and Hoist use feet; Fuel uses gallons.
 - DDR report Fuel remains independent from `EquipmentFuelEvent`.
 
@@ -967,8 +976,8 @@ feature-owned selected-date contract.
 
 ### Employee
 
-Implemented canonical people reference used by Work Schedule and approved for
-future Dragline Delay Report operator/supervisor selection.
+Implemented canonical people reference used by Work Schedule and Dragline Delay
+Report operator, supervisor, and Field Lead selection.
 
 Implemented fields:
 
@@ -985,8 +994,8 @@ Implemented relationships:
 - May own WeeklySchedule primary-employee relations.
 - May own WeeklySchedule Assigned By relations.
 - May be referenced by AssignmentCrewMember.
-- Will be the canonical reference source for ordered DDR operators and the DDR
-  supervisor when DDR persistence is implemented.
+- Is the canonical reference source for ordered DDR operators, the DDR
+  supervisor, and optional Day/Night Shift Field Leads.
 
 New Work Schedule choices use active Employees, and Assigned By choices require
 `isSupervisor`. Inactivation removes a person from normal new selection while

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { completeDraglineDelayReportFromDetailAction } from "@/features/dragline-delay-reports/actions";
 import { getDraglineDelayReportById } from "@/features/dragline-delay-reports/data";
 import { DraglineDelayReportCompletionAction } from "@/features/dragline-delay-reports/DraglineDelayReportCompletionAction";
+import { formatDraglineDelayReportCutType } from "@/features/dragline-delay-reports/cut-types";
 import { formatDraglineDurationMinutes } from "@/features/dragline-delay-reports/duration";
 import { calculateStationAdvance, formatStationNotation } from "@/features/dragline-delay-reports/station";
 import { formatEventStartMinute } from "@/features/dragline-delay-reports/time";
@@ -125,6 +126,14 @@ export default async function DraglineDelayReportDetailPage({
           <div>
             <p className="eyebrow">Supervisor</p>
             <p>{report.supervisorDisplayName ?? missingLabel}</p>
+          </div>
+          <div>
+            <p className="eyebrow">Day Shift Field Lead</p>
+            <p>{report.dayShiftFieldLeadDisplayName ?? missingLabel}</p>
+          </div>
+          <div>
+            <p className="eyebrow">Night Shift Field Lead</p>
+            <p>{report.nightShiftFieldLeadDisplayName ?? missingLabel}</p>
           </div>
           <div>
             <p className="eyebrow">Completed</p>
@@ -262,7 +271,19 @@ export default async function DraglineDelayReportDetailPage({
             </p>
           </div>
           <div>
-            <p className="eyebrow">Section Start</p>
+            <p className="eyebrow">Cut Type</p>
+            <p>
+              {report.cutType
+                ? formatDraglineDelayReportCutType(report.cutType)
+                : missingLabel}
+            </p>
+          </div>
+          <div>
+            <p className="eyebrow">Cut Note</p>
+            <p>{report.cutNote ?? missingLabel}</p>
+          </div>
+          <div>
+            <p className="eyebrow">Station Start</p>
             <p>
               {report.stationStartFeet == null
                 ? missingLabel
@@ -270,7 +291,7 @@ export default async function DraglineDelayReportDetailPage({
             </p>
           </div>
           <div>
-            <p className="eyebrow">Section End</p>
+            <p className="eyebrow">Station End</p>
             <p>
               {report.stationEndFeet == null
                 ? missingLabel
@@ -281,7 +302,7 @@ export default async function DraglineDelayReportDetailPage({
             <p className="eyebrow">Advance</p>
             <p>
               {report.stationStartFeet == null || report.stationEndFeet == null
-                ? report.status === "DRAFT" ? "Not calculated in Draft" : "Not calculated"
+                ? "—"
                 : `${calculateStationAdvance(report.stationStartFeet, report.stationEndFeet)} ft`}
             </p>
           </div>

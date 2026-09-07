@@ -90,6 +90,8 @@ async function resolveEmployees(
   const employeeIds = [
     ...input.operators.map((operator) => operator.employeeId),
     ...(input.supervisorId ? [input.supervisorId] : []),
+    ...(input.dayShiftFieldLeadId ? [input.dayShiftFieldLeadId] : []),
+    ...(input.nightShiftFieldLeadId ? [input.nightShiftFieldLeadId] : []),
   ];
   const employees = await transaction.employee.findMany({
     where: { id: { in: employeeIds } },
@@ -124,42 +126,101 @@ async function resolveEmployees(
     };
   });
 
-  if (!input.supervisorId) {
-    return {
-      operators,
-      supervisor: {
-        supervisorId: null,
-        supervisorDisplayName: null,
-        supervisorEmployeeCode: null,
-      },
+  let supervisor = {
+    supervisorId: null as string | null,
+    supervisorDisplayName: null as string | null,
+    supervisorEmployeeCode: null as string | null,
+  };
+  if (input.supervisorId) {
+    const selectedSupervisor = byId.get(input.supervisorId);
+    if (!selectedSupervisor) {
+      throw new DraglineDelayReportPersistenceError(
+        "The selected Supervisor could not be found.",
+        "supervisorId",
+      );
+    }
+    const unchangedSupervisor = existing?.supervisorId === selectedSupervisor.id;
+    if (
+      !unchangedSupervisor &&
+      (!selectedSupervisor.isActive || !selectedSupervisor.isSupervisor)
+    ) {
+      throw new DraglineDelayReportPersistenceError(
+        "Select an active supervisor-eligible Employee.",
+        "supervisorId",
+      );
+    }
+    supervisor = {
+      supervisorId: selectedSupervisor.id,
+      supervisorDisplayName: unchangedSupervisor
+        ? existing.supervisorDisplayName
+        : selectedSupervisor.displayName,
+      supervisorEmployeeCode: unchangedSupervisor
+        ? existing.supervisorEmployeeCode
+        : selectedSupervisor.employeeCode,
     };
   }
 
-  const supervisor = byId.get(input.supervisorId);
-  if (!supervisor) {
-    throw new DraglineDelayReportPersistenceError(
-      "The selected Supervisor could not be found.",
-      "supervisorId",
-    );
+  function resolveFieldLead(
+    employeeId: string | undefined,
+    label: "Day Shift Field Lead" | "Night Shift Field Lead",
+    field: "dayShiftFieldLeadId" | "nightShiftFieldLeadId",
+    existingEmployeeId: string | null | undefined,
+    existingDisplayName: string | null | undefined,
+    existingEmployeeCode: string | null | undefined,
+  ) {
+    if (!employeeId) {
+      return { employeeId: null, displayName: null, employeeCode: null };
+    }
+    const employee = byId.get(employeeId);
+    if (!employee) {
+      throw new DraglineDelayReportPersistenceError(
+        `The selected ${label} could not be found.`,
+        field,
+      );
+    }
+    const unchanged = existingEmployeeId === employee.id;
+    if (!unchanged && !employee.isActive) {
+      throw new DraglineDelayReportPersistenceError(
+        `Select an active Employee as ${label}.`,
+        field,
+      );
+    }
+    return {
+      employeeId: employee.id,
+      displayName: unchanged ? existingDisplayName ?? null : employee.displayName,
+      employeeCode: unchanged
+        ? existingEmployeeCode ?? null
+        : employee.employeeCode,
+    };
   }
-  const unchangedSupervisor = existing?.supervisorId === supervisor.id;
-  if (!unchangedSupervisor && (!supervisor.isActive || !supervisor.isSupervisor)) {
-    throw new DraglineDelayReportPersistenceError(
-      "Select an active supervisor-eligible Employee.",
-      "supervisorId",
-    );
-  }
+
+  const dayShiftFieldLead = resolveFieldLead(
+    input.dayShiftFieldLeadId,
+    "Day Shift Field Lead",
+    "dayShiftFieldLeadId",
+    existing?.dayShiftFieldLeadId,
+    existing?.dayShiftFieldLeadDisplayName,
+    existing?.dayShiftFieldLeadEmployeeCode,
+  );
+  const nightShiftFieldLead = resolveFieldLead(
+    input.nightShiftFieldLeadId,
+    "Night Shift Field Lead",
+    "nightShiftFieldLeadId",
+    existing?.nightShiftFieldLeadId,
+    existing?.nightShiftFieldLeadDisplayName,
+    existing?.nightShiftFieldLeadEmployeeCode,
+  );
 
   return {
     operators,
-    supervisor: {
-      supervisorId: supervisor.id,
-      supervisorDisplayName: unchangedSupervisor
-        ? existing.supervisorDisplayName
-        : supervisor.displayName,
-      supervisorEmployeeCode: unchangedSupervisor
-        ? existing.supervisorEmployeeCode
-        : supervisor.employeeCode,
+    supervisor,
+    fieldLeads: {
+      dayShiftFieldLeadId: dayShiftFieldLead.employeeId,
+      dayShiftFieldLeadDisplayName: dayShiftFieldLead.displayName,
+      dayShiftFieldLeadEmployeeCode: dayShiftFieldLead.employeeCode,
+      nightShiftFieldLeadId: nightShiftFieldLead.employeeId,
+      nightShiftFieldLeadDisplayName: nightShiftFieldLead.displayName,
+      nightShiftFieldLeadEmployeeCode: nightShiftFieldLead.employeeCode,
     },
   };
 }
@@ -687,9 +748,12 @@ export async function persistDraglineDelayReportInTransaction(
     startingHourMeter: input.startingHourMeter,
     endingHourMeter: input.endingHourMeter ?? null,
     ...people.supervisor,
+    ...people.fieldLeads,
     ...lake,
     normalDiggingBuckets: input.normalDiggingBuckets ?? null,
     benchfillBuckets: input.benchfillBuckets ?? null,
+    cutType: input.cutType ?? null,
+    cutNote: input.cutNote ?? null,
     stationStartFeet: normalized.stationStartFeet ?? null,
     stationEndFeet: normalized.stationEndFeet ?? null,
     depthFeet: input.depthFeet ?? null,

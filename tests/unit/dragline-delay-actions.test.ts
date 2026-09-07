@@ -48,9 +48,13 @@ function mutationPayload(
     startingHourMeter: "12345",
     endingHourMeter: "12356",
     supervisorId: "supervisor-1",
+    dayShiftFieldLeadId: "",
+    nightShiftFieldLeadId: "",
     lakeId: "",
     normalDiggingBuckets: "",
     benchfillBuckets: "",
+    cutType: "PRODUCTION",
+    cutNote: "",
     stationStart: "",
     stationEnd: "",
     depthFeet: "",
@@ -117,34 +121,43 @@ describe("Dragline Delay Report lifecycle Server Actions", () => {
     expect(mocks.complete).not.toHaveBeenCalled();
   });
 
-  it("saves Start-only Section progress but keeps completion paired", async () => {
+  it.each([
+    ["Start-only", "18+5", ""],
+    ["End-only", "", "18+20"],
+    ["blank", "", ""],
+  ])("saves and completes %s Station progress", async (_label, stationStart, stationEnd) => {
     await expect(
       updateDraglineDelayReportAction(
         "report-1",
         emptyDraglineDelayReportActionState,
         mutationFormData("draft", {
-          stationStart: "18+5",
-          stationEnd: "",
+          stationStart,
+          stationEnd,
         }),
       ),
     ).rejects.toThrow("redirect:/dragline-delay-reports/report-1?saved=updated");
     expect(mocks.persist).toHaveBeenCalledWith(
-      expect.objectContaining({ stationStart: "18+5", stationEnd: undefined }),
+      expect.objectContaining({
+        stationStart: stationStart || undefined,
+        stationEnd: stationEnd || undefined,
+      }),
       "report-1",
     );
 
-    const completion = await updateDraglineDelayReportAction(
-      "report-1",
-      emptyDraglineDelayReportActionState,
-      mutationFormData("complete", {
-        stationStart: "18+5",
-        stationEnd: "",
+    await expect(
+      updateDraglineDelayReportAction(
+        "report-1",
+        emptyDraglineDelayReportActionState,
+        mutationFormData("complete", { stationStart, stationEnd }),
+      ),
+    ).rejects.toThrow("redirect:/dragline-delay-reports/report-1?saved=completed");
+    expect(mocks.complete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stationStart: stationStart || undefined,
+        stationEnd: stationEnd || undefined,
       }),
+      "report-1",
     );
-    expect(completion.fieldErrors.stationEnd).toEqual([
-      "Enter both Section Start and Section End, or leave both blank.",
-    ]);
-    expect(mocks.complete).not.toHaveBeenCalled();
   });
 
   it("validates and explicitly completes through completion persistence", async () => {
@@ -184,6 +197,25 @@ describe("Dragline Delay Report lifecycle Server Actions", () => {
     expect(mocks.persist).not.toHaveBeenCalled();
   });
 
+  it("directly completes a persisted Draft with End-only Station data", async () => {
+    mocks.completionPayload.mockReturnValue(
+      mutationPayload({ stationStart: "", stationEnd: "18+20" }),
+    );
+
+    await expect(
+      completeDraglineDelayReportFromDetailAction(
+        "report-1",
+        2,
+        emptyDraglineDelayReportActionState,
+        new FormData(),
+      ),
+    ).rejects.toThrow("redirect:/dragline-delay-reports/report-1?saved=completed");
+    expect(mocks.complete).toHaveBeenCalledWith(
+      expect.objectContaining({ stationStart: undefined, stationEnd: "18+20" }),
+      "report-1",
+    );
+  });
+
   it.each([
     [
       "Ending Hour Meter",
@@ -192,11 +224,6 @@ describe("Dragline Delay Report lifecycle Server Actions", () => {
     ],
     ["Supervisor", { supervisorId: "" }, "supervisorId"],
     ["final Code 13", { timelineEntries: [] }, "timelineEntries"],
-    [
-      "paired Sections",
-      { stationStart: "18+5", stationEnd: "" },
-      "stationEnd",
-    ],
     [
       "Shared Downtime Block activities",
       {
@@ -379,11 +406,26 @@ describe("Dragline Delay Report lifecycle Server Actions", () => {
       correctDraglineDelayReportAction(
         "report-1",
         emptyDraglineDelayReportActionState,
-        mutationFormData("correct"),
+        mutationFormData("correct", {
+          stationStart: "",
+          stationEnd: "18+20",
+          cutType: "OTHER",
+          cutNote: "Trial cut for revised layout.",
+          dayShiftFieldLeadId: "operator-1",
+          nightShiftFieldLeadId: "supervisor-1",
+        }),
       ),
     ).rejects.toThrow("redirect:/dragline-delay-reports/report-1?saved=corrected");
     expect(mocks.correct).toHaveBeenCalledWith(
-      expect.objectContaining({ recordVersion: 2 }),
+      expect.objectContaining({
+        recordVersion: 2,
+        stationStart: undefined,
+        stationEnd: "18+20",
+        cutType: "OTHER",
+        cutNote: "Trial cut for revised layout.",
+        dayShiftFieldLeadId: "operator-1",
+        nightShiftFieldLeadId: "supervisor-1",
+      }),
       "report-1",
       "Corrected Ending Hour Meter from signed shift paperwork.",
     );

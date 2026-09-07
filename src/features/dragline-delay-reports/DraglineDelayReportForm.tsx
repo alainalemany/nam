@@ -17,6 +17,7 @@ import {
   searchDraglineDelayCodes,
 } from "./catalog";
 import { calculateDraglineShiftTotals } from "./calculations";
+import { DRAGLINE_DELAY_REPORT_CUT_TYPES } from "./cut-types";
 import { formatDraglineDurationMinutes } from "./duration";
 import { filterDraglineLakesForMine } from "./lakes";
 import { calculateStationAdvance, parseStationNotation } from "./station";
@@ -360,6 +361,7 @@ function EmployeeField({
   options,
   state,
   errorPath,
+  optional = false,
   onChange,
 }: {
   label: string;
@@ -368,6 +370,7 @@ function EmployeeField({
   options: DraglineEmployeeOption[];
   state: DraglineDelayReportActionState;
   errorPath: string;
+  optional?: boolean;
   onChange: (value: string) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -398,7 +401,7 @@ function EmployeeField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
         >
-          <option value="">{label === "Supervisor" ? "Not recorded" : `Select ${label}`}</option>
+          <option value="">{optional ? "Not recorded" : `Select ${label}`}</option>
           {visible.map((option) => (
             <option
               disabled={!option.isActive && option.id !== value}
@@ -449,6 +452,12 @@ export function DraglineDelayReportForm({
     initialValues.endingHourMeter,
   );
   const [supervisorId, setSupervisorId] = useState(initialValues.supervisorId);
+  const [dayShiftFieldLeadId, setDayShiftFieldLeadId] = useState(
+    initialValues.dayShiftFieldLeadId,
+  );
+  const [nightShiftFieldLeadId, setNightShiftFieldLeadId] = useState(
+    initialValues.nightShiftFieldLeadId,
+  );
   const [lakeId, setLakeId] = useState(initialValues.lakeId);
   const [normalDiggingBuckets, setNormalDiggingBuckets] = useState(
     initialValues.normalDiggingBuckets,
@@ -456,6 +465,8 @@ export function DraglineDelayReportForm({
   const [benchfillBuckets, setBenchfillBuckets] = useState(
     initialValues.benchfillBuckets,
   );
+  const [cutType, setCutType] = useState(initialValues.cutType);
+  const [cutNote, setCutNote] = useState(initialValues.cutNote);
   const [stationStart, setStationStart] = useState(initialValues.stationStart);
   const [stationEnd, setStationEnd] = useState(initialValues.stationEnd);
   const [depthFeet, setDepthFeet] = useState(initialValues.depthFeet);
@@ -743,9 +754,13 @@ export function DraglineDelayReportForm({
     startingHourMeter,
     endingHourMeter,
     supervisorId,
+    dayShiftFieldLeadId,
+    nightShiftFieldLeadId,
     lakeId,
     normalDiggingBuckets,
     benchfillBuckets,
+    cutType,
+    cutNote,
     stationStart,
     stationEnd,
     depthFeet,
@@ -1141,6 +1156,7 @@ export function DraglineDelayReportForm({
             label="Supervisor"
             onChange={setSupervisorId}
             options={supervisorOptions}
+            optional
             state={state}
             value={supervisorId}
           />
@@ -1148,6 +1164,31 @@ export function DraglineDelayReportForm({
             {mode === "correction"
               ? "A Supervisor is required for the corrected Completed report."
               : "Supervisor may remain blank while Draft but is required to complete."}
+          </p>
+        </div>
+        <div className="full-width-field">
+          <EmployeeField
+            errorPath="dayShiftFieldLeadId"
+            label="Day Shift Field Lead"
+            onChange={setDayShiftFieldLeadId}
+            options={employeeOptions}
+            optional
+            state={state}
+            value={dayShiftFieldLeadId}
+          />
+        </div>
+        <div className="full-width-field">
+          <EmployeeField
+            errorPath="nightShiftFieldLeadId"
+            label="Night Shift Field Lead"
+            onChange={setNightShiftFieldLeadId}
+            options={employeeOptions}
+            optional
+            state={state}
+            value={nightShiftFieldLeadId}
+          />
+          <p className="subtle">
+            Field Leads are optional and use existing Employee records.
           </p>
         </div>
       </section>
@@ -1708,8 +1749,8 @@ export function DraglineDelayReportForm({
             Manage Lakes
           </a>
         </div>
-        <div className="form-grid full-width-field">
-          <label>
+        <div className="form-grid full-width-field ddr-work-area-grid">
+          <label className="ddr-work-area-half">
             <span>Lake</span>
             <select
               {...errorAttributes(state, "lakeId")}
@@ -1737,8 +1778,39 @@ export function DraglineDelayReportForm({
               <p className="subtle">No active Lakes exist for this Mine.</p>
             ) : null}
           </label>
-          <label>
-            <span>Section Start</span>
+          <label className="ddr-work-area-half">
+            <span>Cut Type</span>
+            <select
+              {...errorAttributes(state, "cutType")}
+              value={cutType}
+              onChange={(event) =>
+                setCutType(
+                  event.target.value as DraglineDelayReportFormInitialValues["cutType"],
+                )
+              }
+            >
+              <option value="">Not recorded</option>
+              {DRAGLINE_DELAY_REPORT_CUT_TYPES.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {firstError(state, "cutType")}
+          </label>
+          <label className="full-width-field">
+            <span>Cut Note</span>
+            <textarea
+              {...errorAttributes(state, "cutNote")}
+              maxLength={1000}
+              rows={3}
+              value={cutNote}
+              onChange={(event) => setCutNote(event.target.value)}
+            />
+            {firstError(state, "cutNote")}
+          </label>
+          <label className="ddr-work-area-third">
+            <span>Station Start</span>
             <input
               {...errorAttributes(state, "stationStart")}
               inputMode="numeric"
@@ -1748,8 +1820,8 @@ export function DraglineDelayReportForm({
             />
             {firstError(state, "stationStart")}
           </label>
-          <label>
-            <span>Section End</span>
+          <label className="ddr-work-area-third">
+            <span>Station End</span>
             <input
               {...errorAttributes(state, "stationEnd")}
               inputMode="numeric"
@@ -1759,20 +1831,16 @@ export function DraglineDelayReportForm({
             />
             {firstError(state, "stationEnd")}
           </label>
-          <div>
+          <div className="ddr-work-area-third">
             <span>Advance</span>
             <p>
               <strong>
-                {advanceFeet == null
-                  ? stationStart.trim() && !stationEnd.trim()
-                    ? "Enter Section End to calculate"
-                    : "Enter valid Start and End"
-                  : `${advanceFeet} ft`}
+                {advanceFeet == null ? "—" : `${advanceFeet} ft`}
               </strong>
             </p>
             <p className="subtle">Absolute distance; calculated by NAM.</p>
           </div>
-          <label>
+          <label className="ddr-work-area-third">
             <span>Depth (feet)</span>
             <input
               {...errorAttributes(state, "depthFeet")}

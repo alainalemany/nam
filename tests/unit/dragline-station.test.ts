@@ -6,8 +6,8 @@ import {
   parseStationNotation,
 } from "@/features/dragline-delay-reports/station";
 
-describe("Dragline section helpers", () => {
-  it("accepts one- or two-digit section offsets and normalizes to absolute feet", () => {
+describe("Dragline station helpers", () => {
+  it("accepts one- or two-digit station offsets and normalizes to absolute feet", () => {
     expect(parseStationNotation("16+0")).toEqual({
       stationNumber: 16,
       offsetFeet: 0,
@@ -29,7 +29,7 @@ describe("Dragline section helpers", () => {
     expect(calculateStationAdvance(1690, 1720)).toBe(30);
   });
 
-  it.each(["50 +30", "050+30", "16+100", "-1+20", "section 16+20"])(
+  it.each(["50 +30", "050+30", "16+100", "-1+20", "station 16+20"])(
     "rejects malformed notation %s",
     (value) => expect(() => parseStationNotation(value)).toThrow(),
   );

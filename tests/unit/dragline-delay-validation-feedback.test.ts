@@ -27,7 +27,7 @@ describe("Dragline Delay Report validation feedback", () => {
       "Timeline",
     );
     expect(formatDraglineDelayReportErrorPath("stationStart")).toBe(
-      "Section Start",
+      "Station Start",
     );
     expect(
       formatDraglineDelayReportErrorPath("downtimeBlocks.1.durationMinutes"),
@@ -42,10 +42,7 @@ describe("Dragline Delay Report validation feedback", () => {
   it("builds an ordered readable summary without duplicate entries", () => {
     expect(
       draglineDelayReportErrorSummary({
-        stationEnd: [
-          "Enter both Section Start and Section End, or leave both blank.",
-          "Enter both Section Start and Section End, or leave both blank.",
-        ],
+        stationEnd: ["Station is invalid.", "Station is invalid."],
         "timelineEntries.2.durationMinutes": [
           "A downtime-causing entry requires a positive duration.",
         ],
@@ -53,8 +50,8 @@ describe("Dragline Delay Report validation feedback", () => {
     ).toEqual([
       {
         path: "stationEnd",
-        label: "Section End",
-        message: "Enter both Section Start and Section End, or leave both blank.",
+        label: "Station End",
+        message: "Station is invalid.",
       },
       {
         path: "timelineEntries.2.durationMinutes",

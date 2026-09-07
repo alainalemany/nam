@@ -417,8 +417,9 @@ The feature owns:
   durable lightweight correction metadata.
 - Canonical Dragline Equipment context with derived Mine/City and historical
   snapshots.
-- Multiple ordered operator participants and one supervisor selected from the
-  canonical Employee model with historical snapshots.
+- Multiple ordered operator participants, one supervisor, and optional Day
+  Shift Field Lead and Night Shift Field Lead selected from the canonical
+  Employee model with historical snapshots.
 - Nonnegative whole-number Starting and Ending Hour Meter report facts; Starting
   is required in Draft and Ending may remain blank while Draft.
 - A stable concurrent timeline using one source-verified official code per
@@ -430,9 +431,10 @@ The feature owns:
   block moves as one unit and child Activities retain their internal order.
 - Explicit per-entry downtime meaning, integer-minute interval-union downtime,
   and runtime derived from a 720-minute shift.
-- Production/progress fields, normalized stations and derived Advance, manual
-  Depth/Fuel/Cable facts, repeatable Ground Check times, comments, and optional
-  safety/action fields.
+- Production/progress fields, controlled Cut Type and optional Cut Note,
+  independently optional normalized Station Start and Station End values with
+  derived Advance only when both are present, manual Depth/Fuel/Cable facts,
+  repeatable Ground Check times, comments, and optional safety/action fields.
 - Canonical Mine-owned Lake reference management and report selection limited
   to active Lakes belonging to the selected Equipment's Mine.
 - Explicit Complete Report behavior requiring Ending Hour Meter, at least one
@@ -470,10 +472,13 @@ official codes and descriptions must not be invented or rewritten.
 DDR-1 through DDR-3 are implemented as an independent workflow with Draft
 history/create/edit/detail, explicit completion, Completed read-only detail,
 explicit reasoned correction, stable ordered children, Catalog V1 validation,
-Mine-filtered Lake selection, production/progress facts, absolute Advance,
-derived runtime/downtime, optimistic concurrency, and complete failure-state
-preservation. It does not participate in Daily Log, Day View, Work Schedule,
-attachments, or photos.
+Mine-filtered Lake selection, production/progress facts, Cut Type/Note,
+independent stationing, optional Day/Night Shift Field Leads, absolute Advance
+when both stations are available, derived runtime/downtime, optimistic
+concurrency, and complete failure-state preservation. New forms initialize Cut
+Type to Production in application state; the nullable database field has no
+default, so historical reports are not backfilled. It does not participate in
+Daily Log, Day View, Work Schedule, attachments, or photos.
 
 Completion does not require optional DDR-2 production/progress facts. Open
 questions are future Ground Check derivation and any precision finer than

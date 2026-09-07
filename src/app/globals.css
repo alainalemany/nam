@@ -1486,6 +1486,22 @@ textarea {
   grid-column: 1 / -1;
 }
 
+.ddr-work-area-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.ddr-work-area-half {
+  grid-column: span 3;
+}
+
+.ddr-work-area-grid > .full-width-field {
+  grid-column: 1 / -1;
+}
+
+.ddr-work-area-third {
+  grid-column: span 2;
+}
+
 .ddr-timeline-fields {
   display: grid;
   align-items: end;
@@ -1664,10 +1680,17 @@ textarea {
 
   .ddr-employee-field,
   .ddr-code-field,
+  .ddr-work-area-grid,
   .ddr-timeline-fields,
   .ddr-downtime-block-fields,
   .ddr-downtime-block-activity-fields {
     grid-template-columns: 1fr;
+  }
+
+  .ddr-work-area-half,
+  .ddr-work-area-grid > .full-width-field,
+  .ddr-work-area-third {
+    grid-column: auto;
   }
 
   .ddr-code-field,
