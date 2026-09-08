@@ -816,8 +816,16 @@ separate and still requires final Code 13 — Shift Change.
   sum of every duration.
 - Overlapping downtime is counted once.
 - Concurrent non-downtime work adds no machine downtime.
-- Normal shift duration is 720 minutes.
+- Available time is always a fixed 720-minute budget.
+- A qualifying Timeline Row or Shared Downtime Block keeps its full duration
+  when it extends beyond the nominal scheduled shift end; post-shift time is
+  subtracted from 720 rather than added to the budget.
+- Code 13 — Shift Change follows the same explicit downtime rule as other
+  normal Timeline Rows. When marked as downtime it requires a positive duration
+  and contributes that duration to the same interval union.
 - Run Time is server-derived as `720 - Down Time`.
+- Unique downtime above 720 is invalid; Run Time and Down Time each remain in
+  `0..720`, and their sum remains exactly 720.
 - Client-entered runtime or downtime totals are never authoritative.
 
 ### Station And Advance

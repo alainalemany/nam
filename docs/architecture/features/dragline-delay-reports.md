@@ -32,7 +32,7 @@ Related Documents:
 - `docs/reference/README.md`
 - `docs/reference/dragline-delay-reports/delay-code-catalog-v1.md`
 
-Last Reviewed: 2026-09-06
+Last Reviewed: 2026-09-08
 
 Implementation Status: DDR-1 through DDR-3 are implemented as an independent
 usable Draft, completion, and correction workflow. The aggregate includes
@@ -363,14 +363,15 @@ not violate uniqueness. Concurrent activities remain separate child records.
 Draft editing must preserve submitted child identities and reject unknown or
 duplicated identities rather than replacing every timeline row destructively.
 
-For entries other than Code 13, `causesDowntime: true` requires positive integer
-duration minutes. If false, any recorded duration is excluded from machine
-downtime. Category alone does not determine downtime, and concurrent
-non-downtime work never adds stopped-machine time.
+Every entry with `causesDowntime: true`, including Code 13 — Shift Change,
+requires positive integer duration minutes. If false, any recorded duration is
+excluded from machine downtime. Category alone does not determine downtime,
+and concurrent non-downtime work never adds stopped-machine time.
 
-Code 13 — Shift Change is an explicit exception to the submitted or persisted
-`causesDowntime` value. Its start time, duration, and description remain factual
-timeline information, but it always contributes zero minutes to Down Time.
+Code 13 remains a normal Timeline Row and follows the same explicit downtime
+semantics as other rows. It is not forced to downtime so historical rows stored
+with `causesDowntime: false` retain that value without backfill. When Code 13 is
+stored with `causesDowntime: true`, its full duration enters the downtime union.
 
 The data model does not require the operator to repeat a calendar date on every
 entry. DDR-1 stores an integer `startMinuteOffset` from operational-date
@@ -406,9 +407,9 @@ sequence.
 The block owns downtime exactly once. Its children add zero downtime regardless
 of count, repeated codes, category, or descriptive wording. Code 13 — Shift
 Change is excluded from block activities and remains a normal Timeline Row so
-its existing final-event and zero-downtime behavior is unchanged. Shared blocks
-are additive: existing reports and existing normal timeline entries are not
-converted.
+its final-event behavior and explicit downtime state remain report-owned.
+Shared blocks are additive: existing reports and existing normal timeline
+entries are not converted.
 
 ## 11. Downtime And Runtime
 
@@ -426,8 +427,10 @@ Server-authoritative calculation:
    ten-minute Ground Check into a half-open normalized interval
    `[startMinute, startMinute + durationMinutes)`. Block children do not enter
    this calculation.
-2. Clip each interval to the scheduled Day `[300, 1020)` or Night
-   `[1020, 1740)` calculation window; discard intervals entirely outside it.
+2. Preserve the existing lower bound at the scheduled shift start. Do not clip
+   the upper bound of a qualifying Timeline Row or Shared Downtime Block to the
+   nominal scheduled shift end. Ground Checks retain their established
+   scheduled-window validation and clipping behavior.
 3. Sort the remaining intervals by start minute and then end minute.
 4. Merge overlapping or touching intervals.
 5. Sum the merged interval lengths once.
@@ -435,15 +438,18 @@ Server-authoritative calculation:
    implementation slice; never trust a client-entered total.
 7. Derive runtime as `720 - downtimeMinutes`.
 
-Code 13 — Shift Change contributes zero minutes regardless of whether it occurs
-before, at, or after the scheduled shift end. Late Shift Change remains valid
-factual timeline history; scheduled Run Time and Down Time remain based on the
-720-minute calculation window.
+The available-time budget remains exactly 720 minutes; extending the factual
+timeline does not add minutes to that budget. A qualifying Code 13 or other
+Timeline Row at or after nominal shift end subtracts its full unique duration
+from 720. For example, 90 minutes of other unique downtime plus a ten-minute
+Code 13 beginning at 5:20 PM produces 100 minutes Down Time and 620 minutes Run
+Time. Overlap after nominal shift end is still unioned once.
 
-The derived result must remain within `0..720`. Clipping applies only to the
-scheduled calculation boundary: malformed starts, nonpositive durations, and
-other invalid interval state remain validation errors rather than being
-silently repaired.
+The derived result must remain within `0..720`, and Run Time plus Down Time must
+remain exactly 720. Unique qualifying downtime above 720 is rejected rather
+than capped or allowed to produce negative runtime. Malformed starts,
+nonpositive durations, and other invalid interval state remain validation
+errors rather than being silently repaired.
 
 Examples:
 
@@ -456,9 +462,8 @@ Examples:
   Ground Checks or overlap with timeline downtime are counted only once.
 - A Ground Check or normal downtime row wholly inside a Shared Downtime Block
   adds zero unique downtime; partial overlaps add only the unique portion.
-- Shared Downtime Blocks use the existing Day `[300, 1020)` and Night
-  `[1020, 1740)` calculation windows. A factual block may begin after scheduled
-  shift end, but only its portion inside the fixed 720-minute window contributes.
+- A valid Shared Downtime Block may extend beyond nominal shift end; its full
+  interval contributes while its children add no separate downtime.
 
 Client-side previews may use the same pure helper for immediate feedback, but
 the Server Action and persistence boundary recalculate the authoritative
@@ -805,13 +810,15 @@ rules in `docs/development.md`.
   against the canonical V1 catalog.
 - Actual-time plus operational-day-offset normalization and overnight ordering.
 - Equal-time deterministic sequence ordering.
-- Half-open interval union for disjoint, overlapping, nested, touching, and
-  concurrent downtime intervals.
+- Half-open interval union for disjoint, overlapping, nested, touching,
+  concurrent, and post-shift downtime intervals.
 - Shared Downtime Block single-interval contribution, block-to-block overlap,
-  normal-row overlap, Ground Check overlap, and shift-window clipping without
-  child multiplication.
+  normal-row overlap, post-shift extension, Ground Check overlap, and no child
+  multiplication.
 - Exclusion of non-downtime duration from downtime.
 - Runtime derivation from 720 minutes.
+- Code 13 explicit downtime contribution, positive-duration validation,
+  post-shift behavior, overlap behavior, and historical false-state retention.
 - Station parsing, normalized absolute feet, boundary crossing, and derived
   Advance.
 - Cut Type and Cut Note validation plus Employee/operator/supervisor/Field Lead

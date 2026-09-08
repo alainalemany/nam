@@ -49,7 +49,7 @@ function persistedReport(status: "DRAFT" | "COMPLETED") {
 }
 
 describe("Dragline Delay Report persisted-total reads", () => {
-  it("recalculates August 27 Draft history totals while ignoring persisted Code 13 downtime", async () => {
+  it("recalculates Draft history totals with persisted Code 13 downtime", async () => {
     mocks.findMany.mockResolvedValue([persistedReport("DRAFT")]);
 
     const reports = await getDraglineDelayReports();
@@ -57,14 +57,14 @@ describe("Dragline Delay Report persisted-total reads", () => {
     expect(reports[0]).toMatchObject({
       id: "draft-report",
       status: "DRAFT",
-      downTimeMinutes: 30,
-      runTimeMinutes: 690,
+      downTimeMinutes: 45,
+      runTimeMinutes: 675,
     });
     expect(reports[0]).not.toHaveProperty("timelineEntries");
     expect(reports[0]).not.toHaveProperty("groundChecks");
   });
 
-  it("recalculates August 27 Completed detail totals while ignoring persisted Code 13 downtime", async () => {
+  it("recalculates Completed detail totals with persisted Code 13 downtime", async () => {
     const persisted = persistedReport("COMPLETED");
     mocks.findUnique.mockResolvedValue(persisted);
 
@@ -73,10 +73,31 @@ describe("Dragline Delay Report persisted-total reads", () => {
     expect(report).toMatchObject({
       id: "completed-report",
       status: "COMPLETED",
-      downTimeMinutes: 30,
-      runTimeMinutes: 690,
+      downTimeMinutes: 45,
+      runTimeMinutes: 675,
       timelineEntries: persisted.timelineEntries,
       groundChecks: persisted.groundChecks,
+    });
+  });
+
+  it("reads historical Code 13 non-downtime state without rewriting it", async () => {
+    const persisted = persistedReport("COMPLETED");
+    persisted.timelineEntries[1].causesDowntime = false;
+    mocks.findUnique.mockResolvedValue(persisted);
+
+    const report = await getDraglineDelayReportById("completed-report");
+
+    expect(report).toMatchObject({
+      downTimeMinutes: 30,
+      runTimeMinutes: 690,
+      timelineEntries: [
+        expect.anything(),
+        expect.objectContaining({
+          delayCode: "13",
+          durationMinutes: 15,
+          causesDowntime: false,
+        }),
+      ],
     });
   });
 
@@ -95,12 +116,12 @@ describe("Dragline Delay Report persisted-total reads", () => {
 
     expect(reports[0]).toMatchObject({
       id: "draft-report",
-      downTimeMinutes: 30,
+      downTimeMinutes: 45,
     });
     expect(reports[1]).toMatchObject({
       id: "report-with-block",
-      downTimeMinutes: 400,
-      runTimeMinutes: 320,
+      downTimeMinutes: 415,
+      runTimeMinutes: 305,
     });
     expect(reports[0]).not.toHaveProperty("downtimeBlocks");
   });
@@ -300,11 +321,11 @@ describe("Dragline Delay Report persisted-total reads", () => {
       timelineEntries: [{
         id: "timeline-1",
         sequence: 2,
-        startMinuteOffset: 1020,
+        startMinuteOffset: 1040,
         delayCode: "13",
         description: "Shift Change",
-        durationMinutes: null,
-        causesDowntime: false,
+        durationMinutes: 10,
+        causesDowntime: true,
       }],
       groundChecks: [{ id: "ground-check-1", startMinuteOffset: 600 }],
       downtimeBlocks: [{
@@ -337,10 +358,12 @@ describe("Dragline Delay Report persisted-total reads", () => {
       timelineEntries: [{
         id: "timeline-1",
         sequence: 2,
-        startTime: "17:00",
+        startTime: "17:20",
         dayOffset: 0,
         catalogVersion: 1,
         delayCode: "13",
+        durationMinutes: "10",
+        causesDowntime: true,
       }],
       downtimeBlocks: [{
         id: "block-1",

@@ -159,6 +159,38 @@ function completedReport() {
 }
 
 describe("Dragline Delay Report Completed detail", () => {
+  it("displays corrected fixed-budget totals and late Code 13 downtime", async () => {
+    const report = completedReport();
+    mocks.getReport.mockResolvedValue({
+      ...report,
+      downTimeMinutes: 100,
+      runTimeMinutes: 620,
+      downtimeBlocks: [],
+      timelineEntries: [{
+        ...report.timelineEntries[0],
+        startMinuteOffset: 1040,
+        durationMinutes: 10,
+        causesDowntime: true,
+      }],
+    });
+    render(
+      await DraglineDelayReportDetailPage({
+        params: Promise.resolve({ id: "report-1" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    expect(screen.getByText("Down Time").parentElement).toHaveTextContent(
+      "1 h 40 min",
+    );
+    expect(screen.getByText("Run Time").parentElement).toHaveTextContent(
+      "10 h 20 min",
+    );
+    expect(screen.getByText("5:20 PM")).toBeInTheDocument();
+    expect(screen.getByText("10 min")).toBeInTheDocument();
+    expect(screen.getByText("Yes")).toBeInTheDocument();
+  });
+
   it("keeps Draft status above a date-first heading and secondary machine name", async () => {
     mocks.getReport.mockResolvedValue({
       ...completedReport(),

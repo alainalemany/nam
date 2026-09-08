@@ -1,4 +1,3 @@
-import { DRAGLINE_SHIFT_CHANGE_DELAY_CODE } from "./catalog";
 import {
   DRAGLINE_SHIFT_MINUTES,
   getDraglineShiftWindow,
@@ -45,10 +44,7 @@ export function calculateDraglineDowntime(
     }
 
     const start = Math.max(entry.startMinuteOffset, window.startMinuteOffset);
-    const end = Math.min(
-      entry.startMinuteOffset + entry.durationMinutes,
-      window.endMinuteOffset,
-    );
+    const end = entry.startMinuteOffset + entry.durationMinutes;
 
     return end > start ? [{ start, end }] : [];
   });
@@ -105,19 +101,22 @@ export function calculateDraglineShiftTotals(
   groundChecks: readonly GroundCheckDowntimeInput[] = [],
   downtimeBlocks: readonly SharedDowntimeBlockInput[] = [],
 ) {
+  const window = getDraglineShiftWindow(shift);
   const downTimeMinutes = calculateDraglineDowntime(shift, [
-    ...entries.map((entry) => ({
-      ...entry,
-      causesDowntime:
-        entry.delayCode === DRAGLINE_SHIFT_CHANGE_DELAY_CODE
-          ? false
-          : entry.causesDowntime,
-    })),
-    ...groundChecks.map((groundCheck) => ({
-      startMinuteOffset: groundCheck.startMinuteOffset,
-      durationMinutes: DRAGLINE_GROUND_CHECK_DOWNTIME_MINUTES,
-      causesDowntime: true,
-    })),
+    ...entries,
+    ...groundChecks.flatMap((groundCheck) => {
+      const durationMinutes = Math.min(
+        DRAGLINE_GROUND_CHECK_DOWNTIME_MINUTES,
+        window.endMinuteOffset - groundCheck.startMinuteOffset,
+      );
+      return durationMinutes > 0
+        ? [{
+            startMinuteOffset: groundCheck.startMinuteOffset,
+            durationMinutes,
+            causesDowntime: true,
+          }]
+        : [];
+    }),
     ...downtimeBlocks.map((block) => ({
       startMinuteOffset: block.startMinuteOffset,
       durationMinutes: block.durationMinutes,

@@ -201,7 +201,7 @@ describe("DraglineDelayReportForm", () => {
     expect(screen.getAllByText("11 h 40 min").length).toBeGreaterThan(0);
   });
 
-  it("makes Code 13 explicitly non-downtime in the timeline editor", () => {
+  it("lets Code 13 retain and edit its downtime state", () => {
     renderForm();
     const downtime = screen.getByLabelText(
       "Causes machine downtime for row 1",
@@ -213,15 +213,18 @@ describe("DraglineDelayReportForm", () => {
       target: { value: "13" },
     });
 
-    expect(downtime).toBeDisabled();
-    expect(downtime).not.toBeChecked();
-    expect(
-      screen.getByText(
-        "Shift Change is recorded in the timeline but does not count toward Down Time.",
-      ),
-    ).toHaveTextContent(
-      "Shift Change is recorded in the timeline but does not count toward Down Time.",
-    );
+    expect(downtime).toBeEnabled();
+    expect(downtime).toBeChecked();
+    expect(screen.queryByText(/does not count toward Down Time/)).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Start time for row 1"), {
+      target: { value: "17:20" },
+    });
+    fireEvent.change(screen.getByLabelText("Duration for row 1"), {
+      target: { value: "10" },
+    });
+    expect(screen.getAllByText("10 min").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("11 h 50 min").length).toBeGreaterThan(0);
   });
 
   it("previews the August 27 shared timeline and Ground Check union", () => {
@@ -945,6 +948,10 @@ describe("DraglineDelayReportForm", () => {
     fireEvent.change(screen.getByLabelText("Delay Code for row 1"), {
       target: { value: "13" },
     });
+    fireEvent.change(screen.getByLabelText("Duration for row 1"), {
+      target: { value: "10" },
+    });
+    fireEvent.click(screen.getByLabelText("Causes machine downtime for row 1"));
     fireEvent.click(screen.getByRole("button", { name: "Add Ground Check" }));
     fireEvent.change(screen.getByLabelText("Ground Check time 1"), {
       target: { value: "10:00" },
@@ -966,6 +973,8 @@ describe("DraglineDelayReportForm", () => {
     );
     expect(screen.getByLabelText("Comments")).toHaveValue("Preserve completion notes");
     expect(screen.getByLabelText("Delay Code for row 1")).toHaveValue("13");
+    expect(screen.getByLabelText("Duration for row 1")).toHaveValue(10);
+    expect(screen.getByLabelText("Causes machine downtime for row 1")).toBeChecked();
     expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("10:00");
     expect(screen.getByLabelText("Lake")).toHaveValue("lake-12");
   });

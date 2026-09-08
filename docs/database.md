@@ -332,9 +332,10 @@ Conceptual fields:
 - Integer `startMinuteOffset` from operational-date midnight. Timeline entries
   begin no earlier than the selected shift start and may continue beyond its
   scheduled end within the existing two-calendar-day `0..2879` representation.
-  Day `[300, 1020)` and Night `[1020, 1740)` remain the fixed scheduled
-  calculation windows; downtime intervals are clipped to those windows rather
-  than expanding the 720-minute report total.
+  Day `[300, 1020)` and Night `[1020, 1740)` remain the nominal clock windows,
+  but qualifying timeline downtime is not clipped at their upper boundary.
+  Full unique qualifying downtime is subtracted from the fixed 720-minute
+  report budget.
 - Delay Code catalog version.
 - Official code, exact description, and derived category snapshots.
 - Description/context.
@@ -342,11 +343,12 @@ Conceptual fields:
 - Explicit downtime-causing boolean.
 - Created and updated timestamps.
 
-Equal start times are valid. If the entry causes downtime, a positive integer
-duration is required. Non-downtime duration never contributes to report
-downtime. The official code must resolve from the source-verified catalog; no
-free-text code or category is stored as user authority. Catalog V1 is
-canonical in the
+Equal start times are valid. If the entry causes downtime, including Code 13 —
+Shift Change, a positive integer duration is required. Non-downtime duration
+never contributes to report downtime. Historical Code 13 rows stored as
+non-downtime remain unchanged unless corrected through the report workflow.
+The official code must resolve from the source-verified catalog; no free-text
+code or category is stored as user authority. Catalog V1 is canonical in the
 [Dragline Delay Code Catalog V1](reference/dragline-delay-reports/delay-code-catalog-v1.md).
 
 Report-owned Operator and Timeline Entry rows cascade when the report is
@@ -366,8 +368,9 @@ Conceptual fields:
   order as normal Timeline Entries. Existing table-local uniqueness constraints
   remain sufficient because application validation assigns one contiguous
   sequence across the combined item set.
-- Integer `startMinuteOffset` using normal DDR actual-time, overnight, extended
-  timeline, and scheduled-window clipping semantics.
+- Integer `startMinuteOffset` using normal DDR actual-time, overnight, and
+  extended-timeline semantics. A valid block's full interval contributes even
+  when it extends beyond nominal shift end.
 - Positive whole-number `durationMinutes` owned by the block.
 - Optional bounded block description/notes.
 - One or more ordered owned Activities.
@@ -391,7 +394,7 @@ Conceptual fields:
 
 Activities have no start, duration, or downtime flag in V1 and contribute zero
 additional downtime. Code 13 — Shift Change is excluded because it remains the
-required final normal Timeline Entry with unchanged zero-downtime semantics.
+required final normal Timeline Entry with its own explicit downtime state.
 Existing reports receive no converted or synthesized block data.
 
 ### DraglineDelayReportGroundCheck

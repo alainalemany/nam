@@ -265,7 +265,7 @@ function validCompletionInput(
 }
 
 describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow", () => {
-  it("persists the August 27 union while excluding pre-end Code 13 downtime", async () => {
+  it("persists Code 13 downtime with full duration across the nominal shift end", async () => {
     const client = new PrismaClient({ datasourceUrl: databaseUrl });
     try {
       await withRollback(client, async (transaction, prefix) => {
@@ -308,7 +308,125 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
             where: { id: created.id },
             select: { downTimeMinutes: true, runTimeMinutes: true },
           }),
-        ).toEqual({ downTimeMinutes: 30, runTimeMinutes: 690 });
+        ).toEqual({ downTimeMinutes: 45, runTimeMinutes: 675 });
+      });
+    } finally {
+      await client.$disconnect();
+    }
+  });
+
+  it("uses corrected totals for Edit Draft, direct completion, and correction", async () => {
+    const client = new PrismaClient({ datasourceUrl: databaseUrl });
+    try {
+      await withRollback(client, async (transaction, prefix) => {
+        const references = await createReferences(transaction, prefix);
+        const draftInput = validInput(references, {
+          operationalWorkDate: "2026-08-28",
+          shift: "DAY",
+          groundChecks: [],
+          timelineEntries: [
+            {
+              sequence: 1,
+              startTime: "07:00",
+              dayOffset: 0,
+              catalogVersion: 1,
+              delayCode: "26",
+              description: "Other qualifying downtime",
+              durationMinutes: 90,
+              causesDowntime: true,
+            },
+            {
+              sequence: 2,
+              startTime: "17:20",
+              dayOffset: 0,
+              catalogVersion: 1,
+              delayCode: "13",
+              description: "Late Shift Change",
+              durationMinutes: 10,
+              causesDowntime: true,
+            },
+          ],
+        });
+        const draft = await persistDraglineDelayReportInTransaction(
+          transaction,
+          draftInput,
+        );
+        const editedDraft = await persistDraglineDelayReportInTransaction(
+          transaction,
+          draglineDelayReportSubmissionSchema.parse({
+            ...draftInput,
+            recordVersion: draft.recordVersion,
+          }),
+          draft.id,
+        );
+        expect(
+          await transaction.draglineDelayReport.findUniqueOrThrow({
+            where: { id: draft.id },
+            select: { downTimeMinutes: true, runTimeMinutes: true },
+          }),
+        ).toEqual({ downTimeMinutes: 100, runTimeMinutes: 620 });
+        const completion = draglineDelayReportCompletionSchema.parse({
+          ...draftInput,
+          endingHourMeter: 12012,
+          recordVersion: editedDraft.recordVersion,
+        });
+
+        const completed = await completeDraglineDelayReportInTransaction(
+          transaction,
+          completion,
+          draft.id,
+        );
+        expect(
+          await transaction.draglineDelayReport.findUniqueOrThrow({
+            where: { id: draft.id },
+            select: {
+              status: true,
+              downTimeMinutes: true,
+              runTimeMinutes: true,
+            },
+          }),
+        ).toEqual({
+          status: "COMPLETED",
+          downTimeMinutes: 100,
+          runTimeMinutes: 620,
+        });
+
+        const correction = draglineDelayReportCompletionSchema.parse({
+          ...completion,
+          recordVersion: completed.recordVersion,
+          timelineEntries: completion.timelineEntries.map((entry) =>
+            entry.delayCode === "13"
+              ? { ...entry, durationMinutes: 15 }
+              : entry,
+          ),
+        });
+        await correctDraglineDelayReportInTransaction(
+          transaction,
+          correction,
+          draft.id,
+          "Corrected Shift Change duration from the source report.",
+        );
+        expect(
+          await transaction.draglineDelayReport.findUniqueOrThrow({
+            where: { id: draft.id },
+            select: {
+              downTimeMinutes: true,
+              runTimeMinutes: true,
+              timelineEntries: {
+                where: { delayCode: "13" },
+                select: { durationMinutes: true, causesDowntime: true },
+              },
+              corrections: { select: { reason: true } },
+            },
+          }),
+        ).toEqual({
+          downTimeMinutes: 105,
+          runTimeMinutes: 615,
+          timelineEntries: [{ durationMinutes: 15, causesDowntime: true }],
+          corrections: [{
+            reason: "Corrected Shift Change duration from the source report.",
+          }],
+        });
       });
     } finally {
       await client.$disconnect();
@@ -1141,8 +1259,8 @@ describePostgres("Dragline Delay Report DDR-1 through DDR-3 PostgreSQL workflow"
           1730,
           1800,
         ]);
-        expect(persistedDay).toMatchObject({ downTimeMinutes: 20, runTimeMinutes: 700 });
-        expect(persistedNight).toMatchObject({ downTimeMinutes: 10, runTimeMinutes: 710 });
+        expect(persistedDay).toMatchObject({ downTimeMinutes: 40, runTimeMinutes: 680 });
+        expect(persistedNight).toMatchObject({ downTimeMinutes: 30, runTimeMinutes: 690 });
 
         expect(
           draglineDelayReportSubmissionSchema.safeParse({

@@ -49,28 +49,29 @@ describe("Dragline downtime interval union", () => {
   });
 
   it.each([
-    ["before the Day scheduled end", "DAY" as const, 1010],
-    ["at the Day scheduled end", "DAY" as const, 1020],
-    ["after the Day scheduled end", "DAY" as const, 1050],
-    ["before the Night scheduled end", "NIGHT" as const, 1730],
-  ])("excludes Code 13 %s even when marked as downtime", (_label, shift, start) => {
-    expect(calculateDraglineShiftTotals(shift, [shiftChange(start)])).toEqual({
-      downTimeMinutes: 0,
-      runTimeMinutes: 720,
+    ["at 4:50 PM", "DAY" as const, 1010, 20],
+    ["at 5:00 PM", "DAY" as const, 1020, 15],
+    ["at 5:20 PM", "DAY" as const, 1040, 10],
+    ["at 5:30 PM", "DAY" as const, 1050, 15],
+    ["after the Night scheduled end", "NIGHT" as const, 1760, 15],
+  ])("counts the full Code 13 duration %s", (_label, shift, start, duration) => {
+    expect(calculateDraglineShiftTotals(shift, [shiftChange(start, duration)])).toEqual({
+      downTimeMinutes: duration,
+      runTimeMinutes: 720 - duration,
     });
   });
 
-  it("does not let Code 13 alter overlapping ordinary downtime", () => {
+  it("unions Code 13 with overlapping ordinary downtime", () => {
     expect(
       calculateDraglineShiftTotals("DAY", [
-        delay(1000, 20),
-        shiftChange(1010),
+        delay(1030, 20),
+        shiftChange(1040),
       ]),
-    ).toEqual({ downTimeMinutes: 20, runTimeMinutes: 700 });
+    ).toEqual({ downTimeMinutes: 25, runTimeMinutes: 695 });
   });
 
-  it("does not require an informational duration for Code 13 downtime exclusion", () => {
-    expect(
+  it("requires a duration when Code 13 is marked as downtime", () => {
+    expect(() =>
       calculateDraglineShiftTotals("DAY", [
         {
           startMinuteOffset: 1010,
@@ -78,14 +79,32 @@ describe("Dragline downtime interval union", () => {
           delayCode: "13",
         },
       ]),
-    ).toEqual({ downTimeMinutes: 0, runTimeMinutes: 720 });
+    ).toThrow(/requires a positive duration/);
   });
 
   it("continues to count ordinary non-Code-13 downtime", () => {
     expect(calculateDraglineShiftTotals("DAY", [delay(1010, 15)])).toEqual({
-      downTimeMinutes: 10,
-      runTimeMinutes: 710,
+      downTimeMinutes: 15,
+      runTimeMinutes: 705,
     });
+  });
+
+  it("subtracts post-shift downtime from the fixed 720-minute budget", () => {
+    expect(
+      calculateDraglineShiftTotals("DAY", [
+        delay(600, 90),
+        shiftChange(1040, 10),
+      ]),
+    ).toEqual({ downTimeMinutes: 100, runTimeMinutes: 620 });
+  });
+
+  it("unions two overlapping post-shift downtime intervals", () => {
+    expect(
+      calculateDraglineShiftTotals("DAY", [
+        delay(1040, 15),
+        delay(1045, 15),
+      ]),
+    ).toEqual({ downTimeMinutes: 20, runTimeMinutes: 700 });
   });
 
   it("counts every non-overlapping Ground Check as ten minutes of downtime", () => {
@@ -165,17 +184,28 @@ describe("Dragline downtime interval union", () => {
     ).toEqual({ downTimeMinutes: 440, runTimeMinutes: 280 });
   });
 
-  it("clips Shared Downtime Blocks to the fixed scheduled shift window", () => {
+  it("counts full Shared Downtime Blocks beyond the nominal shift end", () => {
     expect(
       calculateDraglineShiftTotals("DAY", [], [], [
         { startMinuteOffset: 1000, durationMinutes: 60 },
       ]),
-    ).toEqual({ downTimeMinutes: 20, runTimeMinutes: 700 });
+    ).toEqual({ downTimeMinutes: 60, runTimeMinutes: 660 });
     expect(
       calculateDraglineShiftTotals("NIGHT", [], [], [
         { startMinuteOffset: 1730, durationMinutes: 60 },
       ]),
-    ).toEqual({ downTimeMinutes: 10, runTimeMinutes: 710 });
+    ).toEqual({ downTimeMinutes: 60, runTimeMinutes: 660 });
+  });
+
+  it("unions Code 13 with a post-shift Shared Downtime Block", () => {
+    expect(
+      calculateDraglineShiftTotals(
+        "DAY",
+        [shiftChange(1040, 10)],
+        [],
+        [{ startMinuteOffset: 1035, durationMinutes: 10 }],
+      ),
+    ).toEqual({ downTimeMinutes: 15, runTimeMinutes: 705 });
   });
 
   it("unions a partially overlapping Ground Check with timeline downtime", () => {
@@ -243,28 +273,30 @@ describe("Dragline downtime interval union", () => {
     expect(calculateDraglineDowntime("NIGHT", [delay(1710, 30)])).toBe(30);
   });
 
-  it("clips downtime crossing the scheduled end and ignores post-shift downtime", () => {
-    expect(calculateDraglineDowntime("DAY", [delay(1010, 30)])).toBe(10);
-    expect(calculateDraglineDowntime("DAY", [delay(1030, 20)])).toBe(0);
+  it("counts full downtime crossing or following the nominal scheduled end", () => {
+    expect(calculateDraglineDowntime("DAY", [delay(1010, 30)])).toBe(30);
+    expect(calculateDraglineDowntime("DAY", [delay(1030, 20)])).toBe(20);
   });
 
-  it("unions overlapping downtime only within the scheduled calculation window", () => {
+  it("unions overlapping downtime across the nominal scheduled end", () => {
     expect(
       calculateDraglineDowntime("DAY", [delay(1000, 40), delay(1010, 30)]),
-    ).toBe(20);
+    ).toBe(40);
   });
 
   it("keeps runtime based on 720 minutes when the factual timeline runs late", () => {
     expect(
       calculateDraglineShiftTotals("DAY", [
         delay(600, 60),
-        {
-          startMinuteOffset: 1080,
-          causesDowntime: false,
-          delayCode: "13",
-        },
+        shiftChange(1040, 10),
       ]),
-    ).toEqual({ downTimeMinutes: 60, runTimeMinutes: 660 });
+    ).toEqual({ downTimeMinutes: 70, runTimeMinutes: 650 });
+  });
+
+  it("rejects unique qualifying downtime above 720 instead of producing negative runtime", () => {
+    expect(() =>
+      calculateDraglineShiftTotals("DAY", [delay(300, 721)]),
+    ).toThrow(/cannot exceed the 12-hour shift/);
   });
 
   it("derives runtime from a normal 720-minute shift and rejects impossible totals", () => {

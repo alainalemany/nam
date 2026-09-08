@@ -402,21 +402,59 @@ describe("Dragline Delay Report validation", () => {
     expect(draglineDelayReportSubmissionSchema.safeParse(incomplete).success).toBe(false);
   });
 
-  it("does not require a downtime duration for Code 13", () => {
+  it("requires a positive duration when Code 13 causes downtime", () => {
+    const shiftChange = {
+      ...validInput.timelineEntries[0],
+      delayCode: "13",
+      description: "Shift Change",
+      causesDowntime: true,
+    };
+    const missing = draglineDelayReportSubmissionSchema.safeParse({
+      ...validInput,
+      timelineEntries: [{ ...shiftChange, durationMinutes: "" }],
+    });
+    expect(missing.success).toBe(false);
+    if (!missing.success) {
+      expect(missing.error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: ["timelineEntries", 0, "durationMinutes"],
+            message: "A downtime-causing entry requires a positive duration.",
+          }),
+        ]),
+      );
+    }
+
     expect(
       draglineDelayReportSubmissionSchema.safeParse({
         ...validInput,
-        timelineEntries: [
-          {
-            ...validInput.timelineEntries[0],
-            delayCode: "13",
-            description: "Shift Change",
-            durationMinutes: "",
-            causesDowntime: true,
-          },
-        ],
+        timelineEntries: [{ ...shiftChange, durationMinutes: "10" }],
       }).success,
     ).toBe(true);
+  });
+
+  it("rejects unique qualifying downtime above the fixed 720-minute budget", () => {
+    const result = draglineDelayReportSubmissionSchema.safeParse({
+      ...validInput,
+      timelineEntries: [
+        {
+          ...validInput.timelineEntries[0],
+          startTime: "05:00",
+          durationMinutes: "721",
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: ["timelineEntries"],
+            message: "Unique downtime cannot exceed the 12-hour shift.",
+          }),
+        ]),
+      );
+    }
   });
 
   it("allows same-time concurrent activities and excludes non-downtime work", () => {

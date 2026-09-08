@@ -248,9 +248,6 @@ function DelayCodeField({
             onChange({
               delayCode: event.target.value,
               category: next?.category,
-              ...(event.target.value === DRAGLINE_SHIFT_CHANGE_DELAY_CODE
-                ? { causesDowntime: false }
-                : {}),
             });
           }}
         >
@@ -1322,14 +1319,7 @@ export function DraglineDelayReportForm({
                   <input
                     {...errorAttributes(state, `timelineEntries.${index}.causesDowntime`)}
                     aria-label={`Causes machine downtime for row ${index + 1}`}
-                    checked={
-                      entry.delayCode === DRAGLINE_SHIFT_CHANGE_DELAY_CODE
-                        ? false
-                        : entry.causesDowntime
-                    }
-                    disabled={
-                      entry.delayCode === DRAGLINE_SHIFT_CHANGE_DELAY_CODE
-                    }
+                    checked={entry.causesDowntime}
                     type="checkbox"
                     onChange={(event) =>
                       updateTimelineEntry(index, {
@@ -1339,12 +1329,6 @@ export function DraglineDelayReportForm({
                   />
                   <span>Causes machine downtime</span>
                 </label>
-                {entry.delayCode === DRAGLINE_SHIFT_CHANGE_DELAY_CODE ? (
-                  <p className="subtle ddr-shift-change-info" role="note">
-                    Shift Change is recorded in the timeline but does not count
-                    toward Down Time.
-                  </p>
-                ) : null}
                 {firstError(state, `timelineEntries.${index}.causesDowntime`)}
                 <label className="ddr-description-field">
                   <span>Description / context (optional)</span>

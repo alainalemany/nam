@@ -311,11 +311,7 @@ export const draglineDelayReportSubmissionSchema = z
           message: "Select an official Delay Code from Catalog V1.",
         });
       }
-      if (
-        entry.delayCode !== DRAGLINE_SHIFT_CHANGE_DELAY_CODE &&
-        entry.causesDowntime &&
-        entry.durationMinutes == null
-      ) {
+      if (entry.causesDowntime && entry.durationMinutes == null) {
         context.addIssue({
           code: "custom",
           path: ["timelineEntries", index, "durationMinutes"],
