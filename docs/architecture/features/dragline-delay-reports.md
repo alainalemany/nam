@@ -32,7 +32,7 @@ Related Documents:
 - `docs/reference/README.md`
 - `docs/reference/dragline-delay-reports/delay-code-catalog-v1.md`
 
-Last Reviewed: 2026-09-08
+Last Reviewed: 2026-09-16
 
 Implementation Status: DDR-1 through DDR-3 are implemented as an independent
 usable Draft, completion, and correction workflow. The aggregate includes
@@ -565,6 +565,17 @@ checks as occurred and must not reproduce a fixed number of paper-form boxes.
 Overnight chronology uses the same deterministic day-offset approach as
 timeline entries.
 
+A brand-new report initializes four ordinary, editable Ground Check rows for
+its selected shift. Day defaults are 6:20 AM, 9:30 AM, 12:30 PM, and 4:00 PM,
+all on the operational date. Night defaults are 6:20 PM and 9:30 PM on the
+operational date, followed by 12:30 AM and 4:00 AM on the next day. These are
+create-form conveniences only: users may edit, remove, reorder, or add rows.
+Changing the shift replaces the four defaults only while the set is untouched;
+after any Ground Check modification, shift changes preserve the operator's
+rows exactly. Existing Drafts, Completed reports, corrections, and direct
+completion hydration always use stored Ground Checks exactly as persisted and
+are never backfilled.
+
 Ground Check intervals participate in the same unique-downtime union as
 timeline downtime-causing entries. Overlaps do not double-count, and intervals
 are clipped to the scheduled 12-hour shift window. Runtime remains 720 minus
@@ -908,6 +919,8 @@ Target:
 - Fuel in gallons, independent from Equipment Fuel Events.
 - Optional Cable Drag and Hoist in feet.
 - Repeatable ordered Ground Check times.
+- Four shift-specific, editable Ground Check defaults on brand-new reports
+  only, with untouched-only Day/Night replacement and no historical backfill.
 - Comments, optional Safety Items Found, and optional Action Taken.
 - Complete Draft form-state preservation and clear mutation feedback.
 

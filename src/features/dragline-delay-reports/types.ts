@@ -52,6 +52,7 @@ export type DraglineDelayReportTimelineFormRow = {
 export type DraglineDelayReportGroundCheckFormRow = {
   clientId: string;
   id?: string;
+  sequence?: number;
   startTime: string;
   dayOffset: 0 | 1;
 };

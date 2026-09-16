@@ -19,6 +19,10 @@ import {
 import { calculateDraglineShiftTotals } from "./calculations";
 import { DRAGLINE_DELAY_REPORT_CUT_TYPES } from "./cut-types";
 import { formatDraglineDurationMinutes } from "./duration";
+import {
+  getDefaultGroundChecksForShift,
+  isDefaultGroundCheckSetForShift,
+} from "./ground-check-defaults";
 import { filterDraglineLakesForMine } from "./lakes";
 import { calculateStationAdvance, parseStationNotation } from "./station";
 import { orderDraglineDelayReportTimelineItems } from "./timeline-order";
@@ -54,6 +58,7 @@ type Props = {
   lakeOptions: DraglineLakeOption[];
   supervisorOptions: DraglineEmployeeOption[];
   initialValues: DraglineDelayReportFormInitialValues;
+  enableNewReportGroundCheckDefaults?: boolean;
   mode?: "draft" | "correction";
   allowComplete?: boolean;
   submitLabel: string;
@@ -88,6 +93,15 @@ function emptyGroundCheck(): DraglineDelayReportGroundCheckFormRow {
     startTime: "",
     dayOffset: 0,
   };
+}
+
+function defaultGroundChecksForShift(
+  shift: "DAY" | "NIGHT",
+): DraglineDelayReportGroundCheckFormRow[] {
+  return getDefaultGroundChecksForShift(shift).map((groundCheck) => ({
+    ...groundCheck,
+    clientId: clientRowId("ground-check"),
+  }));
 }
 
 function emptyDowntimeBlockActivity(): DraglineDelayReportDowntimeBlockActivityFormRow {
@@ -423,6 +437,7 @@ export function DraglineDelayReportForm({
   lakeOptions,
   supervisorOptions,
   initialValues,
+  enableNewReportGroundCheckDefaults = false,
   mode = "draft",
   allowComplete = false,
   submitLabel,
@@ -504,6 +519,19 @@ export function DraglineDelayReportForm({
   const pendingDowntimeBlockFocusClientId = useRef<string | null>(null);
   const pendingDowntimeBlockActivityFocusClientId = useRef<string | null>(null);
   const [groundChecks, setGroundChecks] = useState(initialValues.groundChecks);
+  const groundCheckDefaultsUntouched = useRef(
+    enableNewReportGroundCheckDefaults &&
+      isDefaultGroundCheckSetForShift(initialValues.groundChecks, initialValues.shift),
+  );
+
+  function updateGroundChecks(
+    update: (
+      current: DraglineDelayReportGroundCheckFormRow[],
+    ) => DraglineDelayReportGroundCheckFormRow[],
+  ) {
+    groundCheckDefaultsUntouched.current = false;
+    setGroundChecks(update);
+  }
 
   function addTimelineEntry() {
     if (timelineEntries.length >= 200) return;
@@ -941,16 +969,21 @@ export function DraglineDelayReportForm({
               onChange={(event) => {
                 const next = event.target.value as "DAY" | "NIGHT";
                 setShift(next);
+                if (groundCheckDefaultsUntouched.current) {
+                  setGroundChecks(defaultGroundChecksForShift(next));
+                }
                 if (next === "DAY") {
                   setTimelineEntries((current) =>
                     current.map((entry) => ({ ...entry, dayOffset: 0 })),
                   );
-                  setGroundChecks((current) =>
-                    current.map((groundCheck) => ({
-                      ...groundCheck,
-                      dayOffset: 0,
-                    })),
-                  );
+                  if (!enableNewReportGroundCheckDefaults) {
+                    setGroundChecks((current) =>
+                      current.map((groundCheck) => ({
+                        ...groundCheck,
+                        dayOffset: 0,
+                      })),
+                    );
+                  }
                   setDowntimeBlocks((current) =>
                     current.map((block) => ({ ...block, dayOffset: 0 })),
                   );
@@ -1922,7 +1955,9 @@ export function DraglineDelayReportForm({
             className="button secondary"
             disabled={groundChecks.length >= 100}
             type="button"
-            onClick={() => setGroundChecks((current) => [...current, emptyGroundCheck()])}
+            onClick={() =>
+              updateGroundChecks((current) => [...current, emptyGroundCheck()])
+            }
           >
             Add Ground Check
           </button>
@@ -1960,7 +1995,7 @@ export function DraglineDelayReportForm({
                   type="time"
                   value={groundCheck.startTime}
                   onChange={(event) =>
-                    setGroundChecks((current) =>
+                    updateGroundChecks((current) =>
                       current.map((item, itemIndex) =>
                         itemIndex === index
                           ? { ...item, startTime: event.target.value }
@@ -1979,7 +2014,7 @@ export function DraglineDelayReportForm({
                     aria-label={`Ground Check calendar day ${index + 1}`}
                     value={groundCheck.dayOffset}
                     onChange={(event) =>
-                      setGroundChecks((current) =>
+                      updateGroundChecks((current) =>
                         current.map((item, itemIndex) =>
                           itemIndex === index
                             ? {
@@ -2002,7 +2037,9 @@ export function DraglineDelayReportForm({
                   className="button secondary"
                   disabled={index === 0}
                   type="button"
-                  onClick={() => setGroundChecks((current) => moveItem(current, index, -1))}
+                  onClick={() =>
+                    updateGroundChecks((current) => moveItem(current, index, -1))
+                  }
                 >
                   Move up
                 </button>
@@ -2010,7 +2047,9 @@ export function DraglineDelayReportForm({
                   className="button secondary"
                   disabled={index === groundChecks.length - 1}
                   type="button"
-                  onClick={() => setGroundChecks((current) => moveItem(current, index, 1))}
+                  onClick={() =>
+                    updateGroundChecks((current) => moveItem(current, index, 1))
+                  }
                 >
                   Move down
                 </button>
@@ -2018,7 +2057,7 @@ export function DraglineDelayReportForm({
                   className="button danger"
                   type="button"
                   onClick={() =>
-                    setGroundChecks((current) =>
+                    updateGroundChecks((current) =>
                       current.filter((_, itemIndex) => itemIndex !== index),
                     )
                   }

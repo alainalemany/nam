@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createDraglineDelayReportAction } from "@/features/dragline-delay-reports/actions";
 import { getDraglineDelayReportFormOptions } from "@/features/dragline-delay-reports/data";
 import { DraglineDelayReportForm } from "@/features/dragline-delay-reports/DraglineDelayReportForm";
+import { getDefaultGroundChecksForShift } from "@/features/dragline-delay-reports/ground-check-defaults";
 import { localOperationalDateValue } from "@/features/dragline-delay-reports/time";
 import type { DraglineDelayReportFormInitialValues } from "@/features/dragline-delay-reports/types";
 
@@ -11,9 +12,10 @@ export const dynamic = "force-dynamic";
 export default async function NewDraglineDelayReportPage() {
   const { equipment, employees, supervisors, lakes } =
     await getDraglineDelayReportFormOptions();
+  const initialShift = "DAY" as const;
   const initialValues: DraglineDelayReportFormInitialValues = {
     operationalWorkDate: localOperationalDateValue(),
-    shift: "DAY",
+    shift: initialShift,
     equipmentId: "",
     startingHourMeter: "",
     endingHourMeter: "",
@@ -37,7 +39,12 @@ export default async function NewDraglineDelayReportPage() {
     operators: [],
     timelineEntries: [],
     downtimeBlocks: [],
-    groundChecks: [],
+    groundChecks: getDefaultGroundChecksForShift(initialShift).map(
+      (groundCheck) => ({
+        ...groundCheck,
+        clientId: `new-ground-check-${groundCheck.sequence}`,
+      }),
+    ),
   };
 
   return (
@@ -61,6 +68,7 @@ export default async function NewDraglineDelayReportPage() {
         employeeOptions={employees}
         equipmentOptions={equipment}
         initialValues={initialValues}
+        enableNewReportGroundCheckDefaults
         lakeOptions={lakes}
         submitLabel="Save Draft Report"
         supervisorOptions={supervisors}

@@ -899,6 +899,16 @@ deterioration, or acceptable ground conditions permit safe continued dragging.
 A Ground Check may also have an official timeline code, but automatic
 derivation of the repeated end-of-shift list is deferred.
 
+A brand-new report starts with four editable Ground Check rows. Day uses 6:20
+AM, 9:30 AM, 12:30 PM, and 4:00 PM on the operational date. Night uses 6:20 PM
+and 9:30 PM on the operational date, then 12:30 AM and 4:00 AM on the next day.
+Users may edit, delete, reorder, or add rows. A new form replaces the four rows
+when Shift changes only while the default set remains untouched; any Ground
+Check modification permanently protects that form's custom set from automatic
+replacement. Existing Drafts, Completed reports, correction forms, and direct
+completion use only their persisted Ground Checks. No historical report is
+backfilled.
+
 ### Exclusions And Open Questions
 
 DDR-1 through DDR-3 exclude attachments, photos, media infrastructure, Daily

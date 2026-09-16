@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DraglineDelayReportForm } from "@/features/dragline-delay-reports/DraglineDelayReportForm";
+import { getDefaultGroundChecksForShift } from "@/features/dragline-delay-reports/ground-check-defaults";
 import type { DraglineDelayReportFormInitialValues } from "@/features/dragline-delay-reports/types";
 import type { DraglineDelayReportActionState } from "@/features/dragline-delay-reports/validation";
 
@@ -92,6 +93,7 @@ function renderForm(
   })),
   options: {
     allowComplete?: boolean;
+    enableNewReportGroundCheckDefaults?: boolean;
     employeeOptions?: typeof employeeOptions;
     initialValues?: DraglineDelayReportFormInitialValues;
     mode?: "draft" | "correction";
@@ -108,6 +110,9 @@ function renderForm(
       initialValues={options.initialValues ?? initialValues}
       lakeOptions={lakeOptions}
       allowComplete={options.allowComplete}
+      enableNewReportGroundCheckDefaults={
+        options.enableNewReportGroundCheckDefaults
+      }
       mode={options.mode}
       submitLabel={options.submitLabel ?? "Save Draft Report"}
       supervisorOptions={visibleEmployeeOptions.filter((employee) => employee.isSupervisor)}
@@ -116,6 +121,210 @@ function renderForm(
 }
 
 describe("DraglineDelayReportForm", () => {
+  function newReportValues(shift: "DAY" | "NIGHT") {
+    return {
+      ...initialValues,
+      shift,
+      groundChecks: getDefaultGroundChecksForShift(shift).map(
+        (groundCheck) => ({
+          ...groundCheck,
+          clientId: `new-ground-check-${groundCheck.sequence}`,
+        }),
+      ),
+    } satisfies DraglineDelayReportFormInitialValues;
+  }
+
+  function renderNewReport(
+    shift: "DAY" | "NIGHT" = "DAY",
+    action?: Parameters<typeof renderForm>[0],
+  ) {
+    return renderForm(action, {
+      enableNewReportGroundCheckDefaults: true,
+      initialValues: newReportValues(shift),
+    });
+  }
+
+  it("switches untouched Day defaults to Night defaults and back", () => {
+    renderNewReport();
+
+    fireEvent.change(screen.getByLabelText("Shift"), {
+      target: { value: "NIGHT" },
+    });
+    expect(
+      [1, 2, 3, 4].map((sequence) =>
+        screen.getByLabelText(`Ground Check time ${sequence}`),
+      ),
+    ).toEqual([
+      expect.objectContaining({ value: "18:20" }),
+      expect.objectContaining({ value: "21:30" }),
+      expect.objectContaining({ value: "00:30" }),
+      expect.objectContaining({ value: "04:00" }),
+    ]);
+    expect(screen.getByLabelText("Ground Check calendar day 1")).toHaveValue("0");
+    expect(screen.getByLabelText("Ground Check calendar day 2")).toHaveValue("0");
+    expect(screen.getByLabelText("Ground Check calendar day 3")).toHaveValue("1");
+    expect(screen.getByLabelText("Ground Check calendar day 4")).toHaveValue("1");
+
+    fireEvent.change(screen.getByLabelText("Shift"), {
+      target: { value: "DAY" },
+    });
+    expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("06:20");
+    expect(screen.getByLabelText("Ground Check time 2")).toHaveValue("09:30");
+    expect(screen.getByLabelText("Ground Check time 3")).toHaveValue("12:30");
+    expect(screen.getByLabelText("Ground Check time 4")).toHaveValue("16:00");
+  });
+
+  it("switches untouched Night defaults directly to Day defaults", () => {
+    renderNewReport("NIGHT");
+
+    fireEvent.change(screen.getByLabelText("Shift"), {
+      target: { value: "DAY" },
+    });
+
+    expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("06:20");
+    expect(screen.getByLabelText("Ground Check time 2")).toHaveValue("09:30");
+    expect(screen.getByLabelText("Ground Check time 3")).toHaveValue("12:30");
+    expect(screen.getByLabelText("Ground Check time 4")).toHaveValue("16:00");
+  });
+
+  it("does not replace defaults after a Ground Check time is edited", () => {
+    renderNewReport();
+    fireEvent.change(screen.getByLabelText("Ground Check time 1"), {
+      target: { value: "06:25" },
+    });
+
+    fireEvent.change(screen.getByLabelText("Shift"), {
+      target: { value: "NIGHT" },
+    });
+
+    expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("06:25");
+    expect(screen.getByLabelText("Ground Check time 2")).toHaveValue("09:30");
+    expect(screen.getByLabelText("Ground Check time 3")).toHaveValue("12:30");
+    expect(screen.getByLabelText("Ground Check time 4")).toHaveValue("16:00");
+  });
+
+  it("does not replace defaults after a Ground Check calendar day is changed", () => {
+    renderNewReport("NIGHT");
+    fireEvent.change(screen.getByLabelText("Ground Check calendar day 1"), {
+      target: { value: "1" },
+    });
+
+    fireEvent.change(screen.getByLabelText("Shift"), {
+      target: { value: "DAY" },
+    });
+    expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("18:20");
+
+    fireEvent.change(screen.getByLabelText("Shift"), {
+      target: { value: "NIGHT" },
+    });
+
+    expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("18:20");
+    expect(screen.getByLabelText("Ground Check calendar day 1")).toHaveValue("1");
+  });
+
+  it("does not replace Ground Checks after a default row is deleted", () => {
+    renderNewReport();
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Ground Check 2" })).getByRole(
+        "button",
+        { name: "Remove" },
+      ),
+    );
+
+    fireEvent.change(screen.getByLabelText("Shift"), {
+      target: { value: "NIGHT" },
+    });
+
+    expect(screen.getAllByRole("group", { name: /Ground Check \d/ })).toHaveLength(3);
+    expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("06:20");
+    expect(screen.getByLabelText("Ground Check time 2")).toHaveValue("12:30");
+    expect(screen.getByLabelText("Ground Check time 3")).toHaveValue("16:00");
+  });
+
+  it("does not replace Ground Checks after a fifth row is added", () => {
+    renderNewReport();
+    fireEvent.click(screen.getByRole("button", { name: "Add Ground Check" }));
+    fireEvent.change(screen.getByLabelText("Ground Check time 5"), {
+      target: { value: "16:30" },
+    });
+
+    fireEvent.change(screen.getByLabelText("Shift"), {
+      target: { value: "NIGHT" },
+    });
+
+    expect(screen.getAllByRole("group", { name: /Ground Check \d/ })).toHaveLength(5);
+    expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("06:20");
+    expect(screen.getByLabelText("Ground Check time 5")).toHaveValue("16:30");
+  });
+
+  it("does not replace Ground Checks after they are reordered", () => {
+    renderNewReport();
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Ground Check 2" })).getByRole(
+        "button",
+        { name: "Move up" },
+      ),
+    );
+
+    fireEvent.change(screen.getByLabelText("Shift"), {
+      target: { value: "NIGHT" },
+    });
+
+    expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("09:30");
+    expect(screen.getByLabelText("Ground Check time 2")).toHaveValue("06:20");
+  });
+
+  it("preserves edited default Ground Checks after failed Draft validation", async () => {
+    const action = vi.fn(async () => ({
+      status: "error" as const,
+      message: "Required or invalid fields need attention. Your entered values were preserved.",
+      fieldErrors: { supervisorId: ["Supervisor is required."] },
+    }));
+    renderNewReport("DAY", action);
+    fireEvent.change(screen.getByLabelText("Ground Check time 3"), {
+      target: { value: "12:45" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save Draft Report" }));
+
+    expect(await screen.findAllByText("Supervisor is required.")).toHaveLength(2);
+    expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("06:20");
+    expect(screen.getByLabelText("Ground Check time 3")).toHaveValue("12:45");
+    fireEvent.change(screen.getByLabelText("Shift"), {
+      target: { value: "NIGHT" },
+    });
+    expect(screen.getByLabelText("Ground Check time 3")).toHaveValue("12:45");
+  });
+
+  it("does not add defaults to an existing Draft with zero Ground Checks", () => {
+    renderForm();
+
+    expect(screen.queryByRole("group", { name: /Ground Check \d/ })).not.toBeInTheDocument();
+    expect(screen.getByText("No Ground Checks recorded in this Draft.")).toBeInTheDocument();
+  });
+
+  it("hydrates an existing correction with its exact stored Ground Checks", () => {
+    renderForm(undefined, {
+      mode: "correction",
+      initialValues: {
+        ...initialValues,
+        shift: "NIGHT",
+        groundChecks: [
+          {
+            clientId: "persisted-ground-check",
+            id: "persisted-ground-check",
+            startTime: "02:17",
+            dayOffset: 1,
+          },
+        ],
+      },
+    });
+
+    expect(screen.getAllByRole("group", { name: /Ground Check \d/ })).toHaveLength(1);
+    expect(screen.getByLabelText("Ground Check time 1")).toHaveValue("02:17");
+    expect(screen.getByLabelText("Ground Check calendar day 1")).toHaveValue("1");
+  });
+
   it("associates required-header errors while preserving the rest of the Draft", async () => {
     const action = vi.fn(async () => ({
       status: "error" as const,

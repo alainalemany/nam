@@ -6,6 +6,8 @@ import {
   calculateDraglineRuntime,
   calculateDraglineShiftTotals,
 } from "@/features/dragline-delay-reports/calculations";
+import { getDefaultGroundChecksForShift } from "@/features/dragline-delay-reports/ground-check-defaults";
+import { normalizeEventStartTime } from "@/features/dragline-delay-reports/time";
 
 const delay = (
   startMinuteOffset: number,
@@ -107,16 +109,37 @@ describe("Dragline downtime interval union", () => {
     ).toEqual({ downTimeMinutes: 20, runTimeMinutes: 700 });
   });
 
-  it("counts every non-overlapping Ground Check as ten minutes of downtime", () => {
-    expect(DRAGLINE_GROUND_CHECK_DOWNTIME_MINUTES).toBe(10);
+  it.each(["DAY", "NIGHT"] as const)(
+    "counts the four non-overlapping %s defaults as 40 minutes",
+    (shift) => {
+      expect(DRAGLINE_GROUND_CHECK_DOWNTIME_MINUTES).toBe(10);
+      const groundChecks = getDefaultGroundChecksForShift(shift).map(
+        (groundCheck) => ({
+          startMinuteOffset: normalizeEventStartTime(
+            groundCheck.startTime,
+            groundCheck.dayOffset,
+          ),
+        }),
+      );
+      expect(
+        calculateDraglineShiftTotals(shift, [], groundChecks),
+      ).toEqual({ downTimeMinutes: 40, runTimeMinutes: 680 });
+    },
+  );
+
+  it("unions the Day defaults once with overlapping timeline downtime", () => {
+    const groundChecks = getDefaultGroundChecksForShift("DAY").map(
+      (groundCheck) => ({
+        startMinuteOffset: normalizeEventStartTime(
+          groundCheck.startTime,
+          groundCheck.dayOffset,
+        ),
+      }),
+    );
+
     expect(
-      calculateDraglineShiftTotals("DAY", [], [
-        { startMinuteOffset: 600 },
-        { startMinuteOffset: 720 },
-        { startMinuteOffset: 840 },
-        { startMinuteOffset: 960 },
-      ]),
-    ).toEqual({ downTimeMinutes: 40, runTimeMinutes: 680 });
+      calculateDraglineShiftTotals("DAY", [delay(375, 20)], groundChecks),
+    ).toEqual({ downTimeMinutes: 50, runTimeMinutes: 670 });
   });
 
   it("reproduces the August 27 contained Ground Check acceptance case", () => {
