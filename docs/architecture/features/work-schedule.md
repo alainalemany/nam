@@ -427,6 +427,12 @@ data.
 Destructive deletion should be conservative. Archive or clear behavior is
 preferred until delete semantics are approved.
 
+The archived `scripts/import-alain-2026-schedule.mjs` utility records the
+completed one-time 2026-09-23 through 2026-12-31 administrative population for
+Alain Alemany. It is retained for historical and audit purposes only, is not a
+runtime scheduling mechanism, and must never replace normal Work Schedule UI
+edits as the authoritative schedule state.
+
 ## 7. UI Composition
 
 Work Schedule should use a continuous date list as the primary create/edit UI.
