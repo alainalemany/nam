@@ -17,6 +17,7 @@ relationships, enums, and data modeling notes.
 - [Daily Log Entities](#daily-log-entities)
 - [Historical Search And Calendar Entities](#historical-search-and-calendar-entities)
 - [Employee Reference Entity](#employee-reference-entity)
+- [Maintenance Tracking Entities](#maintenance-tracking-entities)
 - [Work Schedule Entities](#work-schedule-entities)
 - [Timesheet Entities](#timesheet-entities)
 - [Payslip Repository Entities](#payslip-repository-entities)
@@ -1005,6 +1006,61 @@ New Work Schedule choices use active Employees, and Assigned By choices require
 existing live relations and historical display snapshots remain readable.
 Employee is reference data, not a User, authenticated actor, payroll account,
 approval identity, or enterprise workforce-management system.
+
+## Maintenance Tracking Entities
+
+### TrackedMaintenanceComponent
+
+Configurable Reference Data with name, normalized unique name, optional
+description, tracking unit, active state, display order, timestamps, rules, and
+Equipment trackers. Component identity is relational; there is no component
+enum.
+
+### MaintenanceRule
+
+Belongs to one component and stores action name, generic counter scope
+(`SERVICE_INTERVAL` or `COMPONENT_LIFECYCLE`), lower/exact Decimal threshold,
+optional upper Decimal threshold, repeat flag and interval, optional maximum
+repeat count, optional warning lead, lifecycle-reset flag, active state,
+priority, display order, and timestamps. Database checks protect nonnegative
+thresholds, valid windows, and coherent repeat configuration.
+
+### EquipmentMaintenanceTracker
+
+The unique boundary/configuration state for one canonical Equipment/component
+pair. It stores the first tracking/lifecycle start, optional installed identity
+and notes, active state, optimistic record version, and timestamps. It stores no
+mutable accumulated total. Status, lifecycle number, current interval, and
+current lifecycle hours derive from completed DDR runtime, service events, and
+exceptional adjustments for this exact Equipment.
+
+### MaintenanceCounterEntry
+
+Immutable audit entry for an exceptional positive manual adjustment. It stores
+the adjustment, operational effective timestamp, required reason, optional
+recorder, and audit creation time. Ordinary operating hours do not create these
+rows; they remain owned by completed DDRs. Tracker deletion is restricted.
+
+### MaintenanceServiceEvent
+
+Immutable service history linked to a tracker and optionally its current rule.
+It stores operational `effectiveAt` separately from audit `createdAt` and
+snapshots component/action/unit, counter scope, threshold/window, warning,
+repeat/max settings, lifecycle effect, target, calculated interval and
+lifecycle values, variance, lifecycle number, service sequence, optional notes,
+and recorder. Rule deletion uses SetNull while snapshots preserve historical
+meaning; tracker deletion is restricted. Replacement snapshots establish the
+next derived lifecycle boundary, while interval service snapshots reset only
+their rule's interval.
+
+Completed `DraglineDelayReport` rows are queried through live `equipmentId`,
+completed status, operational date, and canonical timeline children. Stable
+report identity prevents duplicate contribution, and correction updates the
+source state used by the next derivation.
+
+The initial migration inserts Drag Cable, Hoist Cable, and Teeth plus their
+confirmed rules using conflict-safe SQL. These are configurable rows, not
+schema categories.
 
 ## Work Schedule Entities
 

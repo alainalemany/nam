@@ -239,6 +239,11 @@ Capabilities:
   Personnel, and overtime while retaining inactive historical reference
   choices and snapshot meaning.
 - Equipment Fuel Events for operational fuel delivered to Equipment.
+- Generic Maintenance Tracking with configurable Reference Data rules,
+  same-Equipment DDR-derived interval/lifecycle values, retained service
+  history, Maintenance Health, and Fleet Attention alerts.
+- Home operational-summary foundation with Current/Next Shift, Maintenance
+  Health, Fleet Attention, and Quick Actions cards.
 - Separate future Fleet context remains deferred.
 - Supply Requests, with Phase 26.1 product discovery, Phase 26.2 feature
   architecture, Phase 26.2.1 independent review, and Phase 26.2.2 formal
@@ -417,6 +422,7 @@ The MVP should not require:
 | Work Authorizations | Captures safety and maintenance work records. | Shift Reports. Feature architecture: `docs/architecture/features/work-authorizations.md`. | V1 foundation, filtering, and Day View participation implemented |
 | Defect Tracking | Captures equipment issue history from report through closure. | Equipment reference data and feature architecture: `docs/architecture/features/defect-tracking.md`; stronger value with Day View. | V1 foundation, filtering, and Day View participation implemented |
 | Work Schedule and Timesheet | Supports personal schedule and time reconciliation. | Reference data; stronger value with Day View. Work Schedule feature architecture: `docs/architecture/features/work-schedule.md`; Timesheet feature architecture: `docs/architecture/features/timesheets.md`. | Work Schedule and Timesheet V1 foundations and Day View participation implemented; Timesheet structured, URL-addressable Weekly Timesheet history filtering complete |
+| Home and Maintenance Tracking | Surfaces current assignment context and actionable configurable Equipment maintenance without copying source records. | Work Schedule, Equipment, completed same-Equipment DDR runtime, and Maintenance-owned rules/events. Feature architectures: `docs/architecture/features/home-dashboard.md` and `docs/architecture/features/maintenance-tracking.md`. | Implemented with Reference Data configuration, DDR-derived interval/lifecycle tracking, effective-time history, Current/Next Shift, Maintenance Health, Fleet Attention, and Quick Actions |
 | Equipment Fuel Events | Captures one Equipment fueling occurrence at one reusable Gas Station, including multi-tank Decimal gallons, historical price/cost, optional meter reading, and receipt reference. | Equipment and canonical State/City reference data; ADR-020 and ADR-021; feature architecture: `docs/architecture/features/equipment-fuel-events.md`; stronger value with Day View. | V1, V2 Phase 1, and V2 Phase 2A implemented |
 | Supply Requests | Preserves records of requests already submitted through the corporate system, with permanent identity, ordered catalog items, lifecycle, immutable history, and bounded Daily Log and Day View context. | Equipment reference data; Phase 26.1 product decisions; boundary assessment: `docs/architecture/equipment-operations.md`; Approved feature architecture: `docs/architecture/features/supply-requests.md`. | Supply Requests V1 complete and accepted; Phases 26.1 through 26.10 complete as applicable; create, current detail, reference management, lifecycle, Correct Request, immutable history, canonical current-version history/filtering, explicit Submission/Fulfillment Daily Log Activity linking, and Day View participation available; deferred enhancements remain outside V1 and require separate authorization |
 | Operational Safety Checklist meter and confirmation | Adds explicit `HOURS`/`MILES` meter units and clear NAM save confirmation. | Approved Phase 23.3 architecture. | Phase 23.4 implemented; Phase 23.4.2 monotonic marker supersession and safe presentation fallback complete |

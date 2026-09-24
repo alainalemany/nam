@@ -118,6 +118,8 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Understand module behavior | [Modules](modules.md) |
 | Understand entities and relationships | [Database Design](database.md) |
 | Understand current architecture | [Architecture Overview](architecture.md) |
+| Understand Home dashboard composition | [Home Dashboard Architecture](architecture/features/home-dashboard.md) |
+| Understand Maintenance Tracking | [Maintenance Tracking Architecture](architecture/features/maintenance-tracking.md) |
 | Understand Equipment Operations boundaries | [Equipment Operations Architecture Assessment](architecture/equipment-operations.md) |
 | Understand Equipment Fuel Events architecture | [Equipment Fuel Events Architecture](architecture/features/equipment-fuel-events.md) |
 | Understand U.S. geography reference data | [U.S. Geography Reference Data Architecture](architecture/features/geography-reference-data.md) |

@@ -24,6 +24,7 @@ Implementation standards for turning these modules into feature slices live in
 - [Daily Log](#daily-log)
 - [Dragline Delay Reports](#dragline-delay-reports)
 - [Knowledge Base](#knowledge-base-kb)
+- [Maintenance Tracking](#maintenance-tracking)
 - [Work Schedule](#work-schedule)
 - [Timesheet](#timesheet)
 - [Payslip Repository](#payslip-repository)
@@ -593,6 +594,36 @@ existing modules. Knowledge Base stores revision-owned live navigation IDs and
 display snapshots, never mutates those owners, and retains snapshots after
 owner deletion clears a live ID. Knowledge Base does not contribute to Day
 View.
+
+## Maintenance Tracking
+
+Maintenance Tracking is the feature-owned source of truth for configurable
+component rules, Equipment/component boundaries, exceptional adjustments, and
+service history. Completed DDRs are the authoritative operating-hour source.
+
+Reference Data defines what can be tracked and how service becomes due. Live
+trackers reference canonical Equipment and never duplicate Equipment identity.
+The same configured component can have independent values and lifecycle history
+on every Equipment record.
+
+The implemented workflow provides component and rule management, tracker
+creation with an operational start, DDR-derived interval/lifecycle totals,
+effective-time service recording, retained service/adjustment history, derived
+status, Equipment-grouped operational cards, and Home Maintenance Health and
+Fleet Attention contributions. Manual additions are an explicit reasoned
+administrative exception. Replacement behavior and interval scope are
+configured per rule; neither is a component-name conditional.
+
+Initial Drag Cable, Hoist Cable, and Teeth rows are ordinary Reference Data.
+Future tracked items require new rows and rules, not new columns or component
+enums. DDR correction is reflected on the next read because Maintenance does
+not retain an untraceable one-time increment. Telemetry, inventory, work
+orders, parts management, and audited correction of already-recorded service
+events remain outside this slice.
+
+Implementation architecture:
+
+`docs/architecture/features/maintenance-tracking.md`
 
 ## Work Schedule
 

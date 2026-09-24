@@ -191,6 +191,8 @@ Dragline Delay Reports own:
   Check, comment, and optional safety/action facts introduced in DDR-2 and its
   additive refinements.
 - Explicit completion and correction behavior introduced in DDR-3.
+- Authoritative completed-report runtime consumed read-only by Maintenance
+  Tracking for the same canonical Equipment.
 - Optimistic concurrency, feature-owned validation, persistence, queries, UI,
   and tests.
 
@@ -671,6 +673,16 @@ Expected flow:
 
 No API-first layer, global client state, generic report engine, generic
 catalog administrator, or generic audit system is required.
+
+Maintenance Tracking is a downstream consumer, not a DDR write path. It
+reuses `calculateDraglineShiftTotals` and the canonical downtime interval
+semantics. Completed report correction replaces the current report timeline
+and derived runtime under stable report identity, so Maintenance recalculates
+from that corrected state rather than retaining a one-time increment. Drafts
+never contribute. Exact intra-report maintenance boundaries use the shared
+range allocator only when downtime reconciles to the scheduled window; the
+known fixed-budget/post-shift limitation is documented in the Maintenance
+Tracking architecture.
 
 ## 17. UI Composition
 

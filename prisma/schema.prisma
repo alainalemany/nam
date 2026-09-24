@@ -56,6 +56,11 @@ enum DraglineDelayReportStatus {
   COMPLETED
 }
 
+enum MaintenanceCounterScope {
+  SERVICE_INTERVAL
+  COMPONENT_LIFECYCLE
+}
+
 enum DraglineDelayReportCutType {
   PRODUCTION
   KEY_CUT
@@ -395,6 +400,7 @@ model Equipment {
   supplyRequestVersions   SupplyRequestVersion[]        @relation("SupplyRequestVersionEquipment")
   knowledgeRevisions      KnowledgeRecordRevision[]     @relation("KnowledgeRevisionEquipment")
   draglineDelayReports    DraglineDelayReport[]         @relation("DraglineDelayReportEquipment")
+  maintenanceTrackers     EquipmentMaintenanceTracker[] @relation("EquipmentMaintenanceTrackerEquipment")
   equipmentNumber         String?                       @unique(map: "Equipment_equipmentNumber_key")
   displayName             String
   category                EquipmentCategory
@@ -411,6 +417,112 @@ model Equipment {
   @@index([mineId])
   @@index([category])
   @@index([status])
+}
+
+model TrackedMaintenanceComponent {
+  id             String                        @id @default(cuid())
+  name           String
+  normalizedName String                        @unique(map: "TrackedMaintenanceComponent_normalizedName_key")
+  description    String?
+  trackingUnit   String                        @default("HOURS")
+  active         Boolean                       @default(true)
+  sortOrder      Int                           @default(0)
+  rules          MaintenanceRule[]
+  trackers       EquipmentMaintenanceTracker[]
+  createdAt      DateTime                      @default(now())
+  updatedAt      DateTime                      @updatedAt
+
+  @@index([active, sortOrder], map: "TrackedMaintenanceComponent_active_order_idx")
+  @@index([name], map: "TrackedMaintenanceComponent_name_idx")
+}
+
+model MaintenanceRule {
+  id                  String                      @id @default(cuid())
+  componentId         String
+  component           TrackedMaintenanceComponent @relation(fields: [componentId], references: [id], onDelete: Restrict, map: "MaintenanceRule_component_fkey")
+  actionName          String
+  counterScope        MaintenanceCounterScope     @default(COMPONENT_LIFECYCLE)
+  thresholdValue      Decimal                     @db.Decimal(12, 2)
+  upperThresholdValue Decimal?                    @db.Decimal(12, 2)
+  repeatable          Boolean                     @default(false)
+  repeatIntervalValue Decimal?                    @db.Decimal(12, 2)
+  maximumRepeatCount  Int?
+  warningLeadValue    Decimal?                    @db.Decimal(12, 2)
+  startsNewLifecycle  Boolean                     @default(false)
+  active              Boolean                     @default(true)
+  priority            Int                         @default(100)
+  sortOrder           Int                         @default(0)
+  serviceEvents       MaintenanceServiceEvent[]
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+
+  @@unique([componentId, sortOrder], map: "MaintenanceRule_component_order_key")
+  @@index([componentId, active, priority], map: "MaintenanceRule_component_active_priority_idx")
+}
+
+model EquipmentMaintenanceTracker {
+  id                         String                      @id @default(cuid())
+  equipmentId                String
+  equipment                  Equipment                   @relation("EquipmentMaintenanceTrackerEquipment", fields: [equipmentId], references: [id], onDelete: Restrict, map: "EquipmentMaintenanceTracker_equipment_fkey")
+  componentId                String
+  component                  TrackedMaintenanceComponent @relation(fields: [componentId], references: [id], onDelete: Restrict, map: "EquipmentMaintenanceTracker_component_fkey")
+  trackingStartedAt          DateTime                    @default(now())
+  installedComponentIdentity String?
+  notes                      String?
+  active                     Boolean                     @default(true)
+  recordVersion              Int                         @default(1)
+  counterEntries             MaintenanceCounterEntry[]
+  serviceEvents              MaintenanceServiceEvent[]
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime                    @updatedAt
+
+  @@unique([equipmentId, componentId], map: "EquipmentMaintenanceTracker_equipment_component_key")
+  @@index([equipmentId, active], map: "EquipmentMaintenanceTracker_equipment_active_idx")
+  @@index([componentId, active], map: "EquipmentMaintenanceTracker_component_active_idx")
+}
+
+model MaintenanceCounterEntry {
+  id              String                      @id @default(cuid())
+  trackerId       String
+  tracker         EquipmentMaintenanceTracker @relation(fields: [trackerId], references: [id], onDelete: Restrict, map: "MaintenanceCounterEntry_tracker_fkey")
+  adjustmentValue Decimal                     @db.Decimal(12, 2)
+  effectiveAt     DateTime
+  reason          String
+  recordedBy      String?
+  createdAt       DateTime                    @default(now())
+
+  @@index([trackerId, effectiveAt], map: "MaintenanceCounterEntry_tracker_effective_idx")
+}
+
+model MaintenanceServiceEvent {
+  id                         String                      @id @default(cuid())
+  trackerId                  String
+  tracker                    EquipmentMaintenanceTracker @relation(fields: [trackerId], references: [id], onDelete: Restrict, map: "MaintenanceServiceEvent_tracker_fkey")
+  ruleId                     String?
+  rule                       MaintenanceRule?            @relation(fields: [ruleId], references: [id], onDelete: SetNull, map: "MaintenanceServiceEvent_rule_fkey")
+  componentNameSnapshot      String
+  trackingUnitSnapshot       String
+  actionNameSnapshot         String
+  counterScopeSnapshot       MaintenanceCounterScope
+  thresholdSnapshot          Decimal                     @db.Decimal(12, 2)
+  upperThresholdSnapshot     Decimal?                    @db.Decimal(12, 2)
+  warningLeadSnapshot        Decimal?                    @db.Decimal(12, 2)
+  repeatIntervalSnapshot     Decimal?                    @db.Decimal(12, 2)
+  maximumRepeatSnapshot      Int?
+  startsNewLifecycleSnapshot Boolean
+  targetValueSnapshot        Decimal                     @db.Decimal(12, 2)
+  intervalValueAtService     Decimal                     @db.Decimal(12, 2)
+  lifecycleValueAtService    Decimal                     @db.Decimal(12, 2)
+  varianceValueSnapshot      Decimal                     @db.Decimal(12, 2)
+  lifecycleNumber            Int
+  serviceSequence            Int
+  effectiveAt                DateTime
+  notes                      String?
+  recordedBy                 String?
+  createdAt                  DateTime                    @default(now())
+
+  @@index([trackerId, effectiveAt], map: "MaintenanceServiceEvent_tracker_effective_idx")
+  @@index([ruleId], map: "MaintenanceServiceEvent_rule_idx")
 }
 
 model DailyInspection {

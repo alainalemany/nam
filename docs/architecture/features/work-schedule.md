@@ -111,6 +111,10 @@ Implemented V1 foundation:
   tests.
 - Day View participation through a Work Schedule-owned date-context helper
   that returns display-ready planned/actual interpretation.
+- Home Current/Next Shift participation through a Work Schedule-owned query
+  that uses explicit America/New_York Day/Night intervals, prioritizes an
+  active shift, and otherwise selects the next future assignment across week
+  boundaries.
 
 Follow-up capability:
 

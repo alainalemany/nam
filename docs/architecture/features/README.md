@@ -65,6 +65,8 @@ documentation architecture milestone explicitly approves that reorganization.
 
 | Feature | Document | Status |
 | --- | --- | --- |
+| Home Dashboard | [Home Dashboard Architecture](home-dashboard.md) | Approved; Current/Next Shift, Maintenance Health, Fleet Attention, and Quick Actions implemented |
+| Maintenance Tracking | [Maintenance Tracking Architecture](maintenance-tracking.md) | Approved; configurable rules, Equipment trackers, service/counter history, operational UI, and Home watch implemented |
 | Daily Work Logs | [Daily Work Logs Architecture](daily-work-logs.md) | Approved; V1 foundation, filtering, date navigation, and Day View participation implemented |
 | Dragline Delay Reports | [Dragline Delay Reports Architecture](dragline-delay-reports.md) | DDR-1 through DDR-3 implemented with Draft entry, explicit completion, Completed read-only detail, and reasoned correction history; source artifacts and Delay Code Catalog V1 verified |
 | Day View | [Day View Architecture](day-view.md) | Approved; selected-date composition implemented with eleven feature-owned contributors, including Supply Requests |

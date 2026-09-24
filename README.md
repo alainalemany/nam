@@ -44,6 +44,7 @@ scope, architecture, infrastructure, and future implementation direction.
 | Defect Tracking | Equipment issue tracking from report through closure. |
 | Knowledge Base | Implemented and accepted text-first Personal Operational Knowledge Records with stable revision history, personal review, lifecycle management, search, and optional Daily Log and Defect provenance links. |
 | Work Schedule | Manual weekly schedule entry, edits, assignment history, and schedule context. |
+| Maintenance Tracking | Configurable component rules, same-Equipment DDR-derived intervals/lifecycles, effective-time service history, and Home alerts. |
 | Timesheet | Personal record of weekly time entries, pay codes, equipment, work codes, and totals. |
 | Equipment Fuel Events | Operational fuel delivered to Equipment, including occurrences with multiple tank fills. |
 | Supply Requests | Implemented and accepted V1 records for requests already submitted through the corporate system, including reference management, lifecycle, immutable correction history, Daily Log Activity links, and Day View participation without inventory ownership. |

@@ -7,5 +7,6 @@ export default function ReferenceDataPage() {
     <section className="panel"><div><h2>U.S. Cities</h2><p>Searchable Cities linked to canonical States and reusable by Mines and Gas Stations.</p></div><Link className="button primary" href="/reference-data/cities">Manage Cities</Link></section>
     <section className="panel"><div><h2>Equipment</h2><p>Equipment and its existing Mine-derived City context.</p></div><Link className="button secondary" href="/equipment">Manage Equipment</Link></section>
     <section className="panel"><div><h2>Gas Stations</h2><p>Fueling locations that consume canonical City reference data.</p></div><Link className="button secondary" href="/equipment-fuel-events/gas-stations">Manage Gas Stations</Link></section>
+    <section className="panel"><div><h2>Tracked Maintenance Components</h2><p>Configurable component types, thresholds, service windows, warning leads, and lifecycle behavior.</p></div><Link className="button secondary" href="/reference-data/maintenance-components">Manage Components</Link></section>
   </main>;
 }

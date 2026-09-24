@@ -144,6 +144,8 @@ Confirmed deployment baseline:
 | Equipment Operations boundary assessment | `docs/architecture/equipment-operations.md` |
 | Operational Safety Checklists feature architecture | `docs/architecture/features/operational-safety-checklists.md` |
 | Equipment Fuel Events feature architecture | `docs/architecture/features/equipment-fuel-events.md` |
+| Home Dashboard feature architecture | `docs/architecture/features/home-dashboard.md` |
+| Maintenance Tracking feature architecture | `docs/architecture/features/maintenance-tracking.md` |
 | Dragline Delay Reports feature architecture | `docs/architecture/features/dragline-delay-reports.md` |
 | Architecture decisions | `docs/decisions/README.md` |
 | Development workflow | `docs/development.md` |
@@ -173,6 +175,18 @@ management. Work Schedule uses live Employee relationships plus historical
 snapshots for the primary employee, Assigned By supervisor, and assignment crew
 participants. Employee remains reference data rather than authentication or
 workforce-management infrastructure.
+
+Home uses explicit server composition for Current/Next Shift, selected-Dragline
+Maintenance Health, Fleet Attention, and Quick Actions. Work Schedule and
+Maintenance Tracking own their query contracts and business logic; Home owns no
+copied operational data.
+
+Maintenance Tracking adds configurable component/rule Reference Data,
+Equipment-specific tracker boundaries, retained adjustment/service history,
+and DDR-derived interval/lifecycle status. Component types are records rather
+than enums; counter scope and replacement behavior are configured per rule.
+Completed DDR runtime is authoritative, so corrected reports recalculate
+maintenance without source-linked increment reconciliation.
 
 Dragline Delay Reports are an approved additive feature with Level 2
 architecture in

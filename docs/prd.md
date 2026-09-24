@@ -21,6 +21,7 @@ roadmap governance is [Product Roadmap](product-roadmap.md).
 - [Version 1 Out of Scope](#version-1-out-of-scope)
 - [Work Authorization Requirements](#work-authorization-requirements)
 - [Work Schedule Requirements](#work-schedule-requirements)
+- [Maintenance Tracking Requirements](#maintenance-tracking-requirements)
 - [Timesheet Requirements](#timesheet-requirements)
 - [Operational Safety Checklist Requirements](#operational-safety-checklist-requirements)
 - [Historical Record And Search Requirements](#historical-record-and-search-requirements)
@@ -92,16 +93,16 @@ relevant module section; conceptual fields do not authorize implementation.
 
 ### 1. Dashboard Home
 
-Provide a high-level overview of all activity.
+Provide a live, read-only operational overview composed from feature-owned
+summary queries. Home must not persist copied schedule, Equipment, maintenance,
+DDR, fuel, or STOP Card data.
 
-Potential widgets:
-
-- Open Defects
-- Recent STOP Cards
-- Recent Inspections
-- Shift Notes
-- Safety Statistics
-- Maintenance Statistics
+The implemented foundation includes reusable Current/Next Shift, Maintenance
+Health, Fleet Attention, and Quick Actions cards. Current shift takes priority
+over the next future scheduled assignment and correctly spans an overnight
+Night shift. Maintenance Health defaults to that assignment's Equipment and
+supports explicit Dragline selection; Fleet Attention shows only actionable
+exceptions on other Draglines.
 
 ### 2. STOP Cards
 
@@ -555,6 +556,49 @@ context is available through reference data. Historical assignments should
 remain readable if equipment reference data changes later.
 
 Automatic SMS import or natural-language schedule parsing is not required. The supervisor's messages may contain spelling errors, grammar issues, or accidental character substitutions, so manual schedule entry and manual editing are the preferred workflow.
+
+## Maintenance Tracking Requirements
+
+NAM Dashboard must provide generic, data-configured maintenance tracking for
+Equipment components measured by operating hours. Tracked component names must
+be Reference Data rather than a fixed application enum.
+
+Each component may own multiple active or inactive service rules. A rule stores
+an action name, service-interval or component-lifecycle counter scope, lower or
+exact threshold, optional upper service-window threshold, repeat behavior,
+repeat interval, optional maximum count, warning lead, priority/order, and
+whether completing the action starts a new lifecycle.
+
+Each Equipment/component pair has an independent tracker start, optional
+installed-component identity, notes, active state, and optimistic record
+version. Current values and status are derived, not mutable totals. Completed
+DDR runtime contributes only to trackers for the same Equipment. Exceptional
+manual additions require an effective timestamp and reason; service actions
+remain immutable history.
+
+Status behavior is Healthy before the warning lead, Due Soon inside the warning
+lead, Due Window inside an inclusive lower/upper window, Due exactly at a
+single threshold, and Overdue beyond a single threshold or upper window limit.
+
+Service rules determine counter behavior. A continuing action such as Resocket
+restarts its service interval at the event's operational effective timestamp
+without resetting component lifecycle hours. A replacement/change starts a new
+lifecycle and all applicable intervals at its effective timestamp. Early and
+late PM are valid and preserve calculated variance. The event snapshots its
+rule thresholds so later Reference Data edits do not rewrite history. Adding
+future components and hour rules must be a data operation rather than a schema
+or component-enum change.
+
+DDR corrections must be reflected automatically. A report must not contribute
+twice, and one Equipment's report must never affect another Equipment. When a
+service occurs during a DDR, canonical timeline data splits runtime at the
+effective time where that split is supported without invented precision.
+
+Initial configured records are Drag Cable, Hoist Cable, and Teeth. Their seed
+warning leads are configurable defaults: 25 hours for Drag Cable Resocket, 100
+hours for Drag Cable Change/Replace, 50 hours for Hoist Cable Resocket, 100
+hours for Hoist Cable Change/Replace, and 75 hours for Teeth Change/Replace.
+They are not permanent hard-coded operational constants.
 
 ## Timesheet Requirements
 

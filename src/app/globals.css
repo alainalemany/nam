@@ -672,6 +672,323 @@ textarea {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.dashboard-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dashboard-card {
+  display: grid;
+  align-content: start;
+  gap: 20px;
+  min-width: 0;
+  border: 1px solid #d7dde3;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 24px;
+  box-shadow: 0 10px 24px rgb(23 32 38 / 6%);
+}
+
+.dashboard-card--featured {
+  border-top: 4px solid #1f6feb;
+}
+
+.dashboard-card--wide {
+  grid-column: 1 / -1;
+}
+
+.dashboard-shift-body {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.dashboard-shift-body > div {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.dashboard-primary-value {
+  color: #172026;
+  font-size: 1.5rem;
+}
+
+.dashboard-alert-list {
+  display: grid;
+  gap: 0;
+}
+
+.dashboard-alert {
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid #e4e9ee;
+  padding: 14px 0;
+}
+
+.dashboard-alert:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.quick-action-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.maintenance-card-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.maintenance-card {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  border: 1px solid #d7dde3;
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 18px;
+}
+
+.maintenance-value {
+  display: block;
+  margin-bottom: 8px;
+  color: #172026;
+  font-size: 1.1rem;
+}
+
+.maintenance-value--large {
+  margin-top: 8px;
+  font-size: 1.75rem;
+}
+
+.maintenance-meter-track {
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: #e4e9ee;
+}
+
+.maintenance-meter-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #1f6feb;
+}
+
+.maintenance-status {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  border: 1px solid #9fb2c3;
+  border-radius: 999px;
+  background: #eef5fb;
+  color: #284b68;
+  padding: 4px 9px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.maintenance-status--not-due,
+.maintenance-status--healthy {
+  border-color: #8fc7a6;
+  background: #effaf3;
+  color: #174d2c;
+}
+
+.maintenance-status--due-soon {
+  border-color: #e7c16f;
+  background: #fff9e8;
+  color: #704c0e;
+}
+
+.maintenance-status--due-window,
+.maintenance-status--due {
+  border-color: #dc9d51;
+  background: #fff3df;
+  color: #7a3e06;
+}
+
+.maintenance-status--overdue {
+  border-color: #d8a09d;
+  background: #fff5f4;
+  color: #8f211d;
+}
+
+.maintenance-healthy {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid #8fc7a6;
+  border-radius: 8px;
+  background: #effaf3;
+  color: #174d2c;
+  padding: 16px;
+}
+
+.maintenance-healthy > span {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #174d2c;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.maintenance-healthy p {
+  margin: 4px 0 0;
+  color: #2f5c40;
+}
+
+.maintenance-action-grid,
+.maintenance-summary-panel {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dashboard-card--maintenance-health {
+  border-top: 4px solid #283f52;
+}
+
+.maintenance-equipment-selector {
+  display: grid;
+  align-items: end;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.maintenance-health-grid,
+.maintenance-detail-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.maintenance-health-item {
+  display: grid;
+  align-items: center;
+  gap: 14px;
+  grid-template-columns: 112px minmax(0, 1fr);
+  border: 1px solid #d7dde3;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #ffffff, #f7fafc);
+  padding: 14px;
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 8px 20px rgb(23 32 38 / 5%);
+}
+
+.maintenance-health-item:hover {
+  border-color: #8da4b7;
+  transform: translateY(-1px);
+}
+
+.maintenance-health-item:focus-visible {
+  outline: 3px solid #1f6feb;
+  outline-offset: 2px;
+}
+
+.maintenance-health-item__body {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.maintenance-health-item__body .section-heading {
+  align-items: flex-start;
+}
+
+.maintenance-ring {
+  --ring-color: #26834a;
+  position: relative;
+  display: grid;
+  width: 112px;
+  height: 112px;
+  place-items: center;
+}
+
+.maintenance-ring--due-soon { --ring-color: #ad7500; }
+.maintenance-ring--due,
+.maintenance-ring--due-window { --ring-color: #c85d0a; }
+.maintenance-ring--overdue { --ring-color: #b42318; }
+
+.maintenance-ring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.maintenance-ring circle {
+  fill: none;
+  stroke-width: 9;
+}
+
+.maintenance-ring__track { stroke: #e6ebef; }
+.maintenance-ring__value {
+  stroke: var(--ring-color);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 180ms ease;
+}
+
+.maintenance-ring > span {
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  color: #172026;
+  line-height: 1.1;
+}
+
+.maintenance-ring > span strong { font-size: 1.25rem; }
+.maintenance-ring > span small { margin-top: 4px; color: #667581; }
+
+.dashboard-alert--link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.dashboard-alert--link:hover strong:first-child { color: #174f78; }
+.maintenance-overdue-text { color: #8f211d; }
+
+.maintenance-detail-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.maintenance-service-form,
+.maintenance-adjustment-panel {
+  align-content: start;
+}
+
+.maintenance-adjustment-panel summary {
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.maintenance-adjustment-panel summary > span {
+  display: grid;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.maintenance-adjustment-panel[open] summary { margin-bottom: 18px; }
+
+.maintenance-summary-panel {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .placeholder-panel {
   display: grid;
   min-height: 160px;
@@ -722,6 +1039,19 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .dashboard-grid,
+  .dashboard-shift-body,
+  .maintenance-card-grid,
+  .maintenance-action-grid,
+  .maintenance-summary-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .maintenance-health-grid,
+  .maintenance-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
   .form-actions {
     justify-content: stretch;
   }
@@ -731,7 +1061,27 @@ textarea {
   }
 }
 
+@media (max-width: 560px) {
+  .maintenance-health-item {
+    grid-template-columns: 92px minmax(0, 1fr);
+    padding: 12px;
+  }
+
+  .maintenance-ring {
+    width: 92px;
+    height: 92px;
+  }
+
+  .maintenance-equipment-selector {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 1100px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
   .work-schedule-header-grid {
     grid-template-columns: 1fr;
   }

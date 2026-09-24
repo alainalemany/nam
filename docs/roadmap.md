@@ -19,6 +19,7 @@ future phases.
 - [Defect Tracking Roadmap](#defect-tracking-roadmap)
 - [Work Authorization Roadmap](#work-authorization-roadmap)
 - [Work Schedule Roadmap](#work-schedule-roadmap)
+- [Home And Maintenance Tracking Roadmap](#home-and-maintenance-tracking-roadmap)
 - [Timesheet Roadmap](#timesheet-roadmap)
 - [Daily Log And Historical Search Roadmap](#daily-log-and-historical-search-roadmap)
 - [Dragline Delay Reports Roadmap](#dragline-delay-reports-roadmap)
@@ -398,6 +399,28 @@ Schedule-owned selected-date context helper.
 - Add reminders for upcoming assignments
 - Add calendar export or sync
 - Add schedule change notifications
+
+## Home And Maintenance Tracking Roadmap
+
+Status: Implemented foundation
+
+- Approved Home and Maintenance Tracking Level 2 architecture.
+- Added non-destructive Prisma models and migration with conflict-safe initial
+  Drag Cable, Hoist Cable, and Teeth configuration.
+- Added generic status, repetition, service-window, interval/lifecycle, and
+  alert logic.
+- Added Reference Data component/rule management and Equipment trackers whose
+  operating hours derive from completed same-Equipment DDRs.
+- Added effective-time service entry, historical rule snapshots, exceptional
+  reasoned adjustments, and retained service history.
+- Added Current/Next Shift, selected-Dragline Maintenance Health, Fleet
+  Attention, and Quick Actions Home cards.
+- Added focused DDR-integration, service-boundary, Home-domain, and migration
+  tests.
+
+Future work requires separate authorization for telemetry, inventory,
+work-order integration, audited correction/reversal of recorded service events,
+or additional Home widgets.
 
 ## Timesheet Roadmap
 
