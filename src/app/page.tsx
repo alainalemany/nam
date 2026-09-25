@@ -14,7 +14,7 @@ export default async function Home({ searchParams }: Props) {
   });
 
   return (
-    <main className="page-stack">
+    <main className="page-stack page-stack--dashboard">
       <section className="page-header" aria-labelledby="page-title">
         <p className="eyebrow">Operational overview</p>
         <h1 id="page-title">NAM Dashboard</h1>

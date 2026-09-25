@@ -69,17 +69,33 @@ week-boundary assumptions.
 ## 7. UI Composition
 
 Cards use the existing CSS design language, restrained status badges, readable
-metadata, and a two-column desktop layout that collapses to one column.
+metadata, and a container-aware responsive layout. When the Home content
+container is sufficiently wide, an asymmetric two-column composition gives
+Maintenance Health more room while Current/Next Shift and Fleet Attention use
+the supporting column. When the content container is constrained by the
+sidebar, page padding, or viewport, the cards stack naturally. The transition
+is based on usable Home content width rather than a device-specific viewport
+breakpoint, and cards keep their natural heights instead of stretching to match
+one another.
+
 Maintenance Health uses accessible progress rings whose visual fill caps at
-100 percent while text preserves actual overage. It renders configured active
-components rather than hard-coded cable/teeth branches, limits Home growth, and
-links each item to feature detail. Each initialized component also identifies
-the available completed-DDR coverage behind its derived value; a date-only
-historical anchor with no later completed DDRs is shown honestly rather than as
-a fabricated lifetime total. Equipment with no initialized tracker remains
-dormant and does not become a fleet exception. The components contain no
-persistence or status calculations, keeping future Metronic/ReUI restyling
-separate from feature behavior.
+100 percent while text preserves actual overage. The widget establishes its own
+inline-size container so component rows, progress-ring sizing, title/status
+wrapping, and selector controls respond to the space actually available inside
+the card. Narrow containers use full-width horizontal component rows and stack
+the selector action only when required; wider containers may use denser
+multi-column presentation without duplicating markup.
+
+Maintenance Health renders configured active components rather than hard-coded
+cable/teeth branches, limits Home growth, and links each item to feature detail.
+Each initialized component also identifies the available completed-DDR coverage
+behind its derived value. Home uses a compact coverage summary with the complete
+wording available as supplemental text and on component detail, so a date-only
+historical anchor remains honest without repeating audit prose in every summary
+row. Equipment with no initialized tracker remains dormant and does not become
+a fleet exception. The components contain no persistence or status
+calculations, keeping future Metronic/ReUI restyling separate from feature
+behavior.
 
 ## 8. Validation And Error Handling
 

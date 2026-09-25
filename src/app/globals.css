@@ -674,8 +674,18 @@ textarea {
 
 .dashboard-grid {
   display: grid;
+  align-items: start;
   gap: 20px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas:
+    "shift maintenance"
+    "fleet maintenance"
+    "quick quick";
+  grid-template-columns: minmax(280px, 0.85fr) minmax(580px, 1.65fr);
+}
+
+.page-stack--dashboard {
+  container-name: home-dashboard;
+  container-type: inline-size;
 }
 
 .dashboard-card {
@@ -695,7 +705,18 @@ textarea {
 }
 
 .dashboard-card--wide {
+  grid-area: quick;
   grid-column: 1 / -1;
+}
+
+.dashboard-card--shift {
+  grid-area: shift;
+  container-name: current-shift;
+  container-type: inline-size;
+}
+
+.dashboard-card--fleet-attention {
+  grid-area: fleet;
 }
 
 .dashboard-shift-body {
@@ -857,7 +878,10 @@ textarea {
 }
 
 .dashboard-card--maintenance-health {
+  grid-area: maintenance;
   border-top: 4px solid #283f52;
+  container-name: maintenance-health;
+  container-type: inline-size;
 }
 
 .maintenance-equipment-selector {
@@ -871,6 +895,13 @@ textarea {
 .maintenance-detail-grid {
   display: grid;
   gap: 14px;
+}
+
+.maintenance-health-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.maintenance-detail-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -878,7 +909,7 @@ textarea {
   display: grid;
   align-items: center;
   gap: 14px;
-  grid-template-columns: 112px minmax(0, 1fr);
+  grid-template-columns: 96px minmax(0, 1fr);
   border: 1px solid #d7dde3;
   border-radius: 12px;
   background: linear-gradient(145deg, #ffffff, #f7fafc);
@@ -904,16 +935,44 @@ textarea {
   gap: 5px;
 }
 
-.maintenance-health-item__body .section-heading {
+.maintenance-health-item__heading {
+  display: flex;
   align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 10px;
+}
+
+.maintenance-health-item__heading h3 {
+  min-width: 0;
+  flex: 1 1 130px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.maintenance-health-item__heading .maintenance-status {
+  flex: 0 0 auto;
+}
+
+.maintenance-health-item__primary {
+  color: #172026;
+  font-size: 1.05rem;
+}
+
+.maintenance-coverage-note {
+  display: block;
+  margin-top: 5px;
+  color: #667581;
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 .maintenance-ring {
   --ring-color: #26834a;
   position: relative;
   display: grid;
-  width: 112px;
-  height: 112px;
+  width: 96px;
+  height: 96px;
   place-items: center;
 }
 
@@ -950,8 +1009,62 @@ textarea {
   line-height: 1.1;
 }
 
-.maintenance-ring > span strong { font-size: 1.25rem; }
+.maintenance-ring > span strong { font-size: 1.15rem; }
 .maintenance-ring > span small { margin-top: 4px; color: #667581; }
+
+@container home-dashboard (max-width: 940px) {
+  .dashboard-grid {
+    grid-template-areas:
+      "shift"
+      "maintenance"
+      "fleet"
+      "quick";
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container current-shift (max-width: 460px) {
+  .dashboard-shift-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container maintenance-health (min-width: 900px) {
+  .maintenance-health-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container maintenance-health (max-width: 420px) {
+  .maintenance-health-item {
+    gap: 12px;
+    grid-template-columns: 84px minmax(0, 1fr);
+    padding: 12px;
+  }
+
+  .maintenance-ring {
+    width: 84px;
+    height: 84px;
+  }
+
+  .maintenance-ring > span strong {
+    font-size: 1rem;
+  }
+
+  .maintenance-ring > span small {
+    font-size: 0.72rem;
+  }
+}
+
+@container maintenance-health (max-width: 340px) {
+  .maintenance-equipment-selector {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .maintenance-equipment-selector .button {
+    width: 100%;
+  }
+}
 
 .dashboard-alert--link {
   color: inherit;
@@ -1047,7 +1160,6 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .maintenance-health-grid,
   .maintenance-detail-grid {
     grid-template-columns: 1fr;
   }
@@ -1061,27 +1173,7 @@ textarea {
   }
 }
 
-@media (max-width: 560px) {
-  .maintenance-health-item {
-    grid-template-columns: 92px minmax(0, 1fr);
-    padding: 12px;
-  }
-
-  .maintenance-ring {
-    width: 92px;
-    height: 92px;
-  }
-
-  .maintenance-equipment-selector {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 1100px) {
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-
   .work-schedule-header-grid {
     grid-template-columns: 1fr;
   }
