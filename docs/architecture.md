@@ -186,7 +186,10 @@ Equipment-specific tracker boundaries, retained adjustment/service history,
 and DDR-derived interval/lifecycle status. Component types are records rather
 than enums; counter scope and replacement behavior are configured per rule.
 Completed DDR runtime is authoritative, so corrected reports recalculate
-maintenance without source-linked increment reconciliation.
+maintenance without source-linked increment reconciliation. Historical
+lifecycle initialization may preserve a date-only notebook anchor and machine-
+meter evidence without fabricating an effective time or deriving hours from the
+meter; its summaries disclose the completed-DDR coverage actually available.
 
 Dragline Delay Reports are an approved additive feature with Level 2
 architecture in

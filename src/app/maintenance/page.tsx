@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { getMaintenanceTrackers } from "@/features/maintenance-tracking/data";
-import { formatMaintenanceValue, maintenanceProgressPercentage, maintenanceStatusLabel } from "@/features/maintenance-tracking/domain";
+import { formatMaintenanceValue, maintenanceProgressPercentage, maintenanceRuntimeCoverageLabel, maintenanceStatusLabel } from "@/features/maintenance-tracking/domain";
 
 export const dynamic = "force-dynamic";
 type Props = { searchParams?: Promise<{ equipmentId?: string }> };
@@ -28,6 +28,7 @@ export default async function MaintenancePage({ searchParams }: Props) {
           <div className="section-heading"><div><h3>{tracker.componentName}</h3><span className="subtle">Lifecycle {tracker.lifecycleNumber}</span></div><span className={`maintenance-status maintenance-status--${tracker.status.toLowerCase().replace("_", "-")}`}>{maintenanceStatusLabel(tracker.status)}</span></div>
           <div><strong className="maintenance-value">{next ? `${formatMaintenanceValue(next.currentValue)} / ${formatMaintenanceValue(next.dueValue)}` : formatMaintenanceValue(tracker.lifecycleValue)} {tracker.trackingUnit.toLowerCase()}</strong><div className="maintenance-meter-track" aria-hidden="true"><span style={{ width: `${progress}%` }} /></div></div>
           {next ? <dl className="meta-list"><dt>Next action</dt><dd>{next.rule.actionName}</dd><dt>{next.overdueValue > 0 ? "Overdue" : "Remaining"}</dt><dd>{next.overdueValue > 0 ? `+${formatMaintenanceValue(next.overdueValue)} h` : next.status === "DUE_WINDOW" ? "Inside service window" : `${formatMaintenanceValue(next.remainingValue)} h`}</dd>{next.rule.counterScope === "SERVICE_INTERVAL" ? <><dt>Total lifecycle</dt><dd>{formatMaintenanceValue(tracker.lifecycleValue)} h</dd></> : null}{next.rule.maximumRepeatCount ? <><dt>Services</dt><dd>{next.completedCount} / {next.rule.maximumRepeatCount}</dd></> : null}</dl> : <p className="subtle">No active rule remains in this lifecycle.</p>}
+          <p className="subtle">{maintenanceRuntimeCoverageLabel(tracker.runtimeCoverage)}</p>
           <Link className="table-action" href={`/maintenance/${tracker.trackerId}`}>View status and history →</Link>
         </article>;
       })}</div>

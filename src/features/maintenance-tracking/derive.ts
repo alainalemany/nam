@@ -5,16 +5,19 @@ import {
   type MaintenanceRuleDefinition,
 } from "./domain";
 import {
-  calculateEquipmentOperatingMinutes,
+  calculateEquipmentOperatingRuntime,
   maintenanceHoursFromMinutes,
   type MaintenanceAdjustment,
   type MaintenanceRuntimeReport,
 } from "./runtime-source";
+import { maintenanceEventBoundaryAt } from "./boundaries";
 
 export type DerivableMaintenanceEvent = {
   id: string;
   ruleId: string | null;
-  effectiveAt: Date;
+  eventKind?: "SERVICE" | "LIFECYCLE_INITIALIZATION";
+  effectiveAt?: Date | null;
+  effectiveDate?: Date | null;
   startsNewLifecycleSnapshot: boolean;
 };
 
@@ -37,32 +40,32 @@ export function deriveMaintenanceTracker(
   asOf = new Date(),
 ): EvaluatedMaintenanceTracker {
   const events = tracker.serviceEvents
-    .filter((event) => event.effectiveAt <= asOf)
-    .sort((left, right) => left.effectiveAt.getTime() - right.effectiveAt.getTime() || left.id.localeCompare(right.id));
+    .map((event) => ({ ...event, boundaryAt: maintenanceEventBoundaryAt(event) }))
+    .filter((event) => event.boundaryAt <= asOf)
+    .sort((left, right) => left.boundaryAt.getTime() - right.boundaryAt.getTime() || left.id.localeCompare(right.id));
   const replacementEvents = events.filter((event) => event.startsNewLifecycleSnapshot);
   const latestReplacement = replacementEvents.at(-1);
-  const lifecycleStartedAt = latestReplacement?.effectiveAt ?? tracker.trackingStartedAt;
-  const lifecycleEvents = events.filter((event) => event.effectiveAt > lifecycleStartedAt);
-  const hoursBetween = (from: Date) => maintenanceHoursFromMinutes(
-    calculateEquipmentOperatingMinutes(
+  const lifecycleStartedAt = latestReplacement?.boundaryAt ?? tracker.trackingStartedAt;
+  const lifecycleEvents = events.filter((event) => event.boundaryAt > lifecycleStartedAt);
+  const runtimeBetween = (from: Date) => calculateEquipmentOperatingRuntime(
       tracker.equipmentId,
       from,
       asOf,
       reports,
       tracker.adjustments,
-    ),
-  );
-  const lifecycleValue = hoursBetween(lifecycleStartedAt);
+    );
+  const lifecycleRuntime = runtimeBetween(lifecycleStartedAt);
+  const lifecycleValue = maintenanceHoursFromMinutes(lifecycleRuntime.minutes);
   const rules = tracker.rules.flatMap((rule) => {
     const matchingEvents = lifecycleEvents.filter((event) => event.ruleId === rule.id);
     const counterStartedAt =
       rule.counterScope === "SERVICE_INTERVAL"
-        ? matchingEvents.at(-1)?.effectiveAt ?? lifecycleStartedAt
+        ? matchingEvents.at(-1)?.boundaryAt ?? lifecycleStartedAt
         : lifecycleStartedAt;
     const currentValue =
       rule.counterScope === "COMPONENT_LIFECYCLE"
         ? lifecycleValue
-        : hoursBetween(counterStartedAt);
+        : maintenanceHoursFromMinutes(runtimeBetween(counterStartedAt).minutes);
     const evaluated = evaluateMaintenanceRule(
       currentValue,
       rule,
@@ -80,8 +83,13 @@ export function deriveMaintenanceTracker(
     componentName: tracker.componentName,
     trackingUnit: tracker.trackingUnit,
     lifecycleValue,
-    lifecycleNumber: replacementEvents.length + 1,
+    lifecycleNumber: replacementEvents.filter((event) => event.eventKind !== "LIFECYCLE_INITIALIZATION").length + 1,
     lifecycleStartedAt,
+    runtimeCoverage: {
+      reportCount: lifecycleRuntime.reportIds.length,
+      firstOperationalDate: lifecycleRuntime.firstOperationalDate,
+      lastOperationalDate: lifecycleRuntime.lastOperationalDate,
+    },
     rules,
   });
 }

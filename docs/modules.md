@@ -614,6 +614,14 @@ Fleet Attention contributions. Manual additions are an explicit reasoned
 administrative exception. Replacement behavior and interval scope are
 configured per rule; neither is a component-name conditional.
 
+Historical initialization supports a lifecycle date whose exact service time
+is unknown without inventing clock precision. NAM preserves the date and an
+optional machine-meter snapshot as source evidence, begins calculation at the
+following 5:00 AM operational boundary, and discloses the available completed-
+DDR coverage behind the result. The meter snapshot never competes with DDR as
+the ongoing counter. Identical initialization is a no-op; conflicting existing
+history must be reviewed rather than overwritten.
+
 Initial Drag Cable, Hoist Cable, and Teeth rows are ordinary Reference Data.
 Future tracked items require new rows and rules, not new columns or component
 enums. DDR correction is reflected on the next read because Maintenance does

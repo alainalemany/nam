@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { addDateKeyDays, dateKeyInTimeZone } from "@/lib/zoned-date-time";
 
 import { deriveMaintenanceTracker } from "./derive";
+import { maintenanceEventBoundaryAt } from "./boundaries";
 import {
   maintenanceStatusRank,
   selectFleetAttention,
@@ -58,7 +59,7 @@ export const trackerInclude = Prisma.validator<Prisma.EquipmentMaintenanceTracke
   equipment: { include: { mine: true } },
   component: { include: { rules: { orderBy: [{ sortOrder: "asc" }, { priority: "asc" }] } } },
   counterEntries: { orderBy: [{ effectiveAt: "asc" }, { createdAt: "asc" }] },
-  serviceEvents: { orderBy: [{ effectiveAt: "asc" }, { createdAt: "asc" }] },
+  serviceEvents: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
 });
 
 export type TrackerRecord = Prisma.EquipmentMaintenanceTrackerGetPayload<{ include: typeof trackerInclude }>;
@@ -204,4 +205,33 @@ export function displayMaintenanceDateTime(value: Date) {
     timeStyle: "short",
     timeZone: "America/New_York",
   }).format(value);
+}
+
+export function displayMaintenanceDate(value: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  }).format(value);
+}
+
+export function displayMaintenanceEventEffective(event: {
+  effectiveAt: Date | null;
+  effectiveDate: Date | null;
+}) {
+  return event.effectiveAt
+    ? displayMaintenanceDateTime(event.effectiveAt)
+    : event.effectiveDate
+      ? `${displayMaintenanceDate(event.effectiveDate)} · time unknown`
+      : "Invalid boundary";
+}
+
+export function sortMaintenanceServiceEvents<T extends {
+  id: string;
+  effectiveAt: Date | null;
+  effectiveDate: Date | null;
+}>(events: readonly T[]) {
+  return [...events].sort((left, right) =>
+    maintenanceEventBoundaryAt(left).getTime() - maintenanceEventBoundaryAt(right).getTime() ||
+    left.id.localeCompare(right.id),
+  );
 }

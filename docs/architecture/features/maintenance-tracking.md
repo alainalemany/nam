@@ -15,7 +15,7 @@ Depends On:
 - `docs/ui-architecture.md`
 - `docs/testing-strategy.md`
 
-Last Reviewed: 2026-09-24
+Last Reviewed: 2026-09-25
 
 ## 1. Purpose
 
@@ -112,7 +112,7 @@ from available current actions. Lifecycle replacement status remains
 independent. The application does not invent behavior when configured
 resocket and replacement rules overlap.
 
-## 6. Effective Time And Service History
+## 6. Effective Time, Historical Anchors, And Service History
 
 `effectiveAt` is the operational boundary. `createdAt` is the audit time when
 the row was entered. Backdated entry therefore uses the actual PM time, not
@@ -120,6 +120,31 @@ the Save click time. Service entry is append-only in this slice and must be
 chronological within a tracker. Correcting an already recorded service event
 requires a future explicit audited correction workflow; casual hard deletion
 is not provided.
+
+An ordinary service event has kind `SERVICE` and requires one exact
+`effectiveAt`. A trustworthy notebook entry may instead establish a current
+lifecycle when the service date is known but its time is not. That event has
+kind `LIFECYCLE_INITIALIZATION`, stores the calendar `effectiveDate`, leaves
+`effectiveAt` null, and explicitly renders the time as unknown. NAM does not
+invent midnight, shift start, or another false service time.
+
+For a date-only lifecycle anchor, the calculation boundary is 5:00 AM
+America/New_York on the following operational date. This deliberately excludes
+every DDR assigned to the ambiguous anchor date, including its Night shift,
+instead of allocating runtime to one side of an unknown service time. Counters
+therefore represent only completed DDR coverage after the conservative trusted
+boundary. The UI reports the contributing DDR count and first/last operational
+dates, or states that no completed DDR exists after the anchor. It also states
+that values reflect available verified history only; missing historical DDRs
+are never fabricated.
+
+`machineMeterSnapshot` may preserve a nonnegative meter reading recorded with
+a historical lifecycle anchor. It is provenance metadata and never contributes
+to the ongoing counter. DDR runtime remains the sole ordinary operating-hour
+source. The initialization event leaves prior interval, lifecycle, and variance
+values null because the previous lifecycle was not imported. Initialization is
+transactional and idempotent for an identical anchor; existing conflicting
+tracker data stops the operation rather than being overwritten.
 
 Each event snapshots component/action/unit, counter scope, thresholds, warning,
 repeat settings, maximum, lifecycle effect, target, interval and lifecycle
@@ -184,7 +209,10 @@ Overdue, and gray unavailable. Text labels accompany every color.
 
 Database relationships restrict deletion of trackers with history. Checks
 protect positive exceptional adjustments, required reasons, nonnegative rule
-targets, coherent ranges, and positive lifecycle/service sequences.
+targets, coherent ranges, and valid lifecycle/service sequences. They also
+require exactly one boundary representation for each service event: an exact
+timestamp for ordinary service or a date-only boundary for lifecycle
+initialization.
 Application validation rejects future boundaries, boundaries before tracker
 start, stale record versions, and nonchronological service entry.
 
@@ -193,3 +221,6 @@ correction recalculation, intra-report splitting and its explicit limitation,
 early/exact/late service, interval reset without lifecycle reset, replacement,
 Hoist maximum count, backdated effective time, status/window behavior,
 historical snapshots, Home selection and Fleet ordering, and capped progress.
+Date-only lifecycle tests additionally protect the conservative next-day
+boundary, unknown prior values, machine-meter provenance, idempotent reruns,
+conflict refusal, and runtime-coverage disclosure.

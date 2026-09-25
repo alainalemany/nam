@@ -13,7 +13,7 @@ Depends On:
 - `docs/application-state-and-data-flow.md`
 - `docs/ui-architecture.md`
 
-Last Reviewed: 2026-09-24
+Last Reviewed: 2026-09-25
 
 ## 1. Purpose
 
@@ -73,9 +73,13 @@ metadata, and a two-column desktop layout that collapses to one column.
 Maintenance Health uses accessible progress rings whose visual fill caps at
 100 percent while text preserves actual overage. It renders configured active
 components rather than hard-coded cable/teeth branches, limits Home growth, and
-links each item to feature detail. The components contain no persistence or
-status calculations, keeping future Metronic/ReUI restyling separate from
-feature behavior.
+links each item to feature detail. Each initialized component also identifies
+the available completed-DDR coverage behind its derived value; a date-only
+historical anchor with no later completed DDRs is shown honestly rather than as
+a fabricated lifetime total. Equipment with no initialized tracker remains
+dormant and does not become a fleet exception. The components contain no
+persistence or status calculations, keeping future Metronic/ReUI restyling
+separate from feature behavior.
 
 ## 8. Validation And Error Handling
 

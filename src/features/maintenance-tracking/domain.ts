@@ -47,6 +47,11 @@ export type MaintenanceTrackerSummary = {
   lifecycleValue: number;
   lifecycleNumber: number;
   lifecycleStartedAt: Date;
+  runtimeCoverage: {
+    reportCount: number;
+    firstOperationalDate?: string;
+    lastOperationalDate?: string;
+  };
   rules: EvaluatedMaintenanceRule[];
 };
 
@@ -220,4 +225,31 @@ export function snapshotMaintenanceService(
 
 export function formatMaintenanceValue(value: number) {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value);
+}
+
+function displayOperationalDate(dateKey: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${dateKey}T00:00:00.000Z`));
+}
+
+export function maintenanceRuntimeCoverageLabel(
+  coverage: MaintenanceTrackerSummary["runtimeCoverage"],
+) {
+  if (coverage.reportCount === 0) {
+    return "No completed DDRs after this lifecycle anchor. Counters reflect available verified history only.";
+  }
+  const first = coverage.firstOperationalDate
+    ? displayOperationalDate(coverage.firstOperationalDate)
+    : undefined;
+  const last = coverage.lastOperationalDate
+    ? displayOperationalDate(coverage.lastOperationalDate)
+    : undefined;
+  const range = first && last
+    ? first === last ? first : `${first}–${last}`
+    : "available dates";
+  return `${coverage.reportCount} completed DDR${coverage.reportCount === 1 ? "" : "s"} · ${range}. Counters reflect available verified history only.`;
 }

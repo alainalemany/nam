@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { deriveMaintenanceTracker } from "@/features/maintenance-tracking/derive";
+import { maintenanceDateOnlyCalculationBoundary } from "@/features/maintenance-tracking/boundaries";
 import type { MaintenanceRuleDefinition } from "@/features/maintenance-tracking/domain";
 import {
   calculateEquipmentOperatingMinutes,
+  calculateEquipmentOperatingRuntime,
   MaintenanceRuntimeSplitError,
   type MaintenanceRuntimeReport,
 } from "@/features/maintenance-tracking/runtime-source";
@@ -96,6 +98,28 @@ describe("DDR authoritative maintenance runtime", () => {
       [source],
     )).toThrow(MaintenanceRuntimeSplitError);
   });
+
+  it("starts a date-only historical lifecycle at the next NAM operational day without splitting the anchor date", () => {
+    const boundary = maintenanceDateOnlyCalculationBoundary(new Date("2026-09-01T00:00:00.000Z"));
+    expect(boundary.toISOString()).toBe("2026-09-02T09:00:00.000Z");
+    const reports = [
+      report("anchor-day", "101151", "2026-09-01"),
+      report("first-trusted-day", "101151", "2026-09-02", 60),
+      report("other-equipment", "101119", "2026-09-02"),
+    ];
+    const result = calculateEquipmentOperatingRuntime(
+      "101151",
+      boundary,
+      new Date("2026-09-03T09:00:00.000Z"),
+      reports,
+    );
+    expect(result).toEqual({
+      minutes: 660,
+      reportIds: ["first-trusted-day"],
+      firstOperationalDate: "2026-09-02",
+      lastOperationalDate: "2026-09-02",
+    });
+  });
 });
 
 describe("service interval and lifecycle boundaries", () => {
@@ -169,6 +193,33 @@ describe("service interval and lifecycle boundaries", () => {
     expect(summary).toMatchObject({ lifecycleNumber: 2, lifecycleValue: 12 });
     expect(summary.rules.find((item) => item.rule.id === "resocket")).toMatchObject({ currentValue: 12, completedCount: 0 });
     expect(events).toHaveLength(2);
+  });
+
+  it("uses a date-only initialization as lifecycle one without inventing a service time", () => {
+    const effectiveDate = new Date("2026-09-01T00:00:00.000Z");
+    const boundary = maintenanceDateOnlyCalculationBoundary(effectiveDate);
+    const summary = deriveMaintenanceTracker({
+      ...tracker([{
+        id: "notebook-anchor",
+        ruleId: "replace",
+        eventKind: "LIFECYCLE_INITIALIZATION",
+        effectiveAt: null,
+        effectiveDate,
+        startsNewLifecycleSnapshot: true,
+      }]),
+      trackingStartedAt: boundary,
+    }, [
+      report("anchor-date", "101151", "2026-09-01"),
+      report("verified", "101151", "2026-09-03", 60),
+    ], new Date("2026-09-04T09:00:00.000Z"));
+    expect(summary.lifecycleNumber).toBe(1);
+    expect(summary.lifecycleStartedAt).toEqual(boundary);
+    expect(summary.lifecycleValue).toBe(11);
+    expect(summary.runtimeCoverage).toEqual({
+      reportCount: 1,
+      firstOperationalDate: "2026-09-03",
+      lastOperationalDate: "2026-09-03",
+    });
   });
 
   it("tracks Hoist resocket count independently of lifecycle hours and enforces maximum", () => {

@@ -4,6 +4,7 @@ import type { EvaluatedMaintenanceTracker } from "@/features/maintenance-trackin
 import {
   formatMaintenanceValue,
   maintenanceProgressPercentage,
+  maintenanceRuntimeCoverageLabel,
   maintenanceStatusLabel,
 } from "@/features/maintenance-tracking/domain";
 import { displayHomeShiftDate, type HomeShiftSummary } from "@/features/work-schedule/home-summary";
@@ -62,7 +63,7 @@ export function MaintenanceHealthCard({
     {equipment.length > 0 ? <form className="maintenance-equipment-selector" method="get"><label><span>Dragline</span><select defaultValue={selectedEquipmentId} name="equipmentId">{equipment.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><button className="button secondary" type="submit">View</button></form> : null}
     {items.length === 0 ? <div className="empty-state"><h3>{selectedEquipmentLabel ? "No configured components" : "No tracked draglines"}</h3><p>{selectedEquipmentLabel ? `No active maintenance components are tracked for ${selectedEquipmentLabel}.` : "Create an Equipment/component tracker to begin DDR-driven maintenance monitoring."}</p></div> : <div className="maintenance-health-grid">{items.map((item) => <Link className="maintenance-health-item" href={`/maintenance/${item.trackerId}`} key={item.trackerId}>
       <MaintenanceProgressRing item={item} />
-      <div className="maintenance-health-item__body"><div className="section-heading"><h3>{item.componentName}</h3><span className={statusClass(item.status)}>{maintenanceStatusLabel(item.status)}</span></div><strong>{maintenanceMessage(item)}</strong><span className="subtle">Next: {item.nextRule?.rule.actionName ?? "No active action"}</span>{item.nextRule?.rule.counterScope === "SERVICE_INTERVAL" ? <span className="subtle">Lifecycle: {formatMaintenanceValue(item.lifecycleValue)} h</span> : null}</div>
+      <div className="maintenance-health-item__body"><div className="section-heading"><h3>{item.componentName}</h3><span className={statusClass(item.status)}>{maintenanceStatusLabel(item.status)}</span></div><strong>{maintenanceMessage(item)}</strong><span className="subtle">Next: {item.nextRule?.rule.actionName ?? "No active action"}</span>{item.nextRule?.rule.counterScope === "SERVICE_INTERVAL" ? <span className="subtle">Lifecycle: {formatMaintenanceValue(item.lifecycleValue)} h</span> : null}<span className="subtle">{maintenanceRuntimeCoverageLabel(item.runtimeCoverage)}</span></div>
     </Link>)}</div>}
     {hiddenItemCount > 0 ? <p className="subtle">{hiddenItemCount} additional configured {hiddenItemCount === 1 ? "component is" : "components are"} available on the full Maintenance page.</p> : null}
     <Link className="table-action" href={selectedEquipmentId ? `/maintenance?equipmentId=${selectedEquipmentId}` : "/maintenance"}>View Maintenance →</Link>

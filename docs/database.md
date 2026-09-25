@@ -1044,19 +1044,34 @@ rows; they remain owned by completed DDRs. Tracker deletion is restricted.
 ### MaintenanceServiceEvent
 
 Immutable service history linked to a tracker and optionally its current rule.
-It stores operational `effectiveAt` separately from audit `createdAt` and
-snapshots component/action/unit, counter scope, threshold/window, warning,
-repeat/max settings, lifecycle effect, target, calculated interval and
-lifecycle values, variance, lifecycle number, service sequence, optional notes,
-and recorder. Rule deletion uses SetNull while snapshots preserve historical
-meaning; tracker deletion is restricted. Replacement snapshots establish the
-next derived lifecycle boundary, while interval service snapshots reset only
-their rule's interval.
+An ordinary `SERVICE` row stores operational `effectiveAt` separately from audit
+`createdAt`. A `LIFECYCLE_INITIALIZATION` row represents a trusted historical
+date whose precise service time is unknown: it stores `effectiveDate`, leaves
+`effectiveAt` null, starts a lifecycle, and uses sequence zero. Its calculated
+prior interval/lifecycle/variance fields remain null rather than asserting
+unknown historical values. The optional nonnegative `machineMeterSnapshot`
+preserves source evidence but is not an operating-hour source.
+
+Every row snapshots component/action/unit, counter scope, threshold/window,
+warning, repeat/max settings, lifecycle effect, target, lifecycle number,
+optional notes, and recorder. Ordinary service rows also snapshot their
+calculated interval/lifecycle values, variance, and positive service sequence.
+Rule deletion uses SetNull while snapshots preserve historical meaning; tracker
+deletion is restricted. Replacement snapshots establish the next derived
+lifecycle boundary, while interval service snapshots reset only their rule's
+interval. Database checks enforce the mutually exclusive timestamp/date
+representations and initialization semantics.
 
 Completed `DraglineDelayReport` rows are queried through live `equipmentId`,
 completed status, operational date, and canonical timeline children. Stable
 report identity prevents duplicate contribution, and correction updates the
 source state used by the next derivation.
+
+For date-known/time-unknown initialization, `trackingStartedAt` is the next
+operational date at 5:00 AM America/New_York. This conservative boundary omits
+the ambiguous anchor date and its Night shift. Derived summaries expose the
+count and date range of completed DDRs that actually contribute so incomplete
+historical coverage remains visible.
 
 The initial migration inserts Drag Cable, Hoist Cable, and Teeth plus their
 confirmed rules using conflict-safe SQL. These are configurable rows, not

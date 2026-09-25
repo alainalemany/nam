@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { addDateKeyDays, dateKeyInTimeZone } from "@/lib/zoned-date-time";
 
+import { maintenanceDateKey, maintenanceDateOnlyCalculationBoundary, maintenanceEventBoundaryAt } from "./boundaries";
 import { maintenanceRuleDefinition, trackerInclude } from "./data";
 import { deriveMaintenanceTracker } from "./derive";
 import { snapshotMaintenanceService } from "./domain";
@@ -148,8 +149,10 @@ export async function recordMaintenanceService(
     if (tracker.recordVersion !== input.recordVersion) throw new Error("This tracker changed. Refresh before recording service.");
     if (input.effectiveAt < tracker.trackingStartedAt) throw new Error("Service time cannot precede the tracker start.");
     if (input.effectiveAt > new Date()) throw new Error("Service time cannot be in the future.");
-    const latestEvent = tracker.serviceEvents.at(-1);
-    if (latestEvent && input.effectiveAt <= latestEvent.effectiveAt) {
+    const latestEvent = [...tracker.serviceEvents]
+      .sort((left, right) => maintenanceEventBoundaryAt(left).getTime() - maintenanceEventBoundaryAt(right).getTime())
+      .at(-1);
+    if (latestEvent && input.effectiveAt <= maintenanceEventBoundaryAt(latestEvent)) {
       throw new Error("Service time must be later than the most recent recorded service. Correcting existing history requires an audited correction workflow.");
     }
 
@@ -170,7 +173,9 @@ export async function recordMaintenanceService(
     }, reports, input.effectiveAt);
     const evaluated = summary.rules.find((candidate) => candidate.rule.id === rule.id);
     if (!evaluated) throw new Error("This service action reached its configured lifecycle maximum or is no longer available.");
-    const serviceSequence = tracker.serviceEvents.filter((event) => event.effectiveAt > summary.lifecycleStartedAt).length + 1;
+    const serviceSequence = tracker.serviceEvents.filter((event) =>
+      event.eventKind === "SERVICE" && maintenanceEventBoundaryAt(event) > summary.lifecycleStartedAt,
+    ).length + 1;
     const snapshot = snapshotMaintenanceService(
       evaluated,
       summary.lifecycleValue,
@@ -204,10 +209,144 @@ export async function recordMaintenanceService(
         varianceValueSnapshot: new Prisma.Decimal(snapshot.varianceValue),
         lifecycleNumber: snapshot.lifecycleNumber,
         serviceSequence: snapshot.serviceSequence,
+        eventKind: "SERVICE",
         effectiveAt: snapshot.effectiveAt,
+        effectiveDate: null,
+        machineMeterSnapshot: null,
         notes: input.notes,
         recordedBy: input.recordedBy,
       },
     });
+  });
+}
+
+export type HistoricalLifecycleInitializationInput = {
+  equipmentId: string;
+  componentId: string;
+  ruleId: string;
+  effectiveDate: string;
+  machineMeterSnapshot: number;
+  actionName: string;
+  notes: string;
+};
+
+function decimalMatches(value: Prisma.Decimal | null, expected: number) {
+  return value != null && Number(value) === expected;
+}
+
+export async function initializeHistoricalMaintenanceLifecycle(
+  input: HistoricalLifecycleInitializationInput,
+) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.effectiveDate)) {
+    throw new Error("Historical lifecycle date must use YYYY-MM-DD.");
+  }
+  const effectiveDate = new Date(`${input.effectiveDate}T00:00:00.000Z`);
+  if (Number.isNaN(effectiveDate.getTime()) || maintenanceDateKey(effectiveDate) !== input.effectiveDate) {
+    throw new Error("Historical lifecycle date must be a valid calendar date.");
+  }
+  if (input.effectiveDate > dateKeyInTimeZone(new Date())) {
+    throw new Error("Historical lifecycle date cannot be in the future.");
+  }
+  if (!Number.isFinite(input.machineMeterSnapshot) || input.machineMeterSnapshot < 0) {
+    throw new Error("Machine meter snapshot must be zero or greater.");
+  }
+  const actionName = input.actionName.trim().replace(/\s+/g, " ");
+  const notes = input.notes.trim();
+  if (!actionName) throw new Error("Historical action name is required.");
+  if (!notes) throw new Error("Historical source notes are required.");
+
+  const trackingStartedAt = maintenanceDateOnlyCalculationBoundary(effectiveDate);
+
+  return prisma.$transaction(async (transaction) => {
+    const [equipment, component, rule] = await Promise.all([
+      transaction.equipment.findUnique({ where: { id: input.equipmentId } }),
+      transaction.trackedMaintenanceComponent.findUnique({ where: { id: input.componentId } }),
+      transaction.maintenanceRule.findUnique({ where: { id: input.ruleId } }),
+    ]);
+    if (!equipment || equipment.status !== "ACTIVE" || equipment.category !== "DRAGLINE") {
+      throw new Error("Select active Dragline Equipment.");
+    }
+    if (!component || !component.active) throw new Error("Select an active tracked component.");
+    if (!rule || !rule.active || rule.componentId !== component.id || !rule.startsNewLifecycle) {
+      throw new Error("Select an active lifecycle-starting rule for this component.");
+    }
+
+    let tracker = await transaction.equipmentMaintenanceTracker.findUnique({
+      where: { equipmentId_componentId: { equipmentId: equipment.id, componentId: component.id } },
+      include: trackerInclude,
+    });
+    const trackerExisted = tracker != null;
+
+    if (tracker) {
+      const matchingInitialization = tracker.serviceEvents.find((event) =>
+        event.eventKind === "LIFECYCLE_INITIALIZATION" &&
+        event.ruleId === rule.id &&
+        event.effectiveAt === null &&
+        event.effectiveDate != null &&
+        maintenanceDateKey(event.effectiveDate) === input.effectiveDate &&
+        event.actionNameSnapshot === actionName &&
+        decimalMatches(event.machineMeterSnapshot, input.machineMeterSnapshot) &&
+        event.notes === notes,
+      );
+      if (matchingInitialization) {
+        if (!tracker.active || tracker.trackingStartedAt.getTime() !== trackingStartedAt.getTime()) {
+          throw new Error("The existing tracker conflicts with this historical lifecycle boundary.");
+        }
+        return { trackerId: tracker.id, eventId: matchingInitialization.id, created: false };
+      }
+      if (
+        tracker.serviceEvents.length > 0 ||
+        tracker.counterEntries.length > 0 ||
+        !tracker.active ||
+        tracker.trackingStartedAt.getTime() !== trackingStartedAt.getTime()
+      ) {
+        throw new Error("Conflicting maintenance tracking history already exists for this Equipment/component.");
+      }
+    } else {
+      tracker = await transaction.equipmentMaintenanceTracker.create({
+        data: {
+          equipmentId: equipment.id,
+          componentId: component.id,
+          trackingStartedAt,
+          notes,
+        },
+        include: trackerInclude,
+      });
+    }
+
+    const event = await transaction.maintenanceServiceEvent.create({
+      data: {
+        trackerId: tracker.id,
+        ruleId: rule.id,
+        componentNameSnapshot: component.name,
+        trackingUnitSnapshot: component.trackingUnit,
+        actionNameSnapshot: actionName,
+        counterScopeSnapshot: rule.counterScope,
+        thresholdSnapshot: rule.thresholdValue,
+        upperThresholdSnapshot: rule.upperThresholdValue,
+        warningLeadSnapshot: rule.warningLeadValue,
+        repeatIntervalSnapshot: rule.repeatIntervalValue,
+        maximumRepeatSnapshot: rule.maximumRepeatCount,
+        startsNewLifecycleSnapshot: true,
+        targetValueSnapshot: rule.thresholdValue,
+        intervalValueAtService: null,
+        lifecycleValueAtService: null,
+        varianceValueSnapshot: null,
+        lifecycleNumber: 1,
+        serviceSequence: 0,
+        eventKind: "LIFECYCLE_INITIALIZATION",
+        effectiveAt: null,
+        effectiveDate,
+        machineMeterSnapshot: new Prisma.Decimal(input.machineMeterSnapshot),
+        notes,
+      },
+    });
+    if (trackerExisted) {
+      await transaction.equipmentMaintenanceTracker.update({
+        where: { id: tracker.id },
+        data: { recordVersion: { increment: 1 } },
+      });
+    }
+    return { trackerId: tracker.id, eventId: event.id, created: true };
   });
 }

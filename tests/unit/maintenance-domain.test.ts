@@ -42,6 +42,7 @@ function tracker(id: string, equipmentId: string, evaluation: EvaluatedMaintenan
     lifecycleValue: evaluation.currentValue,
     lifecycleNumber: 1,
     lifecycleStartedAt: new Date("2026-01-01T00:00:00Z"),
+    runtimeCoverage: { reportCount: 1, firstOperationalDate: "2026-01-01", lastOperationalDate: "2026-01-01" },
     rules: [evaluation],
   };
 }
