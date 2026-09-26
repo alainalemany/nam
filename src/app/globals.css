@@ -235,6 +235,37 @@ h3 {
   line-height: 1.5;
 }
 
+.ddr-autosave-status {
+  align-items: center;
+  background: #f7f9fa;
+  border: 1px solid #d7dde3;
+  border-radius: 0.75rem;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.85rem;
+}
+
+.ddr-autosave-status--saved {
+  border-color: #8ac9aa;
+}
+
+.ddr-autosave-status--error,
+.ddr-autosave-status--stale,
+.ddr-autosave-status--offline {
+  border-color: #d9a441;
+}
+
+.ddr-recovery-alert {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.ddr-recovery-alert p {
+  margin: 0;
+}
+
 .button:disabled {
   cursor: wait;
   opacity: 0.65;

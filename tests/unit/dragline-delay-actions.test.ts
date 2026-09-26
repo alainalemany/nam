@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   persist: vi.fn(),
+  autosave: vi.fn(),
   complete: vi.fn(),
   correct: vi.fn(),
   getReport: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock("@/features/dragline-delay-reports/persistence", async () => {
   return {
     ...actual,
     persistDraglineDelayReport: mocks.persist,
+    autosaveDraglineDelayReport: mocks.autosave,
     completeDraglineDelayReport: mocks.complete,
     correctDraglineDelayReport: mocks.correct,
   };
@@ -31,7 +33,9 @@ vi.mock("@/features/dragline-delay-reports/data", () => ({
 }));
 
 import {
+  autosaveDraglineDelayReportAction,
   completeDraglineDelayReportFromDetailAction,
+  createDraglineDelayReportAction,
   correctDraglineDelayReportAction,
   updateDraglineDelayReportAction,
 } from "@/features/dragline-delay-reports/actions";
@@ -96,6 +100,15 @@ describe("Dragline Delay Report lifecycle Server Actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.persist.mockResolvedValue({ id: "report-1", recordVersion: 3 });
+    mocks.autosave.mockResolvedValue({
+      id: "report-1",
+      recordVersion: 3,
+      updatedAt: new Date("2026-09-25T16:00:00.000Z"),
+      operators: [{ id: "operator-db", sequence: 1 }],
+      timelineEntries: [],
+      downtimeBlocks: [],
+      groundChecks: [],
+    });
     mocks.complete.mockResolvedValue({ id: "report-1", recordVersion: 3 });
     mocks.correct.mockResolvedValue({ id: "report-1", recordVersion: 3 });
     mocks.getReport.mockResolvedValue({ status: "DRAFT", recordVersion: 2 });
@@ -119,6 +132,74 @@ describe("Dragline Delay Report lifecycle Server Actions", () => {
     ).rejects.toThrow("redirect:/dragline-delay-reports/report-1?saved=updated");
     expect(mocks.persist).toHaveBeenCalledOnce();
     expect(mocks.complete).not.toHaveBeenCalled();
+  });
+
+  it("autosaves a valid Draft without redirecting and returns stable child identities", async () => {
+    const result = await autosaveDraglineDelayReportAction(
+      "report-1",
+      JSON.stringify(mutationPayload({
+        endingHourMeter: "",
+        supervisorId: "",
+        timelineEntries: [],
+      })),
+    );
+
+    expect(mocks.autosave).toHaveBeenCalledWith(
+      expect.objectContaining({ recordVersion: 2, endingHourMeter: undefined }),
+      "report-1",
+    );
+    expect(result).toEqual(expect.objectContaining({
+      status: "saved",
+      reportId: "report-1",
+      recordVersion: 3,
+      identities: expect.objectContaining({
+        operators: [{ id: "operator-db", sequence: 1 }],
+      }),
+    }));
+  });
+
+  it("does not call persistence when an autosave payload is temporarily invalid", async () => {
+    const result = await autosaveDraglineDelayReportAction(
+      "report-1",
+      JSON.stringify(mutationPayload({ startingHourMeter: "" })),
+    );
+    expect(result).toEqual(expect.objectContaining({ status: "invalid" }));
+    expect(mocks.autosave).not.toHaveBeenCalled();
+  });
+
+  it("maps stale autosaves without allowing an older response to redirect", async () => {
+    mocks.autosave.mockRejectedValueOnce(
+      new DraglineDelayReportPersistenceError(
+        "This Draft was updated elsewhere.",
+        "recordVersion",
+        "stale",
+      ),
+    );
+    const result = await autosaveDraglineDelayReportAction(
+      "report-1",
+      JSON.stringify(mutationPayload()),
+    );
+    expect(result).toEqual(expect.objectContaining({
+      status: "stale",
+      fieldErrors: { recordVersion: ["This Draft was updated elsewhere."] },
+    }));
+  });
+
+  it("updates a Draft that was lazily created by autosave from the new-report page", async () => {
+    const data = mutationFormData("draft", {
+      endingHourMeter: "",
+      supervisorId: "",
+      timelineEntries: [],
+      recordVersion: 2,
+    });
+    data.set("reportId", "report-1");
+    await expect(
+      createDraglineDelayReportAction(emptyDraglineDelayReportActionState, data),
+    ).rejects.toThrow("redirect:/dragline-delay-reports/report-1?saved=created");
+    expect(mocks.persist).toHaveBeenCalledWith(
+      expect.objectContaining({ recordVersion: 2 }),
+      "report-1",
+    );
   });
 
   it.each([

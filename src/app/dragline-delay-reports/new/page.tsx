@@ -1,6 +1,9 @@
 import Link from "next/link";
 
-import { createDraglineDelayReportAction } from "@/features/dragline-delay-reports/actions";
+import {
+  autosaveDraglineDelayReportAction,
+  createDraglineDelayReportAction,
+} from "@/features/dragline-delay-reports/actions";
 import { getDraglineDelayReportFormOptions } from "@/features/dragline-delay-reports/data";
 import { DraglineDelayReportForm } from "@/features/dragline-delay-reports/DraglineDelayReportForm";
 import { getDefaultGroundChecksForShift } from "@/features/dragline-delay-reports/ground-check-defaults";
@@ -64,6 +67,7 @@ export default async function NewDraglineDelayReportPage() {
       </section>
       <DraglineDelayReportForm
         action={createDraglineDelayReportAction}
+        autosaveAction={autosaveDraglineDelayReportAction}
         cancelHref="/dragline-delay-reports"
         employeeOptions={employees}
         equipmentOptions={equipment}

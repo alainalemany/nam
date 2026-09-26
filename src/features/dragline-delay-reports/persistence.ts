@@ -909,6 +909,65 @@ export async function persistDraglineDelayReport(
   );
 }
 
+const draftIdentitySelect = {
+  id: true,
+  recordVersion: true,
+  updatedAt: true,
+  operators: {
+    select: { id: true, sequence: true },
+    orderBy: [{ sequence: "asc" as const }, { id: "asc" as const }],
+  },
+  timelineEntries: {
+    select: { id: true, sequence: true },
+    orderBy: [{ sequence: "asc" as const }, { id: "asc" as const }],
+  },
+  downtimeBlocks: {
+    select: {
+      id: true,
+      sequence: true,
+      activities: {
+        select: { id: true, sequence: true },
+        orderBy: [{ sequence: "asc" as const }, { id: "asc" as const }],
+      },
+    },
+    orderBy: [{ sequence: "asc" as const }, { id: "asc" as const }],
+  },
+  groundChecks: {
+    select: { id: true, sequence: true },
+    orderBy: [{ sequence: "asc" as const }, { id: "asc" as const }],
+  },
+} satisfies Prisma.DraglineDelayReportSelect;
+
+/**
+ * Persists a Draft and returns only stable identities needed by an open form.
+ * Keeping this read in the same transaction prevents a later autosave from
+ * deleting/recreating children whose database IDs the creating client has not
+ * received yet.
+ */
+export async function autosaveDraglineDelayReport(
+  input: DraglineDelayReportSubmissionInput,
+  reportId?: string,
+  client: PrismaClient = prisma,
+) {
+  return client.$transaction(async (transaction) => {
+    const saved = await persistDraglineDelayReportInTransaction(
+      transaction,
+      input,
+      reportId,
+    );
+    const report = await transaction.draglineDelayReport.findUnique({
+      where: { id: saved.id },
+      select: draftIdentitySelect,
+    });
+    if (!report) {
+      throw new DraglineDelayReportPersistenceError(
+        "The saved Draft could not be reloaded.",
+      );
+    }
+    return report;
+  });
+}
+
 export function completeDraglineDelayReport(
   input: DraglineDelayReportSubmissionInput,
   reportId: string,

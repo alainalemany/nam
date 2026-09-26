@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { updateDraglineDelayReportAction } from "@/features/dragline-delay-reports/actions";
+import {
+  autosaveDraglineDelayReportAction,
+  updateDraglineDelayReportAction,
+} from "@/features/dragline-delay-reports/actions";
 import {
   draglineDelayReportToFormInitial,
   getDraglineDelayReportFormOptions,
@@ -36,12 +39,14 @@ export default async function EditDraglineDelayReportPage({
       </section>
       <DraglineDelayReportForm
         action={updateDraglineDelayReportAction.bind(null, id)}
+        autosaveAction={autosaveDraglineDelayReportAction}
         allowComplete
         cancelHref={`/dragline-delay-reports/${id}`}
         employeeOptions={employees}
         equipmentOptions={equipment}
         initialValues={draglineDelayReportToFormInitial(report)}
         lakeOptions={lakes}
+        reportId={id}
         submitLabel="Save Draft Changes"
         supervisorOptions={supervisors}
       />

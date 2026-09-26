@@ -12,6 +12,7 @@ import {
   completeDraglineDelayReport,
   correctDraglineDelayReport,
   DraglineDelayReportPersistenceError,
+  autosaveDraglineDelayReport,
   persistDraglineDelayReport,
 } from "./persistence";
 import {
@@ -34,6 +35,29 @@ function parsePayload(formData: FormData): unknown {
 }
 
 type MutationIntent = "draft" | "complete" | "correct";
+
+export type DraglineDelayReportAutosaveResult =
+  | {
+      status: "saved";
+      reportId: string;
+      recordVersion: number;
+      savedAt: string;
+      identities: {
+        operators: Array<{ id: string; sequence: number }>;
+        timelineEntries: Array<{ id: string; sequence: number }>;
+        downtimeBlocks: Array<{
+          id: string;
+          sequence: number;
+          activities: Array<{ id: string; sequence: number }>;
+        }>;
+        groundChecks: Array<{ id: string; sequence: number }>;
+      };
+    }
+  | {
+      status: "invalid" | "stale" | "error";
+      message: string;
+      fieldErrors: Record<string, string[]>;
+    };
 
 function inputState<T>(
   formData: FormData,
@@ -98,15 +122,73 @@ export async function createDraglineDelayReportAction(
   );
   if (!parsed.ok) return parsed.state;
 
+  const existingReportIdValue = formData.get("reportId");
+  const existingReportId =
+    typeof existingReportIdValue === "string" && existingReportIdValue.trim()
+      ? existingReportIdValue.trim()
+      : undefined;
   let id: string;
   try {
-    id = (await persistDraglineDelayReport(parsed.data)).id;
+    id = (await persistDraglineDelayReport(parsed.data, existingReportId)).id;
   } catch (error) {
     return persistenceState(error, "draft");
   }
 
   revalidatePath("/dragline-delay-reports");
   redirect(`/dragline-delay-reports/${id}?saved=created`);
+}
+
+export async function autosaveDraglineDelayReportAction(
+  reportId: string | undefined,
+  payload: string,
+): Promise<DraglineDelayReportAutosaveResult> {
+  let rawPayload: unknown;
+  try {
+    rawPayload = JSON.parse(payload);
+  } catch {
+    return {
+      status: "invalid",
+      message: "Draft changes are stored on this device until the form is valid.",
+      fieldErrors: {},
+    };
+  }
+  const parsed = draglineDelayReportSubmissionSchema.safeParse(rawPayload);
+  if (!parsed.success) {
+    return {
+      status: "invalid",
+      message: "Draft changes are stored on this device until required Draft fields are valid.",
+      fieldErrors: draglineDelayReportFieldErrors(parsed.error),
+    };
+  }
+
+  try {
+    const saved = await autosaveDraglineDelayReport(parsed.data, reportId);
+    revalidatePath("/dragline-delay-reports");
+    revalidatePath(`/dragline-delay-reports/${saved.id}`);
+    return {
+      status: "saved",
+      reportId: saved.id,
+      recordVersion: saved.recordVersion,
+      savedAt: saved.updatedAt.toISOString(),
+      identities: {
+        operators: saved.operators,
+        timelineEntries: saved.timelineEntries,
+        downtimeBlocks: saved.downtimeBlocks,
+        groundChecks: saved.groundChecks,
+      },
+    };
+  } catch (error) {
+    const mapped = persistenceState(error, "draft");
+    return {
+      status:
+        error instanceof DraglineDelayReportPersistenceError &&
+        error.kind === "stale"
+          ? "stale"
+          : "error",
+      message: mapped.message,
+      fieldErrors: mapped.fieldErrors,
+    };
+  }
 }
 
 export async function updateDraglineDelayReportAction(

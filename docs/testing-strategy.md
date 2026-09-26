@@ -94,6 +94,7 @@ NAM Dashboard currently uses:
 - React Testing Library for React component behavior.
 - `@testing-library/jest-dom` for DOM assertions.
 - Vitest V8 coverage for optional local coverage reports.
+- Playwright for the focused DDR Chromium/WebKit stability and recovery suite.
 
 Executable commands live in `docs/development.md`.
 
@@ -106,6 +107,7 @@ tests/unit/
 tests/components/
 tests/api/
 tests/integration/
+tests/e2e/
 tests/fixtures/
 tests/setup/
 ```
@@ -120,6 +122,9 @@ Use these directories as follows:
   that must use approved disposable databases and bounded rollback or fixture
   cleanup. Suites should validate the exact disposable identity when they own a
   dedicated database contract.
+- `tests/e2e/` for approved, isolated browser workflows with explicit test-data
+  and environment boundaries. The current DDR suite uses an environment-gated
+  in-memory stress route and never connects to production data.
 - `tests/fixtures/` for small shared deterministic test data.
 - `tests/setup/` for Vitest and Testing Library setup.
 
@@ -232,14 +237,15 @@ Future API routes should define:
 Playwright/E2E tests should cover user-critical browser workflows, not every UI
 detail.
 
-E2E testing is deferred from the testing foundation because the project does not
-yet have a standardized test database setup, seed/reset workflow, or Playwright
-configuration. Add E2E tests as a separate milestone after those runtime
-assumptions are documented.
+The repository has a focused Playwright configuration for DDR long-form
+stability and crash recovery. It intentionally uses an environment-gated,
+in-memory stress route rather than a database. Broad application E2E remains
+deferred because the project does not yet have standardized disposable browser
+test database setup, seed/reset workflow, or CI orchestration.
 
 UI behavior expectations are defined in `docs/ui-architecture.md`.
 
-Initial high-value workflows:
+Future broad high-value workflows:
 
 - Equipment create/edit/list.
 - Daily Log create/edit/list/detail.
@@ -247,8 +253,11 @@ Initial high-value workflows:
 - Form validation feedback.
 - Navigation between dashboard, equipment, and Daily Logs.
 
-E2E tests should run against a known database state. Test data setup and reset
-rules should be documented before broad E2E coverage is added.
+Database-backed E2E tests should run against a known disposable database state.
+Test data setup and reset rules must be documented before broad E2E coverage is
+added. Environment-gated in-memory harnesses may cover isolated frontend risks
+when they preserve production route behavior and cannot become production
+entry points.
 
 ## Smoke Tests
 
@@ -415,7 +424,8 @@ Future AI assistants should:
 
 ## Open Questions
 
-- Should Playwright run in local development, CI, or both?
+- Should the focused local Playwright suite become a required CI gate, and on
+  which runners can WebKit execute reliably?
 - How should disposable test databases be standardized and orchestrated in CI
   without weakening current feature-specific identity guards?
 - What CI provider and branch protection rules should be used?

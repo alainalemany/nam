@@ -32,7 +32,7 @@ Related Documents:
 - `docs/reference/README.md`
 - `docs/reference/dragline-delay-reports/delay-code-catalog-v1.md`
 
-Last Reviewed: 2026-09-16
+Last Reviewed: 2026-09-25
 
 Implementation Status: DDR-1 through DDR-3 are implemented as an independent
 usable Draft, completion, and correction workflow. The aggregate includes
@@ -41,7 +41,9 @@ stable repeated children, explicit completion, Completed read-only detail,
 reasoned correction history, optimistic concurrency, complete failure-state
 preservation, explicit mutation feedback, and optional Shared Downtime Blocks
 for one known downtime interval containing multiple coded activities without
-invented child durations.
+invented child durations. Draft entry additionally has debounced server
+autosave, versioned device-local crash recovery, explicit Save Draft, and
+focused Chromium/WebKit stability coverage for realistic long forms.
 
 ## 1. Purpose
 
@@ -195,6 +197,8 @@ Dragline Delay Reports own:
   Tracking for the same canonical Equipment.
 - Optimistic concurrency, feature-owned validation, persistence, queries, UI,
   and tests.
+- Crash-resilient Draft preservation through server autosave backed by
+  device-local recovery for changes not yet accepted by the server.
 
 ## 5. Non-Responsibilities
 
@@ -671,6 +675,38 @@ Expected flow:
 8. Affected report list/detail/edit routes are revalidated and the action
    redirects to durable server-rendered state.
 
+Draft editing adds a preservation path without changing aggregate semantics:
+
+1. Controlled form state remains the canonical in-memory editing source.
+2. Meaningful changes write one versioned, namespaced recovery snapshot to
+   `localStorage` after 500 ms of idle time; recovery does not write on every
+   keystroke.
+3. A valid Draft aggregate autosaves after 2 seconds of idle time. Partially
+   entered state that does not yet satisfy Draft validation remains recoverable
+   locally until it becomes server-valid.
+4. At most one autosave request is active. A change made during that request is
+   queued for a later save, and the server's existing `recordVersion` check
+   rejects stale writes.
+5. The server returns persisted child identities and the next version without
+   redirecting. Identity hydration retains unchanged row references so later
+   autosaves do not recreate the full timeline tree.
+6. `visibilitychange` and `pagehide` synchronously flush the small local
+   recovery snapshot; a server save is also attempted while the page is still
+   able to perform work.
+7. Reopening compares server and local versions. A newer server Draft wins and
+   removes older recovery. Otherwise, differing local state is offered through
+   explicit Restore and Discard actions and is never applied silently.
+8. Completion remains an explicit, fully validated command. Successful
+   completion clears local recovery; a failed completion restores it. Autosave
+   can never transition a report to `COMPLETED`.
+
+New-report Draft creation is lazy: no database row is created merely by
+visiting the route. The first valid autosave creates the Draft, and later
+explicit Save Draft submissions carry that returned report identity so they
+update the same aggregate rather than creating a duplicate. Database
+uniqueness on Equipment/date/shift and optimistic version checks remain the
+authoritative integrity boundaries.
+
 No API-first layer, global client state, generic report engine, generic
 catalog administrator, or generic audit system is required.
 
@@ -726,6 +762,14 @@ controlled field, repeated child row, and Correction Reason when server
 validation, stale-version checks, or persistence fails. Pending, error,
 field-validation, stale-write, and successful mutation states are explicit;
 raw database or framework errors are never shown.
+
+Draft workspaces show a quiet persistence state: Unsaved changes, Saving,
+Saved, Offline, Save failed, or stale-version guidance. Normal autosave never
+opens a modal. Save Draft remains available as an explicit operator action.
+When a differing device-local snapshot exists, a non-modal banner states that
+unsaved DDR changes were recovered from the device and offers Restore and
+Discard. Offline edits continue in controlled state and local recovery, then
+retry after the browser reports that connectivity returned.
 
 Failed validation also presents a concise summary with human-readable field,
 Operator-row, Timeline-row, and Ground-Check-row labels. Every affected
@@ -879,10 +923,21 @@ rules in `docs/development.md`.
 - Cut context plus derived downtime/runtime and Station/Advance presentation.
 - Repeatable Ground Check times.
 - No Daily Log, Day View, attachment, or photo side effects.
+- Debounced autosave success/failure/retry, serialized requests, stale-response
+  rejection, offline recovery, server-newer/local-newer conflict handling,
+  completion cleanup, stable child hydration, and concurrent-row recovery.
+- A 50-row render profile proving unrelated notes edits do not rerender
+  timeline rows or rerun interval calculations, while one timeline edit is
+  isolated to the changed row.
 
 Real PostgreSQL coverage should prove constraints, relations, transactions,
 concurrency, rollback, snapshots, and correction-event durability. Browser E2E
-remains proportional to an approved repository E2E foundation.
+uses the feature-owned, database-free DDR stress route available only when
+`NAM_DDR_STRESS_TEST=1`. Chromium and WebKit cover 1180x820, 1024x768, and
+834x1194 touch contexts; the suite exercises 50 rows, repeated editing,
+scrolling, autosave/reload, an offline abrupt-close recovery, fixed DOM size,
+and a two-minute WebKit soak. This focused harness does not establish a broad
+repository E2E platform or replace physical-iPad Web Inspector validation.
 
 ## 20. Implementation Sequence
 

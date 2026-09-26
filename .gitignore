@@ -8,6 +8,8 @@ node_modules/
 .next/
 out/
 coverage/
+playwright-report/
+test-results/
 tsconfig.tsbuildinfo
 
 # Local database backup artifacts must stay outside the repository.

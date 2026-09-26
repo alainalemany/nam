@@ -287,6 +287,7 @@ The current executable testing foundation uses:
 - React Testing Library
 - `@testing-library/jest-dom`
 - V8 coverage through Vitest
+- Playwright for the focused DDR Chromium/WebKit stability suite
 
 Test files live under:
 
@@ -294,6 +295,7 @@ Test files live under:
 tests/unit/
 tests/components/
 tests/api/
+tests/e2e/
 tests/fixtures/
 tests/setup/
 ```
@@ -301,6 +303,35 @@ tests/setup/
 Use `pnpm test:run` before handing off a code change. Use `pnpm build` for the
 current production-build quality gate. Use `pnpm lint` for the current
 TypeScript no-emit gate.
+
+Run the focused DDR browser suite at all configured Chromium/WebKit iPad-like
+viewports:
+
+```bash
+pnpm test:e2e:ddr
+```
+
+The Playwright configuration starts an isolated development server on port
+3100 with `NAM_DDR_STRESS_TEST=1`. That flag exposes a database-free 50-row
+stress route backed only by in-process test state. Without the flag, the route
+returns Not Found. The suite must never be aimed at the live application or
+production data.
+
+Install matching local browser binaries and system dependencies only on an
+approved development machine. When host dependencies are unavailable, use the
+matching official Playwright image and keep the repository read-only; redirect
+`.next` and Playwright artifacts to container-temporary storage. Docker resource
+creation remains a system-level action and requires inspection and explicit
+approval under this repository's agent guidance.
+
+Physical-iPad follow-up should use
+[Safari Web Inspector for iOS and iPadOS](https://developer.apple.com/documentation/safari-developer-tools/inspecting-ios)
+from a trusted Mac with the iPad connected and Settings > Apps > Safari >
+Advanced > Web Inspector enabled. Inspect the DDR page while repeating the
+long-form scenario, record console/network output and memory timelines, and
+capture any `WebContent` process termination or iPadOS diagnostic log. Desktop
+Playwright WebKit can detect application errors and renderer crashes, but it
+cannot prove or disprove an iPadOS whole-app memory-pressure termination.
 
 Operational Safety Checklist meter persistence has an explicitly opt-in,
 rollback-only PostgreSQL check. Run it through the private Docker network so no
