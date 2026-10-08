@@ -96,10 +96,11 @@ Implemented stack:
 - Vitest
 - React Testing Library
 - jsdom
+- Tailwind CSS 4
+- Select licensed Metronic 9.5.0 React/Next.js UI primitives
 
 Approved or candidate tooling not currently integrated into the application:
 
-- Tailwind CSS and selective Metronic adaptation remain approved UI direction.
 - React Hook Form, TanStack Table, and ApexCharts remain optional planned tools
   that should be added only when an implemented workflow justifies them.
 
@@ -109,18 +110,12 @@ Confirmed deployment baseline:
 - PostgreSQL runs in Docker with persistent named storage.
 - The application runs in Docker.
 - The current development app is published only on `127.0.0.1:3000`.
-- Host-level Caddy reverse proxies `dev.alemany.me` to `127.0.0.1:3000` for
-  external development access.
-- ADR-019 approves a managed private overlay with Tailscale as the
-  implementation reference for the controlled pilot. Tailscale is installed,
-  connected, and configured to Serve the loopback application, but private
-  HTTPS and policy/device acceptance remain incomplete. The boundary is
-  partially implemented, not accepted, and the current public Caddy route
-  remains ineligible for real operational data. Current readiness identity and
-  sequencing are recorded in
-  `docs/infrastructure/controlled-pilot-readiness-rebaseline.md`.
-- `nam.alemany.me` is reserved for future production use.
-- Staging and production deployment remain future work.
+- Tailscale Serve provides private HTTPS at
+  `https://ops-console.tailf57e61.ts.net` while the application remains bound
+  to loopback.
+- Tailscale Funnel remains disabled; PostgreSQL has no public binding.
+- Public DNS and public HTTPS ingress are not part of the current architecture.
+- This document does not authorize deployment of feature-branch changes.
 
 ## Major Architectural Areas
 

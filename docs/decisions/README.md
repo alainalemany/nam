@@ -14,7 +14,7 @@ maintainability.
 | [ADR-002](adr-002-work-authorizations-child-of-shift-reports.md) | 2026-06-05 | Product/domain architecture | Work Authorizations are structured child records of Shift Reports. |
 | [ADR-003](adr-003-permanent-operational-history.md) | 2026-06-22 | Product architecture | NAM Dashboard prioritizes permanent operational history with search and calendar navigation. |
 | [ADR-004](adr-004-manual-work-schedule-entry.md) | 2026-06-22 | Product workflow | Work Schedule uses manual entry and manual editing instead of SMS import or parsing. |
-| [ADR-005](adr-005-payslip-financial-bounded-context.md) | 2026-06-23 | Security/data boundaries | Payslip Repository is a dedicated financial bounded context. |
+| [ADR-005](adr-005-payslip-financial-bounded-context.md) | 2026-06-23 | Security/data boundaries | Superseded historical permanent Payslip Repository design; see ADR-022. |
 | [ADR-006](adr-006-fuel-log-structured-operational-module.md) | 2026-06-24 | Product/data architecture | Structured fuel records preserve base facts; Equipment Fuel Event price/station direction is superseded by ADR-020. |
 | [ADR-007](adr-007-work-truck-log-personal-record.md) | 2026-06-24 | Product workflow | Superseded historical proposal for a standalone Work Truck Log; see ADR-017. |
 | [ADR-008](adr-008-docker-compose-deployment-baseline.md) | 2026-06-29 | Infrastructure/deployment | Docker Compose is the standard deployment method with host-level Caddy planned for public ingress. |
@@ -31,6 +31,7 @@ maintainability.
 | [ADR-019](adr-019-managed-private-overlay-operational-pilot.md) | 2026-07-17 | Infrastructure/security architecture | The controlled operational pilot uses a managed private overlay with Tailscale as the implementation reference and independent key-only SSH recovery. |
 | [ADR-020](adr-020-equipment-fuel-events-v2-station-pricing-and-meter.md) | 2026-08-29 | Product/data architecture | Equipment Fuel Events V2 uses reusable Gas Stations, event-level Decimal pricing, fractional gallons, meter facts, and backward-compatible legacy handling. |
 | [ADR-021](adr-021-canonical-us-geography-reference-data.md) | 2026-08-29 | Data/application architecture | U.S. States and Cities use shared database reference records and an offline idempotent Census Gazetteer import. |
+| [ADR-022](adr-022-payroll-reconciliation-structured-evidence.md) | 2026-10-08 | Security/data boundaries | Payroll Reconciliation V1 uses reviewed structured evidence without retaining source PDFs or raw text. |
 
 ## Categories
 
@@ -50,6 +51,7 @@ Data architecture and boundaries:
 - ADR-005
 - ADR-020
 - ADR-021
+- ADR-022
 
 Application architecture:
 

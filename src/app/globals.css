@@ -1,10 +1,41 @@
+@import "tailwindcss";
+
 :root {
+  --background: #f5f7fb;
+  --foreground: #1e293b;
+  --card: #ffffff;
+  --card-foreground: #1e293b;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --primary: #1b84ff;
+  --primary-foreground: #ffffff;
+  --color-success-accent: #17c653;
+  --color-success-soft: #eafff1;
+  --color-warning-accent: #f6b100;
+  --color-warning-soft: #fff8dd;
+  --color-destructive-accent: #f8285a;
+  --color-destructive-soft: #ffeef3;
+  --color-info-accent: #7239ea;
+  --color-info-soft: #f2edff;
   color-scheme: light;
   background: #f4f6f8;
   color: #172026;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
 }
 
 * {
@@ -748,6 +779,10 @@ textarea {
 
 .dashboard-card--fleet-attention {
   grid-area: fleet;
+}
+
+.dashboard-card--payroll {
+  grid-column: 1 / -1;
 }
 
 .dashboard-shift-body {
@@ -2175,5 +2210,684 @@ textarea {
 @media (prefers-reduced-motion: reduce) {
   .success-confirmation {
     animation: none;
+  }
+}
+
+/* Metronic 9.5 foundation: shell rhythm and tokens adapted to NAM's existing UI. */
+.metronic-shell {
+  background:
+    radial-gradient(circle at 85% 0%, rgb(27 132 255 / 7%), transparent 28rem),
+    var(--background);
+}
+
+.main-shell {
+  min-width: 0;
+}
+
+.metronic-sidebar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: 100vh;
+  overflow-y: auto;
+  border-right-color: #e6eaf0;
+  background: #111827;
+  color: #cbd5e1;
+}
+
+.metronic-sidebar .brand {
+  color: #fff;
+}
+
+.metronic-sidebar .brand > span:nth-child(2) {
+  display: grid;
+  gap: 2px;
+}
+
+.metronic-sidebar .brand small {
+  color: #8291a7;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.metronic-sidebar .brand-mark {
+  background: linear-gradient(135deg, #1b84ff, #056ee9);
+  box-shadow: 0 8px 24px rgb(27 132 255 / 28%);
+}
+
+.metronic-nav a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #aebbd0;
+}
+
+.metronic-nav a svg {
+  width: 18px;
+  height: 18px;
+  color: #718198;
+}
+
+.metronic-sidebar .nav-list a:hover,
+.metronic-sidebar .nav-list a.is-active {
+  background: rgb(255 255 255 / 8%);
+  color: #fff;
+}
+
+.metronic-sidebar .nav-list a.is-active svg {
+  color: #55a4ff;
+}
+
+.nav-section-label {
+  margin: 28px 12px 4px;
+  color: #637188;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.nav-list--secondary {
+  margin-top: 8px;
+}
+
+.nav-list--secondary a {
+  color: #8795a9;
+  font-size: 0.84rem;
+}
+
+.app-topbar {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgb(255 255 255 / 88%);
+  padding: 0 32px;
+  backdrop-filter: blur(16px);
+}
+
+.app-topbar > div {
+  display: grid;
+  gap: 2px;
+}
+
+.topbar-kicker {
+  color: var(--muted-foreground);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.private-access-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  background: #eafff1;
+  color: #07883b;
+  padding: 7px 11px;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.private-access-pill svg {
+  width: 15px;
+  height: 15px;
+}
+
+.mobile-nav-trigger,
+.sidebar-close,
+.sidebar-scrim {
+  display: none;
+}
+
+.payroll-page {
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  max-width: 1440px;
+}
+
+.payroll-page > *,
+.payroll-layout-grid > *,
+.payroll-side-stack,
+.payroll-calendar-card,
+.payroll-table-scroll {
+  min-width: 0;
+}
+
+.payroll-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.payroll-actions,
+.payroll-month-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.payroll-summary-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.payroll-metric {
+  position: relative;
+  min-height: 138px;
+  overflow: hidden;
+}
+
+.payroll-metric::after {
+  position: absolute;
+  right: -24px;
+  bottom: -38px;
+  width: 100px;
+  height: 100px;
+  border-radius: 999px;
+  background: var(--metric-color, #1b84ff);
+  content: "";
+  opacity: 0.08;
+}
+
+.payroll-metric-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--metric-color, #1b84ff) 12%, white);
+  color: var(--metric-color, #1b84ff);
+}
+
+.payroll-metric-icon svg {
+  width: 18px;
+}
+
+.payroll-metric-value {
+  display: block;
+  margin: 12px 0 3px;
+  color: #172033;
+  font-size: 1.65rem;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+}
+
+.payroll-metric-label {
+  color: #718096;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.payroll-layout-grid {
+  display: grid;
+  align-items: start;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.65fr);
+}
+
+.payroll-calendar-card {
+  overflow: hidden;
+}
+
+.payroll-calendar-toolbar {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 18px;
+}
+
+.payroll-calendar-toolbar h2 {
+  font-size: 1.1rem;
+}
+
+.payroll-calendar-weekdays,
+.payroll-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.payroll-calendar-weekdays span {
+  border-bottom: 1px solid var(--border);
+  color: #718096;
+  padding: 9px 8px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.payroll-day {
+  display: grid;
+  min-height: 116px;
+  align-content: start;
+  gap: 6px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+  color: #263246;
+  padding: 10px;
+  text-align: left;
+  transition: background 140ms ease, box-shadow 140ms ease;
+}
+
+.payroll-day:nth-child(7n) {
+  border-right: 0;
+}
+
+.payroll-day:hover,
+.payroll-day:focus-visible {
+  z-index: 1;
+  background: #f7fbff;
+  box-shadow: inset 0 0 0 2px #1b84ff;
+  outline: 0;
+}
+
+.payroll-day--outside {
+  background: #fafbfc;
+  color: #a0aec0;
+}
+
+.payroll-day-number {
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.payroll-day-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: #526079;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.payroll-day-status::before,
+.payroll-legend i {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--status-color, #94a3b8);
+  content: "";
+  margin-top: 2px;
+}
+
+.payroll-status--reconciled { --status-color: #1b84ff; }
+.payroll-status--awaiting-payroll { --status-color: #f6b100; }
+.payroll-status--missing-timesheet,
+.payroll-status--discrepancy { --status-color: #f8285a; }
+.payroll-status--needs-review { --status-color: #7239ea; }
+.payroll-status--off { --status-color: #94a3b8; }
+
+.payroll-day-hours {
+  color: #172033;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.payroll-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  border-top: 1px solid var(--border);
+  padding: 12px 18px;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.payroll-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.payroll-legend i {
+  margin: 0;
+}
+
+.payroll-side-stack {
+  display: grid;
+  gap: 20px;
+}
+
+.payroll-detail-list,
+.paycheck-breakdown {
+  display: grid;
+  gap: 11px;
+  margin: 0;
+}
+
+.payroll-detail-list > div,
+.paycheck-breakdown > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px dashed #e4e8ef;
+  padding-bottom: 9px;
+}
+
+.payroll-detail-list dt,
+.paycheck-breakdown dt {
+  color: #718096;
+  font-size: 0.78rem;
+}
+
+.payroll-detail-list dd,
+.paycheck-breakdown dd {
+  margin: 0;
+  color: #263246;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.payroll-empty {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 28px 12px;
+  color: #64748b;
+  text-align: center;
+}
+
+.payroll-empty svg {
+  width: 36px;
+  height: 36px;
+  color: #1b84ff;
+}
+
+.payroll-history-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.payroll-history-table th,
+.payroll-history-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 13px 16px;
+  font-size: 0.8rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.payroll-history-table th {
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.69rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.payroll-table-scroll {
+  overflow-x: auto;
+}
+
+.payroll-day-dialog {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  justify-items: end;
+  background: rgb(15 23 42 / 45%);
+}
+
+.payroll-day-drawer {
+  display: grid;
+  width: min(430px, 100%);
+  height: 100%;
+  align-content: start;
+  gap: 22px;
+  overflow-y: auto;
+  background: white;
+  padding: 28px;
+  box-shadow: -20px 0 50px rgb(15 23 42 / 18%);
+}
+
+.payroll-drawer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.payroll-close-button {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: white;
+}
+
+.payroll-close-button svg {
+  width: 17px;
+}
+
+.payroll-form-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.payroll-form-grid label,
+.payroll-access-form label {
+  display: grid;
+  gap: 7px;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.payroll-form-grid input,
+.payroll-form-grid textarea,
+.payroll-access-form input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #d5dbe5;
+  border-radius: 8px;
+  background: white;
+  padding: 9px 11px;
+  color: #1e293b;
+}
+
+.payroll-form-grid .payroll-field--wide {
+  grid-column: 1 / -1;
+}
+
+.payroll-import-dropzone {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  border: 1px dashed #aeb9c8;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 34px 20px;
+  text-align: center;
+}
+
+.payroll-import-dropzone svg {
+  width: 34px;
+  color: #1b84ff;
+}
+
+.payroll-notice {
+  border-left: 4px solid #1b84ff;
+  border-radius: 7px;
+  background: #eff7ff;
+  color: #174f8f;
+  padding: 12px 14px;
+  font-size: 0.82rem;
+}
+
+.payroll-notice--warning {
+  border-color: #f6b100;
+  background: #fff8dd;
+  color: #765500;
+}
+
+.payroll-notice--error {
+  border-color: #f8285a;
+  background: #ffeef3;
+  color: #a40e35;
+}
+
+.payroll-access-shell {
+  display: grid;
+  min-height: calc(100vh - 136px);
+  place-items: center;
+}
+
+.payroll-access-card {
+  width: min(470px, 100%);
+}
+
+.payroll-access-form {
+  display: grid;
+  gap: 16px;
+}
+
+@media (max-width: 1100px) {
+  .payroll-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .payroll-layout-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 780px) {
+  .metronic-shell {
+    display: block;
+  }
+
+  .metronic-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(300px, 86vw);
+    height: 100vh;
+    border-bottom: 0;
+    transform: translateX(-102%);
+    transition: transform 180ms ease;
+  }
+
+  .metronic-sidebar.sidebar--open {
+    transform: translateX(0);
+  }
+
+  .metronic-sidebar .nav-list {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-nav-trigger {
+    position: fixed;
+    z-index: 25;
+    top: 18px;
+    left: 16px;
+    display: grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: white;
+    color: #25324a;
+  }
+
+  .mobile-nav-trigger svg,
+  .sidebar-close svg {
+    width: 19px;
+  }
+
+  .sidebar-close {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border: 0;
+    border-radius: 8px;
+    background: rgb(255 255 255 / 8%);
+    color: white;
+    margin-left: auto;
+  }
+
+  .sidebar-scrim {
+    position: fixed;
+    z-index: 29;
+    inset: 0;
+    display: block;
+    border: 0;
+    background: rgb(15 23 42 / 55%);
+  }
+
+  .app-topbar {
+    min-height: 72px;
+    padding: 0 16px 0 68px;
+  }
+
+  .payroll-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .payroll-day {
+    min-height: 82px;
+    padding: 7px 5px;
+  }
+
+  .payroll-day-status {
+    font-size: 0;
+  }
+
+  .payroll-day-status::before {
+    width: 9px;
+    height: 9px;
+  }
+
+  .payroll-day-hours {
+    font-size: 0.64rem;
+  }
+
+  .payroll-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .private-access-pill {
+    font-size: 0;
+    padding: 8px;
+  }
+
+  .payroll-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payroll-calendar-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .payroll-calendar-weekdays span {
+    padding-inline: 2px;
+    font-size: 0.58rem;
   }
 }

@@ -144,7 +144,7 @@ NAM Dashboard should use layered tests:
 | Migration verification | Confirm schema changes are reproducible and applied. | Prisma generate, migration status, drift checks, migration table inspection. |
 | API route tests | Verify route behavior and error handling. | `/api/health`, future API routes. |
 | Playwright/E2E tests | Verify critical browser workflows. | Create/edit/list/detail flows, navigation, form validation display. |
-| Smoke tests | Verify live runtime assumptions. | Docker services, local health, Caddy, HTTPS, `dev.alemany.me`, database connectivity. |
+| Smoke tests | Verify live runtime assumptions. | Docker services, local health, Tailscale Serve/Funnel state, private HTTPS, database connectivity. |
 
 ## Unit Tests
 
@@ -269,11 +269,10 @@ Development smoke checks should include:
 - `nam-app` publishes only `127.0.0.1:3000`.
 - `nam-postgres` has no host-published PostgreSQL port.
 - Local health succeeds at `http://127.0.0.1:3000/api/health`.
-- Caddy is active.
-- Caddy config validates.
-- HTTP redirects to HTTPS for `dev.alemany.me`.
-- `https://dev.alemany.me` loads through Caddy.
-- `https://dev.alemany.me/api/health` reports database health.
+- Tailscale Serve reports `https://ops-console.tailf57e61.ts.net` as tailnet-only.
+- Tailscale Funnel remains disabled.
+- `https://ops-console.tailf57e61.ts.net` loads from an authorized tailnet device.
+- `https://ops-console.tailf57e61.ts.net/api/health` reports database health.
 
 Smoke tests do not replace unit, integration, or E2E tests. They confirm the
 runtime is reachable and connected.

@@ -348,6 +348,11 @@ export async function saveWeeklyTimesheetAction(
       if (existing?.status === "COMPLETED") throw new Error("COMPLETED_READ_ONLY");
 
       const primaryEmployeeKey = normalizeIdentityKey(parsed.data.primaryEmployeeDisplayName);
+      const matchingEmployees = (await tx.employee?.findMany?.({
+        where: { isActive: true },
+        select: { id: true, displayName: true },
+      }) ?? []).filter((employee) => normalizeIdentityKey(employee.displayName) === primaryEmployeeKey);
+      const primaryEmployeeId = matchingEmployees.length === 1 ? matchingEmployees[0].id : null;
       const weekStart = parseDateOnly(parsed.data.payrollWeekStartDate);
       const weekEnd = endOfPayrollWeek(weekStart);
       const maps = await referenceMaps(tx, parsed.data, existing);
@@ -359,6 +364,7 @@ export async function saveWeeklyTimesheetAction(
               payrollWeekEndDate: weekEnd,
               primaryEmployeeDisplayName: parsed.data.primaryEmployeeDisplayName,
               primaryEmployeeKey,
+              primaryEmployeeId,
             },
           })
         : await tx.weeklyTimesheet.create({
@@ -367,6 +373,7 @@ export async function saveWeeklyTimesheetAction(
               payrollWeekEndDate: weekEnd,
               primaryEmployeeDisplayName: parsed.data.primaryEmployeeDisplayName,
               primaryEmployeeKey,
+              primaryEmployeeId,
             },
           });
       const calculated = await persistEntries(tx, parent.id, parsed.data, existing, maps);
@@ -406,6 +413,7 @@ export async function saveWeeklyTimesheetAction(
 
   revalidatePath("/");
   revalidatePath("/timesheets");
+  revalidatePath("/payroll");
   redirect(`/timesheets/${savedId}`);
 }
 
@@ -429,6 +437,7 @@ export async function completeWeeklyTimesheetAction(
   if (!result.ok) return result;
   revalidatePath("/timesheets");
   revalidatePath(`/timesheets/${id}`);
+  revalidatePath("/payroll");
   redirect(`/timesheets/${id}`);
 }
 
@@ -436,12 +445,14 @@ export async function reopenWeeklyTimesheetAction(id: string) {
   await prisma.weeklyTimesheet.updateMany({ where: { id, status: "COMPLETED" }, data: { status: "DRAFT" } });
   revalidatePath("/timesheets");
   revalidatePath(`/timesheets/${id}`);
+  revalidatePath("/payroll");
   redirect(`/timesheets/${id}/edit`);
 }
 
 export async function deleteWeeklyTimesheetAction(id: string) {
   await prisma.weeklyTimesheet.deleteMany({ where: { id, status: "DRAFT" } });
   revalidatePath("/timesheets");
+  revalidatePath("/payroll");
   redirect("/timesheets");
 }
 

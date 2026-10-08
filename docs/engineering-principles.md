@@ -176,15 +176,12 @@ Repository-owned host configuration examples belong under
 `infrastructure/server-config/`. Live secrets, certificates, database dumps, and
 generated runtime state do not belong in Git.
 
-### Public Traffic Flows Through Caddy
+### Application Access Remains Private
 
-Public HTTP/S traffic should terminate at host-level Caddy. Application services
-must not be exposed directly to the public Internet unless a future architecture
-decision explicitly changes this.
-
-The current development app remains bound to `127.0.0.1:3000`, with
-`dev.alemany.me` reverse proxied through Caddy. `nam.alemany.me` remains
-reserved for future production use.
+The application stays bound to `127.0.0.1:3000` and is reached through
+tailnet-only Tailscale Serve at `https://ops-console.tailf57e61.ts.net`.
+Tailscale Funnel and public application ingress remain disabled unless a future
+architecture decision explicitly changes this.
 
 ### AI Assistants Follow AGENTS.md First
 

@@ -2,9 +2,12 @@
 
 Date: 2026-06-23
 
-Status: Accepted
+Status: Superseded by ADR-022
 
 Category: Security/data boundaries
+
+ADR-022 replaces this document's permanent-PDF, raw-text, and OCR requirements
+for Payroll Reconciliation V1. This record remains as historical context.
 
 ## Decision
 

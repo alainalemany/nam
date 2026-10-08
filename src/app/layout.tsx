@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+
+import { AppShell } from "@/components/AppShell";
 
 import "./globals.css";
 
@@ -16,35 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <div className="app-shell">
-          <aside className="sidebar" aria-label="Primary navigation">
-            <div className="brand">
-              <span className="brand-mark">NAM</span>
-              <span>Dashboard</span>
-            </div>
-            <nav className="nav-list">
-              <Link href="/">Dashboard</Link>
-              <Link href="/reference-data">Reference Data</Link>
-              <Link href="/equipment">Equipment</Link>
-              <Link href="/daily-logs">Daily Logs</Link>
-              <Link href="/dragline-delay-reports">Dragline Delay Reports</Link>
-              <Link href="/day-view">Day View</Link>
-              <Link href="/stop-cards">STOP Cards</Link>
-              <Link href="/daily-inspections">Daily Inspections</Link>
-              <Link href="/operational-safety-checklists">Safety Checklists</Link>
-              <Link href="/equipment-fuel-events">Fuel Events</Link>
-              <Link href="/maintenance">Maintenance</Link>
-              <Link href="/defect-tracking">Defect Tracking</Link>
-              <Link href="/work-schedule">Work Schedule</Link>
-              <Link href="/employees">Employees</Link>
-              <Link href="/timesheets">Timesheets</Link>
-              <Link href="/shift-reports">Shift Reports</Link>
-              <Link href="/work-authorizations">Work Authorizations</Link>
-              <Link href="/knowledge-base">Knowledge Base</Link>
-            </nav>
-          </aside>
-          <div className="content-shell">{children}</div>
-        </div>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

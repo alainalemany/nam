@@ -27,7 +27,7 @@ Implementation standards for turning these modules into feature slices live in
 - [Maintenance Tracking](#maintenance-tracking)
 - [Work Schedule](#work-schedule)
 - [Timesheet](#timesheet)
-- [Payslip Repository](#payslip-repository)
+- [Payroll Reconciliation](#payroll-reconciliation)
 - [Equipment Fuel Events](#equipment-fuel-events)
 - [Supply Requests](#supply-requests)
 - [Equipment Activity Timeline](#equipment-activity-timeline)
@@ -850,71 +850,61 @@ states, automatic WFS login, scraping, submission, imports, exports, reports,
 approvals, authentication, and workforce management remain deferred unless
 explicitly evaluated later.
 
-## Payslip Repository
+## Payroll Reconciliation
 
-The Payslip Repository module stores weekly work payment PDFs and extracts payroll data for search, calendar lookup, and financial analysis.
+Payroll Reconciliation compares employee-scoped Work Schedule, completed NAM
+Timesheets, and reviewed structured Workday paycheck evidence.
 
-Current status: Conceptually planned under ADR-005's financial bounded-context
-guidance. Implementation remains blocked by unresolved privacy, application
-access, storage, extraction, redaction, and export decisions and by the absence
-of an accepted Level 2 feature architecture.
+Current status: Payroll Reconciliation V1 is implemented on the dedicated
+feature branch under ADR-022. Database migration and deployment remain separate
+controlled actions.
 
 ### Purpose
 
-Create a permanent personal archive of payslips and make compensation data usable beyond the PDF itself.
+Make weekly pay timing, recorded hours, Workday-confirmed totals, and actionable
+record gaps understandable without turning NAM into a payroll processor.
 
 The operator should be able to answer questions such as:
 
-- How much did I make on a specific pay date?
-- Which payslips are available for a selected calendar date?
-- How much have I made so far this year?
-- How much did I contribute to 401k over a date range?
-- How much was deducted for medical insurance, taxes, or other benefits?
-- What were my gross pay, net pay, hours, overtime, deductions, taxes, and employer contributions annually or over any selected range?
+- What was scheduled and what time was actually recorded?
+- Which aggregate hours and earnings does Workday confirm?
+- Which completed hours await a paycheck?
+- Which schedule/Timesheet gaps or payroll differences require review?
 
 ### Source Workflow
 
-The operator manually uploads payslip PDFs, usually weekly.
-
-The system should not depend on payroll-provider integration for V1. Uploading a PDF is the source of truth.
+The operator imports a readable Workday PDF or enters values manually, reviews
+every structured value, then explicitly confirms persistence. The PDF and raw
+text are discarded; reviewed Workday dates and amounts are the payroll evidence.
 
 ### Required Capabilities
 
-- Upload one or more payslip PDFs manually
-- Store the original PDF file permanently
-- Detect duplicates by file hash, pay date, employer, and payslip identifier when available
-- Extract available text from the PDF
-- Use OCR when the PDF is image-based or text extraction is incomplete
-- Store extraction confidence and parser status
-- Allow manual correction of extracted fields
-- Preserve raw extracted text or OCR output for troubleshooting
-- Parse payroll header fields such as employer, employee identifier if present, pay date, pay period start, pay period end, and check or payslip number
-- Parse earnings line items, including hours, rate, current amount, and year-to-date amount when present
-- Parse deductions such as 401k, medical insurance, dental, vision, life insurance, union dues, garnishments, or other benefits when present
-- Parse employee taxes and withholdings
-- Parse employer contributions when present
-- Parse direct deposit or payment distribution details when present
-- Support calendar navigation by pay date and pay period
-- Support search and filters by date range, pay type, deduction type, tax type, amount, and source PDF
-- Provide analytics for gross pay, net pay, hours, overtime, taxes, deductions, 401k, insurance, employer contributions, and annual totals
+- Deterministic readable-PDF extraction with manual fallback and review
+- Duplicate-safe persistence and controlled correction
+- Exact integer-minute and Decimal money handling
+- Aggregate Timesheet/paycheck comparison without day-level overstatement
+- Missing Timesheet detection only when evidence supports it
+- Responsive calendar, summary, history, detail, and protected home overview
+- Employee-scoped server authorization that fails closed when unconfigured
 
 ### Relationship To Other Modules
 
-Payslip records should appear in global calendar/history views, but they should remain financially scoped and should not be mixed into operational shift records by default.
-
-If a payslip pay period overlaps Daily Logs or Work Schedule records, the Day View may show a contextual link to the pay period when compensation visibility is enabled.
+Payroll consumes Work Schedule and Timesheet records without duplicating their
+edit workflows. Payroll financial values do not enter Day View or general
+operational results.
 
 ### Privacy And Security
 
 Payslip PDFs and extracted payroll data contain sensitive personal financial information.
 
-The module should support stricter access rules than general operational records, including future options for encryption at rest, export controls, redaction, and hiding compensation data from shared or presentation views.
+Payroll routes and actions require a signed employee-scoped session. Tailscale
+protects the network perimeter but is not treated as employee authorization.
 
 ### V1 Boundary
 
-Version 1 should support manual PDF upload, original PDF storage, core field extraction, line-item storage, manual correction, calendar lookup by pay date, and basic date-range totals.
-
-Payroll-provider login integration, automatic Workday sync, tax advice, retirement advice, and automated financial recommendations are out of scope.
+Version 1 supports the listed workflow and deliberately excludes permanent PDF
+storage, OCR, automatic Workday sync, tax/retirement advice, exports, annual
+analytics, and generalized payroll administration.
 
 ## Equipment Fuel Events
 

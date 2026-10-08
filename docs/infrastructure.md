@@ -40,15 +40,10 @@ Phase 2B includes:
 - Private Docker networking between `app` and `postgres`
 - Application publishing on `127.0.0.1:3000` only
 
-Phase 3.2 external development access adds host-level Caddy in front of the
-existing development app:
-
-- `dev.alemany.me` is the external development hostname.
-- Caddy terminates HTTPS and reverse proxies to `127.0.0.1:3000`.
-- The Docker application service remains bound only to localhost.
-- Port `3000` must not be exposed directly to the public Internet.
-- `nam.alemany.me` is reserved for a future production deployment and is not
-  configured in Caddy yet.
+The current private application endpoint is
+`https://ops-console.tailf57e61.ts.net`. Tailscale Serve reverse proxies to the
+application on `127.0.0.1:3000`; Funnel remains disabled. The historical Caddy
+development hostname is not a NAM application endpoint and must not be used.
 
 ADR-019 approves a managed private overlay, with Tailscale as the implementation
 reference, for the controlled real-data pilot. Tailscale is installed,
@@ -388,10 +383,10 @@ The expected sequence is:
 9. Verify app-to-database connectivity.
 10. Verify no unintended public ports are exposed.
 
-## Caddy Configuration
+## Historical Caddy Configuration
 
-Phase 3.2 currently uses host-level Caddy for external development access. This
-public route is not approved for real pilot data.
+The repository retains historical Caddy examples for recovery context only.
+They are not the current application access path and must not be applied for NAM.
 
 The repository-owned Caddy example is:
 
@@ -405,37 +400,16 @@ The live host file is:
 /etc/caddy/Caddyfile
 ```
 
-Approved development route:
-
-```caddyfile
-dev.alemany.me {
-  reverse_proxy 127.0.0.1:3000
-}
-```
-
-Do not add a `nam.alemany.me` site block until production deployment is
-explicitly designed and approved. `nam.alemany.me` remains reserved for future
-production use.
-
-Verify Caddy:
+Verify the current private route:
 
 ```bash
-systemctl is-active caddy
-caddy validate --config /etc/caddy/Caddyfile
-curl -I https://dev.alemany.me
+tailscale serve status
+tailscale funnel status
+curl -I https://ops-console.tailf57e61.ts.net
 ```
 
-If HTTPS does not load externally, verify:
-
-- DNS `A dev.alemany.me` points to the server public IP.
-- Host firewall allows inbound TCP `80` and `443`.
-- Provider firewall/security group allows inbound TCP `80` and `443`.
-- The local app health endpoint succeeds at `http://127.0.0.1:3000/api/health`.
-
-The later ADR-019 implementation must remove this public application route,
-remove public DNS reachability for `dev.alemany.me`, and verify that Caddy does
-not provide an IPv4 or IPv6 bypass. Do not restore unauthenticated public Caddy
-access as a fallback when private overlay access is unavailable.
+The expected status is tailnet-only HTTPS with no Funnel. Do not restore a
+public Caddy application route as a fallback.
 
 ## Firewall Considerations
 

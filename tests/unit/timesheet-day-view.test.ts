@@ -41,6 +41,7 @@ function entry(overrides: Partial<ContextEntry> = {}): ContextEntry {
     createdAt: new Date("2026-07-13T00:00:00.000Z"),
     updatedAt: new Date("2026-07-13T00:00:00.000Z"),
     weeklyTimesheet: {
+      primaryEmployeeId: null,
       id: "timesheet-1",
       payrollWeekStartDate: new Date("2026-07-13T00:00:00.000Z"),
       payrollWeekEndDate: new Date("2026-07-19T00:00:00.000Z"),

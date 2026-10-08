@@ -158,26 +158,14 @@ The local development server binds to:
 127.0.0.1:3000
 ```
 
-External development access, when enabled on the VPS, is provided by host-level
-Caddy at:
+Private application access on the VPS is provided by Tailscale Serve at:
 
 ```text
-https://dev.alemany.me
+https://ops-console.tailf57e61.ts.net
 ```
 
-Caddy reverse proxies to `127.0.0.1:3000`. Do not publish Docker port `3000`
-publicly. `nam.alemany.me` is reserved for future production use and should not
-be configured for the development app.
-
-This current public endpoint is limited to non-sensitive development use. It
-does not satisfy the controlled-pilot Access Gate. ADR-019 approves a managed
-private overlay with tailnet-only HTTPS for the pilot. Tailscale is installed,
-connected, and configured to Serve the loopback application, but private HTTPS
-and policy/device acceptance remain incomplete. The boundary is partially
-implemented, not accepted. Current deployment identity and gate order are in
-the [Controlled Pilot Readiness Re-baseline](infrastructure/controlled-pilot-readiness-rebaseline.md);
-durable pilot requirements remain in the
-[Operational Pilot Runbook](infrastructure/operational-pilot-runbook.md).
+The app stays bound to `127.0.0.1:3000`. Do not publish Docker port `3000`,
+enable Tailscale Funnel, or introduce a public application route.
 
 ## Docker Compose Workflow
 
@@ -231,7 +219,9 @@ Approved development network behavior:
 - Application host binding: `127.0.0.1:3000`
 - PostgreSQL host binding: none
 - Application-to-database path: `app` container to `postgres` container over `nam-network`
-- Public Internet exposure: Caddy only, through `dev.alemany.me` on HTTP/HTTPS
+- Private HTTPS exposure: Tailscale Serve only, through
+  `ops-console.tailf57e61.ts.net`
+- Public Internet exposure: none; Tailscale Funnel remains disabled
 
 These bullets describe the current development runtime, not the approved pilot
 boundary. The pilot must remove the public Caddy application route while
@@ -247,11 +237,11 @@ docker inspect nam-app --format '{{json .NetworkSettings.Ports}}'
 
 PostgreSQL should show no host-published port. The app should show `3000/tcp` bound to `127.0.0.1`.
 
-When external development access is enabled, verify the proxy:
+When private access is enabled, verify Tailscale Serve:
 
 ```bash
 curl http://127.0.0.1:3000/api/health
-curl -I https://dev.alemany.me
+curl -I https://ops-console.tailf57e61.ts.net
 ```
 
 The local health endpoint should return:
