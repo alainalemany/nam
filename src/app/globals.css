@@ -2527,6 +2527,10 @@ textarea {
   margin-top: 2px;
 }
 
+.payroll-day-status-mark {
+  display: none;
+}
+
 .payroll-status--reconciled { --status-color: #1b84ff; }
 .payroll-status--awaiting-payroll { --status-color: #f6b100; }
 .payroll-status--missing-timesheet,
@@ -2635,6 +2639,62 @@ textarea {
 
 .payroll-table-scroll {
   overflow-x: auto;
+}
+
+.payroll-history-list {
+  display: none;
+}
+
+.payroll-history-item {
+  display: grid;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  padding: 18px;
+}
+
+.payroll-history-item:last-child {
+  border-bottom: 0;
+}
+
+.payroll-history-item-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.payroll-history-item-heading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.payroll-history-item-heading span,
+.payroll-history-item dt {
+  color: #718096;
+  font-size: 0.72rem;
+}
+
+.payroll-history-item-heading strong {
+  font-size: 0.88rem;
+}
+
+.payroll-history-item dl {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.payroll-history-item dl > div {
+  display: grid;
+  gap: 3px;
+}
+
+.payroll-history-item dd {
+  margin: 0;
+  color: #263246;
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 
 .payroll-day-dialog {
@@ -2849,21 +2909,46 @@ textarea {
   }
 
   .payroll-day {
-    min-height: 82px;
-    padding: 7px 5px;
+    min-height: 76px;
+    justify-items: center;
+    gap: 4px;
+    padding: 7px 3px;
+    text-align: center;
   }
 
-  .payroll-day-status {
-    font-size: 0;
+  .payroll-day > .payroll-day-status {
+    display: none;
   }
 
-  .payroll-day-status::before {
-    width: 9px;
-    height: 9px;
+  .payroll-day-status-mark {
+    display: grid;
+    width: 24px;
+    height: 22px;
+    place-items: center;
+    border: 1px solid color-mix(in srgb, var(--status-color, #94a3b8) 35%, white);
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--status-color, #94a3b8) 11%, white);
+    color: var(--status-color, #64748b);
+    font-size: 0.82rem;
+    font-weight: 850;
+    line-height: 1;
   }
 
   .payroll-day-hours {
-    font-size: 0.64rem;
+    font-size: 0.68rem;
+  }
+
+  .payroll-day-hours-label,
+  .payroll-day-schedule {
+    display: none;
+  }
+
+  .payroll-table-scroll {
+    display: none;
+  }
+
+  .payroll-history-list {
+    display: grid;
   }
 
   .payroll-form-grid {

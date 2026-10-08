@@ -78,6 +78,9 @@ POSTGRES_USER=nam_app
 POSTGRES_PASSWORD=replace-with-a-strong-local-password
 DATABASE_URL=postgresql://nam_app:replace-with-a-strong-local-password@localhost:5432/nam_dashboard?schema=public
 NAM_CHECKLIST_RESULT_SIGNING_SECRET=replace-with-at-least-32-random-characters
+NAM_PAYROLL_OWNER_EMPLOYEE_ID=replace-with-existing-owner-employee-cuid
+NAM_PAYROLL_ACCESS_KEY=replace-with-at-least-32-random-characters
+NAM_PAYROLL_SESSION_SECRET=replace-with-an-independent-32-character-minimum-secret
 ```
 
 `NAM_CHECKLIST_RESULT_SIGNING_SECRET` is a server-only secret used to sign the
@@ -88,6 +91,40 @@ At runtime, missing or short configuration fails marker generation closed while
 authoritative checklist persistence still succeeds; the action redirects to
 bare saved detail and emits no unverified banner. Never expose it to client code
 or commit a real value.
+
+Payroll is independently fail-closed. Its owner ID must reference the existing
+canonical Employee record, and its access key and session secret must be
+different high-entropy values of at least 32 characters. Generate them
+interactively, save the access key in the owner's password manager, and enter
+both through a protected editor rather than command-line arguments:
+
+```bash
+umask 077
+openssl rand -hex 32
+openssl rand -hex 32
+chmod 0600 .env
+```
+
+Use the first value only for `NAM_PAYROLL_ACCESS_KEY` and the second only for
+`NAM_PAYROLL_SESSION_SECRET`. Do not capture either value in deployment logs.
+After the owner confirms the existing Employee association, place that
+Employee's existing ID in `NAM_PAYROLL_OWNER_EMPLOYEE_ID`; do not create a
+Payroll-only duplicate Employee.
+
+Compose forwards all three variables to the application with empty defaults so
+local builds remain possible and runtime access fails closed. Validate the
+rendered configuration without printing its values:
+
+```bash
+docker compose config --format json \
+  | jq -e '.services.app.environment as $environment
+    | ($environment.NAM_PAYROLL_OWNER_EMPLOYEE_ID | length) > 0
+    and ($environment.NAM_PAYROLL_ACCESS_KEY | length) >= 32
+    and ($environment.NAM_PAYROLL_SESSION_SECRET | length) >= 32'
+```
+
+Do not run unfiltered `docker compose config` in captured deployment logs once
+secrets are populated.
 
 For Docker Compose, the `app` service builds its internal database URL from the PostgreSQL variables and connects to `postgres:5432` over `nam-network`.
 

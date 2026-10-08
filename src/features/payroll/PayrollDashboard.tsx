@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { adjacentMonth, formatHours, formatMoney } from "./calculations";
-import { lockPayrollAction } from "./actions";
 import type { getPayrollDashboardData } from "./data";
 import { PayrollCalendar } from "./PayrollCalendar";
 
@@ -24,14 +23,18 @@ function Metric({ icon: Icon, value, label, color }: { icon: typeof Clock3; valu
   return <Card className="payroll-metric" style={{ "--metric-color": color } as React.CSSProperties}><CardContent><span className="payroll-metric-icon"><Icon aria-hidden="true" /></span><strong className="payroll-metric-value">{value}</strong><span className="payroll-metric-label">{label}</span></CardContent></Card>;
 }
 
-export function PayrollDashboard({ data, preview = false }: { data: DashboardData; preview?: boolean }) {
+function paycheckStatus(status: DashboardData["paychecks"][number]["status"]) {
+  return status === "RECONCILED" ? "Aggregate match" : status.replaceAll("_", " ");
+}
+
+export function PayrollDashboard({ data, preview = false, lockAction }: { data: DashboardData; preview?: boolean; lockAction?: () => Promise<void> }) {
   const latest = data.summary.latestPaycheck;
   return (
     <main className="page-stack payroll-page">
       {preview ? <div className="payroll-notice">Preview data only — no financial record is being shown or changed.</div> : null}
       <header className="payroll-hero">
         <div><p className="eyebrow">Personal payroll reconciliation</p><h1>Payroll</h1><p className="summary">Schedule, NAM Timesheets, and Workday evidence in one trustworthy view for {data.employee.displayName}.</p></div>
-        <div className="payroll-actions"><Link className="button secondary" href="/timesheets">Open Timesheets</Link><Link className="button primary" href="/payroll/import">Import Paycheck</Link>{!preview ? <form action={lockPayrollAction}><button className="button secondary" type="submit">Lock</button></form> : null}</div>
+        <div className="payroll-actions"><Link className="button secondary" href="/timesheets">Open Timesheets</Link><Link className="button primary" href="/payroll/import">Import Paycheck</Link>{!preview && lockAction ? <form action={lockAction}><button className="button secondary" type="submit">Lock</button></form> : null}</div>
       </header>
       <section className="payroll-summary-grid" aria-label="Payroll summary">
         <Metric icon={FileCheck2} value={formatHours(data.summary.reconciledMinutes)} label="Reconciled hours · aggregate" color="#17c653" />
@@ -56,9 +59,18 @@ export function PayrollDashboard({ data, preview = false }: { data: DashboardDat
       </div>
       <Card>
         <CardHeader><CardTitle>Paycheck History</CardTitle><Link className="button secondary" href="/payroll/import">Import Paycheck</Link></CardHeader>
-        <div className="payroll-table-scroll">
-          {data.paychecks.length ? <table className="payroll-history-table"><thead><tr><th>Payroll period</th><th>Check date</th><th>Regular</th><th>Overtime</th><th>Gross cash</th><th>Net pay</th><th>Status</th><th /></tr></thead><tbody>{data.paychecks.map((paycheck) => <tr key={paycheck.id}><td>{paycheck.periodLabel}</td><td>{dateLabel(paycheck.checkDate)}</td><td>{formatHours(paycheck.regularPaidMinutes)}</td><td>{formatHours(paycheck.overtimePaidMinutes)}</td><td>{formatMoney(paycheck.grossCashPay)}</td><td>{formatMoney(paycheck.netPay)}</td><td><span className={`payroll-day-status payroll-status--${paycheck.status.toLowerCase().replaceAll("_", "-")}`}>{paycheck.status === "RECONCILED" ? "Aggregate match" : paycheck.status.replaceAll("_", " ")}</span></td><td><Link className="table-action" href={`/payroll/paychecks/${paycheck.id}`}>Details →</Link></td></tr>)}</tbody></table> : <div className="payroll-empty"><FileText aria-hidden="true" /><strong>No paycheck history yet</strong><span>Imported statements will appear here without retaining the source PDF.</span></div>}
-        </div>
+        {data.paychecks.length ? <>
+          <div className="payroll-table-scroll">
+            <table className="payroll-history-table"><thead><tr><th>Payroll period</th><th>Check date</th><th>Regular</th><th>Overtime</th><th>Gross cash</th><th>Net pay</th><th>Status</th><th /></tr></thead><tbody>{data.paychecks.map((paycheck) => <tr key={paycheck.id}><td>{paycheck.periodLabel}</td><td>{dateLabel(paycheck.checkDate)}</td><td>{formatHours(paycheck.regularPaidMinutes)}</td><td>{formatHours(paycheck.overtimePaidMinutes)}</td><td>{formatMoney(paycheck.grossCashPay)}</td><td>{formatMoney(paycheck.netPay)}</td><td><span className={`payroll-day-status payroll-status--${paycheck.status.toLowerCase().replaceAll("_", "-")}`}>{paycheckStatus(paycheck.status)}</span></td><td><Link className="table-action" href={`/payroll/paychecks/${paycheck.id}`}>Details →</Link></td></tr>)}</tbody></table>
+          </div>
+          <div className="payroll-history-list" aria-label="Paycheck history">
+            {data.paychecks.map((paycheck) => <article className="payroll-history-item" key={paycheck.id}>
+              <div className="payroll-history-item-heading"><div><span>Payroll period</span><strong>{paycheck.periodLabel}</strong></div><span className={`payroll-day-status payroll-status--${paycheck.status.toLowerCase().replaceAll("_", "-")}`}>{paycheckStatus(paycheck.status)}</span></div>
+              <dl><div><dt>Check date</dt><dd>{dateLabel(paycheck.checkDate)}</dd></div><div><dt>Regular</dt><dd>{formatHours(paycheck.regularPaidMinutes)}</dd></div><div><dt>Overtime</dt><dd>{formatHours(paycheck.overtimePaidMinutes)}</dd></div><div><dt>Gross cash</dt><dd>{formatMoney(paycheck.grossCashPay)}</dd></div><div><dt>Net pay</dt><dd>{formatMoney(paycheck.netPay)}</dd></div></dl>
+              <Link className="button secondary" href={`/payroll/paychecks/${paycheck.id}`}>View paycheck details</Link>
+            </article>)}
+          </div>
+        </> : <div className="payroll-empty"><FileText aria-hidden="true" /><strong>No paycheck history yet</strong><span>Imported statements will appear here without retaining the source PDF.</span></div>}
       </Card>
     </main>
   );

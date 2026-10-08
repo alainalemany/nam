@@ -15,6 +15,10 @@ describe("PayrollCalendar", () => {
     render(<PayrollCalendar days={days} monthLabel="October 2026" previousHref="/payroll?month=2026-09" nextHref="/payroll?month=2026-11" />);
     expect(screen.getByRole("button", { name: /October 5, 2026: Aggregate match/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /October 6, 2026: Missing Timesheet/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /October 5, 2026/ }).querySelector(".payroll-day-status-mark"))
+      .toHaveTextContent("✓");
+    expect(screen.getByRole("button", { name: /October 6, 2026/ }).querySelector(".payroll-day-status-mark"))
+      .toHaveTextContent("!");
     fireEvent.click(screen.getByRole("button", { name: /October 5, 2026/ }));
     expect(screen.getByRole("dialog")).toHaveTextContent("not this date's individual paid allocation");
   });

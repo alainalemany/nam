@@ -4,6 +4,8 @@ import { cookies } from "next/headers";
 
 import {
   createPayrollSessionToken,
+  isConfiguredPayrollValue,
+  isStrongPayrollAccessKey,
   PayrollAccessConfigurationError,
   PayrollAccessDeniedError,
   payrollSessionTtlSeconds,
@@ -25,7 +27,15 @@ function requiredConfiguration() {
   const employeeId = process.env.NAM_PAYROLL_OWNER_EMPLOYEE_ID?.trim();
   const accessKey = process.env.NAM_PAYROLL_ACCESS_KEY;
   const sessionSecret = process.env.NAM_PAYROLL_SESSION_SECRET;
-  if (!employeeId || !accessKey || !sessionSecret || sessionSecret.length < 32) {
+  if (
+    !employeeId ||
+    !isConfiguredPayrollValue(employeeId) ||
+    !accessKey ||
+    !isStrongPayrollAccessKey(accessKey) ||
+    !sessionSecret ||
+    !isConfiguredPayrollValue(sessionSecret) ||
+    sessionSecret.length < 32
+  ) {
     throw new PayrollAccessConfigurationError(
       "Payroll access is unavailable until its owner and server-only secrets are configured.",
     );

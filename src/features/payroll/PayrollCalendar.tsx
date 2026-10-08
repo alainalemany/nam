@@ -9,6 +9,15 @@ import type { PayrollCalendarDay } from "./types";
 
 const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+const mobileStatusMarks: Record<PayrollCalendarDay["status"], string> = {
+  RECONCILED: "✓",
+  AWAITING_PAYROLL: "…",
+  MISSING_TIMESHEET: "!",
+  DISCREPANCY: "!",
+  NEEDS_REVIEW: "?",
+  OFF: "—",
+};
+
 function statusClass(status: PayrollCalendarDay["status"]) {
   return `payroll-status--${status.toLowerCase().replaceAll("_", "-")}`;
 }
@@ -62,8 +71,9 @@ export function PayrollCalendar({
             >
               <span className="payroll-day-number">{day.dayNumber}</span>
               <span className="payroll-day-status">{day.statusLabel}</span>
-              {day.timesheetMinutes != null ? <span className="payroll-day-hours">{formatHours(day.timesheetMinutes)} recorded</span> : null}
-              {day.scheduledLabel ? <span className="subtle">{day.scheduledLabel}</span> : null}
+              <span className="payroll-day-status-mark" aria-hidden="true">{mobileStatusMarks[day.status]}</span>
+              {day.timesheetMinutes != null ? <span className="payroll-day-hours">{formatHours(day.timesheetMinutes)}<span className="payroll-day-hours-label"> recorded</span></span> : null}
+              {day.scheduledLabel ? <span className="payroll-day-schedule subtle">{day.scheduledLabel}</span> : null}
             </button>
           ))}
         </div>

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { lockPayrollAction } from "@/features/payroll/actions";
 import { getPayrollPrincipal, PayrollAccessConfigurationError } from "@/features/payroll/auth";
 import { getPayrollDashboardData } from "@/features/payroll/data";
 import { PayrollDashboard } from "@/features/payroll/PayrollDashboard";
@@ -17,5 +18,5 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
   const query = await searchParams;
   const month = /^\d{4}-\d{2}$/.test(query.month ?? "") ? query.month! : dateKeyInTimeZone(new Date()).slice(0, 7);
   const data = await getPayrollDashboardData(principal.employeeId, month);
-  return <PayrollDashboard data={data} />;
+  return <PayrollDashboard data={data} lockAction={lockPayrollAction} />;
 }

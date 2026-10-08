@@ -213,6 +213,59 @@ set, and no post-DDR current-schema backup with disposable-restore proof is
 recorded. The broader Recovery Gate and disaster-recovery acceptance therefore
 remain open.
 
+### Payroll V1 pre-deployment backup and disposable restore
+
+The following prepared procedure is scoped to the Payroll V1 deployment. It
+does not authorize execution. Run it only after separate backup-test approval,
+from `/home/alain/projects/nam`, while the established `nam-postgres` container
+is healthy. It does not publish PostgreSQL to the host and never restores over
+`nam_dashboard`.
+
+Create a uniquely named, permission-restricted custom archive outside Git:
+
+```bash
+umask 077
+NAM_PAYROLL_BACKUP_DIR=/home/alain/backups/nam/postgres
+NAM_PAYROLL_BACKUP_STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+NAM_PAYROLL_BACKUP_FILE="${NAM_PAYROLL_BACKUP_DIR}/nam_dashboard_pre_payroll_v1_${NAM_PAYROLL_BACKUP_STAMP}.dump"
+test -d "$NAM_PAYROLL_BACKUP_DIR"
+test ! -e "$NAM_PAYROLL_BACKUP_FILE"
+sg docker -c 'docker compose exec -T postgres sh -c '\''exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc'\''' > "$NAM_PAYROLL_BACKUP_FILE"
+chmod 0600 "$NAM_PAYROLL_BACKUP_FILE"
+sha256sum "$NAM_PAYROLL_BACKUP_FILE" > "${NAM_PAYROLL_BACKUP_FILE}.sha256"
+pg_restore --list "$NAM_PAYROLL_BACKUP_FILE" > "${NAM_PAYROLL_BACKUP_FILE}.toc"
+sha256sum -c "${NAM_PAYROLL_BACKUP_FILE}.sha256"
+pg_restore --list "$NAM_PAYROLL_BACKUP_FILE" >/dev/null
+```
+
+With separately approved temporary-database authority, restore that archive
+inside the existing PostgreSQL container and compare non-sensitive counts:
+
+```bash
+NAM_PAYROLL_RESTORE_DB="nam_payroll_v1_restore_$(date -u +%Y%m%dt%H%M%Sz)"
+[[ "$NAM_PAYROLL_RESTORE_DB" =~ ^nam_payroll_v1_restore_[0-9]{8}t[0-9]{6}z$ ]]
+test "$NAM_PAYROLL_RESTORE_DB" != nam_dashboard
+sg docker -c "docker compose exec -T postgres createdb -U nam_app --template=template0 '$NAM_PAYROLL_RESTORE_DB'"
+sg docker -c "docker compose exec -T postgres pg_restore -U nam_app -d '$NAM_PAYROLL_RESTORE_DB' --exit-on-error --no-owner --no-privileges" < "$NAM_PAYROLL_BACKUP_FILE"
+sg docker -c "docker compose exec -T postgres psql -X -U nam_app -d '$NAM_PAYROLL_RESTORE_DB' -At -c 'SELECT count(*) FROM \"_prisma_migrations\"; SELECT count(*) FROM \"Employee\"; SELECT count(*) FROM \"WeeklyTimesheet\";'"
+```
+
+Compare those counts with read-only queries against `nam_dashboard`. After the
+restore evidence is accepted, drop only the guarded disposable database:
+
+```bash
+[[ "$NAM_PAYROLL_RESTORE_DB" =~ ^nam_payroll_v1_restore_[0-9]{8}t[0-9]{6}z$ ]]
+test "$NAM_PAYROLL_RESTORE_DB" != nam_dashboard
+sg docker -c "docker compose exec -T postgres dropdb -U nam_app --if-exists '$NAM_PAYROLL_RESTORE_DB'"
+```
+
+Backup creation, checksum validation, guarded disposable restore, count
+comparison, and cleanup can be automated with these exact name guards. A live
+restore, migration repair, backup deletion, or production migration must remain
+an explicit operator decision. Prisma migrations are not automatically
+reversible; after a partial failure, stop and choose a reviewed forward repair
+or restore the verified archive.
+
 ## Planned Operational Safety Checklist Media Storage
 
 ADR-018 approves private local persistent storage for future checklist photo

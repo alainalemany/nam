@@ -1,6 +1,7 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
+export const MIN_PAYROLL_ACCESS_KEY_LENGTH = 32;
 
 export class PayrollAccessConfigurationError extends Error {}
 export class PayrollAccessDeniedError extends Error {}
@@ -11,9 +12,17 @@ export type PayrollPrincipal = {
 };
 
 export function safePayrollEqual(left: string, right: string) {
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
-  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+  const leftDigest = createHash("sha256").update(left).digest();
+  const rightDigest = createHash("sha256").update(right).digest();
+  return timingSafeEqual(leftDigest, rightDigest);
+}
+
+export function isConfiguredPayrollValue(value: string) {
+  return value.length > 0 && !value.startsWith("replace-with-");
+}
+
+export function isStrongPayrollAccessKey(value: string) {
+  return isConfiguredPayrollValue(value) && value.length >= MIN_PAYROLL_ACCESS_KEY_LENGTH;
 }
 
 function sign(payload: string, secret: string) {

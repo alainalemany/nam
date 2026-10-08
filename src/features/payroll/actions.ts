@@ -2,6 +2,7 @@
 
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { addDays, parseDateOnly } from "@/features/timesheets/calculations";
@@ -15,16 +16,32 @@ import {
 import { extractPaycheckPdf } from "./parser";
 import { manualPaycheckFingerprint } from "./fingerprint";
 import type { PayrollImportState } from "./types";
+import { payrollUnlockClientKey, payrollUnlockRateLimiter } from "./unlock-rate-limit";
 import { paycheckInputSchema } from "./validation";
 
 export async function unlockPayrollAction(
   _state: { ok: boolean; message: string },
   formData: FormData,
 ) {
+  const clientKey = payrollUnlockClientKey(await headers());
+  const currentLimit = payrollUnlockRateLimiter.check(clientKey);
+  if (!currentLimit.allowed) {
+    return {
+      ok: false,
+      message: `Too many invalid attempts. Try again in ${Math.ceil(currentLimit.retryAfterSeconds / 60)} minute(s).`,
+    };
+  }
   const candidate = formData.get("accessKey");
   if (typeof candidate !== "string" || !(await establishPayrollSession(candidate))) {
-    return { ok: false, message: "Payroll access key was not accepted." };
+    const nextLimit = payrollUnlockRateLimiter.recordFailure(clientKey);
+    return {
+      ok: false,
+      message: nextLimit.allowed
+        ? "Payroll access key was not accepted."
+        : `Too many invalid attempts. Try again in ${Math.ceil(nextLimit.retryAfterSeconds / 60)} minute(s).`,
+    };
   }
+  payrollUnlockRateLimiter.reset(clientKey);
   redirect("/payroll");
 }
 

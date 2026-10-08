@@ -1,6 +1,7 @@
 .git
 .next
 node_modules
+.pnpm-store
 .env
 .env.*
 !.env.example
@@ -10,3 +11,13 @@ node_modules
 docs
 source-forms
 backups
+
+# Verified local shell scratch artifacts; never part of an application build.
+/5:00
+/5:35
+/5:40
+/720
+/720.
+/Down
+/Run
+/display
