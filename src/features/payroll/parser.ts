@@ -175,12 +175,14 @@ export async function extractPaycheckPdf(file: File) {
   if (file.size <= 0 || file.size > MAX_PAYSLIP_BYTES) {
     throw new Error("Choose a non-empty PDF no larger than 10 MB.");
   }
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const magic = new TextDecoder("ascii").decode(bytes.slice(0, 5));
+  const sourceBytes = new Uint8Array(await file.arrayBuffer());
+  const magic = new TextDecoder("ascii").decode(sourceBytes.slice(0, 5));
   if (magic !== "%PDF-") throw new Error("The selected file is not a valid PDF.");
-  const fingerprint = createHash("sha256").update(bytes).digest("hex");
-  const parser = new PDFParse({ data: bytes });
+  const fingerprint = createHash("sha256").update(sourceBytes).digest("hex");
+  const parserBytes = sourceBytes.slice();
+  let parser: PDFParse | undefined;
   try {
+    parser = new PDFParse({ data: parserBytes });
     const result = await parser.getText();
     const values = parseWorkdayPaycheckText(result.text, fingerprint);
     if (!result.text.trim()) {
@@ -188,7 +190,20 @@ export async function extractPaycheckPdf(file: File) {
     }
     return values;
   } finally {
-    await parser.destroy();
-    bytes.fill(0);
+    try {
+      await parser?.destroy();
+    } catch {
+      // Cleanup must not replace a successful extraction or the original parse error.
+    }
+    try {
+      sourceBytes.fill(0);
+    } catch {
+      // Best-effort cleanup only; transferred buffers may already be detached.
+    }
+    try {
+      parserBytes.fill(0);
+    } catch {
+      // pdf-parse may transfer and detach its input buffer during processing.
+    }
   }
 }
