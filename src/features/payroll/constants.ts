@@ -1,4 +1,4 @@
-export const PAYROLL_PARSER_VERSION = "workday-v1.0.0";
+export const PAYROLL_PARSER_VERSION = "workday-v1.1.0";
 export const PAYROLL_TIME_ZONE = "America/New_York";
 export const MAX_PAYSLIP_BYTES = 10 * 1024 * 1024;
 export const PAYROLL_REGULAR_MINUTES = 2_400;

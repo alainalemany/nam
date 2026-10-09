@@ -28,6 +28,10 @@ vi.mock("pdf-parse", () => ({
       return { text };
     }
 
+    async getTable() {
+      return { mergedTables: [] };
+    }
+
     async destroy() {
       throw new Error("cleanup failure");
     }
