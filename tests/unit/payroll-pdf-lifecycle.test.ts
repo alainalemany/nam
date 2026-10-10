@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const pdfState = vi.hoisted(() => ({ mode: "success" as "success" | "parse-error" }));
 
+vi.mock("@napi-rs/canvas", () => ({}));
+
 vi.mock("pdf-parse", () => ({
   PDFParse: class {
     private readonly data: Uint8Array;

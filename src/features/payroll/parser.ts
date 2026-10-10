@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { PDFParse } from "pdf-parse";
+import type { PDFParse as PDFParseInstance } from "pdf-parse";
 
 import { MAX_PAYSLIP_BYTES, PAYROLL_PARSER_VERSION } from "./constants";
 import type { ParsedPaycheck } from "./types";
@@ -265,8 +265,12 @@ export async function extractPaycheckPdf(file: File) {
   if (magic !== "%PDF-") throw new Error("The selected file is not a valid PDF.");
   const fingerprint = createHash("sha256").update(sourceBytes).digest("hex");
   const parserBytes = sourceBytes.slice();
-  let parser: PDFParse | undefined;
+  let parser: PDFParseInstance | undefined;
   try {
+    // PDF.js initializes native Node helpers when pdf-parse is loaded. Keep that
+    // work out of ordinary Payroll rendering and load it only for extraction.
+    await import("@napi-rs/canvas");
+    const { PDFParse } = await import("pdf-parse");
     parser = new PDFParse({ data: parserBytes });
     const result = await parser.getText();
     const tableResult = await parser.getTable().catch(() => undefined);
