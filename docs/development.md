@@ -194,7 +194,8 @@ database URL.
 
 `PostgreSQL Integration` starts an ephemeral PostgreSQL 18 service on the
 GitHub-hosted runner, applies all committed migrations, verifies migration
-status, and runs the Phase A integration suite. The job sets
+status, exercises the legacy Payroll identity backfill with synthetic
+pre-migration fixtures, and runs the Phase A integration suite. The job sets
 `PHASE_A_POSTGRES_REQUIRED=1`, so missing test configuration fails rather than
 silently skipping the suite.
 

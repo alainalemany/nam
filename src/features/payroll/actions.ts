@@ -85,6 +85,67 @@ function parseReviewPayload(formData: FormData) {
   }
 }
 
+async function reconcilePaycheckDerivedRate(
+  tx: Prisma.TransactionClient,
+  input: {
+    paycheckId: string;
+    employeeId: string;
+    effectiveFrom: Date;
+    hourlyRate: Prisma.Decimal | null;
+  },
+) {
+  const linkedRate = await tx.employeePayRate.findUnique({
+    where: { sourcePaycheckId: input.paycheckId },
+  });
+  if (linkedRate && linkedRate.employeeId !== input.employeeId) {
+    throw new Error("PAY_RATE_PROVENANCE_MISMATCH");
+  }
+
+  if (input.hourlyRate === null) {
+    if (linkedRate) {
+      await tx.employeePayRate.delete({ where: { id: linkedRate.id } });
+    }
+    return;
+  }
+
+  const destinationRate = await tx.employeePayRate.findUnique({
+    where: {
+      employeeId_effectiveFrom: {
+        employeeId: input.employeeId,
+        effectiveFrom: input.effectiveFrom,
+      },
+    },
+  });
+
+  if (linkedRate) {
+    if (destinationRate && destinationRate.id !== linkedRate.id) {
+      await tx.employeePayRate.delete({ where: { id: linkedRate.id } });
+      return;
+    }
+    await tx.employeePayRate.update({
+      where: { id: linkedRate.id },
+      data: {
+        effectiveFrom: input.effectiveFrom,
+        hourlyRate: input.hourlyRate,
+        sourceNote: "Corrected Workday paycheck evidence",
+      },
+    });
+    return;
+  }
+
+  if (!destinationRate) {
+    await tx.employeePayRate.create({
+      data: {
+        employeeId: input.employeeId,
+        effectiveFrom: input.effectiveFrom,
+        hourlyRate: input.hourlyRate,
+        sourceNote: "Corrected Workday paycheck evidence",
+        sourcePaycheckId: input.paycheckId,
+      },
+    });
+  }
+}
+
 export async function savePaycheckAction(
   _state: PayrollImportState,
   formData: FormData,
@@ -183,6 +244,7 @@ export async function savePaycheckAction(
             effectiveFrom: periodStart,
             hourlyRate: new Prisma.Decimal(value.baseRate),
             sourceNote: "Imported Workday paycheck evidence",
+            sourcePaycheckId: paycheck.id,
           },
           update: {},
         });
@@ -260,13 +322,12 @@ export async function correctPaycheckAction(
           reviewStatus: "CONFIRMED",
         },
       });
-      if (value.baseRate != null) {
-        await tx.employeePayRate.upsert({
-          where: { employeeId_effectiveFrom: { employeeId: principal.employeeId, effectiveFrom: periodStart } },
-          create: { employeeId: principal.employeeId, effectiveFrom: periodStart, hourlyRate: new Prisma.Decimal(value.baseRate), sourceNote: "Corrected Workday paycheck evidence" },
-          update: { hourlyRate: new Prisma.Decimal(value.baseRate), sourceNote: "Corrected Workday paycheck evidence" },
-        });
-      }
+      await reconcilePaycheckDerivedRate(tx, {
+        paycheckId: current.id,
+        employeeId: principal.employeeId,
+        effectiveFrom: periodStart,
+        hourlyRate: value.baseRate == null ? null : new Prisma.Decimal(value.baseRate),
+      });
     });
     revalidatePath("/");
     revalidatePath("/payroll");

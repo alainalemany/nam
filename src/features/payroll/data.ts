@@ -229,13 +229,23 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
   const assignments = await prisma.dailyAssignment.findMany({
     where: {
       assignmentDate: { gte: assignmentStart, lte: assignmentEnd },
-      weeklySchedule: { primaryEmployeeId: employeeId, status: "ACTIVE" },
+      weeklySchedule: {
+        primaryEmployeeId: employeeId,
+        status: { in: ["ACTIVE", "ARCHIVED"] },
+      },
     },
     include: { weeklySchedule: true },
-    orderBy: { assignmentDate: "asc" },
+    orderBy: [{ assignmentDate: "asc" }, { id: "asc" }],
   });
 
-  const assignmentByDate = new Map(assignments.map((item) => [dateInputValue(item.assignmentDate), item]));
+  const assignmentByDate = new Map<string, (typeof assignments)[number]>();
+  for (const item of assignments) {
+    const key = dateInputValue(item.assignmentDate);
+    const current = assignmentByDate.get(key);
+    if (!current || (current.weeklySchedule.status === "ARCHIVED" && item.weeklySchedule.status === "ACTIVE")) {
+      assignmentByDate.set(key, item);
+    }
+  }
   const entries = timesheets.flatMap((timesheet) => timesheet.entries.map((entry) => ({ ...entry, weeklyTimesheet: timesheet })));
   const legacyTimesheetIdsByDate = new Map<string, string[]>();
   for (const timesheet of legacyTimesheets) {
@@ -379,7 +389,13 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
         ? "Aggregate match"
         : payrollStatusLabels[status],
       scheduledLabel: assignment
-        ? effectiveStatus === "NON_WORKING" ? "Off" : `${effectiveShift === "NIGHT" ? "Night" : effectiveShift === "DAY" ? "Day" : "Scheduled"} shift`
+        ? effectiveStatus === "NON_WORKING"
+          ? "Off"
+          : effectiveStatus === "CANCELLED"
+            ? "Cancelled"
+            : effectiveStatus === "SCHEDULED"
+              ? `${effectiveShift === "NIGHT" ? "Night" : effectiveShift === "DAY" ? "Day" : "Scheduled"} shift`
+              : undefined
         : undefined,
       equipmentLabel: assignment
         ? (assignment.actualStatus !== "UNKNOWN" ? assignment.actualEquipmentDisplayName : assignment.plannedEquipmentDisplayName) ?? undefined
@@ -416,7 +432,7 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
   }, 0);
   const openIssues = openIssueKeys.size;
   const latest = paychecks[0];
-  const currentPeriod = payrollPeriodForDate(now);
+  const currentPeriod = payrollPeriodForDate(parseDateOnly(today));
 
   return {
     employee: { id: employee.id, displayName: employee.displayName },

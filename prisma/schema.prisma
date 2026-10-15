@@ -1223,6 +1223,7 @@ model Paycheck {
   notes                   String?
   importedAt              DateTime            @default(now())
   correctedAt             DateTime?
+  derivedPayRate          EmployeePayRate?    @relation("PaycheckDerivedPayRate")
   createdAt               DateTime            @default(now())
   updatedAt               DateTime            @updatedAt
 
@@ -1231,14 +1232,16 @@ model Paycheck {
 }
 
 model EmployeePayRate {
-  id            String   @id @default(cuid())
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade, map: "EmployeePayRate_employee_fkey")
-  effectiveFrom DateTime @db.Date
-  hourlyRate    Decimal  @db.Decimal(10, 4)
-  sourceNote    String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String    @id @default(cuid())
+  employeeId       String
+  employee         Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade, map: "EmployeePayRate_employee_fkey")
+  effectiveFrom    DateTime  @db.Date
+  hourlyRate       Decimal   @db.Decimal(10, 4)
+  sourceNote       String?
+  sourcePaycheckId String?   @unique(map: "EmployeePayRate_sourcePaycheckId_key")
+  sourcePaycheck   Paycheck? @relation("PaycheckDerivedPayRate", fields: [sourcePaycheckId], references: [id], onDelete: SetNull, map: "EmployeePayRate_sourcePaycheck_fkey")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@unique([employeeId, effectiveFrom], map: "EmployeePayRate_employee_effective_key")
   @@index([employeeId, effectiveFrom], map: "EmployeePayRate_employee_effective_idx")

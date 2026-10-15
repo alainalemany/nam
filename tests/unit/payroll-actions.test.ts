@@ -12,6 +12,10 @@ const mocks = vi.hoisted(() => ({
   periodUpsert: vi.fn(),
   periodUpdate: vi.fn(),
   rateUpsert: vi.fn(),
+  rateFindUnique: vi.fn(),
+  rateCreate: vi.fn(),
+  rateUpdate: vi.fn(),
+  rateDelete: vi.fn(),
   revalidatePath: vi.fn(),
 }));
 
@@ -35,7 +39,13 @@ function tx() {
       update: mocks.paycheckUpdate,
     },
     payrollPeriod: { upsert: mocks.periodUpsert, update: mocks.periodUpdate },
-    employeePayRate: { upsert: mocks.rateUpsert },
+    employeePayRate: {
+      upsert: mocks.rateUpsert,
+      findUnique: mocks.rateFindUnique,
+      create: mocks.rateCreate,
+      update: mocks.rateUpdate,
+      delete: mocks.rateDelete,
+    },
   };
 }
 
@@ -83,6 +93,7 @@ describe("Payroll payday persistence actions", () => {
     mocks.paycheckCreate.mockResolvedValue({ id: "paycheck-1" });
     mocks.paycheckUpdate.mockResolvedValue({ id: "paycheck-1" });
     mocks.periodUpdate.mockResolvedValue({ id: "period-1" });
+    mocks.rateFindUnique.mockResolvedValue(null);
   });
 
   it("persists Wednesday as the projected date for a Monday-Sunday NAM period", async () => {
@@ -121,6 +132,22 @@ describe("Payroll payday persistence actions", () => {
     }));
   });
 
+  it("links a newly imported Paycheck rate to its supporting Paycheck", async () => {
+    await savePaycheckAction(
+      { status: "idle", message: "" },
+      formData(payload({ baseRate: "33.15" })),
+    );
+
+    expect(mocks.rateUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({
+        employeeId: "employee-1",
+        hourlyRate: expect.objectContaining({}),
+        sourcePaycheckId: "paycheck-1",
+      }),
+      update: {},
+    }));
+  });
+
   it("preserves the existing expected date and import provenance during correction", async () => {
     mocks.paycheckFindFirst.mockResolvedValue({
       id: "paycheck-1",
@@ -148,5 +175,123 @@ describe("Payroll payday persistence actions", () => {
     expect(paycheckData.checkDate).toEqual(new Date("2026-09-24T00:00:00.000Z"));
     expect(paycheckData).not.toHaveProperty("sourceFingerprint");
     expect(paycheckData).not.toHaveProperty("parserVersion");
+  });
+
+  it("updates only the linked paycheck-derived rate when rate and period change", async () => {
+    mocks.paycheckFindFirst.mockResolvedValue({
+      id: "paycheck-1",
+      employeeId: "employee-1",
+      payrollPeriodId: "period-1",
+      payrollPeriod: {},
+    });
+    mocks.rateFindUnique
+      .mockResolvedValueOnce({ id: "rate-linked", employeeId: "employee-1", sourcePaycheckId: "paycheck-1" })
+      .mockResolvedValueOnce(null);
+
+    await correctPaycheckAction(
+      { status: "idle", message: "" },
+      formData(payload({ periodStart: "2026-09-21", periodEnd: "2026-09-27", baseRate: "35.25" }), "paycheck-1"),
+    );
+
+    expect(mocks.rateUpdate).toHaveBeenCalledWith({
+      where: { id: "rate-linked" },
+      data: {
+        effectiveFrom: new Date("2026-09-21T00:00:00.000Z"),
+        hourlyRate: expect.objectContaining({}),
+        sourceNote: "Corrected Workday paycheck evidence",
+      },
+    });
+    expect(mocks.rateDelete).not.toHaveBeenCalled();
+  });
+
+  it("removes a linked paycheck-derived rate when baseRate is cleared", async () => {
+    mocks.paycheckFindFirst.mockResolvedValue({
+      id: "paycheck-1",
+      employeeId: "employee-1",
+      payrollPeriodId: "period-1",
+      payrollPeriod: {},
+    });
+    mocks.rateFindUnique.mockResolvedValueOnce({
+      id: "rate-linked",
+      employeeId: "employee-1",
+      sourcePaycheckId: "paycheck-1",
+    });
+
+    await correctPaycheckAction(
+      { status: "idle", message: "" },
+      formData(payload({ baseRate: "" }), "paycheck-1"),
+    );
+
+    expect(mocks.rateDelete).toHaveBeenCalledWith({ where: { id: "rate-linked" } });
+    expect(mocks.rateUpdate).not.toHaveBeenCalled();
+    expect(mocks.rateCreate).not.toHaveBeenCalled();
+  });
+
+  it("preserves an unrelated destination rate instead of overwriting it", async () => {
+    mocks.paycheckFindFirst.mockResolvedValue({
+      id: "paycheck-1",
+      employeeId: "employee-1",
+      payrollPeriodId: "period-1",
+      payrollPeriod: {},
+    });
+    mocks.rateFindUnique
+      .mockResolvedValueOnce({ id: "rate-linked", employeeId: "employee-1", sourcePaycheckId: "paycheck-1" })
+      .mockResolvedValueOnce({ id: "rate-manual", sourcePaycheckId: null });
+
+    await correctPaycheckAction(
+      { status: "idle", message: "" },
+      formData(payload({ periodStart: "2026-09-21", periodEnd: "2026-09-27", baseRate: "35.25" }), "paycheck-1"),
+    );
+
+    expect(mocks.rateDelete).toHaveBeenCalledWith({ where: { id: "rate-linked" } });
+    expect(mocks.rateUpdate).not.toHaveBeenCalled();
+    expect(mocks.rateCreate).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when stored rate provenance belongs to another employee", async () => {
+    mocks.paycheckFindFirst.mockResolvedValue({
+      id: "paycheck-1",
+      employeeId: "employee-1",
+      payrollPeriodId: "period-1",
+      payrollPeriod: {},
+    });
+    mocks.rateFindUnique.mockResolvedValueOnce({
+      id: "rate-corrupt",
+      employeeId: "employee-2",
+      sourcePaycheckId: "paycheck-1",
+    });
+
+    const result = await correctPaycheckAction(
+      { status: "idle", message: "" },
+      formData(payload({ baseRate: "35.25" }), "paycheck-1"),
+    );
+
+    expect(result).toMatchObject({ status: "error" });
+    expect(mocks.rateUpdate).not.toHaveBeenCalled();
+    expect(mocks.rateDelete).not.toHaveBeenCalled();
+    expect(mocks.rateCreate).not.toHaveBeenCalled();
+  });
+
+  it("creates provenance for a corrected rate only when no unrelated rate occupies the date", async () => {
+    mocks.paycheckFindFirst.mockResolvedValue({
+      id: "paycheck-1",
+      employeeId: "employee-1",
+      payrollPeriodId: "period-1",
+      payrollPeriod: {},
+    });
+    mocks.rateFindUnique.mockResolvedValue(null);
+
+    await correctPaycheckAction(
+      { status: "idle", message: "" },
+      formData(payload({ baseRate: "34.50" }), "paycheck-1"),
+    );
+
+    expect(mocks.rateCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        employeeId: "employee-1",
+        sourcePaycheckId: "paycheck-1",
+        sourceNote: "Corrected Workday paycheck evidence",
+      }),
+    });
   });
 });

@@ -1,0 +1,35 @@
+-- Synthetic evidence inserted after Payroll V1 and before the corrective
+-- migration to verify conservative provenance backfill behavior.
+INSERT INTO "Employee" (
+  "id", "employeeCode", "displayName", "isActive", "isSupervisor", "updatedAt"
+) VALUES
+  ('migration-employee-ambiguous-rate', 'MIG-RATE-AMB', 'Ambiguous Rate', true, false, CURRENT_TIMESTAMP),
+  ('migration-employee-manual-rate', 'MIG-RATE-MAN', 'Manual Rate', true, false, CURRENT_TIMESTAMP);
+
+INSERT INTO "PayrollPeriod" (
+  "id", "employeeId", "periodStart", "periodEnd", "expectedCheckDate", "updatedAt"
+) VALUES
+  ('migration-period-unique-rate', 'migration-employee-unique', DATE '2026-06-01', DATE '2026-06-07', DATE '2026-06-10', CURRENT_TIMESTAMP),
+  ('migration-period-ambiguous-rate-a', 'migration-employee-ambiguous-rate', DATE '2026-06-01', DATE '2026-06-07', DATE '2026-06-10', CURRENT_TIMESTAMP),
+  ('migration-period-ambiguous-rate-b', 'migration-employee-ambiguous-rate', DATE '2026-06-01', DATE '2026-06-08', DATE '2026-06-10', CURRENT_TIMESTAMP),
+  ('migration-period-manual-rate', 'migration-employee-manual-rate', DATE '2026-06-01', DATE '2026-06-07', DATE '2026-06-10', CURRENT_TIMESTAMP);
+
+INSERT INTO "Paycheck" (
+  "id", "employeeId", "payrollPeriodId", "checkDate",
+  "regularPaidMinutes", "overtimePaidMinutes", "baseRate",
+  "regularEarnings", "overtimeBaseEarnings", "overtimePremiumEarnings",
+  "otherCashEarnings", "grossCashPay", "noncashImputedEarnings",
+  "preTaxDeductions", "employeeTaxes", "postTaxDeductions", "adjustments",
+  "netPay", "sourceFingerprint", "parserVersion", "reviewStatus", "updatedAt"
+) VALUES
+  ('migration-paycheck-unique-rate', 'migration-employee-unique', 'migration-period-unique-rate', DATE '2026-06-10', 2400, 0, 33.1500, 1326, 0, 0, 0, 1326, 0, 0, 0, 0, 0, 1326, repeat('a', 64), 'synthetic-migration', 'CONFIRMED', CURRENT_TIMESTAMP),
+  ('migration-paycheck-ambiguous-rate-a', 'migration-employee-ambiguous-rate', 'migration-period-ambiguous-rate-a', DATE '2026-06-10', 2400, 0, 34.0000, 1360, 0, 0, 0, 1360, 0, 0, 0, 0, 0, 1360, repeat('b', 64), 'synthetic-migration', 'CONFIRMED', CURRENT_TIMESTAMP),
+  ('migration-paycheck-ambiguous-rate-b', 'migration-employee-ambiguous-rate', 'migration-period-ambiguous-rate-b', DATE '2026-06-10', 2400, 0, 34.0000, 1360, 0, 0, 0, 1360, 0, 0, 0, 0, 0, 1360, repeat('c', 64), 'synthetic-migration', 'CONFIRMED', CURRENT_TIMESTAMP),
+  ('migration-paycheck-manual-rate', 'migration-employee-manual-rate', 'migration-period-manual-rate', DATE '2026-06-10', 2400, 0, 35.0000, 1400, 0, 0, 0, 1400, 0, 0, 0, 0, 0, 1400, repeat('d', 64), 'synthetic-migration', 'CONFIRMED', CURRENT_TIMESTAMP);
+
+INSERT INTO "EmployeePayRate" (
+  "id", "employeeId", "effectiveFrom", "hourlyRate", "sourceNote", "updatedAt"
+) VALUES
+  ('migration-rate-unique', 'migration-employee-unique', DATE '2026-06-01', 33.1500, 'Imported Workday paycheck evidence', CURRENT_TIMESTAMP),
+  ('migration-rate-ambiguous', 'migration-employee-ambiguous-rate', DATE '2026-06-01', 34.0000, 'Imported Workday paycheck evidence', CURRENT_TIMESTAMP),
+  ('migration-rate-manual', 'migration-employee-manual-rate', DATE '2026-06-01', 35.0000, 'Synthetic independently supported rate', CURRENT_TIMESTAMP);

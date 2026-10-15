@@ -45,6 +45,8 @@ Workday fields deterministically, presents every value for review, and then
 persists structured values plus a fingerprint. Bytes and raw text are discarded.
 Manual entry is available when extraction is incomplete. Corrections update the
 reviewed record and record `correctedAt` without changing import provenance.
+Paycheck-derived rates retain a direct source relation; corrections move,
+update, or clear only that linked rate and preserve unrelated rates.
 
 ## Security
 
@@ -74,6 +76,10 @@ payroll-evidence language rather than claiming a particular date was paid.
 Future scheduled shifts are not missing. A past scheduled shift is marked
 Missing Timesheet only when the relevant NAM Timesheet exists but lacks the
 entry; missing historical NAM data stays Needs Review.
+Archived schedules remain historical planned-work context for Payroll, while
+Draft schedules do not. This is intentionally separate from new Timesheet-link
+eligibility, which continues to require an Active schedule and an effective
+Scheduled assignment.
 
 ## UI Composition
 
@@ -92,6 +98,9 @@ payday is Wednesday only for a valid Monday-Sunday NAM week; an imported
 Workday `checkDate` is always authoritative. Arbitrary Workday boundaries do
 not receive an invented Wednesday projection. Existing persisted
 `expectedCheckDate` values are not recalculated during Paycheck correction.
+The current-week projection first resolves the calendar date in
+`America/New_York`, preventing a Sunday-evening UTC rollover from selecting the
+following NAM week.
 
 Open Issues counts unique actionable records in the selected scope. Each
 Paycheck discrepancy or review condition is counted once rather than once per

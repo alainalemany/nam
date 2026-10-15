@@ -11,12 +11,20 @@ import {
 
 import { guardedPhaseADatabaseUrl } from "../helpers/phase-a-postgres-guard";
 
-const injected = vi.hoisted(() => ({ prisma: undefined as unknown }));
+const injected = vi.hoisted(() => ({
+  prisma: undefined as unknown,
+  requirePayrollPrincipal: vi.fn(),
+}));
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({ prisma: injected.prisma }));
+vi.mock("@/features/payroll/auth", () => ({
+  clearPayrollSession: vi.fn(),
+  establishPayrollSession: vi.fn(),
+  requirePayrollPrincipal: injected.requirePayrollPrincipal,
+}));
 
 const databaseUrl = guardedPhaseADatabaseUrl();
 const describePostgres = databaseUrl ? describe.sequential : describe.skip;
@@ -25,6 +33,8 @@ let prisma: PrismaClient;
 let saveWeeklyTimesheetAction: typeof import("@/features/timesheets/actions").saveWeeklyTimesheetAction;
 let getWorkScheduleAssignmentOptions: typeof import("@/features/timesheets/data").getWorkScheduleAssignmentOptions;
 let getPayrollDashboardData: typeof import("@/features/payroll/data").getPayrollDashboardData;
+let savePaycheckAction: typeof import("@/features/payroll/actions").savePaycheckAction;
+let correctPaycheckAction: typeof import("@/features/payroll/actions").correctPaycheckAction;
 
 const idleState = { status: "idle" as const, message: "", fieldErrors: {} };
 
@@ -132,6 +142,40 @@ function timesheetPayload({
 function payloadFormData(payload: ReturnType<typeof timesheetPayload>) {
   const formData = new FormData();
   formData.set("payload", JSON.stringify(payload));
+  return formData;
+}
+
+function paycheckPayload(overrides: Record<string, string> = {}) {
+  return {
+    fingerprint: "a".repeat(64),
+    parserVersion: "phase-a-integration-v1",
+    periodStart: "2026-09-14",
+    periodEnd: "2026-09-20",
+    checkDate: "2026-09-23",
+    regularHours: "40",
+    overtimeHours: "0",
+    baseRate: "33.15",
+    regularEarnings: "1326.00",
+    overtimeBaseEarnings: "0",
+    overtimePremiumEarnings: "0",
+    otherCashEarnings: "0",
+    grossCashPay: "1326.00",
+    noncashImputedEarnings: "0",
+    preTaxDeductions: "0",
+    employeeTaxes: "0",
+    postTaxDeductions: "0",
+    adjustments: "0",
+    netPay: "1326.00",
+    notes: "Synthetic correction fixture",
+    warnings: [],
+    ...overrides,
+  };
+}
+
+function paycheckFormData(values: ReturnType<typeof paycheckPayload>, paycheckId?: string) {
+  const formData = new FormData();
+  formData.set("payload", JSON.stringify(values));
+  if (paycheckId) formData.set("paycheckId", paycheckId);
   return formData;
 }
 
@@ -300,10 +344,15 @@ describePostgres("Phase A PostgreSQL integration", () => {
     ({ saveWeeklyTimesheetAction } = await import("@/features/timesheets/actions"));
     ({ getWorkScheduleAssignmentOptions } = await import("@/features/timesheets/data"));
     ({ getPayrollDashboardData } = await import("@/features/payroll/data"));
+    ({ savePaycheckAction, correctPaycheckAction } = await import("@/features/payroll/actions"));
   });
 
   beforeEach(async () => {
     await clearFixtures();
+    injected.requirePayrollPrincipal.mockResolvedValue({
+      employeeId: "employee-1",
+      expiresAt: Date.now() + 60_000,
+    });
   });
 
   afterAll(async () => {
@@ -607,6 +656,236 @@ describePostgres("Phase A PostgreSQL integration", () => {
     await saveWeeklyTimesheetAction(timesheet.id, idleState, payloadFormData(payload));
     const savedEntry = await prisma.dailyTimeEntry.findFirstOrThrow();
     expect(savedEntry.workScheduleDailyAssignmentId).toBe("historical-assignment");
+  });
+
+  it("retains archived scheduled assignments as historical Payroll context while excluding Draft schedules", async () => {
+    await createEmployee("employee-1");
+    const archived = await createSchedule({
+      id: "archived-payroll-schedule",
+      employeeId: "employee-1",
+      weekStart: "2026-09-28",
+      status: "ARCHIVED",
+    });
+    const draft = await createSchedule({
+      id: "draft-payroll-schedule",
+      employeeId: "employee-1",
+      weekStart: "2026-10-19",
+      status: "DRAFT",
+    });
+    await prisma.dailyAssignment.createMany({
+      data: [
+        {
+          id: "archived-payroll-assignment",
+          weeklyScheduleId: archived.id,
+          assignmentDate: date("2026-10-01"),
+          dayOfWeek: 4,
+          plannedStatus: "SCHEDULED",
+          plannedShift: "NIGHT",
+        },
+        {
+          id: "draft-payroll-assignment",
+          weeklyScheduleId: draft.id,
+          assignmentDate: date("2026-10-21"),
+          dayOfWeek: 3,
+          plannedStatus: "SCHEDULED",
+          plannedShift: "DAY",
+        },
+        {
+          id: "archived-completed-assignment",
+          weeklyScheduleId: archived.id,
+          assignmentDate: date("2026-10-02"),
+          dayOfWeek: 5,
+          plannedStatus: "SCHEDULED",
+          plannedShift: "DAY",
+        },
+        {
+          id: "archived-cancelled-assignment",
+          weeklyScheduleId: archived.id,
+          assignmentDate: date("2026-10-03"),
+          dayOfWeek: 6,
+          plannedStatus: "SCHEDULED",
+          plannedShift: "DAY",
+          actualStatus: "CANCELLED",
+        },
+        {
+          id: "archived-off-assignment",
+          weeklyScheduleId: archived.id,
+          assignmentDate: date("2026-10-04"),
+          dayOfWeek: 7,
+          plannedStatus: "NON_WORKING",
+        },
+      ],
+    });
+    await createTimesheet({
+      id: "archived-context-timesheet",
+      employeeId: "employee-1",
+      weekStart: "2026-09-28",
+      entries: [entry("archived-context-entry", "2026-10-02", 600)],
+    });
+
+    const dashboard = await getPayrollDashboardData("employee-1", "2026-10");
+
+    expect(dashboard.days.find((item) => item.date === "2026-10-01")).toMatchObject({
+      status: "MISSING_TIMESHEET",
+      scheduledLabel: "Night shift",
+    });
+    expect(dashboard.days.find((item) => item.date === "2026-10-21")?.scheduledLabel)
+      .toBeUndefined();
+    expect(dashboard.days.find((item) => item.date === "2026-10-02")).toMatchObject({
+      timesheetMinutes: 600,
+      scheduledLabel: "Day shift",
+    });
+    expect(dashboard.days.find((item) => item.date === "2026-10-03")?.scheduledLabel)
+      .toBe("Cancelled");
+    expect(dashboard.days.find((item) => item.date === "2026-10-04")?.scheduledLabel)
+      .toBe("Off");
+    expect(dashboard.summary.openIssues).toBe(1);
+    expect(await getWorkScheduleAssignmentOptions("employee-1", "2026-09-28"))
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: "archived-payroll-assignment", selectable: false }),
+      ]));
+    expect(await getWorkScheduleAssignmentOptions("employee-1", "2026-10-19"))
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: "draft-payroll-assignment", selectable: false }),
+      ]));
+  });
+
+  it("updates, moves, clears, and repeatedly corrects only the linked paycheck-derived rate", async () => {
+    await createEmployee("employee-1");
+    const saved = await savePaycheckAction(
+      { status: "idle", message: "" },
+      paycheckFormData(paycheckPayload()),
+    );
+    expect(saved.status).toBe("saved");
+    const paycheckId = saved.status === "saved" ? saved.paycheckId : "";
+
+    let rate = await prisma.employeePayRate.findUniqueOrThrow({
+      where: { sourcePaycheckId: paycheckId },
+    });
+    expect(rate).toMatchObject({
+      employeeId: "employee-1",
+      effectiveFrom: date("2026-09-14"),
+      sourcePaycheckId: paycheckId,
+    });
+    expect(rate.hourlyRate.toString()).toBe("33.15");
+
+    await correctPaycheckAction(
+      { status: "idle", message: "" },
+      paycheckFormData(paycheckPayload({
+        periodStart: "2026-09-21",
+        periodEnd: "2026-09-27",
+        baseRate: "34.25",
+        regularEarnings: "1370.00",
+        grossCashPay: "1370.00",
+        netPay: "1370.00",
+      }), paycheckId),
+    );
+    rate = await prisma.employeePayRate.findUniqueOrThrow({
+      where: { sourcePaycheckId: paycheckId },
+    });
+    expect(rate.effectiveFrom).toEqual(date("2026-09-21"));
+    expect(rate.hourlyRate.toString()).toBe("34.25");
+
+    await correctPaycheckAction(
+      { status: "idle", message: "" },
+      paycheckFormData(paycheckPayload({
+        periodStart: "2026-09-21",
+        periodEnd: "2026-09-27",
+        baseRate: "35.50",
+        regularEarnings: "1420.00",
+        grossCashPay: "1420.00",
+        netPay: "1420.00",
+      }), paycheckId),
+    );
+    expect((await prisma.employeePayRate.findUniqueOrThrow({
+      where: { sourcePaycheckId: paycheckId },
+    })).hourlyRate.toString()).toBe("35.5");
+    expect(await prisma.employeePayRate.count({ where: { employeeId: "employee-1" } })).toBe(1);
+
+    await createTimesheet({
+      id: "corrected-rate-timesheet",
+      employeeId: "employee-1",
+      weekStart: "2026-09-21",
+      entries: [entry("corrected-rate-entry", "2026-09-23", 2400)],
+    });
+    const dashboard = await getPayrollDashboardData("employee-1", "2026-09");
+    expect(dashboard.days.find((item) => item.date === "2026-09-23")?.estimatedGross)
+      .toBe("$1,420.00");
+
+    await correctPaycheckAction(
+      { status: "idle", message: "" },
+      paycheckFormData(paycheckPayload({
+        periodStart: "2026-09-21",
+        periodEnd: "2026-09-27",
+        baseRate: "",
+      }), paycheckId),
+    );
+    expect(await prisma.employeePayRate.findUnique({ where: { sourcePaycheckId: paycheckId } }))
+      .toBeNull();
+  });
+
+  it("preserves unrelated rates on destination collisions and rolls back failed corrections", async () => {
+    await createEmployee("employee-1");
+    const saved = await savePaycheckAction(
+      { status: "idle", message: "" },
+      paycheckFormData(paycheckPayload()),
+    );
+    const paycheckId = saved.status === "saved" ? saved.paycheckId : "";
+    await prisma.employeePayRate.create({
+      data: {
+        id: "manual-destination-rate",
+        employeeId: "employee-1",
+        effectiveFrom: date("2026-09-21"),
+        hourlyRate: new Prisma.Decimal("40.00"),
+        sourceNote: "Synthetic independently supported rate",
+      },
+    });
+
+    const corrected = await correctPaycheckAction(
+      { status: "idle", message: "" },
+      paycheckFormData(paycheckPayload({
+        periodStart: "2026-09-21",
+        periodEnd: "2026-09-27",
+        baseRate: "34.25",
+        regularEarnings: "1370.00",
+        grossCashPay: "1370.00",
+        netPay: "1370.00",
+      }), paycheckId),
+    );
+    expect(corrected.status).toBe("saved");
+    expect(await prisma.employeePayRate.findUnique({ where: { sourcePaycheckId: paycheckId } }))
+      .toBeNull();
+    expect((await prisma.employeePayRate.findUniqueOrThrow({
+      where: { id: "manual-destination-rate" },
+    })).hourlyRate.toString()).toBe("40");
+
+    const conflictingPeriod = await prisma.payrollPeriod.create({
+      data: {
+        id: "conflicting-period",
+        employeeId: "employee-1",
+        periodStart: date("2026-10-05"),
+        periodEnd: date("2026-10-11"),
+        expectedCheckDate: date("2026-10-14"),
+      },
+    });
+    const before = await prisma.paycheck.findUniqueOrThrow({ where: { id: paycheckId } });
+    const failed = await correctPaycheckAction(
+      { status: "idle", message: "" },
+      paycheckFormData(paycheckPayload({
+        periodStart: "2026-10-05",
+        periodEnd: "2026-10-11",
+        baseRate: "36.00",
+        regularEarnings: "1440.00",
+        grossCashPay: "1440.00",
+        netPay: "1440.00",
+      }), paycheckId),
+    );
+    expect(failed).toMatchObject({ status: "error", message: expect.stringMatching(/conflict/) });
+    expect(await prisma.paycheck.findUniqueOrThrow({ where: { id: paycheckId } })).toEqual(before);
+    expect(await prisma.payrollPeriod.findUniqueOrThrow({ where: { id: conflictingPeriod.id } }))
+      .toMatchObject({ periodStart: date("2026-10-05"), periodEnd: date("2026-10-11") });
+    expect((await prisma.employeePayRate.findUniqueOrThrow({ where: { id: "manual-destination-rate" } })).hourlyRate.toString())
+      .toBe("40");
   });
 
   it("uses inclusive midweek boundaries across two NAM weeks without double counting", async () => {

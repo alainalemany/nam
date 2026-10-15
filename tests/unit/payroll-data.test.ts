@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getPayrollDashboardData } from "@/features/payroll/data";
 
@@ -119,6 +119,10 @@ describe("Payroll interval reconciliation data", () => {
     mocks.employeeFindUnique.mockResolvedValue({ id: "employee-1", displayName: "Alex Operator" });
     mocks.assignmentFindMany.mockResolvedValue([]);
     mocks.payRateFindMany.mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("reconciles a midweek Workday period across two NAM weeks by workDate", async () => {
@@ -279,6 +283,89 @@ describe("Payroll interval reconciliation data", () => {
 
     expect(data.days.find((day) => day.date === "2026-10-01")?.status).toBe("NEEDS_REVIEW");
     expect(data.summary.openIssues).toBe(1);
+    expect(mocks.assignmentFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        weeklySchedule: {
+          primaryEmployeeId: "employee-1",
+          status: { in: ["ACTIVE", "ARCHIVED"] },
+        },
+      }),
+    }));
+  });
+
+  it("retains an archived scheduled day as historical Payroll context", async () => {
+    mocks.assignmentFindMany.mockResolvedValue([{
+      id: "archived-assignment",
+      assignmentDate: new Date("2026-10-01T00:00:00.000Z"),
+      plannedStatus: "SCHEDULED",
+      actualStatus: "UNKNOWN",
+      plannedShift: "DAY",
+      actualShift: "UNKNOWN",
+      plannedEquipmentDisplayName: "Archived Synthetic Dragline",
+      actualEquipmentDisplayName: null,
+      weeklySchedule: { primaryEmployeeId: "employee-1", status: "ARCHIVED" },
+    }]);
+    arrange([], []);
+
+    const data = await getPayrollDashboardData("employee-1", "2026-10");
+
+    expect(data.days.find((day) => day.date === "2026-10-01")).toMatchObject({
+      status: "NEEDS_REVIEW",
+      scheduledLabel: "Day shift",
+      equipmentLabel: "Archived Synthetic Dragline",
+    });
+    expect(data.summary.openIssues).toBe(1);
+  });
+
+  it("prefers active context deterministically when active and archived schedules share a date", async () => {
+    mocks.assignmentFindMany.mockResolvedValue([
+      {
+        id: "active-assignment",
+        assignmentDate: new Date("2026-10-01T00:00:00.000Z"),
+        plannedStatus: "SCHEDULED",
+        actualStatus: "UNKNOWN",
+        plannedShift: "NIGHT",
+        actualShift: "UNKNOWN",
+        plannedEquipmentDisplayName: "Active Dragline",
+        actualEquipmentDisplayName: null,
+        weeklySchedule: { primaryEmployeeId: "employee-1", status: "ACTIVE" },
+      },
+      {
+        id: "archived-assignment",
+        assignmentDate: new Date("2026-10-01T00:00:00.000Z"),
+        plannedStatus: "SCHEDULED",
+        actualStatus: "UNKNOWN",
+        plannedShift: "DAY",
+        actualShift: "UNKNOWN",
+        plannedEquipmentDisplayName: "Archived Dragline",
+        actualEquipmentDisplayName: null,
+        weeklySchedule: { primaryEmployeeId: "employee-1", status: "ARCHIVED" },
+      },
+    ]);
+    arrange([], []);
+
+    const data = await getPayrollDashboardData("employee-1", "2026-10");
+
+    expect(data.days.find((day) => day.date === "2026-10-01")).toMatchObject({
+      scheduledLabel: "Night shift",
+      equipmentLabel: "Active Dragline",
+    });
+  });
+
+  it.each([
+    ["Sunday afternoon EDT", "2026-07-05T19:00:00.000Z", "2026-07-08"],
+    ["Sunday evening EDT after UTC Monday", "2026-07-06T02:00:00.000Z", "2026-07-08"],
+    ["Monday shortly after midnight EDT", "2026-07-06T04:30:00.000Z", "2026-07-15"],
+    ["Sunday evening EST after UTC Monday", "2026-01-05T02:00:00.000Z", "2026-01-07"],
+    ["year-end Sunday evening EST", "2027-01-04T02:00:00.000Z", "2027-01-06"],
+  ])("projects payday from the NAM operational date on %s", async (_label, now, expected) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(now));
+    arrange([], []);
+
+    const data = await getPayrollDashboardData("employee-1", now.slice(0, 7));
+
+    expect(data.summary.nextExpectedCheckDate).toBe(expected);
   });
 
   it("counts one period issue rather than repeating it for every affected calendar day", async () => {

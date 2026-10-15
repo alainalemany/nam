@@ -1579,11 +1579,21 @@ employee and date range. Paycheck is employee-scoped, one-to-one with a period,
 uses integer paid minutes and Decimal money, and keeps a unique source
 fingerprint, parser version, review state, and correction timestamp.
 
-EmployeePayRate is effective-dated. Imported paycheck rates are evidence for
-that period and do not rewrite historical amounts. Reconciliation results are
-derived from authoritative records rather than persisted as a duplicate ledger.
+EmployeePayRate is effective-dated. A rate derived from imported Paycheck
+evidence stores the supporting Paycheck relation, so a correction updates or
+removes only that demonstrably derived rate. Independently supported rates are
+preserved when dates or numeric values happen to overlap. Imported paycheck
+rates are evidence for that period and do not rewrite historical amounts.
+Reconciliation results are derived from authoritative records rather than
+persisted as a duplicate ledger.
 No uploaded PDF, raw extracted text, bank account, address, or government
 identifier is stored by Payroll V1.
+
+The original Payroll migration checksum is preserved. A forward corrective
+migration clears only ambiguous normalized-name associations on Timesheets that
+predate completion of that original migration; unique matches, including
+inactive historical Employees, remain associated, while missing and ambiguous
+matches remain unresolved with their name snapshots intact.
 
 The detailed PayslipDocument design below is a superseded ADR-005 proposal and
 is not part of the current schema or authorized V1.
