@@ -183,6 +183,33 @@ Run coverage:
 pnpm test:coverage
 ```
 
+## GitHub Actions CI
+
+`.github/workflows/ci.yml` runs on pull requests targeting `main`, pushes to
+`main`, and explicit manual dispatch. `Application Quality` installs the frozen
+lockfile with Corepack-managed pnpm 10.18.3, generates Prisma Client, runs an
+explicit TypeScript check, runs the existing `pnpm lint` TypeScript gate, runs
+the unit/component suite, and builds with a deliberately unreachable synthetic
+database URL.
+
+`PostgreSQL Integration` starts an ephemeral PostgreSQL 18 service on the
+GitHub-hosted runner, applies all committed migrations, verifies migration
+status, and runs the Phase A integration suite. The job sets
+`PHASE_A_POSTGRES_REQUIRED=1`, so missing test configuration fails rather than
+silently skipping the suite.
+
+The Phase A database helper accepts two test-only profiles:
+
+- Default/local: the existing `nam-phase-a-test-postgres` container identity.
+- `github-actions`: exact `127.0.0.1:5432` loopback, the dedicated Phase A test
+  database and user, and both GitHub's `GITHUB_ACTIONS=true` and `CI=true`
+  markers.
+
+Neither profile reads or falls back to `DATABASE_URL`. CI sets `DATABASE_URL`
+only for `prisma migrate deploy` and `prisma migrate status`, scoped to the same
+disposable service. CI contains no production connection, SSH, deployment, or
+application mutation step.
+
 Run the development server:
 
 ```bash

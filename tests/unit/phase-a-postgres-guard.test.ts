@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  PHASE_A_CI_TEST_DATABASE_HOST,
+  PHASE_A_CI_TEST_DATABASE_PROFILE,
   guardedPhaseADatabaseUrl,
   PHASE_A_TEST_DATABASE_HOST,
   PHASE_A_TEST_DATABASE_NAME,
@@ -10,10 +12,14 @@ import {
 const validUrl =
   `postgresql://${PHASE_A_TEST_DATABASE_USER}:synthetic-secret@` +
   `${PHASE_A_TEST_DATABASE_HOST}:5432/${PHASE_A_TEST_DATABASE_NAME}`;
+const validCiUrl =
+  `postgresql://${PHASE_A_TEST_DATABASE_USER}:synthetic-secret@` +
+  `${PHASE_A_CI_TEST_DATABASE_HOST}:5432/${PHASE_A_TEST_DATABASE_NAME}`;
 
 describe("Phase A PostgreSQL identity guard", () => {
   it("skips without the dedicated URL unless execution is explicitly required", () => {
     expect(guardedPhaseADatabaseUrl({})).toBeUndefined();
+    expect(guardedPhaseADatabaseUrl({ DATABASE_URL: validUrl })).toBeUndefined();
     expect(() => guardedPhaseADatabaseUrl({ PHASE_A_POSTGRES_REQUIRED: "1" }))
       .toThrow(/required/);
   });
@@ -33,6 +39,40 @@ describe("Phase A PostgreSQL identity guard", () => {
     ]) {
       expect(() => guardedPhaseADatabaseUrl({ PHASE_A_TEST_DATABASE_URL: value }))
         .toThrow(/Phase A PostgreSQL tests require/);
+    }
+  });
+
+  it("accepts the loopback CI target only inside an explicit GitHub Actions profile", () => {
+    const ciEnvironment = {
+      PHASE_A_TEST_DATABASE_URL: validCiUrl,
+      PHASE_A_TEST_DATABASE_PROFILE: PHASE_A_CI_TEST_DATABASE_PROFILE,
+      GITHUB_ACTIONS: "true",
+      CI: "true",
+    };
+    expect(guardedPhaseADatabaseUrl(ciEnvironment)).toBe(validCiUrl);
+
+    for (const environment of [
+      { ...ciEnvironment, GITHUB_ACTIONS: undefined },
+      { ...ciEnvironment, CI: undefined },
+      { ...ciEnvironment, PHASE_A_TEST_DATABASE_PROFILE: "production" },
+      {
+        ...ciEnvironment,
+        PHASE_A_TEST_DATABASE_URL: validCiUrl.replace("127.0.0.1", "localhost"),
+      },
+      {
+        ...ciEnvironment,
+        PHASE_A_TEST_DATABASE_URL: validCiUrl.replace(PHASE_A_TEST_DATABASE_NAME, "nam_dashboard"),
+      },
+      {
+        ...ciEnvironment,
+        PHASE_A_TEST_DATABASE_URL: validCiUrl.replace(PHASE_A_TEST_DATABASE_USER, "nam_app"),
+      },
+      {
+        ...ciEnvironment,
+        PHASE_A_TEST_DATABASE_URL: validCiUrl.replace(":5432", ":55432"),
+      },
+    ]) {
+      expect(() => guardedPhaseADatabaseUrl(environment)).toThrow();
     }
   });
 });

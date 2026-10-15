@@ -1,0 +1,156 @@
+name: NAM Dashboard CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nam-dashboard-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+  NEXT_TELEMETRY_DISABLED: "1"
+  NODE_VERSION: "22"
+  PNPM_VERSION: "10.18.3"
+
+jobs:
+  application-quality:
+    name: Application Quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          check-latest: false
+
+      - name: Activate pnpm through Corepack
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare "pnpm@${PNPM_VERSION}" --activate
+          pnpm --version
+
+      - name: Resolve pnpm store
+        id: pnpm-store
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore pnpm store cache
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ env.NODE_VERSION }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm prisma:generate
+
+      - name: Validate TypeScript explicitly
+        run: pnpm exec tsc --noEmit
+
+      - name: Run repository lint gate
+        run: pnpm lint
+
+      - name: Run unit and component tests
+        run: pnpm test:run
+
+      - name: Build production application
+        env:
+          DATABASE_URL: postgresql://ci_build:unreachable@127.0.0.1:1/nam_ci_build?connect_timeout=1
+        run: pnpm build
+
+  postgres-integration:
+    name: PostgreSQL Integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: nam_phase_a_integration_test
+          POSTGRES_USER: nam_phase_a_test
+          POSTGRES_PASSWORD: phase_a_ci_only_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nam_phase_a_test -d nam_phase_a_integration_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          check-latest: false
+
+      - name: Activate pnpm through Corepack
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare "pnpm@${PNPM_VERSION}" --activate
+          pnpm --version
+
+      - name: Resolve pnpm store
+        id: pnpm-store
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore pnpm store cache
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ env.NODE_VERSION }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm prisma:generate
+
+      - name: Verify Phase A database guard
+        run: pnpm exec vitest run tests/unit/phase-a-postgres-guard.test.ts
+
+      - name: Apply migrations to disposable PostgreSQL
+        env:
+          DATABASE_URL: postgresql://nam_phase_a_test:phase_a_ci_only_password@127.0.0.1:5432/nam_phase_a_integration_test
+        run: |
+          pnpm exec prisma migrate deploy
+          pnpm exec prisma migrate status
+
+      - name: Run Phase A PostgreSQL integration tests
+        env:
+          PHASE_A_POSTGRES_REQUIRED: "1"
+          PHASE_A_TEST_DATABASE_PROFILE: github-actions
+          PHASE_A_TEST_DATABASE_URL: postgresql://nam_phase_a_test:phase_a_ci_only_password@127.0.0.1:5432/nam_phase_a_integration_test
+        run: pnpm exec vitest run tests/integration/phase-a-postgres.test.ts --reporter=verbose

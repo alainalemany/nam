@@ -279,25 +279,28 @@ runtime is reachable and connected.
 
 ## CI Quality Gates
 
-Future CI should enforce a small but meaningful quality baseline before changes
-are merged.
+CI enforces a small but meaningful quality baseline before changes are merged.
 
-Recommended gates:
+The repository implements these pull-request and `main` quality gates in
+`.github/workflows/ci.yml`:
 
 - Dependency install.
 - TypeScript type check.
 - Prisma Client generation.
 - Production build.
 - Unit tests.
-- Integration tests that can run safely in CI.
-- Playwright/E2E tests for critical workflows once the test database setup is
-  reliable.
-- Migration status or drift checks where feasible.
+- Phase A PostgreSQL integration tests against a disposable PostgreSQL 18
+  service after applying the complete Prisma migration chain.
+- Migration deployment and status verification against disposable PostgreSQL.
 
-No CI workflow is added by this document. CI should be introduced as a separate
-implementation change after tools and commands are selected.
+The CI workflow uses read-only repository permissions and GitHub-hosted runners.
+Its PostgreSQL job uses synthetic credentials and a guarded CI-only loopback
+target. It has no production secret, SSH path, deployment permission, persistent
+volume, or fallback to `DATABASE_URL`. Missing Phase A test configuration fails
+the integration job rather than skipping it. Browser E2E remains outside the
+current CI gate and may be added when its test database setup is reliable.
 
-Until CI exists, local quality gates are:
+Local quality gates remain:
 
 - `pnpm lint`
 - `pnpm test:run`
