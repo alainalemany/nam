@@ -29,6 +29,8 @@ export type PayrollImportState = {
   message: string;
   values?: ParsedPaycheck;
   paycheckId?: string;
+  code?: "RATE_EVIDENCE_CONFLICT" | "PAY_RATE_PROVENANCE_MISMATCH";
+  rateEvidence?: "VERIFIED" | "CONFLICT" | "NOT_ESTABLISHED";
 };
 
 export type PayrollCalendarDay = {
@@ -44,6 +46,8 @@ export type PayrollCalendarDay = {
   paidEvidenceLabel?: string;
   evidenceLevel?: "aggregate";
   estimatedGross?: string;
+  estimatedGrossStatus?: "AVAILABLE" | "UNAVAILABLE";
+  estimatedGrossReason?: "MISSING_VERIFIED_RATE" | "RATE_EVIDENCE_CONFLICT";
   detail: string;
   actionHref?: string;
   actionLabel?: string;

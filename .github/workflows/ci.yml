@@ -141,6 +141,20 @@ jobs:
       - name: Verify Phase A database guard
         run: pnpm exec vitest run tests/unit/phase-a-postgres-guard.test.ts
 
+      - name: Verify fresh migration chain
+        env:
+          PHASE_A_POSTGRES_REQUIRED: "1"
+          PHASE_A_TEST_DATABASE_PROFILE: github-actions
+          PHASE_A_TEST_DATABASE_URL: postgresql://nam_phase_a_test:phase_a_ci_only_password@127.0.0.1:5432/nam_phase_a_integration_test
+        run: bash scripts/test/verify-payroll-fresh-migration-db.sh
+
+      - name: Verify Payroll quarantine migration failure rollback
+        env:
+          PHASE_A_POSTGRES_REQUIRED: "1"
+          PHASE_A_TEST_DATABASE_PROFILE: github-actions
+          PHASE_A_TEST_DATABASE_URL: postgresql://nam_phase_a_test:phase_a_ci_only_password@127.0.0.1:5432/nam_phase_a_integration_test
+        run: bash scripts/test/verify-payroll-quarantine-migration-failure.sh
+
       - name: Apply and verify migrations with synthetic legacy fixtures
         env:
           PHASE_A_POSTGRES_REQUIRED: "1"

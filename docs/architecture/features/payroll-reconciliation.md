@@ -12,6 +12,7 @@ Depends On:
 - Timesheets
 - Employees
 - ADR-022
+- ADR-023
 
 Related Documents:
 
@@ -33,10 +34,12 @@ historical work from absent NAM records.
 ## Data And Mutation Flow
 
 `PayrollPeriod`, `Paycheck`, and `EmployeePayRate` store reviewed evidence.
-`WeeklyTimesheet.primaryEmployeeId` provides canonical employee scope while
-the display name and normalized key remain historical snapshots. New
-Timesheets require a selected active `Employee`; legacy null-ID Timesheets are
-preserved but are not confirmed Payroll evidence. Schedule and Timesheet records remain
+`WeeklyTimesheet.primaryEmployeeId` provides canonical employee scope only when
+its identity state is `EXPLICIT_SELECTION` or `OWNER_VERIFIED`; the display name
+and normalized key remain historical snapshots. New Timesheets require a
+selected active `Employee`. Migration 36 quarantines all older Timesheets,
+preserves any former ID as candidate evidence, and clears the authoritative
+relationship without name matching. Schedule and Timesheet records remain
 authoritative in their owning modules. Reconciliation is derived at read time
 and revalidated after relevant mutations.
 
@@ -45,8 +48,16 @@ Workday fields deterministically, presents every value for review, and then
 persists structured values plus a fingerprint. Bytes and raw text are discarded.
 Manual entry is available when extraction is incomplete. Corrections update the
 reviewed record and record `correctedAt` without changing import provenance.
-Paycheck-derived rates retain a direct source relation; corrections move,
-update, or clear only that linked rate and preserve unrelated rates.
+New Paycheck-derived rates retain a direct source relation and verified
+provenance. Corrections mark prior evidence `SUPERSEDED` and append replacement
+evidence when applicable. Clearing a base rate does not delete the prior row.
+Conflicting evidence is preserved as `CONFLICT` and cannot affect estimates.
+Supported rate writes acquire transaction-scoped locks for both their source
+Paycheck and Employee/effective-date slot before classifying evidence. This
+serializes same-slot imports and corrections: the first verified record remains
+authoritative, while the competing record is appended as `CONFLICT`. The
+database partial unique index remains the final fail-closed boundary for writes
+that do not follow this path.
 
 ## Security
 
@@ -68,7 +79,7 @@ Completed NAM regular, overtime, and total minutes are compared independently
 with Workday regular, overtime, and total paid minutes. A full match requires
 all three categories plus a `CONFIRMED` Paycheck and complete, unambiguous
 evidence. A Paycheck whose review state is not Confirmed, Draft coverage,
-missing week coverage, duplicate dates, legacy unresolved identity, or
+missing week coverage, duplicate dates, unresolved historical identity, or
 overlapping Payroll evidence produces Needs Review. A total match with a
 regular/overtime classification difference is a Discrepancy. A match is
 aggregate only. Daily calendar cells therefore use neutral
@@ -80,6 +91,21 @@ Archived schedules remain historical planned-work context for Payroll, while
 Draft schedules do not. This is intentionally separate from new Timesheet-link
 eligibility, which continues to require an Active schedule and an effective
 Scheduled assignment.
+
+Unresolved historical Timesheets are discovered by Payroll-period/date overlap,
+not by a current Employee name. They are never attributed to the Payroll owner,
+but potentially relevant unresolved evidence prevents a false confirmed
+reconciliation until it is explicitly dispositioned by the deferred Package 2
+review workflow. The weekly parent range is sufficient to block reconciliation;
+a Daily Time Entry inside the Workday period is not required. Entryless parents
+can therefore block aggregate confirmation without creating fictional day-level
+evidence.
+
+Expected gross uses only `VERIFIED` rates with `PAYCHECK` or `INDEPENDENT`
+provenance. There is no fallback to a Paycheck's current `baseRate`. If any
+pending entry lacks verified coverage, or the latest applicable evidence is in
+conflict, the complete estimate is unavailable; NAM does not present zero or a
+partial amount as the total.
 
 ## UI Composition
 
@@ -114,6 +140,6 @@ inside aggregate evidence are not counted as issues.
 
 Permanent PDF storage, OCR, provider sync, exports, exact day-level allocation
 without source evidence, multi-employee HR administration, and application-wide
-identity/RBAC remain outside V1. Immutable Timesheet and Paycheck correction
-history is deferred and must pass a separate audit before production reliance
-on financial corrections.
+identity/RBAC remain outside V1. The owner-only historical evidence review
+interface and append-only review-event history are deferred Package 2 work.
+Package 1 exposes no mutation that promotes quarantined evidence.

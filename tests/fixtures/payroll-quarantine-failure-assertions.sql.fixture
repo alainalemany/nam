@@ -1,0 +1,33 @@
+DO $failure_assertions$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = current_schema()
+      AND table_name = 'WeeklyTimesheet'
+      AND column_name = 'primaryEmployeeIdentityStatus'
+  ) THEN
+    RAISE EXCEPTION 'Migration 36 partially added WeeklyTimesheet quarantine columns.';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_type
+    JOIN pg_namespace ON pg_namespace.oid = pg_type.typnamespace
+    WHERE pg_namespace.nspname = current_schema()
+      AND pg_type.typname = 'TimesheetIdentityStatus'
+  ) THEN
+    RAISE EXCEPTION 'Migration 36 partially added quarantine enum types.';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM "WeeklyTimesheet"
+    WHERE "id" = 'migration-timesheet-unique'
+      AND "primaryEmployeeId" = 'migration-employee-unique'
+      AND "primaryEmployeeDisplayName" = 'Historical UNIQUE Operator Snapshot'
+  ) THEN
+    RAISE EXCEPTION 'Pre-migration Timesheet evidence changed after the guarded failure.';
+  END IF;
+END
+$failure_assertions$;

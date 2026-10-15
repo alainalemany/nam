@@ -1,0 +1,4 @@
+DROP SCHEMA IF EXISTS "payroll_quarantine_failure" CASCADE;
+CREATE SCHEMA "payroll_quarantine_failure";
+DROP SCHEMA IF EXISTS "payroll_quarantine_postmutation_failure" CASCADE;
+CREATE SCHEMA "payroll_quarantine_postmutation_failure";

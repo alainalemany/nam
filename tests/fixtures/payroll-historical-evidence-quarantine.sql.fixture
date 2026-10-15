@@ -1,0 +1,87 @@
+-- Synthetic changes made after migrations 34 and 35 but before migration 36.
+-- They deliberately demonstrate that current names and current paycheck values
+-- cannot prove historical identity or rate provenance.
+
+UPDATE "Employee"
+SET "displayName" = 'Renamed Unique Operator', "updatedAt" = TIMESTAMP '2026-06-29 12:00:00'
+WHERE "id" = 'migration-employee-unique';
+
+INSERT INTO "Employee" (
+  "id", "employeeCode", "displayName", "isActive", "isSupervisor", "updatedAt"
+) VALUES
+  ('migration-employee-later-duplicate', 'MIG-LATER-DUP', 'Unique Operator', true, false, TIMESTAMP '2026-06-29 12:00:00');
+
+INSERT INTO "WeeklyTimesheet" (
+  "id", "payrollWeekStartDate", "payrollWeekEndDate", "status",
+  "primaryEmployeeDisplayName", "primaryEmployeeKey", "primaryEmployeeId",
+  "workedMinutesTotal", "regularMinutesTotal", "overtimeMinutesTotal",
+  "createdAt", "updatedAt"
+) VALUES
+  (
+    'migration-timesheet-post34-name-inferred', DATE '2026-06-29', DATE '2026-07-05', 'COMPLETED',
+    'Unique Operator', 'unique operator', 'migration-employee-later-duplicate',
+    600, 600, 0, TIMESTAMP '2026-06-29 08:00:00', TIMESTAMP '2026-06-29 09:00:00'
+  ),
+  (
+    'migration-timesheet-arbitrary-id', DATE '2026-07-06', DATE '2026-07-12', 'DRAFT',
+    'Missing Operator', 'missing operator', 'migration-employee-duplicate-a',
+    0, 0, 0, TIMESTAMP '2026-07-06 08:00:00', TIMESTAMP '2026-07-06 09:00:00'
+  ),
+  (
+    'migration-timesheet-post34-null', DATE '2026-07-13', DATE '2026-07-19', 'DRAFT',
+    'Unassigned Historical Operator', 'unassigned historical operator', NULL,
+    0, 0, 0, TIMESTAMP '2026-07-13 08:00:00', TIMESTAMP '2026-07-13 09:00:00'
+  );
+
+INSERT INTO "TimesheetWorkCode" (
+  "id", "code", "normalizedCode", "description", "active", "createdAt", "updatedAt"
+) VALUES (
+  'migration-work-code', 'MIG-1', 'MIG-1', 'Migration preservation evidence', true,
+  TIMESTAMP '2026-06-01 07:00:00', TIMESTAMP '2026-06-01 07:00:00'
+);
+
+UPDATE "WeeklyTimesheet"
+SET
+  "workedMinutesTotal" = 600,
+  "regularMinutesTotal" = 600,
+  "overtimeMinutesTotal" = 0,
+  "createdAt" = TIMESTAMP '2026-06-01 08:00:00',
+  "updatedAt" = TIMESTAMP '2026-06-01 09:00:00'
+WHERE "id" = 'migration-timesheet-unique';
+
+INSERT INTO "DailyTimeEntry" (
+  "id", "weeklyTimesheetId", "workDate", "clockIn", "clockOut",
+  "unpaidBreakMinutes", "workedMinutes", "regularMinutes", "overtimeMinutes",
+  "primaryEquipmentDisplayNameSnapshot", "primaryEquipmentNumberSnapshot",
+  "primaryEquipmentCategorySnapshot", "primaryMineNameSnapshot",
+  "primaryCityNameSnapshot", "primaryCityStateSnapshot", "notes",
+  "createdAt", "updatedAt"
+) VALUES (
+  'migration-time-entry', 'migration-timesheet-unique', DATE '2026-06-02', '07:00', '17:00',
+  0, 600, 600, 0, 'Historical Dragline', 'MIG-DL', 'DRAGLINE', 'Historical Mine',
+  'Historical City', 'WY', 'Preserve this entry',
+  TIMESTAMP '2026-06-02 08:00:00', TIMESTAMP '2026-06-02 18:00:00'
+);
+
+INSERT INTO "WorkAllocation" (
+  "id", "dailyTimeEntryId", "sequence", "workCodeId", "workCodeSnapshot",
+  "workCodeDescriptionSnapshot", "allocatedMinutes", "notes", "createdAt", "updatedAt"
+) VALUES (
+  'migration-work-allocation', 'migration-time-entry', 1, 'migration-work-code', 'MIG-1',
+  'Migration preservation evidence', 600, 'Preserve this allocation',
+  TIMESTAMP '2026-06-02 08:00:00', TIMESTAMP '2026-06-02 18:00:00'
+);
+
+-- The paycheck is later corrected and its period is moved, while the old rate
+-- remains linked. Migration 36 must preserve the link only as candidate data.
+UPDATE "Paycheck"
+SET "baseRate" = NULL, "correctedAt" = TIMESTAMP '2026-06-30 12:00:00', "updatedAt" = TIMESTAMP '2026-06-30 12:00:00'
+WHERE "id" = 'migration-paycheck-unique-rate';
+
+UPDATE "PayrollPeriod"
+SET "periodStart" = DATE '2026-06-02', "updatedAt" = TIMESTAMP '2026-06-30 12:00:00'
+WHERE "id" = 'migration-period-unique-rate';
+
+UPDATE "EmployeePayRate"
+SET "createdAt" = TIMESTAMP '2026-06-01 10:00:00', "updatedAt" = TIMESTAMP '2026-06-01 10:00:00'
+WHERE "id" LIKE 'migration-rate-%';

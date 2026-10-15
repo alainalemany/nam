@@ -1273,6 +1273,10 @@ Potential fields:
 - status
 - primaryEmployeeDisplayName
 - primaryEmployeeKey
+- primaryEmployeeId
+- primaryEmployeeIdentityStatus
+- identityCandidateEmployeeId
+- identityVersion
 - regularMinutesTotal
 - overtimeMinutesTotal
 - workedMinutesTotal
@@ -1297,12 +1301,14 @@ Uniqueness:
 
 - payrollWeekStartDate + primaryEmployeeKey
 
-`primaryEmployeeId` is the canonical cross-module Employee relationship for
-new Timesheets. `primaryEmployeeDisplayName` and `primaryEmployeeKey` are
-historical snapshots derived server-side for new records. The existing
-week/key uniqueness constraint remains in place. Legacy null-ID records are
-preserved and are not inferred or counted as confirmed Payroll employee
-evidence.
+`primaryEmployeeId` is authoritative only with `EXPLICIT_SELECTION` or
+`OWNER_VERIFIED`; those states require a non-null relationship. `NEEDS_REVIEW`
+and `REVIEWED_UNASSIGNED` require a null authoritative relationship.
+`identityCandidateEmployeeId` preserves a former association as evidence but is
+not a foreign key and does not establish ownership. `identityVersion` is
+positive. Display/key snapshots and the existing week/key uniqueness constraint
+remain unchanged. Migration 36 applies `NEEDS_REVIEW` to all existing rows
+without matching current names.
 
 ### DailyTimeEntry
 
@@ -1579,21 +1585,34 @@ employee and date range. Paycheck is employee-scoped, one-to-one with a period,
 uses integer paid minutes and Decimal money, and keeps a unique source
 fingerprint, parser version, review state, and correction timestamp.
 
-EmployeePayRate is effective-dated. A rate derived from imported Paycheck
-evidence stores the supporting Paycheck relation, so a correction updates or
-removes only that demonstrably derived rate. Independently supported rates are
-preserved when dates or numeric values happen to overlap. Imported paycheck
-rates are evidence for that period and do not rewrite historical amounts.
+EmployeePayRate is effective-dated and separates verification state from
+provenance kind. `VERIFIED` rates require `PAYCHECK` or `INDEPENDENT`
+provenance. `PAYCHECK` requires `sourcePaycheckId`; `UNKNOWN` and `INDEPENDENT`
+require it to be null. `provenanceCandidatePaycheckId` is non-authoritative
+historical evidence, and `evidenceVersion` is positive. Partial unique indexes
+allow only one verified rate per Employee/effective date and one verified
+Paycheck-derived rate per source Paycheck while permitting uncertain,
+conflicting, superseded, and excluded evidence to coexist.
+The Employee relationship uses restrictive deletion behavior so preserved rate
+evidence cannot be cascade-deleted with its Employee. Supported concurrent rate
+writes serialize the Employee/effective-date slot in their application
+transaction; the partial unique indexes remain database-enforced backstops.
+
+Migration 36 quarantines every existing rate as `NEEDS_REVIEW`/`UNKNOWN`, moves
+any prior source relationship to the candidate field, and preserves its value,
+date, note, Employee, and timestamps. Corrections supersede rather than delete
+trusted evidence. Expected gross excludes every state except `VERIFIED` and
+never falls back to current Paycheck values.
 Reconciliation results are derived from authoritative records rather than
 persisted as a duplicate ledger.
 No uploaded PDF, raw extracted text, bank account, address, or government
 identifier is stored by Payroll V1.
 
-The original Payroll migration checksum is preserved. A forward corrective
-migration clears only ambiguous normalized-name associations on Timesheets that
-predate completion of that original migration; unique matches, including
-inactive historical Employees, remain associated, while missing and ambiguous
-matches remain unresolved with their name snapshots intact.
+The original Payroll migrations and checksums are preserved. Forward migration
+36 verifies migrations 34 and 35 and their exact checksums before mutation,
+then conservatively quarantines all pre-existing identity and rate evidence in
+one explicit transaction. No migration timestamp, name, amount, date, or note
+is treated as proof.
 
 The detailed PayslipDocument design below is a superseded ADR-005 proposal and
 is not part of the current schema or authorized V1.

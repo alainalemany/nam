@@ -102,12 +102,14 @@ export function PayrollOverviewCard({ summary }: {
   summary?: {
     pendingMinutes: number;
     pendingGross?: string;
+    pendingGrossStatus: "AVAILABLE" | "UNAVAILABLE" | "NOT_APPLICABLE";
+    pendingGrossUncoveredEntryCount: number;
     openIssues: number;
     latestPaycheck?: { netPay: string; checkDate: string };
   };
 }) {
   return <section className="dashboard-card dashboard-card--payroll" aria-labelledby="payroll-overview-heading">
     <div className="section-heading"><div><p className="eyebrow">Private financial view</p><h2 id="payroll-overview-heading">Payroll Overview</h2></div>{summary ? <WalletCards size={20} aria-hidden="true" /> : <LockKeyhole size={20} aria-hidden="true" />}</div>
-    {summary ? <><div className="timesheet-total-grid"><div><span>Pending hours</span><strong>{summary.pendingMinutes / 60}h</strong></div><div><span>Estimated pending gross</span><strong>{summary.pendingGross ?? "—"}</strong></div><div><span>Open issues</span><strong>{summary.openIssues}</strong></div><div><span>Latest net pay</span><strong>{summary.latestPaycheck ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(summary.latestPaycheck.netPay)) : "—"}</strong></div></div><Link className="table-action" href="/payroll">Open Payroll →</Link></> : <div className="empty-state"><h3>Payroll is locked</h3><p>Unlock the employee-scoped Payroll area to see private financial totals.</p><Link className="table-action" href="/payroll/access">Unlock Payroll →</Link></div>}
+    {summary ? <><div className="timesheet-total-grid"><div><span>Pending hours</span><strong>{summary.pendingMinutes / 60}h</strong></div><div><span>Estimated pending gross</span><strong>{summary.pendingGrossStatus === "UNAVAILABLE" ? "Unavailable" : summary.pendingGross ?? "—"}</strong>{summary.pendingGrossStatus === "UNAVAILABLE" ? <span className="subtle">{summary.pendingGrossUncoveredEntryCount} pending entr{summary.pendingGrossUncoveredEntryCount === 1 ? "y lacks" : "ies lack"} verified rate evidence</span> : null}</div><div><span>Open issues</span><strong>{summary.openIssues}</strong></div><div><span>Latest net pay</span><strong>{summary.latestPaycheck ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(summary.latestPaycheck.netPay)) : "—"}</strong></div></div><Link className="table-action" href="/payroll">Open Payroll →</Link></> : <div className="empty-state"><h3>Payroll is locked</h3><p>Unlock the employee-scoped Payroll area to see private financial totals.</p><Link className="table-action" href="/payroll/access">Unlock Payroll →</Link></div>}
   </section>;
 }

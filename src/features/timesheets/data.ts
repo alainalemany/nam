@@ -119,6 +119,7 @@ function historyListItem(record: TimesheetHistoryRecord): TimesheetListItem {
     payrollWeekStartDate: record.payrollWeekStartDate,
     payrollWeekEndDate: record.payrollWeekEndDate,
     status: record.status,
+    primaryEmployeeIdentityStatus: record.primaryEmployeeIdentityStatus,
     primaryEmployeeDisplayName: record.primaryEmployeeDisplayName,
     workedMinutesTotal: record.workedMinutesTotal,
     regularMinutesTotal: record.regularMinutesTotal,

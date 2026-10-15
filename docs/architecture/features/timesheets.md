@@ -37,7 +37,7 @@ Related Documents:
 - `docs/architecture/features/day-view.md`
 - `docs/architecture/features/work-schedule.md`
 
-Last Reviewed: 2026-07-28
+Last Reviewed: 2026-10-15
 
 Implementation Status: The V1 foundation is implemented with weekly
 Timesheets, Daily Time Entries, Work Allocations, Timesheet-owned reference
@@ -249,12 +249,19 @@ Conceptual Weekly Timesheet owner fields:
 - `primaryEmployeeDisplayName`
 - `primaryEmployeeKey`
 - `primaryEmployeeId`
+- `primaryEmployeeIdentityStatus`
+- `identityCandidateEmployeeId`
+- `identityVersion`
 
 The display name and normalized key are preserved for historical display and
-existing uniqueness. Employee ID is the canonical cross-module identity. A
-legacy null Employee ID is not inferred from the snapshots and remains an
-explicit unresolved identity until a separately controlled review workflow is
-approved.
+existing uniqueness. Employee ID is authoritative only when the identity state
+is `EXPLICIT_SELECTION` or `OWNER_VERIFIED`. Migration 36 moves every older
+Timesheet to `NEEDS_REVIEW`, copies any former Employee ID to non-authoritative
+candidate evidence, and clears the authoritative relationship. Names are never
+used to restore trust. Quarantined Timesheets remain readable with all child
+evidence intact, but ordinary edit, completion, reopen, reassignment, and delete
+actions fail with `IDENTITY_REVIEW_REQUIRED`. The owner-review transition
+remains deferred.
 
 V1 uniqueness should be:
 
@@ -656,8 +663,8 @@ Important V1 validation:
 - New Timesheets require an active canonical `primaryEmployeeId`.
 - `primaryEmployeeDisplayName` and `primaryEmployeeKey` are derived server-side
   from the selected Employee for new Timesheets and preserved during edits.
-- Existing null-ID Timesheets retain their historical snapshots and may not be
-  reassigned through ordinary editing.
+- Timesheets in `NEEDS_REVIEW` or `REVIEWED_UNASSIGNED` retain their historical
+  snapshots and reject every ordinary mutation.
 - Clock-in and clock-out must form a valid worked interval after overnight
   handling.
 - Gross shift duration may not exceed 24 hours.

@@ -55,6 +55,7 @@ function timesheet(
     payrollWeekEndDate: end,
     status,
     primaryEmployeeId,
+    primaryEmployeeIdentityStatus: primaryEmployeeId ? "EXPLICIT_SELECTION" : "NEEDS_REVIEW",
     primaryEmployeeDisplayName: "Alex Operator",
     primaryEmployeeKey: "alex operator",
     workedMinutesTotal: entries.reduce((sum, item) => sum + item.workedMinutes, 0),
@@ -118,7 +119,14 @@ describe("Payroll interval reconciliation data", () => {
     vi.clearAllMocks();
     mocks.employeeFindUnique.mockResolvedValue({ id: "employee-1", displayName: "Alex Operator" });
     mocks.assignmentFindMany.mockResolvedValue([]);
-    mocks.payRateFindMany.mockResolvedValue([]);
+    mocks.payRateFindMany.mockResolvedValue([{
+      id: "verified-rate",
+      effectiveFrom: new Date("2020-01-01T00:00:00.000Z"),
+      hourlyRate: money("33.15"),
+      verificationStatus: "VERIFIED",
+      provenanceKind: "INDEPENDENT",
+      createdAt: new Date("2020-01-01T00:00:00.000Z"),
+    }]);
   });
 
   afterEach(() => {
@@ -136,11 +144,17 @@ describe("Payroll interval reconciliation data", () => {
 
     const data = await getPayrollDashboardData("employee-1", "2026-10");
     expect(mocks.timesheetFindMany).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      where: { primaryEmployeeId: "employee-1" },
+      where: expect.objectContaining({
+        primaryEmployeeId: "employee-1",
+        primaryEmployeeIdentityStatus: { in: ["EXPLICIT_SELECTION", "OWNER_VERIFIED"] },
+      }),
     }));
     expect(mocks.timesheetFindMany).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      where: { primaryEmployeeId: null, primaryEmployeeKey: "alex operator" },
+      where: expect.objectContaining({
+        primaryEmployeeIdentityStatus: "NEEDS_REVIEW",
+      }),
     }));
+    expect(mocks.timesheetFindMany.mock.calls[1][0].where).not.toHaveProperty("primaryEmployeeKey");
     expect(data.paychecks[0]).toMatchObject({
       status: "RECONCILED",
       reason: "FULL_AGGREGATE_MATCH",
@@ -198,6 +212,64 @@ describe("Payroll interval reconciliation data", () => {
     const data = await getPayrollDashboardData("employee-1", "2026-10");
     expect(data.paychecks[0].status).toBe("RECONCILED");
     expect(data.summary.pendingMinutes).toBe(600);
+    expect(data.summary).toMatchObject({
+      pendingGrossStatus: "AVAILABLE",
+      pendingGrossUncoveredEntryCount: 0,
+    });
+  });
+
+  it("suppresses the complete pending estimate when any entry lacks verified rate coverage", async () => {
+    mocks.payRateFindMany.mockResolvedValue([]);
+    arrange([
+      timesheet("week-oct", "2026-10-12", "COMPLETED", [
+        entry("entry-1", "2026-10-14", 600, 0),
+        entry("entry-2", "2026-10-15", 600, 0),
+      ]),
+    ], []);
+
+    const data = await getPayrollDashboardData("employee-1", "2026-10");
+
+    expect(data.summary).toMatchObject({
+      pendingGross: undefined,
+      pendingGrossStatus: "UNAVAILABLE",
+      pendingGrossReason: "INCOMPLETE_VERIFIED_RATE_COVERAGE",
+      pendingGrossUncoveredEntryCount: 2,
+    });
+    expect(data.days.find((day) => day.date === "2026-10-14")).toMatchObject({
+      estimatedGross: undefined,
+      estimatedGrossStatus: "UNAVAILABLE",
+      estimatedGrossReason: "MISSING_VERIFIED_RATE",
+    });
+  });
+
+  it("suppresses estimates when the latest effective-date evidence conflicts", async () => {
+    mocks.payRateFindMany.mockResolvedValue([
+      {
+        effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
+        hourlyRate: money("30.00"),
+        verificationStatus: "VERIFIED",
+        provenanceKind: "INDEPENDENT",
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+      {
+        effectiveFrom: new Date("2026-10-01T00:00:00.000Z"),
+        hourlyRate: money("35.00"),
+        verificationStatus: "CONFLICT",
+        provenanceKind: "PAYCHECK",
+        createdAt: new Date("2026-10-01T00:00:00.000Z"),
+      },
+    ]);
+    arrange([
+      timesheet("week-oct", "2026-10-12", "COMPLETED", [entry("entry-1", "2026-10-14", 600, 0)]),
+    ], []);
+
+    const data = await getPayrollDashboardData("employee-1", "2026-10");
+
+    expect(data.summary).toMatchObject({
+      pendingGrossStatus: "UNAVAILABLE",
+      pendingGrossReason: "RATE_EVIDENCE_CONFLICT",
+      pendingGrossUncoveredEntryCount: 1,
+    });
   });
 
   it("keeps matching totals in review when a scheduled date has no recorded entry", async () => {
@@ -250,6 +322,86 @@ describe("Payroll interval reconciliation data", () => {
     });
     expect(data.summary.reconciledMinutes).toBe(0);
     expect(data.summary.openIssues).toBe(1);
+  });
+
+  it("blocks an otherwise matching Paycheck for an overlapping entryless historical week", async () => {
+    const unresolved = {
+      ...timesheet("legacy-entryless", "2026-10-12", "COMPLETED", [], null),
+      workedMinutesTotal: 600,
+      regularMinutesTotal: 600,
+    };
+    arrange([
+      timesheet("trusted-week", "2026-10-12", "COMPLETED", [
+        entry("trusted-entry", "2026-10-14", 600, 0),
+      ]),
+    ], [paycheck("paycheck-1", "2026-10-12", "2026-10-18", 600, 0)], [unresolved]);
+
+    const data = await getPayrollDashboardData("employee-1", "2026-10");
+
+    expect(data.paychecks[0]).toMatchObject({
+      status: "NEEDS_REVIEW",
+      reason: "UNRESOLVED_EMPLOYEE_IDENTITY",
+      reasons: expect.arrayContaining(["UNRESOLVED_EMPLOYEE_IDENTITY"]),
+      differences: { totalMinutes: 0 },
+    });
+    expect(data.summary.reconciledMinutes).toBe(0);
+    expect(data.summary.openIssues).toBe(1);
+    expect(data.days.find((day) => day.date === "2026-10-13")?.timesheetMinutes)
+      .toBeUndefined();
+  });
+
+  it("uses weekly overlap when historical child entries fall outside the exact Workday period", async () => {
+    const unresolved = timesheet("legacy-outside-entry", "2026-10-12", "COMPLETED", [
+      entry("legacy-before-period", "2026-10-13", 600, 0),
+    ], null);
+    arrange([
+      timesheet("trusted-week", "2026-10-12", "COMPLETED", [
+        entry("trusted-entry", "2026-10-14", 600, 0),
+      ]),
+    ], [paycheck("paycheck-1", "2026-10-14", "2026-10-14", 600, 0)], [unresolved]);
+
+    const data = await getPayrollDashboardData("employee-1", "2026-10");
+
+    expect(data.paychecks[0]).toMatchObject({
+      status: "NEEDS_REVIEW",
+      reasons: expect.arrayContaining(["UNRESOLVED_EMPLOYEE_IDENTITY"]),
+    });
+    expect(data.summary.openIssues).toBe(1);
+  });
+
+  it("blocks zero-total and normal-entry historical weeks without duplicate issue counts", async () => {
+    const zeroTotal = timesheet("legacy-zero", "2026-10-12", "COMPLETED", [], null);
+    const withEntry = timesheet("legacy-with-entry", "2026-10-12", "COMPLETED", [
+      entry("legacy-entry", "2026-10-15", 300, 0),
+    ], null);
+    arrange([
+      timesheet("trusted-week", "2026-10-12", "COMPLETED", [
+        entry("trusted-entry", "2026-10-14", 600, 0),
+      ]),
+    ], [paycheck("paycheck-1", "2026-10-12", "2026-10-18", 600, 0)], [zeroTotal, withEntry]);
+
+    const data = await getPayrollDashboardData("employee-1", "2026-10");
+
+    expect(data.paychecks[0].reasons).toContain("UNRESOLVED_EMPLOYEE_IDENTITY");
+    expect(data.summary.openIssues).toBe(1);
+    expect(data.days.find((day) => day.date === "2026-10-15")?.status).toBe("NEEDS_REVIEW");
+  });
+
+  it("ignores a clearly non-overlapping historical week for reconciliation", async () => {
+    arrange([
+      timesheet("trusted-week", "2026-10-12", "COMPLETED", [
+        entry("trusted-entry", "2026-10-14", 600, 0),
+      ]),
+    ], [paycheck("paycheck-1", "2026-10-12", "2026-10-18", 600, 0)], [
+      timesheet("legacy-non-overlap", "2026-09-28", "COMPLETED", [], null),
+    ]);
+
+    const data = await getPayrollDashboardData("employee-1", "2026-10");
+
+    expect(data.paychecks[0]).toMatchObject({
+      status: "RECONCILED",
+      reason: "FULL_AGGREGATE_MATCH",
+    });
   });
 
   it("counts an unresolved legacy Timesheet as one actionable issue across its affected days", async () => {

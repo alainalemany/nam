@@ -194,8 +194,10 @@ database URL.
 
 `PostgreSQL Integration` starts an ephemeral PostgreSQL 18 service on the
 GitHub-hosted runner, applies all committed migrations, verifies migration
-status, exercises the legacy Payroll identity backfill with synthetic
-pre-migration fixtures, and runs the Phase A integration suite. The job sets
+status, exercises staged migrations 34, 35, and 36 with synthetic historical
+identity/rate fixtures, verifies both checksum-guard and forced post-mutation
+constraint-failure rollback in isolated schemas, and runs the Phase A integration
+suite. The job sets
 `PHASE_A_POSTGRES_REQUIRED=1`, so missing test configuration fails rather than
 silently skipping the suite.
 
@@ -210,6 +212,27 @@ Neither profile reads or falls back to `DATABASE_URL`. CI sets `DATABASE_URL`
 only for `prisma migrate deploy` and `prisma migrate status`, scoped to the same
 disposable service. CI contains no production connection, SSH, deployment, or
 application mutation step.
+
+The staged Payroll migration command is:
+
+```bash
+bash scripts/test/prepare-payroll-review-migration-db.sh
+```
+
+The fresh empty-schema migration command is:
+
+```bash
+bash scripts/test/verify-payroll-fresh-migration-db.sh
+```
+
+The failure-path command is:
+
+```bash
+bash scripts/test/verify-payroll-quarantine-migration-failure.sh
+```
+
+All three require the guarded `PHASE_A_TEST_DATABASE_URL`; they must never be pointed
+at an application or production database.
 
 Run the development server:
 

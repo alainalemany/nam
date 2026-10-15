@@ -31,6 +31,9 @@ const describePostgres = databaseUrl ? describe.sequential : describe.skip;
 
 let prisma: PrismaClient;
 let saveWeeklyTimesheetAction: typeof import("@/features/timesheets/actions").saveWeeklyTimesheetAction;
+let completeWeeklyTimesheetAction: typeof import("@/features/timesheets/actions").completeWeeklyTimesheetAction;
+let reopenWeeklyTimesheetAction: typeof import("@/features/timesheets/actions").reopenWeeklyTimesheetAction;
+let deleteWeeklyTimesheetAction: typeof import("@/features/timesheets/actions").deleteWeeklyTimesheetAction;
 let getWorkScheduleAssignmentOptions: typeof import("@/features/timesheets/data").getWorkScheduleAssignmentOptions;
 let getPayrollDashboardData: typeof import("@/features/payroll/data").getPayrollDashboardData;
 let savePaycheckAction: typeof import("@/features/payroll/actions").savePaycheckAction;
@@ -219,6 +222,9 @@ async function createTimesheet({
       payrollWeekEndDate: end,
       status,
       primaryEmployeeId: employeeId,
+      primaryEmployeeIdentityStatus: employeeId ? "EXPLICIT_SELECTION" : "NEEDS_REVIEW",
+      identityCandidateEmployeeId: null,
+      identityVersion: 1,
       primaryEmployeeDisplayName: employeeName,
       primaryEmployeeKey: employeeKey,
       workedMinutesTotal,
@@ -341,7 +347,12 @@ describePostgres("Phase A PostgreSQL integration", () => {
   beforeAll(async () => {
     prisma = new PrismaClient({ datasourceUrl: databaseUrl });
     injected.prisma = prisma;
-    ({ saveWeeklyTimesheetAction } = await import("@/features/timesheets/actions"));
+    ({
+      saveWeeklyTimesheetAction,
+      completeWeeklyTimesheetAction,
+      reopenWeeklyTimesheetAction,
+      deleteWeeklyTimesheetAction,
+    } = await import("@/features/timesheets/actions"));
     ({ getWorkScheduleAssignmentOptions } = await import("@/features/timesheets/data"));
     ({ getPayrollDashboardData } = await import("@/features/payroll/data"));
     ({ savePaycheckAction, correctPaycheckAction } = await import("@/features/payroll/actions"));
@@ -409,6 +420,7 @@ describePostgres("Phase A PostgreSQL integration", () => {
         payrollWeekStartDate: date("2026-11-02"),
         payrollWeekEndDate: date("2026-11-08"),
         primaryEmployeeId: "missing-employee",
+        primaryEmployeeIdentityStatus: "EXPLICIT_SELECTION",
         primaryEmployeeDisplayName: "Missing",
         primaryEmployeeKey: "missing",
       },
@@ -480,6 +492,7 @@ describePostgres("Phase A PostgreSQL integration", () => {
           payrollWeekStartDate: date("2026-10-19"),
           payrollWeekEndDate: date("2026-10-25"),
           primaryEmployeeId: "missing-employee",
+          primaryEmployeeIdentityStatus: "EXPLICIT_SELECTION",
           primaryEmployeeDisplayName: "Missing",
           primaryEmployeeKey: "missing",
         },
@@ -487,6 +500,53 @@ describePostgres("Phase A PostgreSQL integration", () => {
     })).rejects.toMatchObject({ code: "P2003" });
     expect(await prisma.employee.findUnique({ where: { id: "rollback-employee" } }))
       .toBeNull();
+  });
+
+  it("rejects every ordinary lifecycle mutation for quarantined identity evidence", async () => {
+    await createReferences();
+    await createEmployee("employee-1");
+    await createTimesheet({
+      id: "quarantined-lifecycle-timesheet",
+      employeeId: null,
+      employeeName: "Historical Operator Snapshot",
+      employeeKey: "historical operator snapshot",
+      weekStart: "2026-10-12",
+      status: "DRAFT",
+      entries: [entry("quarantined-lifecycle-entry", "2026-10-14", 720)],
+    });
+
+    const before = await prisma.weeklyTimesheet.findUniqueOrThrow({
+      where: { id: "quarantined-lifecycle-timesheet" },
+      include: { entries: true },
+    });
+    const save = await saveWeeklyTimesheetAction(
+      before.id,
+      idleState,
+      payloadFormData(timesheetPayload({ employeeId: "employee-1" })),
+    );
+    const complete = await completeWeeklyTimesheetAction(
+      before.id,
+      { ok: true, message: "" },
+      new FormData(),
+    );
+    const reopen = await reopenWeeklyTimesheetAction(
+      before.id,
+      { ok: true, message: "" },
+      new FormData(),
+    );
+    const remove = await deleteWeeklyTimesheetAction(
+      before.id,
+      { ok: true, message: "" },
+      new FormData(),
+    );
+
+    for (const result of [save, complete, reopen, remove]) {
+      expect(result).toMatchObject({ code: "IDENTITY_REVIEW_REQUIRED" });
+    }
+    expect(await prisma.weeklyTimesheet.findUniqueOrThrow({
+      where: { id: before.id },
+      include: { entries: true },
+    })).toEqual(before);
   });
 
   it("discovers only Active/Scheduled choices and exposes the October 14 Night context", async () => {
@@ -739,7 +799,11 @@ describePostgres("Phase A PostgreSQL integration", () => {
       .toBe("Cancelled");
     expect(dashboard.days.find((item) => item.date === "2026-10-04")?.scheduledLabel)
       .toBe("Off");
-    expect(dashboard.summary.openIssues).toBe(1);
+    expect(dashboard.summary.openIssues).toBe(2);
+    expect(dashboard.summary).toMatchObject({
+      pendingGrossStatus: "UNAVAILABLE",
+      pendingGrossUncoveredEntryCount: 1,
+    });
     expect(await getWorkScheduleAssignmentOptions("employee-1", "2026-09-28"))
       .toEqual(expect.arrayContaining([
         expect.objectContaining({ id: "archived-payroll-assignment", selectable: false }),
@@ -750,7 +814,7 @@ describePostgres("Phase A PostgreSQL integration", () => {
       ]));
   });
 
-  it("updates, moves, clears, and repeatedly corrects only the linked paycheck-derived rate", async () => {
+  it("preserves and supersedes paycheck-derived rates through moves, clears, and repeated corrections", async () => {
     await createEmployee("employee-1");
     const saved = await savePaycheckAction(
       { status: "idle", message: "" },
@@ -759,13 +823,15 @@ describePostgres("Phase A PostgreSQL integration", () => {
     expect(saved.status).toBe("saved");
     const paycheckId = saved.status === "saved" ? saved.paycheckId : "";
 
-    let rate = await prisma.employeePayRate.findUniqueOrThrow({
-      where: { sourcePaycheckId: paycheckId },
+    let rate = await prisma.employeePayRate.findFirstOrThrow({
+      where: { sourcePaycheckId: paycheckId, verificationStatus: "VERIFIED" },
     });
     expect(rate).toMatchObject({
       employeeId: "employee-1",
       effectiveFrom: date("2026-09-14"),
       sourcePaycheckId: paycheckId,
+      verificationStatus: "VERIFIED",
+      provenanceKind: "PAYCHECK",
     });
     expect(rate.hourlyRate.toString()).toBe("33.15");
 
@@ -780,11 +846,14 @@ describePostgres("Phase A PostgreSQL integration", () => {
         netPay: "1370.00",
       }), paycheckId),
     );
-    rate = await prisma.employeePayRate.findUniqueOrThrow({
-      where: { sourcePaycheckId: paycheckId },
+    rate = await prisma.employeePayRate.findFirstOrThrow({
+      where: { sourcePaycheckId: paycheckId, verificationStatus: "VERIFIED" },
     });
     expect(rate.effectiveFrom).toEqual(date("2026-09-21"));
     expect(rate.hourlyRate.toString()).toBe("34.25");
+    expect(await prisma.employeePayRate.count({
+      where: { sourcePaycheckId: paycheckId, verificationStatus: "SUPERSEDED" },
+    })).toBe(1);
 
     await correctPaycheckAction(
       { status: "idle", message: "" },
@@ -797,10 +866,13 @@ describePostgres("Phase A PostgreSQL integration", () => {
         netPay: "1420.00",
       }), paycheckId),
     );
-    expect((await prisma.employeePayRate.findUniqueOrThrow({
-      where: { sourcePaycheckId: paycheckId },
+    expect((await prisma.employeePayRate.findFirstOrThrow({
+      where: { sourcePaycheckId: paycheckId, verificationStatus: "VERIFIED" },
     })).hourlyRate.toString()).toBe("35.5");
-    expect(await prisma.employeePayRate.count({ where: { employeeId: "employee-1" } })).toBe(1);
+    expect(await prisma.employeePayRate.count({ where: { employeeId: "employee-1" } })).toBe(3);
+    expect(await prisma.employeePayRate.count({
+      where: { sourcePaycheckId: paycheckId, verificationStatus: "SUPERSEDED" },
+    })).toBe(2);
 
     await createTimesheet({
       id: "corrected-rate-timesheet",
@@ -820,8 +892,12 @@ describePostgres("Phase A PostgreSQL integration", () => {
         baseRate: "",
       }), paycheckId),
     );
-    expect(await prisma.employeePayRate.findUnique({ where: { sourcePaycheckId: paycheckId } }))
-      .toBeNull();
+    expect(await prisma.employeePayRate.findFirst({
+      where: { sourcePaycheckId: paycheckId, verificationStatus: { in: ["VERIFIED", "CONFLICT"] } },
+    })).toBeNull();
+    expect(await prisma.employeePayRate.count({
+      where: { sourcePaycheckId: paycheckId, verificationStatus: "SUPERSEDED" },
+    })).toBe(3);
   });
 
   it("preserves unrelated rates on destination collisions and rolls back failed corrections", async () => {
@@ -852,9 +928,14 @@ describePostgres("Phase A PostgreSQL integration", () => {
         netPay: "1370.00",
       }), paycheckId),
     );
-    expect(corrected.status).toBe("saved");
-    expect(await prisma.employeePayRate.findUnique({ where: { sourcePaycheckId: paycheckId } }))
-      .toBeNull();
+    expect(corrected).toMatchObject({
+      status: "saved",
+      code: "RATE_EVIDENCE_CONFLICT",
+      rateEvidence: "CONFLICT",
+    });
+    expect(await prisma.employeePayRate.findFirst({
+      where: { sourcePaycheckId: paycheckId, verificationStatus: "CONFLICT" },
+    })).not.toBeNull();
     expect((await prisma.employeePayRate.findUniqueOrThrow({
       where: { id: "manual-destination-rate" },
     })).hourlyRate.toString()).toBe("40");
@@ -886,6 +967,54 @@ describePostgres("Phase A PostgreSQL integration", () => {
       .toMatchObject({ periodStart: date("2026-10-05"), periodEnd: date("2026-10-11") });
     expect((await prisma.employeePayRate.findUniqueOrThrow({ where: { id: "manual-destination-rate" } })).hourlyRate.toString())
       .toBe("40");
+  });
+
+  it("serializes concurrent same-date rate imports and preserves the losing evidence as conflict", async () => {
+    await createEmployee("employee-1");
+
+    const [first, second] = await Promise.all([
+      savePaycheckAction(
+        { status: "idle", message: "" },
+        paycheckFormData(paycheckPayload({
+          fingerprint: "a".repeat(64),
+          periodStart: "2026-09-14",
+          periodEnd: "2026-09-20",
+          checkDate: "2026-09-23",
+          baseRate: "33.15",
+        })),
+      ),
+      savePaycheckAction(
+        { status: "idle", message: "" },
+        paycheckFormData(paycheckPayload({
+          fingerprint: "b".repeat(64),
+          periodStart: "2026-09-14",
+          periodEnd: "2026-09-21",
+          checkDate: "2026-09-24",
+          baseRate: "34.25",
+        })),
+      ),
+    ]);
+
+    expect([first.status, second.status]).toEqual(["saved", "saved"]);
+    expect([first.rateEvidence, second.rateEvidence].sort()).toEqual(["CONFLICT", "VERIFIED"]);
+    expect(await prisma.paycheck.count()).toBe(2);
+    expect(await prisma.employeePayRate.count({
+      where: { employeeId: "employee-1", effectiveFrom: date("2026-09-14") },
+    })).toBe(2);
+    expect(await prisma.employeePayRate.count({
+      where: {
+        employeeId: "employee-1",
+        effectiveFrom: date("2026-09-14"),
+        verificationStatus: "VERIFIED",
+      },
+    })).toBe(1);
+    expect(await prisma.employeePayRate.count({
+      where: {
+        employeeId: "employee-1",
+        effectiveFrom: date("2026-09-14"),
+        verificationStatus: "CONFLICT",
+      },
+    })).toBe(1);
   });
 
   it("uses inclusive midweek boundaries across two NAM weeks without double counting", async () => {
@@ -1014,7 +1143,13 @@ describePostgres("Phase A PostgreSQL integration", () => {
     await createEmployee("employee-1");
     await createTimesheet({ id: "canonical-a", employeeId: "employee-1", weekStart: "2026-10-12", entries: [entry("canonical-entry-a", "2026-10-14", 600)] });
     await createTimesheet({ id: "canonical-b", employeeId: "employee-1", employeeKey: "employee-1-alias", weekStart: "2026-10-12", entries: [entry("canonical-entry-b", "2026-10-14", 600)] });
-    await createTimesheet({ id: "legacy", employeeId: null, weekStart: "2026-10-05", entries: [entry("legacy-entry", "2026-10-15", 900)] });
+    await createTimesheet({
+      id: "legacy",
+      employeeId: null,
+      employeeKey: "unresolved historical operator",
+      weekStart: "2026-10-12",
+      entries: [entry("legacy-entry", "2026-10-15", 900)],
+    });
     await createPaycheck({
       id: "ambiguous-paycheck",
       employeeId: "employee-1",
@@ -1033,6 +1168,58 @@ describePostgres("Phase A PostgreSQL integration", () => {
       ]),
       differences: { totalMinutes: 0 },
     });
+  });
+
+  it("blocks reconciliation for an overlapping entryless quarantined week with preserved totals", async () => {
+    await createEmployee("employee-1");
+    await createTimesheet({
+      id: "entryless-trusted-week",
+      employeeId: "employee-1",
+      weekStart: "2026-10-12",
+      entries: [entry("entryless-trusted-entry", "2026-10-14", 600)],
+    });
+    await createTimesheet({
+      id: "entryless-quarantined-week",
+      employeeId: null,
+      employeeName: "Historical Operator Snapshot",
+      employeeKey: "historical operator snapshot",
+      weekStart: "2026-10-12",
+      entries: [],
+    });
+    await prisma.weeklyTimesheet.update({
+      where: { id: "entryless-quarantined-week" },
+      data: { workedMinutesTotal: 600, regularMinutesTotal: 600 },
+    });
+    await prisma.employeePayRate.create({
+      data: {
+        id: "entryless-verified-rate",
+        employeeId: "employee-1",
+        effectiveFrom: date("2026-01-01"),
+        hourlyRate: new Prisma.Decimal("33.15"),
+        verificationStatus: "VERIFIED",
+        provenanceKind: "INDEPENDENT",
+      },
+    });
+    await createPaycheck({
+      id: "entryless-overlap-paycheck",
+      employeeId: "employee-1",
+      periodStart: "2026-10-12",
+      periodEnd: "2026-10-18",
+      regularMinutes: 600,
+      overtimeMinutes: 0,
+    });
+
+    const dashboard = await getPayrollDashboardData("employee-1", "2026-10");
+
+    expect(dashboard.paychecks[0]).toMatchObject({
+      status: "NEEDS_REVIEW",
+      reason: "UNRESOLVED_EMPLOYEE_IDENTITY",
+      differences: { totalMinutes: 0 },
+    });
+    expect(dashboard.summary.reconciledMinutes).toBe(0);
+    expect(dashboard.summary.openIssues).toBe(1);
+    expect(dashboard.days.find((item) => item.date === "2026-10-15")?.timesheetMinutes)
+      .toBeUndefined();
   });
 
   it("marks both overlapping payroll periods as ambiguous evidence", async () => {

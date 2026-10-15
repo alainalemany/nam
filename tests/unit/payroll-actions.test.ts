@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Prisma } from "@prisma/client";
 
 import { correctPaycheckAction, savePaycheckAction } from "@/features/payroll/actions";
 
@@ -11,11 +12,11 @@ const mocks = vi.hoisted(() => ({
   paycheckUpdate: vi.fn(),
   periodUpsert: vi.fn(),
   periodUpdate: vi.fn(),
-  rateUpsert: vi.fn(),
-  rateFindUnique: vi.fn(),
+  rateFindMany: vi.fn(),
+  rateFindFirst: vi.fn(),
   rateCreate: vi.fn(),
-  rateUpdate: vi.fn(),
-  rateDelete: vi.fn(),
+  rateUpdateMany: vi.fn(),
+  executeRaw: vi.fn(),
   revalidatePath: vi.fn(),
 }));
 
@@ -32,6 +33,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: mocks.transaction } }))
 
 function tx() {
   return {
+    $executeRaw: mocks.executeRaw,
     paycheck: {
       findUnique: mocks.paycheckFindUnique,
       findFirst: mocks.paycheckFindFirst,
@@ -40,11 +42,10 @@ function tx() {
     },
     payrollPeriod: { upsert: mocks.periodUpsert, update: mocks.periodUpdate },
     employeePayRate: {
-      upsert: mocks.rateUpsert,
-      findUnique: mocks.rateFindUnique,
+      findMany: mocks.rateFindMany,
+      findFirst: mocks.rateFindFirst,
       create: mocks.rateCreate,
-      update: mocks.rateUpdate,
-      delete: mocks.rateDelete,
+      updateMany: mocks.rateUpdateMany,
     },
   };
 }
@@ -93,7 +94,11 @@ describe("Payroll payday persistence actions", () => {
     mocks.paycheckCreate.mockResolvedValue({ id: "paycheck-1" });
     mocks.paycheckUpdate.mockResolvedValue({ id: "paycheck-1" });
     mocks.periodUpdate.mockResolvedValue({ id: "period-1" });
-    mocks.rateFindUnique.mockResolvedValue(null);
+    mocks.rateFindMany.mockResolvedValue([]);
+    mocks.rateFindFirst.mockResolvedValue(null);
+    mocks.rateCreate.mockResolvedValue({ id: "rate-1" });
+    mocks.rateUpdateMany.mockResolvedValue({ count: 0 });
+    mocks.executeRaw.mockResolvedValue(1);
   });
 
   it("persists Wednesday as the projected date for a Monday-Sunday NAM period", async () => {
@@ -138,14 +143,40 @@ describe("Payroll payday persistence actions", () => {
       formData(payload({ baseRate: "33.15" })),
     );
 
-    expect(mocks.rateUpsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({
+    expect(mocks.rateCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
         employeeId: "employee-1",
         hourlyRate: expect.objectContaining({}),
         sourcePaycheckId: "paycheck-1",
+        verificationStatus: "VERIFIED",
+        provenanceKind: "PAYCHECK",
       }),
-      update: {},
-    }));
+    });
+    expect(mocks.executeRaw).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports a rate-slot uniqueness collision as rate evidence rather than a period conflict", async () => {
+    mocks.transaction.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError(
+        "Unique constraint failed",
+        {
+          code: "P2002",
+          clientVersion: "6.16.3",
+          meta: { target: "EmployeePayRate_verified_employee_effective_key" },
+        },
+      ),
+    );
+
+    const result = await savePaycheckAction(
+      { status: "idle", message: "" },
+      formData(payload({ baseRate: "33.15" })),
+    );
+
+    expect(result).toMatchObject({
+      status: "error",
+      code: "RATE_EVIDENCE_CONFLICT",
+      message: expect.stringMatching(/Concurrent rate evidence/),
+    });
   });
 
   it("preserves the existing expected date and import provenance during correction", async () => {
@@ -184,24 +215,28 @@ describe("Payroll payday persistence actions", () => {
       payrollPeriodId: "period-1",
       payrollPeriod: {},
     });
-    mocks.rateFindUnique
-      .mockResolvedValueOnce({ id: "rate-linked", employeeId: "employee-1", sourcePaycheckId: "paycheck-1" })
-      .mockResolvedValueOnce(null);
+    mocks.rateFindMany.mockResolvedValueOnce([{
+      id: "rate-linked",
+      employeeId: "employee-1",
+      sourcePaycheckId: "paycheck-1",
+      evidenceVersion: 1,
+    }]);
 
     await correctPaycheckAction(
       { status: "idle", message: "" },
       formData(payload({ periodStart: "2026-09-21", periodEnd: "2026-09-27", baseRate: "35.25" }), "paycheck-1"),
     );
 
-    expect(mocks.rateUpdate).toHaveBeenCalledWith({
-      where: { id: "rate-linked" },
-      data: {
-        effectiveFrom: new Date("2026-09-21T00:00:00.000Z"),
-        hourlyRate: expect.objectContaining({}),
-        sourceNote: "Corrected Workday paycheck evidence",
-      },
+    expect(mocks.rateUpdateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["rate-linked"] } },
+      data: { verificationStatus: "SUPERSEDED", evidenceVersion: { increment: 1 } },
     });
-    expect(mocks.rateDelete).not.toHaveBeenCalled();
+    expect(mocks.rateCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
+      effectiveFrom: new Date("2026-09-21T00:00:00.000Z"),
+      sourcePaycheckId: "paycheck-1",
+      verificationStatus: "VERIFIED",
+      evidenceVersion: 2,
+    }) });
   });
 
   it("removes a linked paycheck-derived rate when baseRate is cleared", async () => {
@@ -211,19 +246,22 @@ describe("Payroll payday persistence actions", () => {
       payrollPeriodId: "period-1",
       payrollPeriod: {},
     });
-    mocks.rateFindUnique.mockResolvedValueOnce({
+    mocks.rateFindMany.mockResolvedValueOnce([{
       id: "rate-linked",
       employeeId: "employee-1",
       sourcePaycheckId: "paycheck-1",
-    });
+      evidenceVersion: 1,
+    }]);
 
     await correctPaycheckAction(
       { status: "idle", message: "" },
       formData(payload({ baseRate: "" }), "paycheck-1"),
     );
 
-    expect(mocks.rateDelete).toHaveBeenCalledWith({ where: { id: "rate-linked" } });
-    expect(mocks.rateUpdate).not.toHaveBeenCalled();
+    expect(mocks.rateUpdateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["rate-linked"] } },
+      data: { verificationStatus: "SUPERSEDED", evidenceVersion: { increment: 1 } },
+    });
     expect(mocks.rateCreate).not.toHaveBeenCalled();
   });
 
@@ -234,18 +272,29 @@ describe("Payroll payday persistence actions", () => {
       payrollPeriodId: "period-1",
       payrollPeriod: {},
     });
-    mocks.rateFindUnique
-      .mockResolvedValueOnce({ id: "rate-linked", employeeId: "employee-1", sourcePaycheckId: "paycheck-1" })
-      .mockResolvedValueOnce({ id: "rate-manual", sourcePaycheckId: null });
+    mocks.rateFindMany.mockResolvedValueOnce([{
+      id: "rate-linked",
+      employeeId: "employee-1",
+      sourcePaycheckId: "paycheck-1",
+      evidenceVersion: 1,
+    }]);
+    mocks.rateFindFirst.mockResolvedValueOnce({ id: "rate-manual", sourcePaycheckId: null });
 
-    await correctPaycheckAction(
+    const result = await correctPaycheckAction(
       { status: "idle", message: "" },
       formData(payload({ periodStart: "2026-09-21", periodEnd: "2026-09-27", baseRate: "35.25" }), "paycheck-1"),
     );
 
-    expect(mocks.rateDelete).toHaveBeenCalledWith({ where: { id: "rate-linked" } });
-    expect(mocks.rateUpdate).not.toHaveBeenCalled();
-    expect(mocks.rateCreate).not.toHaveBeenCalled();
+    expect(mocks.rateUpdateMany).toHaveBeenCalled();
+    expect(mocks.rateCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
+      verificationStatus: "CONFLICT",
+      sourcePaycheckId: "paycheck-1",
+    }) });
+    expect(result).toMatchObject({
+      status: "saved",
+      code: "RATE_EVIDENCE_CONFLICT",
+      rateEvidence: "CONFLICT",
+    });
   });
 
   it("fails closed when stored rate provenance belongs to another employee", async () => {
@@ -255,11 +304,12 @@ describe("Payroll payday persistence actions", () => {
       payrollPeriodId: "period-1",
       payrollPeriod: {},
     });
-    mocks.rateFindUnique.mockResolvedValueOnce({
+    mocks.rateFindMany.mockResolvedValueOnce([{
       id: "rate-corrupt",
       employeeId: "employee-2",
       sourcePaycheckId: "paycheck-1",
-    });
+      evidenceVersion: 1,
+    }]);
 
     const result = await correctPaycheckAction(
       { status: "idle", message: "" },
@@ -267,8 +317,7 @@ describe("Payroll payday persistence actions", () => {
     );
 
     expect(result).toMatchObject({ status: "error" });
-    expect(mocks.rateUpdate).not.toHaveBeenCalled();
-    expect(mocks.rateDelete).not.toHaveBeenCalled();
+    expect(mocks.rateUpdateMany).not.toHaveBeenCalled();
     expect(mocks.rateCreate).not.toHaveBeenCalled();
   });
 
@@ -279,7 +328,7 @@ describe("Payroll payday persistence actions", () => {
       payrollPeriodId: "period-1",
       payrollPeriod: {},
     });
-    mocks.rateFindUnique.mockResolvedValue(null);
+    mocks.rateFindMany.mockResolvedValue([]);
 
     await correctPaycheckAction(
       { status: "idle", message: "" },
@@ -291,6 +340,8 @@ describe("Payroll payday persistence actions", () => {
         employeeId: "employee-1",
         sourcePaycheckId: "paycheck-1",
         sourceNote: "Corrected Workday paycheck evidence",
+        verificationStatus: "VERIFIED",
+        provenanceKind: "PAYCHECK",
       }),
     });
   });

@@ -32,6 +32,7 @@ maintainability.
 | [ADR-020](adr-020-equipment-fuel-events-v2-station-pricing-and-meter.md) | 2026-08-29 | Product/data architecture | Equipment Fuel Events V2 uses reusable Gas Stations, event-level Decimal pricing, fractional gallons, meter facts, and backward-compatible legacy handling. |
 | [ADR-021](adr-021-canonical-us-geography-reference-data.md) | 2026-08-29 | Data/application architecture | U.S. States and Cities use shared database reference records and an offline idempotent Census Gazetteer import. |
 | [ADR-022](adr-022-payroll-reconciliation-structured-evidence.md) | 2026-10-08 | Security/data boundaries | Payroll Reconciliation V1 uses reviewed structured evidence without retaining source PDFs or raw text. |
+| [ADR-023](adr-023-payroll-historical-evidence-quarantine.md) | 2026-10-15 | Financial integrity/data architecture | Unverifiable historical Timesheet identities and pay-rate provenance are preserved in quarantine and excluded from financial conclusions. |
 
 ## Categories
 
@@ -52,6 +53,7 @@ Data architecture and boundaries:
 - ADR-020
 - ADR-021
 - ADR-022
+- ADR-023
 
 Application architecture:
 

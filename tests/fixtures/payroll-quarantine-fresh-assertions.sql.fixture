@@ -1,0 +1,33 @@
+DO $fresh_chain_assertions$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM "_prisma_migrations"
+    WHERE migration_name = '20261015000200_payroll_historical_evidence_quarantine'
+      AND finished_at IS NOT NULL
+      AND rolled_back_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Migration 36 is not recorded as successfully applied.';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = current_schema()
+      AND table_name = 'WeeklyTimesheet'
+      AND column_name = 'primaryEmployeeIdentityStatus'
+  ) THEN
+    RAISE EXCEPTION 'Fresh schema is missing the Timesheet identity status.';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'EmployeePayRate_employee_fkey'
+      AND conrelid = '"EmployeePayRate"'::regclass
+      AND confdeltype = 'r'
+  ) THEN
+    RAISE EXCEPTION 'Fresh schema does not restrict Employee deletion for pay-rate evidence.';
+  END IF;
+END
+$fresh_chain_assertions$;

@@ -50,6 +50,9 @@ function dashboardData(status: "RECONCILED" | "NEEDS_REVIEW", reviewStatus: "CON
       reconciledMinutes: status === "RECONCILED" ? 3600 : 0,
       pendingMinutes: 0,
       pendingGross: undefined,
+      pendingGrossStatus: "NOT_APPLICABLE",
+      pendingGrossReason: undefined,
+      pendingGrossUncoveredEntryCount: 0,
       openIssues: status === "NEEDS_REVIEW" ? 1 : 0,
       latestPaycheck: paycheck,
       nextExpectedCheckDate: "2026-10-21",
@@ -77,5 +80,20 @@ describe("PayrollDashboard reconciliation presentation", () => {
 
     expect(screen.getAllByText("NEEDS REVIEW").length).toBeGreaterThan(0);
     expect(screen.getByText(/Reconciled hours/).previousElementSibling).toHaveTextContent("0h");
+  });
+
+  it("presents incomplete expected gross as unavailable rather than zero or a partial total", () => {
+    const data = dashboardData("RECONCILED", "CONFIRMED");
+    data.summary.pendingMinutes = 1_200;
+    data.summary.pendingGross = undefined;
+    data.summary.pendingGrossStatus = "UNAVAILABLE";
+    data.summary.pendingGrossReason = "INCOMPLETE_VERIFIED_RATE_COVERAGE";
+    data.summary.pendingGrossUncoveredEntryCount = 2;
+
+    render(<PayrollDashboard data={data} preview />);
+
+    expect(screen.getByText("Unavailable")).toBeInTheDocument();
+    expect(screen.getByText(/2 entries need verified rate evidence/)).toBeInTheDocument();
+    expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
   });
 });

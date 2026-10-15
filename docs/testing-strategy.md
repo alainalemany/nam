@@ -339,6 +339,22 @@ exact test-database identity. The ordinary unit/component suite does not
 implicitly acquire or mutate a PostgreSQL database. Broad browser end-to-end
 coverage remains deferred until a concrete risk justifies that infrastructure.
 
+Payroll historical-evidence coverage stages migrations 34 → 35 → 36 around
+synthetic rename, duplicate-name, arbitrary-ID, null-ID, stale-rate,
+independent-rate, and candidate-provenance records. Assertions prove all
+pre-existing Timesheets/rates are quarantined, child evidence and timestamps
+survive, impossible states are constrained, and trusted-only partial indexes
+permit uncertain evidence to coexist. Separate isolated-schema failure cases
+corrupt a predecessor checksum to prove migration 36 fails before mutation and
+inject a constraint failure immediately before commit to prove all preceding
+schema and business-data changes roll back. Runtime tests cover explicit new
+identity, quarantined mutation rejection, trusted-only reconciliation, conflict
+preservation, supersession, and all-or-nothing expected-gross availability.
+Coverage includes entryless unresolved weekly parents with preserved totals,
+weekly overlap whose child entries fall outside a Workday period, open-issue
+deduplication, restrictive Employee deletion, and concurrent same-date rate
+writes that retain one verified record plus one conflict record.
+
 Deferred areas:
 
 - Authentication and authorization.

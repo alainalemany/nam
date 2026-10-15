@@ -3,7 +3,6 @@ import { Prisma } from "@prisma/client";
 import { homeShiftInterval } from "@/features/work-schedule/home-summary";
 import {
   dateInputValue,
-  normalizeIdentityKey,
   parseDateOnly,
   startOfPayrollWeek,
 } from "@/features/timesheets/calculations";
@@ -62,18 +61,32 @@ function paycheckView(paycheck: PaycheckRecord) {
 }
 
 function effectiveRate(
-  rates: Array<{ effectiveFrom: Date; hourlyRate: Prisma.Decimal }>,
+  rates: Array<{
+    effectiveFrom: Date;
+    hourlyRate: Prisma.Decimal;
+    verificationStatus: string;
+    provenanceKind: string;
+  }>,
   date: string,
-  paychecks: PaycheckRecord[],
 ) {
-  const configured = [...rates]
-    .reverse()
-    .find((rate) => dateInputValue(rate.effectiveFrom) <= date)?.hourlyRate.toString();
-  if (configured) return configured;
-  return paychecks.find(
-    (paycheck) =>
-      paycheck.baseRate && dateInputValue(paycheck.payrollPeriod.periodStart) <= date,
-  )?.baseRate?.toString();
+  const eligible = rates.filter((rate) => dateInputValue(rate.effectiveFrom) <= date);
+  const latestDate = eligible.reduce<string | undefined>((latest, rate) => {
+    const candidate = dateInputValue(rate.effectiveFrom);
+    return !latest || candidate > latest ? candidate : latest;
+  }, undefined);
+  if (!latestDate) {
+    return { status: "UNAVAILABLE" as const, reason: "MISSING_VERIFIED_RATE" as const };
+  }
+  const latest = eligible.filter((rate) => dateInputValue(rate.effectiveFrom) === latestDate);
+  if (latest.some((rate) => rate.verificationStatus === "CONFLICT")) {
+    return { status: "UNAVAILABLE" as const, reason: "RATE_EVIDENCE_CONFLICT" as const };
+  }
+  const verified = latest.find((rate) =>
+    rate.verificationStatus === "VERIFIED" &&
+    (rate.provenanceKind === "PAYCHECK" || rate.provenanceKind === "INDEPENDENT"));
+  return verified
+    ? { status: "AVAILABLE" as const, hourlyRate: verified.hourlyRate.toString() }
+    : { status: "UNAVAILABLE" as const, reason: "MISSING_VERIFIED_RATE" as const };
 }
 
 function intervalsOverlap(firstStart: Date, firstEnd: Date, secondStart: Date, secondEnd: Date) {
@@ -164,8 +177,12 @@ function reconcilePaycheck(
   if (new Set(dates).size !== dates.length) {
     issues.push("AMBIGUOUS_TIMESHEET_EVIDENCE");
   }
-  if (legacyTimesheets.some((timesheet) =>
-    timesheet.entries.some((entry) => entry.workDate >= periodStart && entry.workDate <= periodEnd))) {
+  if (legacyTimesheets.some((timesheet) => intervalsOverlap(
+    timesheet.payrollWeekStartDate,
+    timesheet.payrollWeekEndDate,
+    periodStart,
+    periodEnd,
+  ))) {
     issues.push("UNRESOLVED_EMPLOYEE_IDENTITY");
   }
   if (paychecks.some((candidate) => candidate.id !== paycheck.id && intervalsOverlap(
@@ -197,27 +214,15 @@ function reconcilePaycheck(
 
 export async function getPayrollDashboardData(employeeId: string, requestedMonth: string) {
   const range = monthCalendarRange(requestedMonth);
-  const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
-  if (!employee) throw new Error("Configured payroll owner could not be found.");
-  const ownerKey = normalizeIdentityKey(employee.displayName);
-  const [timesheets, legacyTimesheets, paychecks, payRates] = await Promise.all([
-    prisma.weeklyTimesheet.findMany({
-      where: { primaryEmployeeId: employeeId },
-      include: timesheetInclude,
-      orderBy: { payrollWeekStartDate: "desc" },
-    }),
-    prisma.weeklyTimesheet.findMany({
-      where: { primaryEmployeeId: null, primaryEmployeeKey: ownerKey },
-      include: timesheetInclude,
-      orderBy: { payrollWeekStartDate: "desc" },
-    }),
+  const [employee, paychecks] = await Promise.all([
+    prisma.employee.findUnique({ where: { id: employeeId } }),
     prisma.paycheck.findMany({
       where: { employeeId },
       include: paycheckInclude,
       orderBy: { checkDate: "desc" },
     }),
-    prisma.employeePayRate.findMany({ where: { employeeId }, orderBy: { effectiveFrom: "asc" } }),
   ]);
+  if (!employee) throw new Error("Configured payroll owner could not be found.");
   const assignmentStart = paychecks.reduce(
     (earliest, paycheck) => paycheck.payrollPeriod.periodStart < earliest ? paycheck.payrollPeriod.periodStart : earliest,
     range.calendarStart,
@@ -226,17 +231,45 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
     (latest, paycheck) => paycheck.payrollPeriod.periodEnd > latest ? paycheck.payrollPeriod.periodEnd : latest,
     range.calendarEnd,
   );
-  const assignments = await prisma.dailyAssignment.findMany({
-    where: {
-      assignmentDate: { gte: assignmentStart, lte: assignmentEnd },
-      weeklySchedule: {
+  const [timesheets, unresolvedTimesheets, payRates, assignments] = await Promise.all([
+    prisma.weeklyTimesheet.findMany({
+      where: {
         primaryEmployeeId: employeeId,
-        status: { in: ["ACTIVE", "ARCHIVED"] },
+        primaryEmployeeIdentityStatus: { in: ["EXPLICIT_SELECTION", "OWNER_VERIFIED"] },
+        payrollWeekStartDate: { lte: assignmentEnd },
+        payrollWeekEndDate: { gte: assignmentStart },
       },
-    },
-    include: { weeklySchedule: true },
-    orderBy: [{ assignmentDate: "asc" }, { id: "asc" }],
-  });
+      include: timesheetInclude,
+      orderBy: { payrollWeekStartDate: "desc" },
+    }),
+    prisma.weeklyTimesheet.findMany({
+      where: {
+        primaryEmployeeIdentityStatus: "NEEDS_REVIEW",
+        payrollWeekStartDate: { lte: assignmentEnd },
+        payrollWeekEndDate: { gte: assignmentStart },
+      },
+      include: timesheetInclude,
+      orderBy: { payrollWeekStartDate: "desc" },
+    }),
+    prisma.employeePayRate.findMany({
+      where: {
+        employeeId,
+        verificationStatus: { in: ["VERIFIED", "CONFLICT"] },
+      },
+      orderBy: [{ effectiveFrom: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.dailyAssignment.findMany({
+      where: {
+        assignmentDate: { gte: assignmentStart, lte: assignmentEnd },
+        weeklySchedule: {
+          primaryEmployeeId: employeeId,
+          status: { in: ["ACTIVE", "ARCHIVED"] },
+        },
+      },
+      include: { weeklySchedule: true },
+      orderBy: [{ assignmentDate: "asc" }, { id: "asc" }],
+    }),
+  ]);
 
   const assignmentByDate = new Map<string, (typeof assignments)[number]>();
   for (const item of assignments) {
@@ -248,7 +281,8 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
   }
   const entries = timesheets.flatMap((timesheet) => timesheet.entries.map((entry) => ({ ...entry, weeklyTimesheet: timesheet })));
   const legacyTimesheetIdsByDate = new Map<string, string[]>();
-  for (const timesheet of legacyTimesheets) {
+  const unresolvedTimesheetIdsCoveredByPaycheck = new Set<string>();
+  for (const timesheet of unresolvedTimesheets) {
     for (const entry of timesheet.entries) {
       const key = dateInputValue(entry.workDate);
       legacyTimesheetIdsByDate.set(key, [
@@ -269,7 +303,7 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
   }
   const reconciliationByPaycheckId = new Map(paychecks.map((paycheck) => [
     paycheck.id,
-    reconcilePaycheck(paycheck, timesheets, legacyTimesheets, paychecks, assignments),
+    reconcilePaycheck(paycheck, timesheets, unresolvedTimesheets, paychecks, assignments),
   ]));
   const monthPaychecks = paychecks.filter((paycheck) =>
     paycheck.payrollPeriod.periodEnd >= range.first && paycheck.payrollPeriod.periodEnd <= range.last);
@@ -282,6 +316,36 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
       .filter((item) => item.reconciliation.status === "DISCREPANCY" || item.reconciliation.status === "NEEDS_REVIEW")
       .map((item) => `paycheck:${item.paycheck.id}`),
   );
+  for (const timesheet of unresolvedTimesheets) {
+    if (!intervalsOverlap(
+      timesheet.payrollWeekStartDate,
+      timesheet.payrollWeekEndDate,
+      range.first,
+      range.last,
+    )) continue;
+
+    const affectedPaychecks = paychecks.filter((paycheck) => {
+      const reconciliation = reconciliationByPaycheckId.get(paycheck.id)!;
+      return intervalsOverlap(
+        timesheet.payrollWeekStartDate,
+        timesheet.payrollWeekEndDate,
+        paycheck.payrollPeriod.periodStart,
+        paycheck.payrollPeriod.periodEnd,
+      ) && intervalsOverlap(
+        paycheck.payrollPeriod.periodStart,
+        paycheck.payrollPeriod.periodEnd,
+        range.first,
+        range.last,
+      ) && (reconciliation.reasons as ReconciliationReason[])
+        .includes("UNRESOLVED_EMPLOYEE_IDENTITY");
+    });
+    if (affectedPaychecks.length > 0) {
+      unresolvedTimesheetIdsCoveredByPaycheck.add(timesheet.id);
+      for (const paycheck of affectedPaychecks) openIssueKeys.add(`paycheck:${paycheck.id}`);
+    } else {
+      openIssueKeys.add(`legacy-timesheet:${timesheet.id}`);
+    }
+  }
   const now = new Date();
   const today = dateKeyInTimeZone(now);
   const days: PayrollCalendarDay[] = [];
@@ -337,7 +401,7 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
     const dayState = legacyTimesheetIds.length > 0
       ? {
           status: "NEEDS_REVIEW" as const,
-          detail: "A legacy Timesheet entry with a matching historical name snapshot exists, but its Employee ID is unresolved. It is not counted as this employee's confirmed Payroll evidence.",
+          detail: "Unresolved historical Timesheet evidence overlaps this date. It is not attributed to this employee or counted as confirmed Payroll evidence.",
         }
       : derivedDayState;
     const status: PayrollStatus = dayState.status;
@@ -351,7 +415,11 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
       const coveredReasons = new Set(issuePaychecks.flatMap((item) =>
         reconciliationByPaycheckId.get(item.id)!.reasons));
       if (!coveredReasons.has("UNRESOLVED_EMPLOYEE_IDENTITY")) {
-        for (const id of legacyTimesheetIds) openIssueKeys.add(`legacy-timesheet:${id}`);
+        for (const id of legacyTimesheetIds) {
+          if (!unresolvedTimesheetIdsCoveredByPaycheck.has(id)) {
+            openIssueKeys.add(`legacy-timesheet:${id}`);
+          }
+        }
       }
       if (entry && timesheet?.status === "DRAFT" && !coveredReasons.has("DRAFT_TIMESHEET_EVIDENCE")) {
         openIssueKeys.add(`draft-timesheet:${timesheet.id}`);
@@ -379,7 +447,10 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
       actionHref = `/timesheets/${timesheet.id}${timesheet.status === "DRAFT" ? "/edit" : ""}`;
       actionLabel = "Open Timesheet";
     }
-    const rate = effectiveRate(payRates, key, paychecks);
+    const rate = effectiveRate(payRates, key);
+    if (date >= range.first && date <= range.last && entry && rate.status === "UNAVAILABLE") {
+      openIssueKeys.add(`rate-evidence-date:${key}`);
+    }
     days.push({
       date: key,
       dayNumber: date.getUTCDate(),
@@ -404,7 +475,11 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
       payrollPeriodLabel: paycheck ? dateRangeLabel(paycheck.payrollPeriod.periodStart, paycheck.payrollPeriod.periodEnd) : undefined,
       paidEvidenceLabel: paycheck ? `${formatHours(paycheck.regularPaidMinutes + paycheck.overtimePaidMinutes)} aggregate paid` : undefined,
       evidenceLevel: paycheck ? "aggregate" : undefined,
-      estimatedGross: entry && rate ? formatCents(estimatedGrossCents(entry.regularMinutes, entry.overtimeMinutes, rate)) : undefined,
+      estimatedGross: entry && rate.status === "AVAILABLE"
+        ? formatCents(estimatedGrossCents(entry.regularMinutes, entry.overtimeMinutes, rate.hourlyRate))
+        : undefined,
+      estimatedGrossStatus: entry ? rate.status : undefined,
+      estimatedGrossReason: entry && rate.status === "UNAVAILABLE" ? rate.reason : undefined,
       detail,
       actionHref,
       actionLabel,
@@ -424,12 +499,19 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
       entry.workDate >= paycheck.payrollPeriod.periodStart &&
       entry.workDate <= paycheck.payrollPeriod.periodEnd));
   const pendingMinutes = pendingEntries.reduce((sum, item) => sum + item.workedMinutes, 0);
-  const pendingGrossCents = pendingEntries.reduce((sum, item) => {
-    const rate = effectiveRate(payRates, dateInputValue(item.workDate), paychecks);
-    return rate
-      ? sum + estimatedGrossCents(item.regularMinutes, item.overtimeMinutes, rate)
-      : sum;
-  }, 0);
+  const pendingRateResults = pendingEntries.map((entry) => ({
+    entry,
+    rate: effectiveRate(payRates, dateInputValue(entry.workDate)),
+  }));
+  const unavailablePendingRates = pendingRateResults.filter((item) => item.rate.status === "UNAVAILABLE");
+  const pendingGrossCents = unavailablePendingRates.length === 0
+    ? pendingRateResults.reduce((sum, item) =>
+        sum + estimatedGrossCents(
+          item.entry.regularMinutes,
+          item.entry.overtimeMinutes,
+          item.rate.status === "AVAILABLE" ? item.rate.hourlyRate : "0",
+        ), 0)
+    : undefined;
   const openIssues = openIssueKeys.size;
   const latest = paychecks[0];
   const currentPeriod = payrollPeriodForDate(parseDateOnly(today));
@@ -441,7 +523,21 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
     summary: {
       reconciledMinutes,
       pendingMinutes,
-      pendingGross: pendingEntries.length > 0 ? formatCents(pendingGrossCents) : undefined,
+      pendingGross: pendingEntries.length > 0 && pendingGrossCents !== undefined
+        ? formatCents(pendingGrossCents)
+        : undefined,
+      pendingGrossStatus: pendingEntries.length === 0
+        ? "NOT_APPLICABLE" as const
+        : pendingGrossCents === undefined
+          ? "UNAVAILABLE" as const
+          : "AVAILABLE" as const,
+      pendingGrossReason: unavailablePendingRates.some((item) =>
+        item.rate.status === "UNAVAILABLE" && item.rate.reason === "RATE_EVIDENCE_CONFLICT")
+        ? "RATE_EVIDENCE_CONFLICT" as const
+        : unavailablePendingRates.length > 0
+          ? "INCOMPLETE_VERIFIED_RATE_COVERAGE" as const
+          : undefined,
+      pendingGrossUncoveredEntryCount: unavailablePendingRates.length,
       openIssues,
       latestPaycheck: latest ? paycheckView(latest) : undefined,
       nextExpectedCheckDate: dateInputValue(currentPeriod.expectedCheckDate),

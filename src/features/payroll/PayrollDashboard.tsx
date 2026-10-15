@@ -42,7 +42,14 @@ export function PayrollDashboard({ data, preview = false, lockAction }: { data: 
       <section className="payroll-summary-grid" aria-label="Payroll summary">
         <Metric icon={FileCheck2} value={formatHours(data.summary.reconciledMinutes)} label={`Reconciled hours · ${data.summary.reconciledScopeLabel}`} color="#17c653" />
         <Metric icon={Clock3} value={formatHours(data.summary.pendingMinutes)} label={`Pending confirmation · ${data.summary.pendingScopeLabel}`} color="#f6b100" />
-        <Metric icon={Banknote} value={data.summary.pendingGross ?? "—"} label="Estimated pending gross" color="#1b84ff" />
+        <Metric
+          icon={Banknote}
+          value={data.summary.pendingGrossStatus === "UNAVAILABLE" ? "Unavailable" : data.summary.pendingGross ?? "—"}
+          label={data.summary.pendingGrossStatus === "UNAVAILABLE"
+            ? `Estimated pending gross · ${data.summary.pendingGrossUncoveredEntryCount} entr${data.summary.pendingGrossUncoveredEntryCount === 1 ? "y" : "ies"} need${data.summary.pendingGrossUncoveredEntryCount === 1 ? "s" : ""} verified rate evidence`
+            : "Estimated pending gross"}
+          color="#1b84ff"
+        />
         <Metric icon={AlertTriangle} value={String(data.summary.openIssues)} label={`Open issues · ${data.summary.issueScopeLabel}`} color="#f8285a" />
       </section>
       <div className="payroll-layout-grid">

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, FileUp, Keyboard } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileUp, Keyboard } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 
@@ -60,7 +60,8 @@ export function PaycheckReviewEditor({ initial, paycheckId }: { initial: ParsedP
   const [values, setValues] = useState(initial);
   const [state, action, pending] = useActionState(paycheckId ? correctPaycheckAction : savePaycheckAction, initialState);
   if (state.status === "saved") {
-    return <div className="payroll-empty"><CheckCircle2 aria-hidden="true" /><strong>Paycheck saved</strong><span>Reconciliation has been recalculated from the current source records.</span><Link className="button primary" href={state.paycheckId ? `/payroll/paychecks/${state.paycheckId}` : "/payroll"}>View Paycheck</Link></div>;
+    const rateConflict = state.code === "RATE_EVIDENCE_CONFLICT";
+    return <div className="payroll-empty">{rateConflict ? <AlertTriangle aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}<strong>{rateConflict ? "Paycheck saved — rate review required" : "Paycheck saved"}</strong><span>{rateConflict ? state.message : "Reconciliation has been recalculated from the current source records."}</span><Link className="button primary" href={state.paycheckId ? `/payroll/paychecks/${state.paycheckId}` : "/payroll"}>View Paycheck</Link></div>;
   }
   return <form className="grid gap-5" action={action}>
     {paycheckId ? <input type="hidden" name="paycheckId" value={paycheckId} /> : null}

@@ -215,9 +215,30 @@ enum TimesheetStatus {
   COMPLETED
 }
 
+enum TimesheetIdentityStatus {
+  NEEDS_REVIEW
+  EXPLICIT_SELECTION
+  OWNER_VERIFIED
+  REVIEWED_UNASSIGNED
+}
+
 enum PayrollReviewStatus {
   CONFIRMED
   NEEDS_REVIEW
+}
+
+enum PayRateVerificationStatus {
+  NEEDS_REVIEW
+  VERIFIED
+  CONFLICT
+  SUPERSEDED
+  EXCLUDED
+}
+
+enum PayRateProvenanceKind {
+  UNKNOWN
+  PAYCHECK
+  INDEPENDENT
 }
 
 enum EquipmentFuelType {
@@ -1157,20 +1178,23 @@ model AssignmentCrewMember {
 }
 
 model WeeklyTimesheet {
-  id                         String           @id @default(cuid())
-  payrollWeekStartDate       DateTime         @db.Date
-  payrollWeekEndDate         DateTime         @db.Date
-  status                     TimesheetStatus  @default(DRAFT)
-  primaryEmployeeDisplayName String
-  primaryEmployeeKey         String
-  primaryEmployeeId          String?
-  primaryEmployee            Employee?        @relation(fields: [primaryEmployeeId], references: [id], onDelete: SetNull, map: "WeeklyTimesheet_primaryEmployee_fkey")
-  workedMinutesTotal         Int              @default(0)
-  regularMinutesTotal        Int              @default(0)
-  overtimeMinutesTotal       Int              @default(0)
-  entries                    DailyTimeEntry[]
-  createdAt                  DateTime         @default(now())
-  updatedAt                  DateTime         @updatedAt
+  id                            String                  @id @default(cuid())
+  payrollWeekStartDate          DateTime                @db.Date
+  payrollWeekEndDate            DateTime                @db.Date
+  status                        TimesheetStatus         @default(DRAFT)
+  primaryEmployeeDisplayName    String
+  primaryEmployeeKey            String
+  primaryEmployeeId             String?
+  primaryEmployee               Employee?               @relation(fields: [primaryEmployeeId], references: [id], onDelete: SetNull, map: "WeeklyTimesheet_primaryEmployee_fkey")
+  primaryEmployeeIdentityStatus TimesheetIdentityStatus @default(NEEDS_REVIEW)
+  identityCandidateEmployeeId   String?
+  identityVersion               Int                     @default(1)
+  workedMinutesTotal            Int                     @default(0)
+  regularMinutesTotal           Int                     @default(0)
+  overtimeMinutesTotal          Int                     @default(0)
+  entries                       DailyTimeEntry[]
+  createdAt                     DateTime                @default(now())
+  updatedAt                     DateTime                @updatedAt
 
   @@unique([payrollWeekStartDate, primaryEmployeeKey])
   @@index([payrollWeekStartDate])
@@ -1178,6 +1202,8 @@ model WeeklyTimesheet {
   @@index([status])
   @@index([primaryEmployeeKey])
   @@index([primaryEmployeeId])
+  @@index([primaryEmployeeIdentityStatus, payrollWeekStartDate], map: "WeeklyTimesheet_identityStatus_weekStart_idx")
+  @@index([primaryEmployeeId, primaryEmployeeIdentityStatus, payrollWeekStartDate], map: "WeeklyTimesheet_employee_identityStatus_weekStart_idx")
 }
 
 model PayrollPeriod {
@@ -1223,7 +1249,7 @@ model Paycheck {
   notes                   String?
   importedAt              DateTime            @default(now())
   correctedAt             DateTime?
-  derivedPayRate          EmployeePayRate?    @relation("PaycheckDerivedPayRate")
+  derivedPayRates         EmployeePayRate[]   @relation("PaycheckDerivedPayRate")
   createdAt               DateTime            @default(now())
   updatedAt               DateTime            @updatedAt
 
@@ -1232,19 +1258,24 @@ model Paycheck {
 }
 
 model EmployeePayRate {
-  id               String    @id @default(cuid())
-  employeeId       String
-  employee         Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade, map: "EmployeePayRate_employee_fkey")
-  effectiveFrom    DateTime  @db.Date
-  hourlyRate       Decimal   @db.Decimal(10, 4)
-  sourceNote       String?
-  sourcePaycheckId String?   @unique(map: "EmployeePayRate_sourcePaycheckId_key")
-  sourcePaycheck   Paycheck? @relation("PaycheckDerivedPayRate", fields: [sourcePaycheckId], references: [id], onDelete: SetNull, map: "EmployeePayRate_sourcePaycheck_fkey")
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                            String                    @id @default(cuid())
+  employeeId                    String
+  employee                      Employee                  @relation(fields: [employeeId], references: [id], onDelete: Restrict, map: "EmployeePayRate_employee_fkey")
+  effectiveFrom                 DateTime                  @db.Date
+  hourlyRate                    Decimal                   @db.Decimal(10, 4)
+  sourceNote                    String?
+  sourcePaycheckId              String?
+  sourcePaycheck                Paycheck?                 @relation("PaycheckDerivedPayRate", fields: [sourcePaycheckId], references: [id], onDelete: SetNull, map: "EmployeePayRate_sourcePaycheck_fkey")
+  verificationStatus            PayRateVerificationStatus @default(NEEDS_REVIEW)
+  provenanceKind                PayRateProvenanceKind     @default(UNKNOWN)
+  provenanceCandidatePaycheckId String?
+  evidenceVersion               Int                       @default(1)
+  createdAt                     DateTime                  @default(now())
+  updatedAt                     DateTime                  @updatedAt
 
-  @@unique([employeeId, effectiveFrom], map: "EmployeePayRate_employee_effective_key")
   @@index([employeeId, effectiveFrom], map: "EmployeePayRate_employee_effective_idx")
+  @@index([employeeId, verificationStatus, effectiveFrom], map: "EmployeePayRate_employee_verification_effective_idx")
+  @@index([sourcePaycheckId], map: "EmployeePayRate_sourcePaycheckId_idx")
 }
 
 model DailyTimeEntry {

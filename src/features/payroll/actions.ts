@@ -85,6 +85,43 @@ function parseReviewPayload(formData: FormData) {
   }
 }
 
+async function acquireEvidenceLock(
+  tx: Prisma.TransactionClient,
+  scope: "paycheck" | "rate-slot",
+  key: string,
+) {
+  await tx.$executeRaw`
+    SELECT pg_advisory_xact_lock(
+      hashtextextended(CAST(${`nam-payroll:${scope}:${key}`} AS text), 0::bigint)
+    )
+  `;
+}
+
+function uniqueConflictKind(error: unknown) {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
+    return undefined;
+  }
+  const target = error.meta?.target;
+  const description = Array.isArray(target)
+    ? target.map(String).join(" ")
+    : String(target ?? error.message);
+  if (
+    description.includes("EmployeePayRate_verified_employee_effective_key") ||
+    (description.includes("employeeId") && description.includes("effectiveFrom"))
+  ) return "RATE_SLOT" as const;
+  if (
+    description.includes("PayrollPeriod_employee_period_key") ||
+    (description.includes("employeeId") &&
+      description.includes("periodStart") &&
+      description.includes("periodEnd"))
+  ) return "PAYROLL_PERIOD" as const;
+  if (
+    description.includes("Paycheck_employee_fingerprint_key") ||
+    description.includes("sourceFingerprint")
+  ) return "PAYCHECK_FINGERPRINT" as const;
+  return "OTHER" as const;
+}
+
 async function reconcilePaycheckDerivedRate(
   tx: Prisma.TransactionClient,
   input: {
@@ -92,58 +129,66 @@ async function reconcilePaycheckDerivedRate(
     employeeId: string;
     effectiveFrom: Date;
     hourlyRate: Prisma.Decimal | null;
+    sourceNote: string;
   },
-) {
-  const linkedRate = await tx.employeePayRate.findUnique({
-    where: { sourcePaycheckId: input.paycheckId },
+): Promise<"VERIFIED" | "CONFLICT" | "NOT_ESTABLISHED"> {
+  await acquireEvidenceLock(tx, "paycheck", input.paycheckId);
+  if (input.hourlyRate !== null) {
+    await acquireEvidenceLock(
+      tx,
+      "rate-slot",
+      `${input.employeeId}:${input.effectiveFrom.toISOString().slice(0, 10)}`,
+    );
+  }
+  const linkedRates = await tx.employeePayRate.findMany({
+    where: {
+      sourcePaycheckId: input.paycheckId,
+      provenanceKind: "PAYCHECK",
+      verificationStatus: { in: ["VERIFIED", "CONFLICT"] },
+    },
+    orderBy: [{ evidenceVersion: "desc" }, { createdAt: "desc" }],
   });
-  if (linkedRate && linkedRate.employeeId !== input.employeeId) {
+  if (linkedRates.some((rate) => rate.employeeId !== input.employeeId)) {
     throw new Error("PAY_RATE_PROVENANCE_MISMATCH");
   }
 
-  if (input.hourlyRate === null) {
-    if (linkedRate) {
-      await tx.employeePayRate.delete({ where: { id: linkedRate.id } });
-    }
-    return;
+  const nextEvidenceVersion = (linkedRates[0]?.evidenceVersion ?? 0) + 1;
+  if (linkedRates.length > 0) {
+    await tx.employeePayRate.updateMany({
+      where: { id: { in: linkedRates.map((rate) => rate.id) } },
+      data: {
+        verificationStatus: "SUPERSEDED",
+        evidenceVersion: { increment: 1 },
+      },
+    });
   }
 
-  const destinationRate = await tx.employeePayRate.findUnique({
+  if (input.hourlyRate === null) {
+    return "NOT_ESTABLISHED" as const;
+  }
+
+  const competingRate = await tx.employeePayRate.findFirst({
     where: {
-      employeeId_effectiveFrom: {
-        employeeId: input.employeeId,
-        effectiveFrom: input.effectiveFrom,
-      },
+      employeeId: input.employeeId,
+      effectiveFrom: input.effectiveFrom,
+      verificationStatus: { in: ["NEEDS_REVIEW", "VERIFIED", "CONFLICT"] },
     },
   });
-
-  if (linkedRate) {
-    if (destinationRate && destinationRate.id !== linkedRate.id) {
-      await tx.employeePayRate.delete({ where: { id: linkedRate.id } });
-      return;
-    }
-    await tx.employeePayRate.update({
-      where: { id: linkedRate.id },
-      data: {
-        effectiveFrom: input.effectiveFrom,
-        hourlyRate: input.hourlyRate,
-        sourceNote: "Corrected Workday paycheck evidence",
-      },
-    });
-    return;
-  }
-
-  if (!destinationRate) {
-    await tx.employeePayRate.create({
-      data: {
-        employeeId: input.employeeId,
-        effectiveFrom: input.effectiveFrom,
-        hourlyRate: input.hourlyRate,
-        sourceNote: "Corrected Workday paycheck evidence",
-        sourcePaycheckId: input.paycheckId,
-      },
-    });
-  }
+  const verificationStatus = competingRate ? "CONFLICT" as const : "VERIFIED" as const;
+  await tx.employeePayRate.create({
+    data: {
+      employeeId: input.employeeId,
+      effectiveFrom: input.effectiveFrom,
+      hourlyRate: input.hourlyRate,
+      sourceNote: input.sourceNote,
+      sourcePaycheckId: input.paycheckId,
+      verificationStatus,
+      provenanceKind: "PAYCHECK",
+      provenanceCandidatePaycheckId: null,
+      evidenceVersion: nextEvidenceVersion,
+    },
+  });
+  return verificationStatus;
 }
 
 export async function savePaycheckAction(
@@ -170,7 +215,7 @@ export async function savePaycheckAction(
     },
   );
   try {
-    const paycheckId = await prisma.$transaction(async (tx) => {
+    const saved = await prisma.$transaction(async (tx) => {
       const duplicate = await tx.paycheck.findUnique({
         where: {
           employeeId_sourceFingerprint: {
@@ -180,7 +225,22 @@ export async function savePaycheckAction(
         },
       });
       if (duplicate) {
-        return duplicate.id;
+        const rate = await tx.employeePayRate.findFirst({
+          where: {
+            sourcePaycheckId: duplicate.id,
+            provenanceKind: "PAYCHECK",
+            verificationStatus: { in: ["VERIFIED", "CONFLICT"] },
+          },
+          orderBy: [{ evidenceVersion: "desc" }, { createdAt: "desc" }],
+        });
+        return {
+          paycheckId: duplicate.id,
+          rateEvidence: rate?.verificationStatus === "CONFLICT"
+            ? "CONFLICT" as const
+            : rate?.verificationStatus === "VERIFIED"
+              ? "VERIFIED" as const
+              : "NOT_ESTABLISHED" as const,
+        };
       }
       const periodStart = parseDateOnly(value.periodStart);
       const periodEnd = parseDateOnly(value.periodEnd);
@@ -231,36 +291,45 @@ export async function savePaycheckAction(
           notes: value.notes || null,
         },
       });
-      if (value.baseRate != null) {
-        await tx.employeePayRate.upsert({
-          where: {
-            employeeId_effectiveFrom: {
-              employeeId: principal.employeeId,
-              effectiveFrom: periodStart,
-            },
-          },
-          create: {
-            employeeId: principal.employeeId,
-            effectiveFrom: periodStart,
-            hourlyRate: new Prisma.Decimal(value.baseRate),
-            sourceNote: "Imported Workday paycheck evidence",
-            sourcePaycheckId: paycheck.id,
-          },
-          update: {},
-        });
-      }
-      return paycheck.id;
+      const rateEvidence = await reconcilePaycheckDerivedRate(tx, {
+        paycheckId: paycheck.id,
+        employeeId: principal.employeeId,
+        effectiveFrom: periodStart,
+        hourlyRate: value.baseRate == null ? null : new Prisma.Decimal(value.baseRate),
+        sourceNote: "Imported Workday paycheck evidence",
+      });
+      return { paycheckId: paycheck.id, rateEvidence };
     });
     revalidatePath("/");
     revalidatePath("/payroll");
-    return { status: "saved", message: "Paycheck saved.", paycheckId };
+    return {
+      status: "saved",
+      message: saved.rateEvidence === "CONFLICT"
+        ? "Paycheck saved. Rate evidence conflicts with an existing rate and will not be used for estimates."
+        : "Paycheck saved.",
+      paycheckId: saved.paycheckId,
+      rateEvidence: saved.rateEvidence,
+      ...(saved.rateEvidence === "CONFLICT" ? { code: "RATE_EVIDENCE_CONFLICT" as const } : {}),
+    };
   } catch (error) {
-    const known = error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+    if (error instanceof Error && error.message === "PAY_RATE_PROVENANCE_MISMATCH") {
+      return {
+        status: "error",
+        code: "PAY_RATE_PROVENANCE_MISMATCH",
+        message: "Paycheck rate provenance conflicts with another employee. No payroll values were changed.",
+      };
+    }
+    const conflict = uniqueConflictKind(error);
     return {
       status: "error",
-      message: known
-        ? "A paycheck already exists for this payroll period. Open it to make a controlled correction."
-        : "Paycheck could not be saved. No payroll values were changed.",
+      ...(conflict === "RATE_SLOT" ? { code: "RATE_EVIDENCE_CONFLICT" as const } : {}),
+      message: conflict === "RATE_SLOT"
+        ? "Concurrent rate evidence occupied this employee and effective date. No paycheck was saved."
+        : conflict === "PAYCHECK_FINGERPRINT"
+          ? "This paycheck evidence has already been imported. Open the existing paycheck to make a controlled correction."
+          : conflict === "PAYROLL_PERIOD"
+            ? "A conflicting payroll period already exists. No paycheck was saved."
+            : "Paycheck could not be saved. No payroll values were changed.",
     };
   }
 }
@@ -282,7 +351,8 @@ export async function correctPaycheckAction(
   }
   const value = parsed.data;
   try {
-    await prisma.$transaction(async (tx) => {
+    const rateEvidence = await prisma.$transaction(async (tx) => {
+      await acquireEvidenceLock(tx, "paycheck", paycheckId);
       const current = await tx.paycheck.findFirst({
         where: { id: paycheckId, employeeId: principal.employeeId },
         include: { payrollPeriod: true },
@@ -322,24 +392,45 @@ export async function correctPaycheckAction(
           reviewStatus: "CONFIRMED",
         },
       });
-      await reconcilePaycheckDerivedRate(tx, {
+      return reconcilePaycheckDerivedRate(tx, {
         paycheckId: current.id,
         employeeId: principal.employeeId,
         effectiveFrom: periodStart,
         hourlyRate: value.baseRate == null ? null : new Prisma.Decimal(value.baseRate),
+        sourceNote: "Corrected Workday paycheck evidence",
       });
     });
     revalidatePath("/");
     revalidatePath("/payroll");
     revalidatePath(`/payroll/paychecks/${paycheckId}`);
-    return { status: "saved", message: "Paycheck correction saved.", paycheckId };
+    return {
+      status: "saved",
+      message: rateEvidence === "CONFLICT"
+        ? "Paycheck correction saved. Rate evidence conflicts with an existing rate and will not be used for estimates."
+        : "Paycheck correction saved.",
+      paycheckId,
+      rateEvidence,
+      ...(rateEvidence === "CONFLICT" ? { code: "RATE_EVIDENCE_CONFLICT" as const } : {}),
+    };
   } catch (error) {
-    const conflict = error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+    if (error instanceof Error && error.message === "PAY_RATE_PROVENANCE_MISMATCH") {
+      return {
+        status: "error",
+        code: "PAY_RATE_PROVENANCE_MISMATCH",
+        message: "Paycheck rate provenance conflicts with another employee. No correction was saved.",
+      };
+    }
+    const conflict = uniqueConflictKind(error);
     return {
       status: "error",
-      message: conflict
-        ? "Those dates conflict with another payroll period. No correction was saved."
-        : "Paycheck correction could not be saved.",
+      ...(conflict === "RATE_SLOT" ? { code: "RATE_EVIDENCE_CONFLICT" as const } : {}),
+      message: conflict === "RATE_SLOT"
+        ? "Concurrent rate evidence occupied this employee and effective date. No correction was saved."
+        : conflict === "PAYROLL_PERIOD"
+          ? "Those dates conflict with another payroll period. No correction was saved."
+          : conflict === "PAYCHECK_FINGERPRINT"
+            ? "The correction conflicts with existing paycheck evidence. No correction was saved."
+            : "Paycheck correction could not be saved.",
     };
   }
 }

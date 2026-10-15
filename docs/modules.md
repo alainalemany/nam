@@ -785,6 +785,10 @@ V1 foundation.
 - Preserve Weekly Timesheet result ownership while showing compact Daily Time
   Entry summaries from persisted totals and historical snapshots.
 - Use deterministic page-number pagination for history results.
+- Create new Timesheets only from an explicit active Employee selection and
+  mark that provenance as `EXPLICIT_SELECTION`.
+- Keep historical identity quarantine readable while rejecting ordinary edit,
+  completion, reopen, reassignment, and delete operations.
 
 ### Reusable Lists
 
@@ -895,9 +899,16 @@ text are discarded; reviewed Workday dates and amounts are the payroll evidence.
 ### Relationship To Other Modules
 
 Payroll consumes Work Schedule and Timesheet records without duplicating their
-edit workflows. Only canonical Employee-ID Timesheets contribute confirmed
-worked evidence; legacy null-ID Timesheets remain unresolved. Payroll financial values do not enter Day View or general
+edit workflows. Only Timesheets with the authorized Employee ID and trusted
+identity state contribute confirmed worked evidence. Date-overlapping
+`NEEDS_REVIEW` Timesheets are not attributed by name, but block a false
+confirmed reconciliation. Payroll financial values do not enter Day View or general
 operational results.
+
+Expected compensation is distinct from actual Workday payment evidence. It may
+use only verified Paycheck or independently established rate provenance. Any
+missing coverage or conflicting applicable evidence suppresses the complete
+estimate. Paycheck correction preserves superseded and competing rate rows.
 
 ### Privacy And Security
 

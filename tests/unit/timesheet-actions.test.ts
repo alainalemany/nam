@@ -24,7 +24,7 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn((href: string) => { throw ne
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: mocks.transaction,
-    weeklyTimesheet: { updateMany: mocks.weeklyUpdateMany, deleteMany: mocks.weeklyDeleteMany },
+    weeklyTimesheet: { findUnique: mocks.weeklyFind, updateMany: mocks.weeklyUpdateMany, deleteMany: mocks.weeklyDeleteMany },
     timesheetWorkCode: { create: mocks.workCodeCreate },
   },
 }));
@@ -63,7 +63,12 @@ function formDataWith(update: (value: ReturnType<typeof payload>) => void) {
 
 function tx() {
   return {
-    weeklyTimesheet: { findUnique: mocks.weeklyFind, create: mocks.weeklyCreate, update: mocks.weeklyUpdate },
+    weeklyTimesheet: {
+      findUnique: mocks.weeklyFind,
+      create: mocks.weeklyCreate,
+      update: mocks.weeklyUpdate,
+      updateMany: mocks.weeklyUpdateMany,
+    },
     employee: { findUnique: mocks.employeeFind },
     equipment: { findMany: mocks.equipmentFind },
     timesheetWorkCode: { findMany: mocks.workCodeFind, updateMany: mocks.workCodeUpdateMany },
@@ -98,12 +103,20 @@ describe("Timesheet Server Actions", () => {
     mocks.workOrderUpdateMany.mockResolvedValue({ count: 1 });
     mocks.supportUpdateMany.mockResolvedValue({ count: 1 });
     mocks.weeklyDeleteMany.mockResolvedValue({ count: 0 });
+    mocks.weeklyUpdateMany.mockResolvedValue({ count: 1 });
   });
 
   it("creates the first-use parent and all children in one transaction", async () => {
     await expect(saveWeeklyTimesheetAction(null, { status: "idle", message: "", fieldErrors: {} }, formData())).rejects.toThrow("redirect:/timesheets/timesheet-1");
     expect(mocks.transaction).toHaveBeenCalledTimes(1);
-    expect(mocks.weeklyCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ primaryEmployeeId: "employee-1", primaryEmployeeDisplayName: "Alex Operator", primaryEmployeeKey: "alex operator" }) });
+    expect(mocks.weeklyCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
+      primaryEmployeeId: "employee-1",
+      primaryEmployeeIdentityStatus: "EXPLICIT_SELECTION",
+      primaryEmployeeDisplayName: "Alex Operator",
+      primaryEmployeeKey: "alex operator",
+      identityCandidateEmployeeId: null,
+      identityVersion: 1,
+    }) });
     expect(mocks.entryUpsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ workedMinutes: 690, primaryEquipmentDisplayNameSnapshot: "Dragline 1" }) }));
     expect(mocks.allocationUpsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ workCodeSnapshot: "P-137", workOrderSnapshot: "WO-1", allocatedMinutes: 690 }) }));
     expect(mocks.supportUpsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ supportPersonDisplayNameSnapshot: "Pat Smith" }) }));
@@ -128,6 +141,8 @@ describe("Timesheet Server Actions", () => {
       id: "timesheet-1",
       status: "DRAFT",
       primaryEmployeeId: "employee-1",
+      primaryEmployeeIdentityStatus: "EXPLICIT_SELECTION",
+      identityVersion: 1,
       primaryEmployeeDisplayName: "Historical Alex Name",
       primaryEmployeeKey: "historical alex name",
       entries: [],
@@ -135,7 +150,13 @@ describe("Timesheet Server Actions", () => {
     await expect(saveWeeklyTimesheetAction("timesheet-1", { status: "idle", message: "", fieldErrors: {} }, formData()))
       .rejects.toThrow("redirect:/timesheets/timesheet-1");
     expect(mocks.employeeFind).not.toHaveBeenCalled();
-    expect(mocks.weeklyUpdate).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mocks.weeklyUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        id: "timesheet-1",
+        primaryEmployeeId: "employee-1",
+        primaryEmployeeIdentityStatus: { in: ["EXPLICIT_SELECTION", "OWNER_VERIFIED"] },
+        identityVersion: 1,
+      },
       data: expect.objectContaining({
         primaryEmployeeId: "employee-1",
         primaryEmployeeDisplayName: "Historical Alex Name",
@@ -149,6 +170,7 @@ describe("Timesheet Server Actions", () => {
       id: "timesheet-legacy",
       status: "DRAFT",
       primaryEmployeeId: null,
+      primaryEmployeeIdentityStatus: "NEEDS_REVIEW",
       primaryEmployeeDisplayName: "Legacy Operator",
       primaryEmployeeKey: "legacy operator",
       entries: [],
@@ -158,25 +180,73 @@ describe("Timesheet Server Actions", () => {
       { status: "idle", message: "", fieldErrors: {} },
       formData(),
     );
-    expect(result.message).toBe("Timesheet ownership cannot be changed during ordinary editing.");
+    expect(result).toMatchObject({
+      status: "error",
+      code: "IDENTITY_REVIEW_REQUIRED",
+      message: "Historical ownership must be reviewed before this Timesheet can be changed.",
+    });
     expect(mocks.weeklyUpdate).not.toHaveBeenCalled();
   });
 
+  it("does not overwrite an identity decision that races an ordinary save", async () => {
+    mocks.weeklyFind.mockResolvedValue({
+      id: "timesheet-1",
+      status: "DRAFT",
+      primaryEmployeeId: "employee-1",
+      primaryEmployeeIdentityStatus: "EXPLICIT_SELECTION",
+      identityVersion: 3,
+      primaryEmployeeDisplayName: "Historical Alex Name",
+      primaryEmployeeKey: "historical alex name",
+      entries: [],
+    });
+    mocks.weeklyUpdateMany.mockResolvedValueOnce({ count: 0 });
+
+    const result = await saveWeeklyTimesheetAction(
+      "timesheet-1",
+      { status: "idle", message: "", fieldErrors: {} },
+      formData(),
+    );
+
+    expect(result).toMatchObject({
+      status: "error",
+      code: "IDENTITY_REVIEW_REQUIRED",
+    });
+    expect(mocks.weeklyUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ identityVersion: 3 }),
+    }));
+    expect(mocks.entryUpsert).not.toHaveBeenCalled();
+  });
+
   it("returns completion feedback when allocations do not reconcile", async () => {
-    mocks.weeklyFind.mockResolvedValue({ id: "timesheet-1", status: "DRAFT", entries: [{ workedMinutes: 690, allocations: [{ allocatedMinutes: 600 }] }] });
+    mocks.weeklyFind.mockResolvedValue({ id: "timesheet-1", status: "DRAFT", primaryEmployeeIdentityStatus: "EXPLICIT_SELECTION", entries: [{ workedMinutes: 690, allocations: [{ allocatedMinutes: 600 }] }] });
     const result = await completeWeeklyTimesheetAction("timesheet-1", { ok: true, message: "" }, new FormData());
     expect(result).toMatchObject({ ok: false });
     expect(mocks.weeklyUpdate).not.toHaveBeenCalled();
   });
 
   it("completes a reconciled Draft and supports explicit reopen", async () => {
-    mocks.weeklyFind.mockResolvedValue({ id: "timesheet-1", status: "DRAFT", entries: [{ workedMinutes: 690, allocations: [{ allocatedMinutes: 690 }] }] });
+    mocks.weeklyFind.mockResolvedValue({ id: "timesheet-1", status: "DRAFT", primaryEmployeeIdentityStatus: "EXPLICIT_SELECTION", entries: [{ workedMinutes: 690, allocations: [{ allocatedMinutes: 690 }] }] });
     await expect(completeWeeklyTimesheetAction("timesheet-1", { ok: true, message: "" }, new FormData())).rejects.toThrow("redirect:/timesheets/timesheet-1");
-    expect(mocks.weeklyUpdate).toHaveBeenCalledWith({ where: { id: "timesheet-1" }, data: { status: "COMPLETED" } });
+    expect(mocks.weeklyUpdateMany).toHaveBeenCalledWith({
+      where: {
+        id: "timesheet-1",
+        status: "DRAFT",
+        primaryEmployeeIdentityStatus: { in: ["EXPLICIT_SELECTION", "OWNER_VERIFIED"] },
+      },
+      data: { status: "COMPLETED" },
+    });
 
     mocks.weeklyUpdateMany.mockResolvedValue({ count: 1 });
-    await expect(reopenWeeklyTimesheetAction("timesheet-1")).rejects.toThrow("redirect:/timesheets/timesheet-1/edit");
-    expect(mocks.weeklyUpdateMany).toHaveBeenCalledWith({ where: { id: "timesheet-1", status: "COMPLETED" }, data: { status: "DRAFT" } });
+    mocks.weeklyFind.mockResolvedValue({ primaryEmployeeIdentityStatus: "EXPLICIT_SELECTION" });
+    await expect(reopenWeeklyTimesheetAction("timesheet-1", { ok: true, message: "" }, new FormData())).rejects.toThrow("redirect:/timesheets/timesheet-1/edit");
+    expect(mocks.weeklyUpdateMany).toHaveBeenCalledWith({
+      where: {
+        id: "timesheet-1",
+        status: "COMPLETED",
+        primaryEmployeeIdentityStatus: { in: ["EXPLICIT_SELECTION", "OWNER_VERIFIED"] },
+      },
+      data: { status: "DRAFT" },
+    });
   });
 
   it("normalizes Work Code uniqueness in reference management", async () => {
@@ -272,7 +342,7 @@ describe("Timesheet Server Actions", () => {
   });
 
   it("rejects saves to Completed Timesheets", async () => {
-    mocks.weeklyFind.mockResolvedValue({ id: "timesheet-1", status: "COMPLETED", entries: [] });
+    mocks.weeklyFind.mockResolvedValue({ id: "timesheet-1", status: "COMPLETED", primaryEmployeeIdentityStatus: "EXPLICIT_SELECTION", entries: [] });
     const result = await saveWeeklyTimesheetAction(
       "timesheet-1",
       { status: "idle", message: "", fieldErrors: {} },
@@ -283,10 +353,91 @@ describe("Timesheet Server Actions", () => {
   });
 
   it("limits deletion to Draft Timesheets", async () => {
-    await expect(deleteWeeklyTimesheetAction("timesheet-1")).rejects.toThrow("redirect:/timesheets");
+    mocks.weeklyFind.mockResolvedValue({ primaryEmployeeIdentityStatus: "EXPLICIT_SELECTION" });
+    await expect(deleteWeeklyTimesheetAction("timesheet-1", { ok: true, message: "" }, new FormData())).rejects.toThrow("redirect:/timesheets");
     expect(mocks.weeklyDeleteMany).toHaveBeenCalledWith({
-      where: { id: "timesheet-1", status: "DRAFT" },
+      where: {
+        id: "timesheet-1",
+        status: "DRAFT",
+        primaryEmployeeIdentityStatus: { in: ["EXPLICIT_SELECTION", "OWNER_VERIFIED"] },
+      },
     });
+  });
+
+  it("rejects every ordinary mutation for a quarantined Timesheet", async () => {
+    mocks.weeklyFind.mockResolvedValue({
+      id: "timesheet-quarantined",
+      status: "DRAFT",
+      primaryEmployeeIdentityStatus: "NEEDS_REVIEW",
+      primaryEmployeeId: null,
+      entries: [],
+    });
+
+    const save = await saveWeeklyTimesheetAction(
+      "timesheet-quarantined",
+      { status: "idle", message: "", fieldErrors: {} },
+      formData(),
+    );
+    const complete = await completeWeeklyTimesheetAction(
+      "timesheet-quarantined",
+      { ok: true, message: "" },
+      new FormData(),
+    );
+    const reopen = await reopenWeeklyTimesheetAction(
+      "timesheet-quarantined",
+      { ok: true, message: "" },
+      new FormData(),
+    );
+    const remove = await deleteWeeklyTimesheetAction(
+      "timesheet-quarantined",
+      { ok: true, message: "" },
+      new FormData(),
+    );
+
+    expect(save).toMatchObject({ status: "error", code: "IDENTITY_REVIEW_REQUIRED" });
+    expect(complete).toMatchObject({ ok: false, code: "IDENTITY_REVIEW_REQUIRED" });
+    expect(reopen).toMatchObject({ ok: false, code: "IDENTITY_REVIEW_REQUIRED" });
+    expect(remove).toMatchObject({ ok: false, code: "IDENTITY_REVIEW_REQUIRED" });
+    expect(mocks.weeklyUpdateMany).not.toHaveBeenCalled();
+    expect(mocks.weeklyDeleteMany).not.toHaveBeenCalled();
+  });
+
+  it("fails closed for an unrecognized future identity state", async () => {
+    mocks.weeklyFind.mockResolvedValue({
+      id: "timesheet-future-state",
+      status: "DRAFT",
+      primaryEmployeeIdentityStatus: "FUTURE_UNTRUSTED_STATE",
+      primaryEmployeeId: "employee-1",
+      entries: [],
+    });
+
+    const save = await saveWeeklyTimesheetAction(
+      "timesheet-future-state",
+      { status: "idle", message: "", fieldErrors: {} },
+      formData(),
+    );
+    const complete = await completeWeeklyTimesheetAction(
+      "timesheet-future-state",
+      { ok: true, message: "" },
+      new FormData(),
+    );
+    const reopen = await reopenWeeklyTimesheetAction(
+      "timesheet-future-state",
+      { ok: true, message: "" },
+      new FormData(),
+    );
+    const remove = await deleteWeeklyTimesheetAction(
+      "timesheet-future-state",
+      { ok: true, message: "" },
+      new FormData(),
+    );
+
+    for (const result of [save, complete, reopen, remove]) {
+      expect(result).toMatchObject({ code: "IDENTITY_REVIEW_REQUIRED" });
+    }
+    expect(mocks.weeklyUpdate).not.toHaveBeenCalled();
+    expect(mocks.weeklyUpdateMany).not.toHaveBeenCalled();
+    expect(mocks.weeklyDeleteMany).not.toHaveBeenCalled();
   });
 
   it("returns a safe owner/week uniqueness conflict", async () => {
