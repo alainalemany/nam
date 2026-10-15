@@ -53,7 +53,10 @@ export default function PayrollPreviewPage() {
       pendingMinutes: 2520,
       pendingGross: "$1,657.50",
       openIssues: 1,
-      nextExpectedCheckDate: "2026-10-16",
+      nextExpectedCheckDate: "2026-10-21",
+      reconciledScopeLabel: "Workday periods ending in selected month",
+      pendingScopeLabel: "uncovered work dates in NAM weeks ending in selected month",
+      issueScopeLabel: "unique actionable calendar records and Workday periods in selected scope",
       latestPaycheck: {
         id: "preview-paycheck",
         periodStart: "2026-09-21",
@@ -109,8 +112,12 @@ export default function PayrollPreviewPage() {
       parserVersion: "workday-v1.0.0",
       fingerprint: "a".repeat(64),
       status: "RECONCILED" as const,
+      reason: "FULL_AGGREGATE_MATCH" as const,
+      reasons: ["FULL_AGGREGATE_MATCH" as const],
       differenceMinutes: 0,
+      differences: { totalMinutes: 0, regularMinutes: 0, overtimeMinutes: 0 },
       explanation: "Aggregate match.",
+      boundaryExplanation: undefined,
     }],
   } satisfies DashboardData;
   return <PayrollDashboard data={data} preview />;

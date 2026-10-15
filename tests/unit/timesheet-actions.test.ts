@@ -12,6 +12,7 @@ import {
 const mocks = vi.hoisted(() => ({
   transaction: vi.fn(), weeklyFind: vi.fn(), weeklyCreate: vi.fn(), weeklyUpdate: vi.fn(), weeklyUpdateMany: vi.fn(),
   weeklyDeleteMany: vi.fn(),
+  employeeFind: vi.fn(),
   equipmentFind: vi.fn(), workCodeFind: vi.fn(), workOrderFind: vi.fn(), supportFind: vi.fn(), assignmentFind: vi.fn(),
   entryUpsert: vi.fn(), entryDeleteMany: vi.fn(), allocationUpsert: vi.fn(), allocationDeleteMany: vi.fn(),
   supportDeleteMany: vi.fn(), supportUpsert: vi.fn(), workCodeUpdateMany: vi.fn(), workOrderUpdateMany: vi.fn(), supportUpdateMany: vi.fn(),
@@ -36,7 +37,8 @@ const supportPerson = { id: "person-1", displayName: "Pat Smith", tradeOrRole: "
 function payload() {
   return {
     payrollWeekStartDate: "2026-07-13",
-    primaryEmployeeDisplayName: "  Alex   Operator ",
+    primaryEmployeeId: "employee-1",
+    primaryEmployeeDisplayName: "Untrusted client value",
     entries: [{
       workDate: "2026-07-13", clockIn: "07:00", clockOut: "19:00", unpaidBreakMinutes: 30,
       primaryEquipmentId: "equipment-1", workScheduleDailyAssignmentId: "", notes: "Production",
@@ -62,6 +64,7 @@ function formDataWith(update: (value: ReturnType<typeof payload>) => void) {
 function tx() {
   return {
     weeklyTimesheet: { findUnique: mocks.weeklyFind, create: mocks.weeklyCreate, update: mocks.weeklyUpdate },
+    employee: { findUnique: mocks.employeeFind },
     equipment: { findMany: mocks.equipmentFind },
     timesheetWorkCode: { findMany: mocks.workCodeFind, updateMany: mocks.workCodeUpdateMany },
     timesheetWorkOrder: { findMany: mocks.workOrderFind, updateMany: mocks.workOrderUpdateMany },
@@ -85,6 +88,7 @@ describe("Timesheet Server Actions", () => {
     mocks.workOrderFind.mockResolvedValue([workOrder]);
     mocks.supportFind.mockResolvedValue([supportPerson]);
     mocks.assignmentFind.mockResolvedValue([]);
+    mocks.employeeFind.mockResolvedValue({ id: "employee-1", displayName: "Alex Operator", employeeCode: "OP-1", isActive: true });
     mocks.entryUpsert.mockResolvedValue({ id: "entry-1" });
     mocks.allocationUpsert.mockResolvedValue({ id: "allocation-1" });
     mocks.entryDeleteMany.mockResolvedValue({ count: 0 });
@@ -99,10 +103,63 @@ describe("Timesheet Server Actions", () => {
   it("creates the first-use parent and all children in one transaction", async () => {
     await expect(saveWeeklyTimesheetAction(null, { status: "idle", message: "", fieldErrors: {} }, formData())).rejects.toThrow("redirect:/timesheets/timesheet-1");
     expect(mocks.transaction).toHaveBeenCalledTimes(1);
-    expect(mocks.weeklyCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ primaryEmployeeDisplayName: "Alex   Operator", primaryEmployeeKey: "alex operator" }) });
+    expect(mocks.weeklyCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ primaryEmployeeId: "employee-1", primaryEmployeeDisplayName: "Alex Operator", primaryEmployeeKey: "alex operator" }) });
     expect(mocks.entryUpsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ workedMinutes: 690, primaryEquipmentDisplayNameSnapshot: "Dragline 1" }) }));
     expect(mocks.allocationUpsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ workCodeSnapshot: "P-137", workOrderSnapshot: "WO-1", allocatedMinutes: 690 }) }));
     expect(mocks.supportUpsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ supportPersonDisplayNameSnapshot: "Pat Smith" }) }));
+  });
+
+  it("requires a valid active canonical Employee for every new Timesheet", async () => {
+    const missing = formDataWith((value) => { value.primaryEmployeeId = ""; });
+    expect((await saveWeeklyTimesheetAction(null, { status: "idle", message: "", fieldErrors: {} }, missing)).message)
+      .toBe("Select a primary employee.");
+
+    mocks.employeeFind.mockResolvedValueOnce(null);
+    expect((await saveWeeklyTimesheetAction(null, { status: "idle", message: "", fieldErrors: {} }, formData())).message)
+      .toBe("The selected Employee could not be found.");
+
+    mocks.employeeFind.mockResolvedValueOnce({ id: "employee-1", displayName: "Alex Operator", isActive: false });
+    expect((await saveWeeklyTimesheetAction(null, { status: "idle", message: "", fieldErrors: {} }, formData())).message)
+      .toBe("Inactive Employees cannot own new Timesheets.");
+  });
+
+  it("preserves canonical identity and name snapshots while editing", async () => {
+    mocks.weeklyFind.mockResolvedValue({
+      id: "timesheet-1",
+      status: "DRAFT",
+      primaryEmployeeId: "employee-1",
+      primaryEmployeeDisplayName: "Historical Alex Name",
+      primaryEmployeeKey: "historical alex name",
+      entries: [],
+    });
+    await expect(saveWeeklyTimesheetAction("timesheet-1", { status: "idle", message: "", fieldErrors: {} }, formData()))
+      .rejects.toThrow("redirect:/timesheets/timesheet-1");
+    expect(mocks.employeeFind).not.toHaveBeenCalled();
+    expect(mocks.weeklyUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        primaryEmployeeId: "employee-1",
+        primaryEmployeeDisplayName: "Historical Alex Name",
+        primaryEmployeeKey: "historical alex name",
+      }),
+    }));
+  });
+
+  it("preserves unresolved legacy ownership and rejects ordinary reassignment", async () => {
+    mocks.weeklyFind.mockResolvedValue({
+      id: "timesheet-legacy",
+      status: "DRAFT",
+      primaryEmployeeId: null,
+      primaryEmployeeDisplayName: "Legacy Operator",
+      primaryEmployeeKey: "legacy operator",
+      entries: [],
+    });
+    const result = await saveWeeklyTimesheetAction(
+      "timesheet-legacy",
+      { status: "idle", message: "", fieldErrors: {} },
+      formData(),
+    );
+    expect(result.message).toBe("Timesheet ownership cannot be changed during ordinary editing.");
+    expect(mocks.weeklyUpdate).not.toHaveBeenCalled();
   });
 
   it("returns completion feedback when allocations do not reconcile", async () => {
@@ -135,7 +192,9 @@ describe("Timesheet Server Actions", () => {
     mocks.assignmentFind.mockResolvedValue([{
       id: "assignment-1",
       assignmentDate: new Date("2026-07-13T00:00:00.000Z"),
-      weeklySchedule: { primaryEmployeeKey: "alex operator" },
+      plannedStatus: "SCHEDULED",
+      actualStatus: "UNKNOWN",
+      weeklySchedule: { primaryEmployeeId: "employee-1", status: "ACTIVE" },
     }]);
     const data = formDataWith((value) => {
       value.entries[0].workScheduleDailyAssignmentId = "assignment-1";
@@ -150,7 +209,9 @@ describe("Timesheet Server Actions", () => {
     mocks.assignmentFind.mockResolvedValue([{
       id: "assignment-1",
       assignmentDate: new Date("2026-07-13T00:00:00.000Z"),
-      weeklySchedule: { primaryEmployeeKey: "different operator" },
+      plannedStatus: "SCHEDULED",
+      actualStatus: "UNKNOWN",
+      weeklySchedule: { primaryEmployeeId: "employee-2", status: "ACTIVE" },
     }]);
     const data = formDataWith((value) => {
       value.entries[0].workScheduleDailyAssignmentId = "assignment-1";
@@ -173,7 +234,9 @@ describe("Timesheet Server Actions", () => {
     mocks.assignmentFind.mockResolvedValue([{
       id: "assignment-1",
       assignmentDate: new Date("2026-07-14T00:00:00.000Z"),
-      weeklySchedule: { primaryEmployeeKey: "alex operator" },
+      plannedStatus: "SCHEDULED",
+      actualStatus: "UNKNOWN",
+      weeklySchedule: { primaryEmployeeId: "employee-1", status: "ACTIVE" },
     }]);
     const data = formDataWith((value) => {
       value.entries[0].workScheduleDailyAssignmentId = "assignment-1";
@@ -185,6 +248,27 @@ describe("Timesheet Server Actions", () => {
       data,
     );
     expect(result.message).toBe("Work Schedule context must match the Daily Time Entry work date.");
+  });
+
+  it.each([
+    ["DRAFT", "SCHEDULED", "UNKNOWN"],
+    ["ARCHIVED", "SCHEDULED", "UNKNOWN"],
+    ["ACTIVE", "NON_WORKING", "UNKNOWN"],
+    ["ACTIVE", "SCHEDULED", "CANCELLED"],
+    ["ACTIVE", "UNKNOWN", "UNKNOWN"],
+  ])("rejects ineligible schedule context (%s/%s/%s)", async (scheduleStatus, plannedStatus, actualStatus) => {
+    mocks.assignmentFind.mockResolvedValue([{
+      id: "assignment-1",
+      assignmentDate: new Date("2026-07-13T00:00:00.000Z"),
+      plannedStatus,
+      actualStatus,
+      weeklySchedule: { primaryEmployeeId: "employee-1", status: scheduleStatus },
+    }]);
+    const data = formDataWith((value) => {
+      value.entries[0].workScheduleDailyAssignmentId = "assignment-1";
+    });
+    const result = await saveWeeklyTimesheetAction(null, { status: "idle", message: "", fieldErrors: {} }, data);
+    expect(result.message).toBe("Only Active scheduled Work Schedule assignments may be selected.");
   });
 
   it("rejects saves to Completed Timesheets", async () => {

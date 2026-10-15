@@ -23,8 +23,11 @@ function Metric({ icon: Icon, value, label, color }: { icon: typeof Clock3; valu
   return <Card className="payroll-metric" style={{ "--metric-color": color } as React.CSSProperties}><CardContent><span className="payroll-metric-icon"><Icon aria-hidden="true" /></span><strong className="payroll-metric-value">{value}</strong><span className="payroll-metric-label">{label}</span></CardContent></Card>;
 }
 
-function paycheckStatus(status: DashboardData["paychecks"][number]["status"]) {
-  return status === "RECONCILED" ? "Aggregate match" : status.replaceAll("_", " ");
+function paycheckStatus(paycheck: DashboardData["paychecks"][number]) {
+  if (paycheck.status === "RECONCILED") return "Aggregate match";
+  if (paycheck.reason === "REGULAR_OVERTIME_CLASSIFICATION_MISMATCH") return "Regular/OT mismatch";
+  if (paycheck.reason === "TOTAL_HOURS_MISMATCH") return "Total-hours mismatch";
+  return paycheck.status.replaceAll("_", " ");
 }
 
 export function PayrollDashboard({ data, preview = false, lockAction }: { data: DashboardData; preview?: boolean; lockAction?: () => Promise<void> }) {
@@ -37,10 +40,10 @@ export function PayrollDashboard({ data, preview = false, lockAction }: { data: 
         <div className="payroll-actions"><Link className="button secondary" href="/timesheets">Open Timesheets</Link><Link className="button primary" href="/payroll/import">Import Paycheck</Link>{!preview && lockAction ? <form action={lockAction}><button className="button secondary" type="submit">Lock</button></form> : null}</div>
       </header>
       <section className="payroll-summary-grid" aria-label="Payroll summary">
-        <Metric icon={FileCheck2} value={formatHours(data.summary.reconciledMinutes)} label="Reconciled hours · aggregate" color="#17c653" />
-        <Metric icon={Clock3} value={formatHours(data.summary.pendingMinutes)} label="Pending paycheck confirmation" color="#f6b100" />
+        <Metric icon={FileCheck2} value={formatHours(data.summary.reconciledMinutes)} label={`Reconciled hours · ${data.summary.reconciledScopeLabel}`} color="#17c653" />
+        <Metric icon={Clock3} value={formatHours(data.summary.pendingMinutes)} label={`Pending confirmation · ${data.summary.pendingScopeLabel}`} color="#f6b100" />
         <Metric icon={Banknote} value={data.summary.pendingGross ?? "—"} label="Estimated pending gross" color="#1b84ff" />
-        <Metric icon={AlertTriangle} value={String(data.summary.openIssues)} label="Open reconciliation issues" color="#f8285a" />
+        <Metric icon={AlertTriangle} value={String(data.summary.openIssues)} label={`Open issues · ${data.summary.issueScopeLabel}`} color="#f8285a" />
       </section>
       <div className="payroll-layout-grid">
         <PayrollCalendar days={data.days} monthLabel={monthName(data.month)} previousHref={`/payroll?month=${adjacentMonth(data.month, -1)}`} nextHref={`/payroll?month=${adjacentMonth(data.month, 1)}`} />
@@ -53,7 +56,7 @@ export function PayrollDashboard({ data, preview = false, lockAction }: { data: 
           </Card>
           <Card>
             <CardHeader><CardTitle>Next Expected Check</CardTitle></CardHeader>
-            <CardContent><strong className="payroll-metric-value">{dateLabel(data.summary.nextExpectedCheckDate)}</strong><p>Projected from the Monday–Sunday cadence. An actual payslip remains authoritative.</p></CardContent>
+            <CardContent><strong className="payroll-metric-value">{dateLabel(data.summary.nextExpectedCheckDate)}</strong><p>Projected Wednesday after the current Monday–Sunday NAM week. An actual Workday check date remains authoritative.</p></CardContent>
           </Card>
         </div>
       </div>
@@ -61,12 +64,13 @@ export function PayrollDashboard({ data, preview = false, lockAction }: { data: 
         <CardHeader><CardTitle>Paycheck History</CardTitle><Link className="button secondary" href="/payroll/import">Import Paycheck</Link></CardHeader>
         {data.paychecks.length ? <>
           <div className="payroll-table-scroll">
-            <table className="payroll-history-table"><thead><tr><th>Payroll period</th><th>Check date</th><th>Regular</th><th>Overtime</th><th>Gross cash</th><th>Net pay</th><th>Status</th><th /></tr></thead><tbody>{data.paychecks.map((paycheck) => <tr key={paycheck.id}><td>{paycheck.periodLabel}</td><td>{dateLabel(paycheck.checkDate)}</td><td>{formatHours(paycheck.regularPaidMinutes)}</td><td>{formatHours(paycheck.overtimePaidMinutes)}</td><td>{formatMoney(paycheck.grossCashPay)}</td><td>{formatMoney(paycheck.netPay)}</td><td><span className={`payroll-day-status payroll-status--${paycheck.status.toLowerCase().replaceAll("_", "-")}`}>{paycheckStatus(paycheck.status)}</span></td><td><Link className="table-action" href={`/payroll/paychecks/${paycheck.id}`}>Details →</Link></td></tr>)}</tbody></table>
+            <table className="payroll-history-table"><thead><tr><th>Payroll period</th><th>Check date</th><th>Regular</th><th>Overtime</th><th>Gross cash</th><th>Net pay</th><th>Status</th><th /></tr></thead><tbody>{data.paychecks.map((paycheck) => <tr key={paycheck.id}><td>{paycheck.periodLabel}</td><td>{dateLabel(paycheck.checkDate)}</td><td>{formatHours(paycheck.regularPaidMinutes)}</td><td>{formatHours(paycheck.overtimePaidMinutes)}</td><td>{formatMoney(paycheck.grossCashPay)}</td><td>{formatMoney(paycheck.netPay)}</td><td title={paycheck.explanation}><span className={`payroll-day-status payroll-status--${paycheck.status.toLowerCase().replaceAll("_", "-")}`}>{paycheckStatus(paycheck)}</span></td><td><Link className="table-action" href={`/payroll/paychecks/${paycheck.id}`}>Details →</Link></td></tr>)}</tbody></table>
           </div>
           <div className="payroll-history-list" aria-label="Paycheck history">
             {data.paychecks.map((paycheck) => <article className="payroll-history-item" key={paycheck.id}>
-              <div className="payroll-history-item-heading"><div><span>Payroll period</span><strong>{paycheck.periodLabel}</strong></div><span className={`payroll-day-status payroll-status--${paycheck.status.toLowerCase().replaceAll("_", "-")}`}>{paycheckStatus(paycheck.status)}</span></div>
+              <div className="payroll-history-item-heading"><div><span>Payroll period</span><strong>{paycheck.periodLabel}</strong></div><span className={`payroll-day-status payroll-status--${paycheck.status.toLowerCase().replaceAll("_", "-")}`}>{paycheckStatus(paycheck)}</span></div>
               <dl><div><dt>Check date</dt><dd>{dateLabel(paycheck.checkDate)}</dd></div><div><dt>Regular</dt><dd>{formatHours(paycheck.regularPaidMinutes)}</dd></div><div><dt>Overtime</dt><dd>{formatHours(paycheck.overtimePaidMinutes)}</dd></div><div><dt>Gross cash</dt><dd>{formatMoney(paycheck.grossCashPay)}</dd></div><div><dt>Net pay</dt><dd>{formatMoney(paycheck.netPay)}</dd></div></dl>
+              <p className="subtle">{paycheck.explanation}</p>
               <Link className="button secondary" href={`/payroll/paychecks/${paycheck.id}`}>View paycheck details</Link>
             </article>)}
           </div>

@@ -22,6 +22,7 @@ export type DailyTimeEntryInput = {
 
 export type WeeklyTimesheetInput = {
   payrollWeekStartDate: string;
+  primaryEmployeeId?: string;
   primaryEmployeeDisplayName: string;
   entries: DailyTimeEntryInput[];
 };
@@ -48,6 +49,11 @@ export type EquipmentSnapshot = {
 };
 
 export type TimesheetFormOptions = {
+  employees: Array<{
+    id: string;
+    label: string;
+    active: boolean;
+  }>;
   equipment: Array<{ id: string; label: string; active: boolean }>;
   workCodes: Array<{ id: string; label: string; active: boolean }>;
   workOrders: Array<{ id: string; label: string; active: boolean }>;
@@ -56,7 +62,8 @@ export type TimesheetFormOptions = {
     id: string;
     workDate: string;
     label: string;
-    primaryEmployeeKey: string;
+    selectable: boolean;
+    warning?: string;
   }>;
 };
 

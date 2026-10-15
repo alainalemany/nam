@@ -819,9 +819,10 @@ The relationship is optional. Timesheet must work correctly when no Work
 Schedule exists, and payroll correctness must never depend on Work Schedule.
 If a linked Work Schedule Daily Assignment is deleted, the Timesheet link should
 become null and Timesheet-owned history should remain readable.
-When selected, the assignment must match both the Daily Time Entry work date
-and the Weekly Timesheet normalized primary employee owner. Timesheet validates
-those conditions server-side.
+For a new or changed link, the assignment must match the Daily Time Entry work
+date and canonical Employee ID, belong to an Active Weekly Schedule, and have
+effective status Scheduled. Timesheet validates those conditions server-side;
+unchanged historical links are preserved with warnings after schedule edits.
 
 Timesheet entries may later link to Daily Log activities, Payslip records,
 Shift Reports, or other records when those modules support the relationship.
@@ -883,14 +884,19 @@ text are discarded; reviewed Workday dates and amounts are the payroll evidence.
 - Duplicate-safe persistence and controlled correction
 - Exact integer-minute and Decimal money handling
 - Aggregate Timesheet/paycheck comparison without day-level overstatement
+- Inclusive Workday-period matching across intersecting NAM Timesheet weeks
+- Independent total, regular, and overtime comparison with structured reasons
+- Reconciliation only from Paychecks whose review state is Confirmed
 - Missing Timesheet detection only when evidence supports it
+- Unique actionable issue counts without repeating one period issue per day
 - Responsive calendar, summary, history, detail, and protected home overview
 - Employee-scoped server authorization that fails closed when unconfigured
 
 ### Relationship To Other Modules
 
 Payroll consumes Work Schedule and Timesheet records without duplicating their
-edit workflows. Payroll financial values do not enter Day View or general
+edit workflows. Only canonical Employee-ID Timesheets contribute confirmed
+worked evidence; legacy null-ID Timesheets remain unresolved. Payroll financial values do not enter Day View or general
 operational results.
 
 ### Privacy And Security

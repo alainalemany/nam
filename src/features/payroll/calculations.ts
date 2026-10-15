@@ -8,8 +8,20 @@ export function payrollPeriodForDate(value: Date) {
   return {
     periodStart,
     periodEnd,
-    expectedCheckDate: addDays(periodEnd, 5),
+    expectedCheckDate: addDays(periodEnd, 3),
   };
+}
+
+export function projectedCheckDateForNamPeriod(periodStart: Date, periodEnd: Date) {
+  const expectedStart = startOfPayrollWeek(periodStart);
+  const expectedEnd = endOfPayrollWeek(periodStart);
+  if (
+    dateInputValue(periodStart) !== dateInputValue(expectedStart) ||
+    dateInputValue(periodEnd) !== dateInputValue(expectedEnd)
+  ) {
+    return undefined;
+  }
+  return addDays(periodEnd, 3);
 }
 
 export function dateRangeLabel(start: Date | string, end: Date | string) {
@@ -60,47 +72,118 @@ export function formatCents(cents: number) {
   return formatMoney((cents / 100).toFixed(2));
 }
 
-export function aggregateReconciliationState(input: {
+export type ReconciliationReason =
+  | "FULL_AGGREGATE_MATCH"
+  | "TOTAL_HOURS_MISMATCH"
+  | "REGULAR_OVERTIME_CLASSIFICATION_MISMATCH"
+  | "MISSING_PAYCHECK_EVIDENCE"
+  | "DRAFT_TIMESHEET_EVIDENCE"
+  | "MISSING_TIMESHEET_EVIDENCE"
+  | "UNCONFIRMED_PAYCHECK_EVIDENCE"
+  | "UNRESOLVED_EMPLOYEE_IDENTITY"
+  | "AMBIGUOUS_TIMESHEET_EVIDENCE"
+  | "OVERLAPPING_PAYROLL_EVIDENCE";
+
+export type MinuteBreakdown = {
+  totalMinutes: number;
+  regularMinutes: number;
+  overtimeMinutes: number;
+};
+
+export function reconcilePayrollEvidence(input: {
   hasPaycheck: boolean;
-  timesheetStatus?: "DRAFT" | "COMPLETED";
-  recordedMinutes?: number;
-  paidMinutes?: number;
-}): { status: PayrollStatus; differenceMinutes: number; explanation: string } {
+  recorded?: MinuteBreakdown;
+  paid?: MinuteBreakdown;
+  evidenceIssues?: ReconciliationReason[];
+}) {
+  const issues = [...new Set(input.evidenceIssues ?? [])];
+  const recorded = input.recorded ?? { totalMinutes: 0, regularMinutes: 0, overtimeMinutes: 0 };
+  const paid = input.paid ?? { totalMinutes: 0, regularMinutes: 0, overtimeMinutes: 0 };
+  const differences = {
+    totalMinutes: recorded.totalMinutes - paid.totalMinutes,
+    regularMinutes: recorded.regularMinutes - paid.regularMinutes,
+    overtimeMinutes: recorded.overtimeMinutes - paid.overtimeMinutes,
+  };
+
   if (!input.hasPaycheck) {
-    if (input.timesheetStatus === "COMPLETED") {
+    if (issues.length > 0) {
       return {
-        status: "AWAITING_PAYROLL",
-        differenceMinutes: 0,
-        explanation: "Completed NAM hours are waiting for paycheck confirmation.",
+        status: "NEEDS_REVIEW" as const,
+        reason: issues[0],
+        reasons: issues,
+        differenceMinutes: differences.totalMinutes,
+        differences,
+        explanation: "NAM work evidence is incomplete or ambiguous and cannot yet be matched to payment evidence.",
       };
     }
     return {
-      status: "NEEDS_REVIEW",
+      status: "AWAITING_PAYROLL" as const,
+      reason: "MISSING_PAYCHECK_EVIDENCE" as const,
+      reasons: ["MISSING_PAYCHECK_EVIDENCE" as const],
       differenceMinutes: 0,
-      explanation: input.timesheetStatus === "DRAFT"
-        ? "The NAM Timesheet is still Draft."
-        : "No completed NAM Timesheet exists for this period.",
+      differences,
+      explanation: "Completed NAM hours are waiting for paycheck confirmation.",
     };
   }
-  if (input.timesheetStatus !== "COMPLETED" || input.recordedMinutes == null) {
+
+  if (issues.length > 0) {
     return {
-      status: "NEEDS_REVIEW",
-      differenceMinutes: 0,
-      explanation: "The paycheck is official, but NAM has no completed Timesheet evidence for comparison.",
+      status: "NEEDS_REVIEW" as const,
+      reason: issues[0],
+      reasons: issues,
+      differenceMinutes: differences.totalMinutes,
+      differences,
+      explanation: reconciliationIssueExplanation(issues),
     };
   }
-  const differenceMinutes = input.recordedMinutes - (input.paidMinutes ?? 0);
-  return differenceMinutes === 0
-    ? {
-        status: "RECONCILED",
-        differenceMinutes,
-        explanation: "Aggregate NAM Timesheet hours match aggregate paycheck hours; individual dates are not independently confirmed.",
-      }
-    : {
-        status: "DISCREPANCY",
-        differenceMinutes,
-        explanation: `${formatHours(Math.abs(differenceMinutes))} ${differenceMinutes > 0 ? "more recorded than paid" : "more paid than recorded"}; review the source records.`,
-      };
+  if (differences.totalMinutes !== 0) {
+    return {
+      status: "DISCREPANCY" as const,
+      reason: "TOTAL_HOURS_MISMATCH" as const,
+      reasons: ["TOTAL_HOURS_MISMATCH" as const],
+      differenceMinutes: differences.totalMinutes,
+      differences,
+      explanation: `${formatHours(Math.abs(differences.totalMinutes))} ${differences.totalMinutes > 0 ? "more recorded than paid" : "more paid than recorded"}; review the aggregate source records.`,
+    };
+  }
+  if (differences.regularMinutes !== 0 || differences.overtimeMinutes !== 0) {
+    return {
+      status: "DISCREPANCY" as const,
+      reason: "REGULAR_OVERTIME_CLASSIFICATION_MISMATCH" as const,
+      reasons: ["REGULAR_OVERTIME_CLASSIFICATION_MISMATCH" as const],
+      differenceMinutes: 0,
+      differences,
+      explanation: `Aggregate totals match, but classification differs: regular ${signedMinutes(differences.regularMinutes)} and overtime ${signedMinutes(differences.overtimeMinutes)} NAM minus Workday.`,
+    };
+  }
+  return {
+    status: "RECONCILED" as const,
+    reason: "FULL_AGGREGATE_MATCH" as const,
+    reasons: ["FULL_AGGREGATE_MATCH" as const],
+    differenceMinutes: 0,
+    differences,
+    explanation: "Aggregate NAM regular, overtime, and total hours match the paycheck; individual dates are not independently confirmed.",
+  };
+}
+
+function signedMinutes(value: number) {
+  if (value === 0) return "0h";
+  return `${value > 0 ? "+" : "-"}${formatHours(Math.abs(value))}`;
+}
+
+function reconciliationIssueExplanation(issues: ReconciliationReason[]) {
+  const labels: Record<Exclude<ReconciliationReason, "FULL_AGGREGATE_MATCH" | "TOTAL_HOURS_MISMATCH" | "REGULAR_OVERTIME_CLASSIFICATION_MISMATCH" | "MISSING_PAYCHECK_EVIDENCE">, string> = {
+    DRAFT_TIMESHEET_EVIDENCE: "a contributing NAM Timesheet is still Draft",
+    MISSING_TIMESHEET_EVIDENCE: "NAM Timesheet coverage is missing for part or all of the period",
+    UNCONFIRMED_PAYCHECK_EVIDENCE: "the imported paycheck has not been confirmed",
+    UNRESOLVED_EMPLOYEE_IDENTITY: "legacy Timesheet evidence has unresolved employee identity",
+    AMBIGUOUS_TIMESHEET_EVIDENCE: "duplicate or ambiguous NAM Timesheet evidence exists",
+    OVERLAPPING_PAYROLL_EVIDENCE: "another imported payroll period overlaps this payment period",
+  };
+  const details = issues
+    .filter((issue): issue is keyof typeof labels => issue in labels)
+    .map((issue) => labels[issue]);
+  return `Aggregate reconciliation needs review because ${details.join("; ") || "the evidence is incomplete"}. No individual paid dates are inferred.`;
 }
 
 export function derivePayrollDayState(input: {

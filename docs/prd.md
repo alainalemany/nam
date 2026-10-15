@@ -974,12 +974,21 @@ correct the structured result, and see aggregate hour matches, discrepancies,
 hours awaiting payroll confirmation, and narrowly defined Missing Timesheet
 issues in a Monday-Sunday calendar.
 
-Workday payslip periods and check dates are authoritative. Projected check dates
-use a configurable initial Monday-Sunday/following-Friday cadence and remain
-labeled projected. Overtime 1X and 0.5X premium earnings for the same hours are
+Workday payslip periods and check dates are authoritative. A valid
+Monday-Sunday NAM week projects the following Wednesday and remains labeled
+projected; arbitrary Workday boundaries do not receive an invented projection.
+Overtime 1X and 0.5X premium earnings for the same hours are
 not double-counted. Noncash imputed earnings remain separate from gross cash
 pay. Missing NAM history is not proof of unpaid or missed work, and aggregate
 matches do not prove individual-day payment allocation.
+
+Payroll reconciliation uses inclusive Workday period boundaries and canonical
+Employee IDs to aggregate Daily Time Entries across intersecting NAM weeks.
+Total, regular, and overtime minutes must all match independently. An
+unconfirmed Paycheck, Draft, missing, duplicate, overlapping-period, or
+unresolved-identity evidence remains Needs Review and must not be presented as
+confirmed unpaid work. Open-issue summaries count unique actionable records and
+must not repeat the same Paycheck review condition for every covered day.
 
 PDF bytes and raw text are temporary and are not retained by default. Payroll
 reads and mutations require an employee-scoped server authorization boundary in

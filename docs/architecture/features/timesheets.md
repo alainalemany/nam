@@ -238,19 +238,23 @@ they remain separate domains:
 Do not make Timesheet depend on Work Schedule merely because the current week
 boundaries match.
 
-Weekly Timesheet V1 remains personal and snapshot-based. The repository has no
-Employee, User, Supervisor, payroll identity, authentication, or workforce
-model, and Timesheet V1 must not introduce one.
+Weekly Timesheet remains snapshot-based for historical display and uses the
+canonical `Employee` relation for current identity. New Timesheets require an
+active selected Employee ID; their display name and normalized key snapshots
+are derived server-side from that Employee. Client-supplied display text is not
+authoritative.
 
 Conceptual Weekly Timesheet owner fields:
 
 - `primaryEmployeeDisplayName`
 - `primaryEmployeeKey`
+- `primaryEmployeeId`
 
-The display name is preserved for historical display. The normalized key is
-derived server-side from the display name using trimming, deterministic
-internal whitespace normalization, and lowercase. The key is not entered by the
-user and is not an HR or payroll identifier.
+The display name and normalized key are preserved for historical display and
+existing uniqueness. Employee ID is the canonical cross-module identity. A
+legacy null Employee ID is not inferred from the snapshots and remains an
+explicit unresolved identity until a separately controlled review workflow is
+approved.
 
 V1 uniqueness should be:
 
@@ -649,8 +653,11 @@ Validation belongs at the Timesheet Server Action boundary.
 Important V1 validation:
 
 - Work date must belong to the Weekly Timesheet payroll week.
-- `primaryEmployeeDisplayName` is required.
-- `primaryEmployeeKey` is derived server-side and unique per payroll week.
+- New Timesheets require an active canonical `primaryEmployeeId`.
+- `primaryEmployeeDisplayName` and `primaryEmployeeKey` are derived server-side
+  from the selected Employee for new Timesheets and preserved during edits.
+- Existing null-ID Timesheets retain their historical snapshots and may not be
+  reassigned through ordinary editing.
 - Clock-in and clock-out must form a valid worked interval after overnight
   handling.
 - Gross shift duration may not exceed 24 hours.
@@ -662,9 +669,10 @@ Important V1 validation:
 - Regular minutes and overtime minutes must be derived by the centralized
   Timesheet weekly overtime policy.
 - Each Daily Time Entry must have one primary Equipment record.
-- Optional Work Schedule Daily Assignment references must point to valid
-  records with the same work date and normalized primary employee owner when
-  supplied.
+- New or changed Work Schedule Daily Assignment references must have the same
+  work date and canonical Employee ID, belong to an Active Weekly Schedule, and
+  have effective status Scheduled (`actualStatus` unless Unknown, otherwise
+  `plannedStatus`).
 - A Daily Time Entry should have one or more Work Allocations when the
   Timesheet is completed.
 - Work Allocation sequence values should be deterministic and unique within a
@@ -794,10 +802,14 @@ Daily Time Entry may optionally reference a Work Schedule Daily Assignment.
 
 The relationship is optional because Timesheet must work correctly even when no
 Work Schedule exists. Payroll correctness must never depend on Work Schedule.
-When a link is selected, both the Daily Assignment work date and its Weekly
-Schedule `primaryEmployeeKey` must match the Daily Time Entry and Weekly
-Timesheet owner. The UI scopes selectable assignments and the Server Action
-revalidates both conditions.
+When a new link is selected, both the Daily Assignment work date and its Weekly
+Schedule canonical Employee ID must match the Daily Time Entry and Weekly
+Timesheet owner. Only effective Scheduled assignments from Active schedules are
+selectable. Off, Cancelled, Unknown, Draft-schedule, and Archived-schedule
+records may provide non-selectable context. The UI automatically loads options
+for the selected Employee and week, selects the only eligible date match, and
+leaves multiple matches for explicit choice. The Server Action revalidates all
+conditions. Unscheduled work remains valid.
 
 Timesheet may use Work Schedule as context for:
 
@@ -811,9 +823,11 @@ Timesheet must not:
 - change Work Schedule records
 - treat Work Schedule actual assignment as payroll proof
 - require a Work Schedule assignment before saving time
-- depend on Work Schedule lifecycle state
+- require Work Schedule context for legitimate unscheduled work
 
-Work Schedule edits must not rewrite Timesheet values. If the linked Daily
+Work Schedule edits must not rewrite Timesheet values. An unchanged historical
+link remains visible with a warning even if later schedule edits make it
+ineligible for a new link. If the linked Daily
 Assignment is deleted, the Timesheet link should become null. The expected
 conceptual deletion behavior is SetNull, not cascade or restrict.
 
@@ -822,8 +836,8 @@ equipment snapshots, clock times, worked minutes, regular/overtime snapshots,
 allocations, and reference snapshots. Timesheet should not require Work
 Schedule snapshots beyond Timesheet-owned facts.
 
-Automatic prefill from Work Schedule is deferred unless explicitly approved as
-a V1 convenience. No read operation should automatically copy schedule data.
+Automatic association discovery does not copy scheduled equipment, shift, or
+hours into actual work. No read operation writes Timesheet or Schedule data.
 
 ### Daily Work Logs
 
@@ -1015,8 +1029,8 @@ Timesheet V1 architecture is successful when:
   Monday-through-Sunday boundaries.
 - Weekly Timesheets are created through explicit first-use mutations, not
   read-only page views.
-- Weekly Timesheets are unique by payroll week and normalized primary employee
-  key.
+- New Weekly Timesheets use a canonical Employee ID; the existing payroll-week
+  plus normalized snapshot-key uniqueness remains for compatibility.
 - Daily Time Entries are the source of truth for worked time.
 - Daily Time Entries store work date, clock-in, clock-out, unpaid break,
   worked minutes, regular minutes, overtime minutes, primary equipment,

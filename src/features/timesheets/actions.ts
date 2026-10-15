@@ -77,12 +77,30 @@ class TimesheetInputError extends Error {
   }
 }
 
-export async function getWorkScheduleAssignmentsForOwnerAction(
-  primaryEmployeeDisplayName: string,
+export async function getWorkScheduleAssignmentsForEmployeeAction(
+  primaryEmployeeId: string,
+  payrollWeekStartDate: string,
+  timesheetId: string | null,
 ) {
-  const primaryEmployeeKey = normalizeIdentityKey(primaryEmployeeDisplayName);
-  if (!primaryEmployeeKey) return [];
-  return getWorkScheduleAssignmentOptions(primaryEmployeeKey);
+  if (!primaryEmployeeId || !/^\d{4}-\d{2}-\d{2}$/.test(payrollWeekStartDate)) return [];
+  const existing = timesheetId
+    ? await prisma.weeklyTimesheet.findUnique({
+        where: { id: timesheetId },
+        select: {
+          primaryEmployeeId: true,
+          entries: { select: { workScheduleDailyAssignmentId: true } },
+        },
+      })
+    : null;
+  if (existing && existing.primaryEmployeeId !== primaryEmployeeId) return [];
+  const existingAssignmentIds = existing?.entries
+    .map((entry) => entry.workScheduleDailyAssignmentId)
+    .filter((id): id is string => Boolean(id)) ?? [];
+  return getWorkScheduleAssignmentOptions(
+    primaryEmployeeId,
+    payrollWeekStartDate,
+    existingAssignmentIds,
+  );
 }
 
 const existingInclude = {
@@ -98,6 +116,7 @@ type ExistingTimesheet = Prisma.WeeklyTimesheetGetPayload<{ include: typeof exis
 async function referenceMaps(
   tx: Prisma.TransactionClient,
   input: WeeklyTimesheetInput,
+  primaryEmployeeId: string | null,
   existing?: ExistingTimesheet | null,
 ) {
   const equipmentIds = [
@@ -115,7 +134,11 @@ async function referenceMaps(
     tx.timesheetSupportPerson.findMany({ where: { id: { in: supportPersonIds } } }),
     tx.dailyAssignment.findMany({
       where: { id: { in: assignmentIds } },
-      include: { weeklySchedule: { select: { primaryEmployeeKey: true } } },
+      include: {
+        weeklySchedule: {
+          select: { primaryEmployeeId: true, status: true },
+        },
+      },
     }),
   ]);
 
@@ -177,19 +200,32 @@ async function referenceMaps(
 
   for (const [entryIndex, entry] of input.entries.entries()) {
     const assignment = assignments.find((item) => item.id === entry.workScheduleDailyAssignmentId);
-    if (
-      assignment &&
-      assignment.weeklySchedule.primaryEmployeeKey !==
-        normalizeIdentityKey(input.primaryEmployeeDisplayName)
-    ) {
+    const existingEntry = existingByDate.get(entry.workDate);
+    const unchangedHistoricalLink = Boolean(
+      assignment && existingEntry?.workScheduleDailyAssignmentId === assignment.id,
+    );
+    if (assignment && !unchangedHistoricalLink && assignment.weeklySchedule.primaryEmployeeId !== primaryEmployeeId) {
       throw new TimesheetInputError(
         "ASSIGNMENT_OWNER_MISMATCH",
         `entries.${entryIndex}.workScheduleDailyAssignmentId`,
       );
     }
-    if (assignment && assignment.assignmentDate.getTime() !== parseDateOnly(entry.workDate).getTime()) {
+    if (assignment && !unchangedHistoricalLink && assignment.assignmentDate.getTime() !== parseDateOnly(entry.workDate).getTime()) {
       throw new TimesheetInputError(
         "ASSIGNMENT_DATE_MISMATCH",
+        `entries.${entryIndex}.workScheduleDailyAssignmentId`,
+      );
+    }
+    const effectiveStatus = assignment?.actualStatus !== "UNKNOWN"
+      ? assignment?.actualStatus
+      : assignment?.plannedStatus;
+    if (
+      assignment &&
+      !unchangedHistoricalLink &&
+      (assignment.weeklySchedule.status !== "ACTIVE" || effectiveStatus !== "SCHEDULED")
+    ) {
+      throw new TimesheetInputError(
+        "ASSIGNMENT_INELIGIBLE",
         `entries.${entryIndex}.workScheduleDailyAssignmentId`,
       );
     }
@@ -347,22 +383,38 @@ export async function saveWeeklyTimesheetAction(
       if (timesheetId && !existing) throw new Error("NOT_FOUND");
       if (existing?.status === "COMPLETED") throw new Error("COMPLETED_READ_ONLY");
 
-      const primaryEmployeeKey = normalizeIdentityKey(parsed.data.primaryEmployeeDisplayName);
-      const matchingEmployees = (await tx.employee?.findMany?.({
-        where: { isActive: true },
-        select: { id: true, displayName: true },
-      }) ?? []).filter((employee) => normalizeIdentityKey(employee.displayName) === primaryEmployeeKey);
-      const primaryEmployeeId = matchingEmployees.length === 1 ? matchingEmployees[0].id : null;
+      const submittedEmployeeId = parsed.data.primaryEmployeeId || null;
+      let primaryEmployeeId: string | null;
+      let primaryEmployeeDisplayName: string;
+      let primaryEmployeeKey: string;
+      if (existing) {
+        if (submittedEmployeeId !== existing.primaryEmployeeId) {
+          throw new TimesheetInputError("EMPLOYEE_CHANGE_NOT_ALLOWED", "primaryEmployeeId");
+        }
+        primaryEmployeeId = existing.primaryEmployeeId;
+        primaryEmployeeDisplayName = existing.primaryEmployeeDisplayName;
+        primaryEmployeeKey = existing.primaryEmployeeKey;
+      } else {
+        if (!submittedEmployeeId) {
+          throw new TimesheetInputError("EMPLOYEE_REQUIRED", "primaryEmployeeId");
+        }
+        const employee = await tx.employee.findUnique({ where: { id: submittedEmployeeId } });
+        if (!employee) throw new TimesheetInputError("INVALID_EMPLOYEE", "primaryEmployeeId");
+        if (!employee.isActive) throw new TimesheetInputError("INACTIVE_EMPLOYEE", "primaryEmployeeId");
+        primaryEmployeeId = employee.id;
+        primaryEmployeeDisplayName = employee.displayName;
+        primaryEmployeeKey = normalizeIdentityKey(employee.displayName);
+      }
       const weekStart = parseDateOnly(parsed.data.payrollWeekStartDate);
       const weekEnd = endOfPayrollWeek(weekStart);
-      const maps = await referenceMaps(tx, parsed.data, existing);
+      const maps = await referenceMaps(tx, parsed.data, primaryEmployeeId, existing);
       const parent = existing
         ? await tx.weeklyTimesheet.update({
             where: { id: existing.id },
             data: {
               payrollWeekStartDate: weekStart,
               payrollWeekEndDate: weekEnd,
-              primaryEmployeeDisplayName: parsed.data.primaryEmployeeDisplayName,
+              primaryEmployeeDisplayName,
               primaryEmployeeKey,
               primaryEmployeeId,
             },
@@ -371,7 +423,7 @@ export async function saveWeeklyTimesheetAction(
             data: {
               payrollWeekStartDate: weekStart,
               payrollWeekEndDate: weekEnd,
-              primaryEmployeeDisplayName: parsed.data.primaryEmployeeDisplayName,
+              primaryEmployeeDisplayName,
               primaryEmployeeKey,
               primaryEmployeeId,
             },
@@ -393,6 +445,10 @@ export async function saveWeeklyTimesheetAction(
     const known: Record<string, string> = {
       NOT_FOUND: "Timesheet could not be found.",
       COMPLETED_READ_ONLY: "Reopen this Completed Timesheet before editing it.",
+      EMPLOYEE_REQUIRED: "Select a primary employee.",
+      INVALID_EMPLOYEE: "The selected Employee could not be found.",
+      INACTIVE_EMPLOYEE: "Inactive Employees cannot own new Timesheets.",
+      EMPLOYEE_CHANGE_NOT_ALLOWED: "Timesheet ownership cannot be changed during ordinary editing.",
       INVALID_EQUIPMENT: "One or more selected Equipment records could not be found.",
       EQUIPMENT_REQUIRED: "Each Daily Time Entry requires primary Equipment.",
       INVALID_WORK_CODE: "One or more selected Work Codes could not be found.",
@@ -401,6 +457,7 @@ export async function saveWeeklyTimesheetAction(
       INVALID_ASSIGNMENT: "The selected Work Schedule assignment could not be found.",
       ASSIGNMENT_DATE_MISMATCH: "Work Schedule context must match the Daily Time Entry work date.",
       ASSIGNMENT_OWNER_MISMATCH: "Work Schedule context must belong to the same Timesheet employee.",
+      ASSIGNMENT_INELIGIBLE: "Only Active scheduled Work Schedule assignments may be selected.",
       INACTIVE_WORK_CODE: "Inactive Work Codes cannot be selected for new allocations.",
       INACTIVE_WORK_ORDER: "Inactive Work Orders cannot be selected for new allocations.",
       INACTIVE_SUPPORT_PERSON: "Inactive Support Personnel cannot be selected for new allocations.",

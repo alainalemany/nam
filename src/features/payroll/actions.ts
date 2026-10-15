@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { addDays, parseDateOnly } from "@/features/timesheets/calculations";
+import { parseDateOnly } from "@/features/timesheets/calculations";
 import { prisma } from "@/lib/prisma";
 
 import {
@@ -13,6 +13,7 @@ import {
   establishPayrollSession,
   requirePayrollPrincipal,
 } from "./auth";
+import { projectedCheckDateForNamPeriod } from "./calculations";
 import { extractPaycheckPdf } from "./parser";
 import { manualPaycheckFingerprint } from "./fingerprint";
 import type { PayrollImportState } from "./types";
@@ -123,7 +124,10 @@ export async function savePaycheckAction(
       const periodStart = parseDateOnly(value.periodStart);
       const periodEnd = parseDateOnly(value.periodEnd);
       const checkDate = parseDateOnly(value.checkDate);
-      const expectedCheckDate = addDays(periodEnd, 5);
+      // The schema requires a value. Only project Wednesday for a confirmed
+      // Monday-Sunday NAM period; otherwise retain the authoritative check date
+      // without presenting it as an independently calculated projection.
+      const expectedCheckDate = projectedCheckDateForNamPeriod(periodStart, periodEnd) ?? checkDate;
       const period = await tx.payrollPeriod.upsert({
         where: {
           employeeId_periodStart_periodEnd: {
@@ -230,7 +234,6 @@ export async function correctPaycheckAction(
         data: {
           periodStart,
           periodEnd,
-          expectedCheckDate: addDays(periodEnd, 5),
           actualCheckDate: checkDate,
         },
       });

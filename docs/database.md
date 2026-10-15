@@ -1105,6 +1105,7 @@ Implemented fields:
 - primaryEmployeeId
 - primaryEmployeeDisplayName
 - primaryEmployeeKey
+- primaryEmployeeId
 - assignedByEmployeeId
 - assignedByDisplayName
 - receivedAt
@@ -1296,9 +1297,12 @@ Uniqueness:
 
 - payrollWeekStartDate + primaryEmployeeKey
 
-`primaryEmployeeKey` is a normalized personal identity key derived
-server-side from `primaryEmployeeDisplayName`. It is not an Employee, User,
-HR, payroll, authentication, or workforce-management identifier.
+`primaryEmployeeId` is the canonical cross-module Employee relationship for
+new Timesheets. `primaryEmployeeDisplayName` and `primaryEmployeeKey` are
+historical snapshots derived server-side for new records. The existing
+week/key uniqueness constraint remains in place. Legacy null-ID records are
+preserved and are not inferred or counted as confirmed Payroll employee
+evidence.
 
 ### DailyTimeEntry
 
@@ -1569,7 +1573,8 @@ Equipment and should not be selected independently on Timesheet entries.
 
 Current status: `PayrollPeriod`, `Paycheck`, `EmployeePayRate`, and the optional
 `WeeklyTimesheet.primaryEmployeeId` relation are implemented in the Prisma
-schema and pending controlled migration/deployment. PayrollPeriod is unique by
+schema. Production revision and migration state must be verified separately
+before deployment. PayrollPeriod is unique by
 employee and date range. Paycheck is employee-scoped, one-to-one with a period,
 uses integer paid minutes and Decimal money, and keeps a unique source
 fingerprint, parser version, review state, and correction timestamp.
