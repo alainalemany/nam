@@ -80,6 +80,9 @@ jobs:
       - name: Run unit and component tests
         run: pnpm test:run
 
+      - name: Verify durable production Compose configuration
+        run: pnpm test:infrastructure
+
       - name: Build production application
         run: pnpm build
 

@@ -171,6 +171,21 @@ Run tests once:
 pnpm test:run
 ```
 
+Run the secret-free durable production Compose regression and its fail-closed
+synthetic cases:
+
+```bash
+pnpm test:infrastructure
+```
+
+This command renders configuration only. It uses `/dev/null` instead of the
+production `.env`, does not connect to a production network, and does not
+create, start, restart, or inspect a container. It verifies the immutable image
+identity, build reset, no-pull policy, loopback application binding, private
+PostgreSQL port, required environment forwarding, and the remaining inherited
+Compose invariants. Its negative cases prove that stale release references and
+missing immutable controls fail the gate.
+
 Run tests in watch mode:
 
 ```bash
@@ -190,8 +205,11 @@ pnpm test:coverage
 `main`, and explicit manual dispatch. `Application Quality` installs the frozen
 lockfile with Corepack-managed pnpm 10.18.3, generates Prisma Client, runs an
 explicit TypeScript check, runs the existing `pnpm lint` TypeScript gate, runs
-the unit/component suite, and builds with a deliberately unreachable synthetic
-database URL.
+the unit/component suite, runs `pnpm test:infrastructure`, and builds with a
+deliberately unreachable synthetic database URL. The infrastructure regression
+uses only repository configuration and synthetic fixtures; it does not read a
+production `.env`, contact a production network, or perform a Docker runtime
+operation.
 
 `PostgreSQL Integration` starts an ephemeral PostgreSQL 18 service on the
 GitHub-hosted runner, applies all committed migrations, verifies migration

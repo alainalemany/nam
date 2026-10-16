@@ -2,8 +2,12 @@
 # This file does not authorize deployment, restart, recreation, migration, or
 # any other runtime mutation. Use it only with compose.yaml and a separately
 # authorized operation.
+x-nam-production-release:
+  image: &nam-production-image sha256:4e41f290122b0984da795eb4bc1f9769f635c1bc73c367ccc1438805ce0605b9
+  revision: 4bcc998038bb9983a56646ee2abe9508cadd374c
+
 services:
   app:
-    image: sha256:4e41f290122b0984da795eb4bc1f9769f635c1bc73c367ccc1438805ce0605b9
+    image: *nam-production-image
     build: !reset null
     pull_policy: never

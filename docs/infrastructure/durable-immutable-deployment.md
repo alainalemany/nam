@@ -43,7 +43,10 @@ publishing, private networking, PostgreSQL storage, environment-variable
 forwarding, health checks, restart policies, and service dependencies. The
 override changes only application image selection:
 
-- `image` is the exact approved Docker image ID, not `latest` or another tag.
+- `x-nam-production-release` is the authoritative repository source for the
+  approved immutable image ID and release revision.
+- `app.image` uses a YAML anchor to select that exact approved image ID, not
+  `latest` or another tag. The identity is declared only once in the override.
 - `build: !reset null` removes the base `app.build` mapping after Compose
   merge. An `image` entry alone would leave the build definition present.
 - `pull_policy: never` prevents registry resolution or pulling when the local
@@ -114,11 +117,20 @@ docker compose \
     ' >/dev/null
 ```
 
-Run the secret-free regression check:
+Run the canonical secret-free regression and its synthetic fail-closed cases:
 
 ```bash
-bash tests/infrastructure/durable-production-compose-config.sh
+pnpm test:infrastructure
 ```
+
+The `Application Quality` GitHub Actions job runs the same command. The positive
+regression verifies that the effective Compose configuration selects the
+authoritative release image and preserves the required production invariants.
+It also verifies that the Approved Baseline table matches the authoritative
+image and revision. Synthetic negative cases prove that a stale documented
+image, a mismatched service image, a missing build reset, or a missing no-pull
+policy is rejected. No case reads `.env`, contacts a production network, or
+performs a Docker runtime operation.
 
 ## Image Identity Checks
 
@@ -126,9 +138,18 @@ Before any separately authorized operation, prove the approved local image is
 present and carries the approved release revision:
 
 ```bash
+APPROVED_IMAGE="$(
+  docker compose \
+    --env-file /dev/null \
+    -f compose.yaml \
+    -f infrastructure/server-config/docker/production-image.override.yaml \
+    config --no-interpolate --format json \
+  | jq -er '.["x-nam-production-release"].image
+      | select(test("^sha256:[0-9a-f]{64}$"))'
+)"
 docker image inspect \
   --format 'image={{.Id}} revision={{index .Config.Labels "org.opencontainers.image.revision"}}' \
-  sha256:4e41f290122b0984da795eb4bc1f9769f635c1bc73c367ccc1438805ce0605b9
+  "$APPROVED_IMAGE"
 ```
 
 Expected values are the image ID and release revision in the Approved Baseline
@@ -181,16 +202,25 @@ unpublished.
 ## Future Image Upgrade
 
 A future upgrade requires a new explicit approval naming an exact release
-revision and immutable image ID. Before changing this repository file:
+revision and immutable image ID. Update every required identity in one focused
+change; do not bypass a failed synchronization check:
 
 1. Build and validate the candidate under its separately approved procedure.
 2. Verify its exact image ID and embedded OCI revision label.
 3. Confirm migration and rollback compatibility with the live database.
-4. Change only the override's `image` value to the newly approved full image
-   ID; never use `latest` or a mutable tag.
-5. Run the regression check and the safe production render checks.
-6. Review and selectively commit the configuration change.
-7. Obtain separate authorization before running the guarded Compose command.
+4. Update the override's `x-nam-production-release.image` and
+   `x-nam-production-release.revision` values. Do not replace the
+   `app.image` anchor, and never use `latest` or another mutable tag.
+5. Update the Approved Baseline release revision and application image rows in
+   this runbook. Update its rollback image and migration ledger only when the
+   separately approved release changes those baselines.
+6. Run `pnpm test:infrastructure`. It must reject either stale documentation or
+   a service selector that differs from the authoritative release block.
+7. Run the safe production render checks and inspect the complete diff for any
+   other stale occurrence of the superseded image or revision.
+8. Review and selectively commit the synchronized configuration and runbook
+   change.
+9. Obtain separate authorization before running the guarded Compose command.
 
 The image ID is an immutable selector in the current host's local Docker image
 store. `pull_policy: never` deliberately fails closed after image loss. Host-loss

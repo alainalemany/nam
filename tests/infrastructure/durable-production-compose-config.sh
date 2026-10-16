@@ -4,17 +4,71 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 REPOSITORY_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd -P)"
-EXPECTED_IMAGE='sha256:4e41f290122b0984da795eb4bc1f9769f635c1bc73c367ccc1438805ce0605b9'
+BASE_COMPOSE_FILE="${NAM_DURABLE_BASE_COMPOSE_FILE:-$REPOSITORY_ROOT/compose.yaml}"
+PRODUCTION_OVERRIDE_FILE="${NAM_DURABLE_OVERRIDE_FILE:-$REPOSITORY_ROOT/infrastructure/server-config/docker/production-image.override.yaml}"
+DEPLOYMENT_RUNBOOK_FILE="${NAM_DURABLE_RUNBOOK_FILE:-$REPOSITORY_ROOT/docs/infrastructure/durable-immutable-deployment.md}"
+
+for required_file in \
+  "$BASE_COMPOSE_FILE" \
+  "$PRODUCTION_OVERRIDE_FILE" \
+  "$DEPLOYMENT_RUNBOOK_FILE"; do
+  if [[ ! -f "$required_file" ]]; then
+    printf 'required durable deployment file is missing: %s\n' "$required_file" >&2
+    exit 1
+  fi
+done
 
 COMPOSE_JSON="$(
   docker compose \
     --env-file /dev/null \
-    -f "$REPOSITORY_ROOT/compose.yaml" \
-    -f "$REPOSITORY_ROOT/infrastructure/server-config/docker/production-image.override.yaml" \
+    -f "$BASE_COMPOSE_FILE" \
+    -f "$PRODUCTION_OVERRIDE_FILE" \
     config --no-interpolate --format json
 )"
 
-jq -e --arg expected_image "$EXPECTED_IMAGE" '
+APPROVED_IMAGE="$(
+  jq -er '
+    .["x-nam-production-release"].image
+    | select(type == "string" and test("^sha256:[0-9a-f]{64}$"))
+  ' <<<"$COMPOSE_JSON"
+)"
+APPROVED_REVISION="$(
+  jq -er '
+    .["x-nam-production-release"].revision
+    | select(type == "string" and test("^[0-9a-f]{40}$"))
+  ' <<<"$COMPOSE_JSON"
+)"
+
+mapfile -t DOCUMENTED_IMAGES < <(
+  sed -n 's/^| Application image ID | `\(sha256:[0-9a-f]\{64\}\)` |$/\1/p' \
+    "$DEPLOYMENT_RUNBOOK_FILE"
+)
+mapfile -t DOCUMENTED_REVISIONS < <(
+  sed -n 's/^| Release revision | `\([0-9a-f]\{40\}\)` |$/\1/p' \
+    "$DEPLOYMENT_RUNBOOK_FILE"
+)
+
+if [[ "${#DOCUMENTED_IMAGES[@]}" -ne 1 ]]; then
+  printf '%s\n' 'deployment runbook image ID is missing or stale' >&2
+  exit 1
+fi
+
+if [[ "${DOCUMENTED_IMAGES[0]}" != "$APPROVED_IMAGE" ]]; then
+  printf '%s\n' 'deployment runbook image ID is missing or stale' >&2
+  exit 1
+fi
+
+if [[ "${#DOCUMENTED_REVISIONS[@]}" -ne 1 ]]; then
+  printf '%s\n' 'deployment runbook release revision is missing or stale' >&2
+  exit 1
+fi
+
+if [[ "${DOCUMENTED_REVISIONS[0]}" != "$APPROVED_REVISION" ]]; then
+  printf '%s\n' 'deployment runbook release revision is missing or stale' >&2
+  exit 1
+fi
+
+jq -e --arg expected_image "$APPROVED_IMAGE" '
   .name == "nam"
   and (.services | keys | sort) == ["app", "postgres"]
   and (.networks | keys) == ["nam-network"]
