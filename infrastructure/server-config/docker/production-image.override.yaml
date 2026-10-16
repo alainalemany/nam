@@ -1,0 +1,9 @@
+# Durable production image selection for NAM Dashboard.
+# This file does not authorize deployment, restart, recreation, migration, or
+# any other runtime mutation. Use it only with compose.yaml and a separately
+# authorized operation.
+services:
+  app:
+    image: sha256:4e41f290122b0984da795eb4bc1f9769f635c1bc73c367ccc1438805ce0605b9
+    build: !reset null
+    pull_policy: never

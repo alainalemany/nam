@@ -53,6 +53,19 @@ separately approved procedure. The current Gate C artifacts are:
 - `docker/gate-c-8a6c652-rollback.compose.yaml`
 - `docker/gate-c-8a6c652-compose.sha256`
 
+The same directory holds the current repository-managed operational image
+selector:
+
+- `docker/production-image.override.yaml`
+
+Unlike the historical Gate C evidence files, this is the durable override that
+future production Compose commands are required to use. It pins the approved
+local image ID, removes the base build definition with `!reset`, and disables
+pulls. Its canonical file ordering, safe inspection, future-operation command,
+upgrade workflow, and coordinated rollback warning live in the
+[Durable Immutable Deployment Configuration](../../docs/infrastructure/durable-immutable-deployment.md).
+Neither the file nor that runbook authorizes runtime mutation.
+
 The Gate C procedure sources
 `scripts/gate-c-evidence.sh` only after proving that helper is the exact blob
 from the separately authorized procedure commit. The helper owns exclusive
