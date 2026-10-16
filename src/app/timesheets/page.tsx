@@ -278,7 +278,7 @@ export default async function TimesheetsPage({
                         {displayDate(item.payrollWeekEndDate)}
                       </td>
                       <td>{item.primaryEmployeeDisplayName}</td>
-                      <td>{timesheetStatusLabels[item.status]}</td>
+                      <td>{timesheetStatusLabels[item.status]}{["NEEDS_REVIEW", "REVIEWED_UNASSIGNED"].includes(item.primaryEmployeeIdentityStatus) ? <span className="subtle">Identity needs review</span> : null}</td>
                       <td>
                         {item.entries.length > 0 ? (
                           <ol
@@ -326,7 +326,7 @@ export default async function TimesheetsPage({
                         >
                           View
                         </Link>
-                        {item.status === "DRAFT" ? (
+                        {item.status === "DRAFT" && ["EXPLICIT_SELECTION", "OWNER_VERIFIED"].includes(item.primaryEmployeeIdentityStatus) ? (
                           <Link
                             className="table-action"
                             href={`/timesheets/${item.id}/edit`}

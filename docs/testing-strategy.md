@@ -144,7 +144,7 @@ NAM Dashboard should use layered tests:
 | Migration verification | Confirm schema changes are reproducible and applied. | Prisma generate, migration status, drift checks, migration table inspection. |
 | API route tests | Verify route behavior and error handling. | `/api/health`, future API routes. |
 | Playwright/E2E tests | Verify critical browser workflows. | Create/edit/list/detail flows, navigation, form validation display. |
-| Smoke tests | Verify live runtime assumptions. | Docker services, local health, Caddy, HTTPS, `dev.alemany.me`, database connectivity. |
+| Smoke tests | Verify live runtime assumptions. | Docker services, local health, Tailscale Serve/Funnel state, private HTTPS, database connectivity. |
 
 ## Unit Tests
 
@@ -269,36 +269,38 @@ Development smoke checks should include:
 - `nam-app` publishes only `127.0.0.1:3000`.
 - `nam-postgres` has no host-published PostgreSQL port.
 - Local health succeeds at `http://127.0.0.1:3000/api/health`.
-- Caddy is active.
-- Caddy config validates.
-- HTTP redirects to HTTPS for `dev.alemany.me`.
-- `https://dev.alemany.me` loads through Caddy.
-- `https://dev.alemany.me/api/health` reports database health.
+- Tailscale Serve reports `https://ops-console.tailf57e61.ts.net` as tailnet-only.
+- Tailscale Funnel remains disabled.
+- `https://ops-console.tailf57e61.ts.net` loads from an authorized tailnet device.
+- `https://ops-console.tailf57e61.ts.net/api/health` reports database health.
 
 Smoke tests do not replace unit, integration, or E2E tests. They confirm the
 runtime is reachable and connected.
 
 ## CI Quality Gates
 
-Future CI should enforce a small but meaningful quality baseline before changes
-are merged.
+CI enforces a small but meaningful quality baseline before changes are merged.
 
-Recommended gates:
+The repository implements these pull-request and `main` quality gates in
+`.github/workflows/ci.yml`:
 
 - Dependency install.
 - TypeScript type check.
 - Prisma Client generation.
 - Production build.
 - Unit tests.
-- Integration tests that can run safely in CI.
-- Playwright/E2E tests for critical workflows once the test database setup is
-  reliable.
-- Migration status or drift checks where feasible.
+- Phase A PostgreSQL integration tests against a disposable PostgreSQL 18
+  service after applying the complete Prisma migration chain.
+- Migration deployment and status verification against disposable PostgreSQL.
 
-No CI workflow is added by this document. CI should be introduced as a separate
-implementation change after tools and commands are selected.
+The CI workflow uses read-only repository permissions and GitHub-hosted runners.
+Its PostgreSQL job uses synthetic credentials and a guarded CI-only loopback
+target. It has no production secret, SSH path, deployment permission, persistent
+volume, or fallback to `DATABASE_URL`. Missing Phase A test configuration fails
+the integration job rather than skipping it. Browser E2E remains outside the
+current CI gate and may be added when its test database setup is reliable.
 
-Until CI exists, local quality gates are:
+Local quality gates remain:
 
 - `pnpm lint`
 - `pnpm test:run`
@@ -336,6 +338,43 @@ identities and using bounded rollback or cleanup; newer suites also enforce the
 exact test-database identity. The ordinary unit/component suite does not
 implicitly acquire or mutate a PostgreSQL database. Broad browser end-to-end
 coverage remains deferred until a concrete risk justifies that infrastructure.
+
+Payroll historical-evidence coverage stages migrations 34 → 35 → 36 around
+synthetic rename, duplicate-name, arbitrary-ID, null-ID, stale-rate,
+independent-rate, and candidate-provenance records. Assertions prove all
+pre-existing Timesheets/rates are quarantined, child evidence and timestamps
+survive, impossible states are constrained, and trusted-only partial indexes
+permit uncertain evidence to coexist. Separate isolated-schema failure cases
+corrupt a predecessor checksum to prove migration 36 fails before mutation and
+inject a constraint failure immediately before commit to prove all preceding
+schema and business-data changes roll back. Runtime tests cover explicit new
+identity, quarantined mutation rejection, trusted-only reconciliation, conflict
+preservation, supersession, and all-or-nothing expected-gross availability.
+Coverage includes entryless unresolved weekly parents with preserved totals,
+weekly overlap whose child entries fall outside a Workday period, open-issue
+deduplication, restrictive Employee deletion, and concurrent same-date rate
+writes that retain one verified record plus one conflict record.
+
+Package 2A extends the same guarded PostgreSQL 18 job through migration 37.
+Fresh and staged migration checks verify predecessor checksums, transactional
+rollback, event constraints, restrictive foreign keys, immutable-event triggers,
+and trusted Timesheet uniqueness. Runtime coverage exercises reviewer
+authorization, explicit identity/rate transitions, stale-version rejection,
+advisory-lock concurrency, idempotent replay, token misuse, atomic competitor
+resolution, Paycheck-correction supersession/replacement history, malformed
+event INSERT rejection, audit rollback, and reconciliation after verification.
+All fixtures are synthetic, and the suite fails closed unless the exact
+dedicated test database identity is supplied.
+
+Package 2B component and route-boundary coverage verifies server-controlled
+navigation visibility, authorization before review queries, candidate
+non-selection, duplicate-name and inactive-Employee presentation, mandatory
+reasons and independent references, explicit confirmation, expected-version
+and request-token submission, atomic competitor dispositions, structured error
+presentation, and distinct owner/system audit attribution. The existing
+Package 2A PostgreSQL suite remains the authoritative persistence and
+concurrency layer. Browser smoke coverage remains optional unless executed
+against the repository's isolated test server and synthetic data.
 
 Deferred areas:
 

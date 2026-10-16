@@ -87,7 +87,8 @@ export const dailyTimeEntryInputSchema = z
 export const weeklyTimesheetInputSchema = z
   .object({
     payrollWeekStartDate: dateOnly,
-    primaryEmployeeDisplayName: requiredText("Primary employee"),
+    primaryEmployeeId: z.string().trim().max(100).optional().or(z.literal("")),
+    primaryEmployeeDisplayName: z.string().trim().max(200).default(""),
     entries: z
       .array(dailyTimeEntryInputSchema)
       .min(1, "Add at least one Daily Time Entry before saving the payroll week.")

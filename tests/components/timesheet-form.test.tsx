@@ -1,17 +1,26 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { TimesheetForm } from "@/features/timesheets/TimesheetForm";
 import { saveWeeklyTimesheetAction } from "@/features/timesheets/actions";
 
+const mocks = vi.hoisted(() => ({ scheduleLoad: vi.fn().mockResolvedValue([]) }));
+
 vi.mock("@/features/timesheets/actions", () => ({
-  getWorkScheduleAssignmentsForOwnerAction: vi.fn().mockResolvedValue([]),
+  getWorkScheduleAssignmentsForEmployeeAction: mocks.scheduleLoad,
   saveWeeklyTimesheetAction: vi.fn(),
 }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  mocks.scheduleLoad.mockReset().mockResolvedValue([]);
+});
 
 const options = {
+  employees: [
+    { id: "employee-1", label: "Alex Operator (OP-1)", active: true },
+    { id: "employee-2", label: "Blair Operator (OP-2)", active: true },
+  ],
   equipment: [{ id: "equipment-1", label: "Dragline 1", active: true }],
   workCodes: [{ id: "code-1", label: "P-137 - Production", active: true }],
   workOrders: [],
@@ -21,6 +30,7 @@ const options = {
 
 const initial = {
   payrollWeekStartDate: "2026-07-13",
+  primaryEmployeeId: "employee-1",
   primaryEmployeeDisplayName: "Alex Operator",
   entries: [{
     workDate: "2026-07-14",
@@ -79,5 +89,116 @@ describe("TimesheetForm", () => {
     const clockOutField = within(tuesday as HTMLElement).getByText("Clock out").closest("label");
     expect(await within(clockOutField as HTMLElement).findByText("Use HH:MM time.")).toBeInTheDocument();
     expect(tuesday).toHaveAttribute("open");
+  });
+
+  it("loads and visibly selects the only eligible assignment without a manual action", async () => {
+    mocks.scheduleLoad.mockResolvedValueOnce([{
+      id: "assignment-oct-14",
+      workDate: "2026-07-14",
+      label: "2026-07-14 · Night · MTECK 2100E Dragline #101151",
+      selectable: true,
+    }]);
+    const unlinked = {
+      ...initial,
+      entries: initial.entries.map((entry) => ({ ...entry, workScheduleDailyAssignmentId: "" })),
+    };
+    render(<TimesheetForm timesheetId={null} initial={unlinked} options={options} />);
+
+    await waitFor(() => expect(mocks.scheduleLoad).toHaveBeenCalledWith(
+      "employee-1",
+      "2026-07-13",
+      null,
+    ));
+    const tuesday = screen.getByText("Tuesday").closest("details") as HTMLElement;
+    await waitFor(() => expect(within(tuesday).getByLabelText(/Work Schedule context/)).toHaveValue("assignment-oct-14"));
+  });
+
+  it("invalidates an automatically selected assignment and suggests the new week's only candidate", async () => {
+    mocks.scheduleLoad
+      .mockResolvedValueOnce([{
+        id: "assignment-old",
+        workDate: "2026-07-14",
+        label: "2026-07-14 · Night · Old Dragline",
+        selectable: true,
+      }])
+      .mockResolvedValueOnce([{
+        id: "assignment-new",
+        workDate: "2026-07-21",
+        label: "2026-07-21 · Night · New Dragline",
+        selectable: true,
+      }]);
+    render(<TimesheetForm timesheetId={null} initial={initial} options={options} />);
+    const week = screen.getByLabelText("Week starting Monday");
+    const tuesday = screen.getByText("Tuesday").closest("details") as HTMLElement;
+    const assignment = within(tuesday).getByLabelText(/Work Schedule context/);
+    await waitFor(() => expect(assignment).toHaveValue("assignment-old"));
+
+    fireEvent.change(week, { target: { value: "2026-07-20" } });
+
+    await waitFor(() => expect(mocks.scheduleLoad).toHaveBeenCalledWith("employee-1", "2026-07-20", null));
+    const updatedTuesday = screen.getByText("Tuesday").closest("details") as HTMLElement;
+    await waitFor(() => expect(within(updatedTuesday).getByLabelText(/Work Schedule context/)).toHaveValue("assignment-new"));
+    expect(within(updatedTuesday).getByLabelText("Clock in")).toHaveValue("07:00");
+    const submitted = JSON.parse((document.querySelector('input[name="payload"]') as HTMLInputElement).value);
+    expect(submitted.entries[0]).toMatchObject({
+      clockIn: "07:00",
+      unpaidBreakMinutes: 30,
+      allocations: [expect.objectContaining({ workCodeId: "code-1", allocatedMinutes: 690 })],
+    });
+  });
+
+  it("clears a manually selected previous-week assignment when the new week has no candidates", async () => {
+    mocks.scheduleLoad
+      .mockResolvedValueOnce([
+        { id: "assignment-a", workDate: "2026-07-14", label: "Assignment A", selectable: true },
+        { id: "assignment-b", workDate: "2026-07-14", label: "Assignment B", selectable: true },
+      ])
+      .mockResolvedValueOnce([]);
+    render(<TimesheetForm timesheetId={null} initial={initial} options={options} />);
+    const tuesday = screen.getByText("Tuesday").closest("details") as HTMLElement;
+    const assignment = within(tuesday).getByLabelText(/Work Schedule context/);
+    await waitFor(() => expect(within(assignment).getAllByRole("option")).toHaveLength(3));
+    fireEvent.change(assignment, { target: { value: "assignment-b" } });
+    expect(assignment).toHaveValue("assignment-b");
+
+    fireEvent.change(screen.getByLabelText("Week starting Monday"), { target: { value: "2026-07-20" } });
+
+    const updatedTuesday = screen.getByText("Tuesday").closest("details") as HTMLElement;
+    await waitFor(() => expect(within(updatedTuesday).getByLabelText(/Work Schedule context/)).toHaveValue(""));
+    await waitFor(() => expect(within(updatedTuesday).getByText("No eligible scheduled assignment. Unscheduled work is allowed.")).toBeInTheDocument());
+  });
+
+  it("ignores stale assignment responses during rapid employee and week changes", async () => {
+    let resolveInitial!: (value: Awaited<ReturnType<typeof mocks.scheduleLoad>>) => void;
+    let resolveEmployee!: (value: Awaited<ReturnType<typeof mocks.scheduleLoad>>) => void;
+    const initialRequest = new Promise<unknown[]>((resolve) => { resolveInitial = resolve; });
+    const employeeRequest = new Promise<unknown[]>((resolve) => { resolveEmployee = resolve; });
+    mocks.scheduleLoad.mockImplementation((employeeId: string, weekStart: string) => {
+      if (employeeId === "employee-1") return initialRequest;
+      if (weekStart === "2026-07-13") return employeeRequest;
+      return Promise.resolve([{
+        id: "assignment-current",
+        workDate: "2026-07-21",
+        label: "Current employee and week assignment",
+        selectable: true,
+      }]);
+    });
+    render(<TimesheetForm timesheetId={null} initial={initial} options={options} />);
+    await waitFor(() => expect(mocks.scheduleLoad).toHaveBeenCalledWith("employee-1", "2026-07-13", null));
+
+    fireEvent.change(screen.getByLabelText("Primary employee"), { target: { value: "employee-2" } });
+    await waitFor(() => expect(mocks.scheduleLoad).toHaveBeenCalledWith("employee-2", "2026-07-13", null));
+    fireEvent.change(screen.getByLabelText("Week starting Monday"), { target: { value: "2026-07-20" } });
+    await waitFor(() => expect(mocks.scheduleLoad).toHaveBeenCalledWith("employee-2", "2026-07-20", null));
+
+    const tuesday = screen.getByText("Tuesday").closest("details") as HTMLElement;
+    const assignment = within(tuesday).getByLabelText(/Work Schedule context/);
+    await waitFor(() => expect(assignment).toHaveValue("assignment-current"));
+    await act(async () => {
+      resolveInitial([{ id: "assignment-stale-1", workDate: "2026-07-14", label: "Stale", selectable: true }]);
+      resolveEmployee([{ id: "assignment-stale-2", workDate: "2026-07-14", label: "Stale", selectable: true }]);
+      await Promise.resolve();
+    });
+    expect(assignment).toHaveValue("assignment-current");
   });
 });

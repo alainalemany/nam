@@ -27,7 +27,7 @@ Implementation standards for turning these modules into feature slices live in
 - [Maintenance Tracking](#maintenance-tracking)
 - [Work Schedule](#work-schedule)
 - [Timesheet](#timesheet)
-- [Payslip Repository](#payslip-repository)
+- [Payroll Reconciliation](#payroll-reconciliation)
 - [Equipment Fuel Events](#equipment-fuel-events)
 - [Supply Requests](#supply-requests)
 - [Equipment Activity Timeline](#equipment-activity-timeline)
@@ -785,6 +785,10 @@ V1 foundation.
 - Preserve Weekly Timesheet result ownership while showing compact Daily Time
   Entry summaries from persisted totals and historical snapshots.
 - Use deterministic page-number pagination for history results.
+- Create new Timesheets only from an explicit active Employee selection and
+  mark that provenance as `EXPLICIT_SELECTION`.
+- Keep historical identity quarantine readable while rejecting ordinary edit,
+  completion, reopen, reassignment, and delete operations.
 
 ### Reusable Lists
 
@@ -819,9 +823,10 @@ The relationship is optional. Timesheet must work correctly when no Work
 Schedule exists, and payroll correctness must never depend on Work Schedule.
 If a linked Work Schedule Daily Assignment is deleted, the Timesheet link should
 become null and Timesheet-owned history should remain readable.
-When selected, the assignment must match both the Daily Time Entry work date
-and the Weekly Timesheet normalized primary employee owner. Timesheet validates
-those conditions server-side.
+For a new or changed link, the assignment must match the Daily Time Entry work
+date and canonical Employee ID, belong to an Active Weekly Schedule, and have
+effective status Scheduled. Timesheet validates those conditions server-side;
+unchanged historical links are preserved with warnings after schedule edits.
 
 Timesheet entries may later link to Daily Log activities, Payslip records,
 Shift Reports, or other records when those modules support the relationship.
@@ -850,71 +855,80 @@ states, automatic WFS login, scraping, submission, imports, exports, reports,
 approvals, authentication, and workforce management remain deferred unless
 explicitly evaluated later.
 
-## Payslip Repository
+## Payroll Reconciliation
 
-The Payslip Repository module stores weekly work payment PDFs and extracts payroll data for search, calendar lookup, and financial analysis.
+Payroll Reconciliation compares employee-scoped Work Schedule, completed NAM
+Timesheets, and reviewed structured Workday paycheck evidence.
 
-Current status: Conceptually planned under ADR-005's financial bounded-context
-guidance. Implementation remains blocked by unresolved privacy, application
-access, storage, extraction, redaction, and export decisions and by the absence
-of an accepted Level 2 feature architecture.
+Current status: Payroll Reconciliation V1 is implemented on the dedicated
+feature branch under ADR-022. Database migration and deployment remain separate
+controlled actions.
+
+Package 2A adds an owner-authorized historical evidence-review service and
+database-immutable decision history under ADR-024. Package 2B adds protected,
+bounded queues; Timesheet identity and rate-provenance detail workflows;
+explicit confirmation; competitor disposition; and immutable timelines.
+Ordinary employee-scoped Payroll access cannot load or mutate globally
+unresolved evidence, and navigation visibility is not an authorization boundary.
 
 ### Purpose
 
-Create a permanent personal archive of payslips and make compensation data usable beyond the PDF itself.
+Make weekly pay timing, recorded hours, Workday-confirmed totals, and actionable
+record gaps understandable without turning NAM into a payroll processor.
 
 The operator should be able to answer questions such as:
 
-- How much did I make on a specific pay date?
-- Which payslips are available for a selected calendar date?
-- How much have I made so far this year?
-- How much did I contribute to 401k over a date range?
-- How much was deducted for medical insurance, taxes, or other benefits?
-- What were my gross pay, net pay, hours, overtime, deductions, taxes, and employer contributions annually or over any selected range?
+- What was scheduled and what time was actually recorded?
+- Which aggregate hours and earnings does Workday confirm?
+- Which completed hours await a paycheck?
+- Which schedule/Timesheet gaps or payroll differences require review?
 
 ### Source Workflow
 
-The operator manually uploads payslip PDFs, usually weekly.
-
-The system should not depend on payroll-provider integration for V1. Uploading a PDF is the source of truth.
+The operator imports a readable Workday PDF or enters values manually, reviews
+every structured value, then explicitly confirms persistence. The PDF and raw
+text are discarded; reviewed Workday dates and amounts are the payroll evidence.
 
 ### Required Capabilities
 
-- Upload one or more payslip PDFs manually
-- Store the original PDF file permanently
-- Detect duplicates by file hash, pay date, employer, and payslip identifier when available
-- Extract available text from the PDF
-- Use OCR when the PDF is image-based or text extraction is incomplete
-- Store extraction confidence and parser status
-- Allow manual correction of extracted fields
-- Preserve raw extracted text or OCR output for troubleshooting
-- Parse payroll header fields such as employer, employee identifier if present, pay date, pay period start, pay period end, and check or payslip number
-- Parse earnings line items, including hours, rate, current amount, and year-to-date amount when present
-- Parse deductions such as 401k, medical insurance, dental, vision, life insurance, union dues, garnishments, or other benefits when present
-- Parse employee taxes and withholdings
-- Parse employer contributions when present
-- Parse direct deposit or payment distribution details when present
-- Support calendar navigation by pay date and pay period
-- Support search and filters by date range, pay type, deduction type, tax type, amount, and source PDF
-- Provide analytics for gross pay, net pay, hours, overtime, taxes, deductions, 401k, insurance, employer contributions, and annual totals
+- Deterministic readable-PDF extraction with manual fallback and review
+- Duplicate-safe persistence and controlled correction
+- Exact integer-minute and Decimal money handling
+- Aggregate Timesheet/paycheck comparison without day-level overstatement
+- Inclusive Workday-period matching across intersecting NAM Timesheet weeks
+- Independent total, regular, and overtime comparison with structured reasons
+- Reconciliation only from Paychecks whose review state is Confirmed
+- Missing Timesheet detection only when evidence supports it
+- Unique actionable issue counts without repeating one period issue per day
+- Responsive calendar, summary, history, detail, and protected home overview
+- Employee-scoped server authorization that fails closed when unconfigured
 
 ### Relationship To Other Modules
 
-Payslip records should appear in global calendar/history views, but they should remain financially scoped and should not be mixed into operational shift records by default.
+Payroll consumes Work Schedule and Timesheet records without duplicating their
+edit workflows. Only Timesheets with the authorized Employee ID and trusted
+identity state contribute confirmed worked evidence. Date-overlapping
+`NEEDS_REVIEW` Timesheets are not attributed by name, but block a false
+confirmed reconciliation. Payroll financial values do not enter Day View or general
+operational results.
 
-If a payslip pay period overlaps Daily Logs or Work Schedule records, the Day View may show a contextual link to the pay period when compensation visibility is enabled.
+Expected compensation is distinct from actual Workday payment evidence. It may
+use only verified Paycheck or independently established rate provenance. Any
+missing coverage or conflicting applicable evidence suppresses the complete
+estimate. Paycheck correction preserves superseded and competing rate rows.
 
 ### Privacy And Security
 
 Payslip PDFs and extracted payroll data contain sensitive personal financial information.
 
-The module should support stricter access rules than general operational records, including future options for encryption at rest, export controls, redaction, and hiding compensation data from shared or presentation views.
+Payroll routes and actions require a signed employee-scoped session. Tailscale
+protects the network perimeter but is not treated as employee authorization.
 
 ### V1 Boundary
 
-Version 1 should support manual PDF upload, original PDF storage, core field extraction, line-item storage, manual correction, calendar lookup by pay date, and basic date-range totals.
-
-Payroll-provider login integration, automatic Workday sync, tax advice, retirement advice, and automated financial recommendations are out of scope.
+Version 1 supports the listed workflow and deliberately excludes permanent PDF
+storage, OCR, automatic Workday sync, tax/retirement advice, exports, annual
+analytics, and generalized payroll administration.
 
 ## Equipment Fuel Events
 

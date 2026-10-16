@@ -1,0 +1,34 @@
+import Link from "next/link";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getEvidenceReviewDashboard } from "@/features/payroll/evidence-review-data";
+import { formatRate, formatReviewDate, formatReviewDuration, formatReviewTimestamp, identityStatusLabels, provenanceLabels, rateStatusLabels } from "@/features/payroll/evidence-review-presentation";
+import { requireEvidenceReviewRoute } from "@/features/payroll/evidence-review-route";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+type Search = { type?: string; status?: string; from?: string; to?: string; page?: string };
+
+export default async function EvidenceReviewPage({ searchParams }: { searchParams: Promise<Search> }) {
+  await requireEvidenceReviewRoute();
+  const query = await searchParams;
+  const data = await getEvidenceReviewDashboard({
+    type: query.type === "timesheets" || query.type === "rates" ? query.type : "all",
+    status: query.status,
+    from: query.from,
+    to: query.to,
+    page: Number(query.page) || 1,
+  });
+  const noFilteredResults = data.timesheets.length === 0 && data.rates.length === 0;
+  function pageHref(page: number) {
+    const values = new URLSearchParams();
+    if (query.type) values.set("type", query.type);
+    if (query.status) values.set("status", query.status);
+    if (query.from) values.set("from", query.from);
+    if (query.to) values.set("to", query.to);
+    values.set("page", String(page));
+    return `/payroll/evidence-review?${values.toString()}`;
+  }
+  return <main className="page-stack payroll-page evidence-review-page"><header className="payroll-hero"><div><p className="eyebrow">Protected Payroll workspace</p><h1>Historical Evidence Review</h1><p className="summary">Explicitly verify quarantined Timesheet identity and pay-rate provenance. Candidate associations remain untrusted until reviewed.</p></div><Link className="button secondary" href="/payroll">Back to Payroll</Link></header><section className="payroll-summary-grid" aria-label="Review summary"><Card className="review-metric"><CardContent><strong>{data.counts.timesheets}</strong><span>Timesheets requiring review</span></CardContent></Card><Card className="review-metric"><CardContent><strong>{data.counts.rates}</strong><span>Rates requiring review</span></CardContent></Card><Card className="review-metric"><CardContent><strong>{data.counts.conflicts}</strong><span>Rate conflicts</span></CardContent></Card><Card className="review-metric"><CardContent><strong>{data.recentTimesheetEvents.length + data.recentRateEvents.length}</strong><span>Recent decisions shown</span></CardContent></Card></section><Card><CardHeader><CardTitle>Filter evidence</CardTitle></CardHeader><CardContent><form className="review-filter-grid"><label>Evidence type<select name="type" defaultValue={query.type ?? "all"}><option value="all">All evidence</option><option value="timesheets">Timesheets</option><option value="rates">Pay rates</option></select></label><label>Status<select name="status" defaultValue={query.status ?? ""}><option value="">All unresolved</option><option value="NEEDS_REVIEW">Needs review</option><option value="REVIEWED_UNASSIGNED">Reviewed/unassigned</option><option value="CONFLICT">Conflict</option></select></label><label>From<input type="date" name="from" defaultValue={query.from} /></label><label>To<input type="date" name="to" defaultValue={query.to} /></label><button className="button secondary" type="submit">Apply filters</button></form></CardContent></Card>{noFilteredResults ? <Card><CardContent><div className="payroll-empty"><strong>{data.counts.timesheets + data.counts.rates === 0 ? "Nothing requires review" : "No evidence matches these filters"}</strong><span>{data.counts.timesheets + data.counts.rates === 0 ? "Quarantined evidence queues are currently clear." : "Adjust the evidence type, status, or date range."}</span></div></CardContent></Card> : null}{data.timesheets.length ? <Card><CardHeader><CardTitle>Timesheet identity queue</CardTitle></CardHeader><CardContent className="payroll-table-scroll"><table className="payroll-history-table"><thead><tr><th>Payroll week</th><th>Original snapshot</th><th>Status</th><th>Candidate context</th><th>Worked</th><th>Action</th></tr></thead><tbody>{data.timesheets.map((item) => <tr key={item.id}><td>{formatReviewDate(item.payrollWeekStartDate)}</td><td>{item.primaryEmployeeDisplayName}</td><td>{identityStatusLabels[item.primaryEmployeeIdentityStatus]}</td><td>{item.identityCandidateEmployeeId ? <><span className="review-unverified-label">Unverified candidate</span><br />{item.identityCandidateEmployeeId}</> : "None"}</td><td>{formatReviewDuration(item.workedMinutesTotal)}</td><td><Link href={`/payroll/evidence-review/timesheets/${item.id}`}>Review</Link></td></tr>)}</tbody></table></CardContent></Card> : null}{data.rates.length ? <Card><CardHeader><CardTitle>Pay-rate evidence queue</CardTitle></CardHeader><CardContent className="payroll-table-scroll"><table className="payroll-history-table"><thead><tr><th>Employee</th><th>Effective date</th><th>Rate</th><th>Status</th><th>Provenance</th><th>Action</th></tr></thead><tbody>{data.rates.map((item) => <tr key={item.id}><td>{item.employee.displayName}<br /><span className="subtle">{item.employee.employeeCode ?? item.employee.id}</span></td><td>{formatReviewDate(item.effectiveFrom)}</td><td>{formatRate(item.hourlyRate)}</td><td>{rateStatusLabels[item.verificationStatus]}</td><td>{provenanceLabels[item.provenanceKind]}</td><td><Link href={`/payroll/evidence-review/rates/${item.id}`}>Review</Link></td></tr>)}</tbody></table></CardContent></Card> : null}<nav className="review-pagination" aria-label="Evidence queue pages">{data.page > 1 ? <Link className="button secondary" href={pageHref(data.page - 1)}>Previous page</Link> : <span />}{(data.timesheets.length === data.pageSize || data.rates.length === data.pageSize) ? <Link className="button secondary" href={pageHref(data.page + 1)}>Next page</Link> : null}</nav><Card><CardHeader><CardTitle>Recent immutable decisions</CardTitle></CardHeader><CardContent><ul className="review-recent-list">{[...data.recentTimesheetEvents.map((event) => ({ id: event.id, at: event.createdAt, label: `${event.decisionKind.replaceAll("_", " ")} · ${event.weeklyTimesheet.primaryEmployeeDisplayName}`, kind: "Owner review" })), ...data.recentRateEvents.map((event) => ({ id: event.id, at: event.createdAt, label: `${event.decisionKind.replaceAll("_", " ")} · ${event.employeePayRate.employee.displayName}`, kind: event.attributionKind === "PAYCHECK_CORRECTION_SYSTEM" ? "Automatic Paycheck correction" : "Owner review" }))].sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 8).map((event) => <li key={event.id}><div><strong>{event.label}</strong><span>{event.kind}</span></div><time>{formatReviewTimestamp(event.at)}</time></li>)}</ul></CardContent></Card></main>;
+}

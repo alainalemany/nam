@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
-import { dateInputValue, formatMinutes, parseDateOnly } from "./calculations";
+import { dateInputValue, endOfPayrollWeek, formatMinutes, parseDateOnly } from "./calculations";
 import { TIMESHEET_HISTORY_PAGE_SIZE, timesheetStatusLabels } from "./constants";
 import {
   buildTimesheetHistoryWhere,
@@ -119,6 +119,7 @@ function historyListItem(record: TimesheetHistoryRecord): TimesheetListItem {
     payrollWeekStartDate: record.payrollWeekStartDate,
     payrollWeekEndDate: record.payrollWeekEndDate,
     status: record.status,
+    primaryEmployeeIdentityStatus: record.primaryEmployeeIdentityStatus,
     primaryEmployeeDisplayName: record.primaryEmployeeDisplayName,
     workedMinutesTotal: record.workedMinutesTotal,
     regularMinutesTotal: record.regularMinutesTotal,
@@ -361,29 +362,106 @@ export async function getTimesheetContextsForDate(date: string) {
   return timesheetContextsFromEntries(await getDailyTimeEntriesForDayView(date));
 }
 
-export async function getWorkScheduleAssignmentOptions(primaryEmployeeKey: string) {
+export async function getWorkScheduleAssignmentOptions(
+  primaryEmployeeId: string,
+  payrollWeekStartDate: string,
+  existingAssignmentIds: string[] = [],
+) {
+  const weekStart = parseDateOnly(payrollWeekStartDate);
+  const weekEnd = endOfPayrollWeek(weekStart);
   const assignments = await prisma.dailyAssignment.findMany({
-    where: { weeklySchedule: { primaryEmployeeKey } },
-    orderBy: { assignmentDate: "desc" },
-    include: { weeklySchedule: true },
+    where: {
+      OR: [
+        {
+          assignmentDate: { gte: weekStart, lte: weekEnd },
+          weeklySchedule: { primaryEmployeeId },
+        },
+        ...(existingAssignmentIds.length > 0 ? [{ id: { in: existingAssignmentIds } }] : []),
+      ],
+    },
+    orderBy: [{ assignmentDate: "asc" }, { id: "asc" }],
+    include: {
+      weeklySchedule: true,
+      crewMembers: { orderBy: [{ phase: "asc" }, { role: "asc" }] },
+    },
   });
-  return assignments.map((item) => ({
-    id: item.id,
-    workDate: dateInputValue(item.assignmentDate),
-    label: `${dateInputValue(item.assignmentDate)} - ${item.weeklySchedule.primaryEmployeeDisplayName}`,
-    primaryEmployeeKey: item.weeklySchedule.primaryEmployeeKey,
-  }));
+  return assignments.map((item) => {
+    const effectiveStatus = item.actualStatus !== "UNKNOWN"
+      ? item.actualStatus
+      : item.plannedStatus;
+    const effectiveShift = item.actualStatus !== "UNKNOWN"
+      ? item.actualShift
+      : item.plannedShift;
+    const equipmentName = item.actualStatus !== "UNKNOWN"
+      ? item.actualEquipmentDisplayName
+      : item.plannedEquipmentDisplayName;
+    const equipmentNumber = item.actualStatus !== "UNKNOWN"
+      ? item.actualEquipmentNumber
+      : item.plannedEquipmentNumber;
+    const belongsToEmployee = item.weeklySchedule.primaryEmployeeId === primaryEmployeeId;
+    const selectable = belongsToEmployee &&
+      item.weeklySchedule.status === "ACTIVE" &&
+      effectiveStatus === "SCHEDULED";
+    const crew = item.crewMembers
+      .map((member) => member.displayName ?? (member.isUnknown ? "Unknown" : undefined))
+      .filter(Boolean)
+      .join(", ");
+    const equipment = equipmentName
+      ? `${equipmentName}${equipmentNumber ? ` #${equipmentNumber}` : ""}`
+      : undefined;
+    const context = [
+      effectiveShift !== "UNKNOWN" ? effectiveShift.charAt(0) + effectiveShift.slice(1).toLowerCase() : undefined,
+      equipment,
+      crew ? `Crew: ${crew}` : undefined,
+      item.weeklySchedule.sourceNote ? `Source: ${item.weeklySchedule.sourceNote}` : undefined,
+    ].filter(Boolean).join(" · ");
+    let warning: string | undefined;
+    if (!belongsToEmployee) warning = "Previously linked assignment now belongs to another employee.";
+    else if (item.weeklySchedule.status !== "ACTIVE") warning = `Schedule is ${item.weeklySchedule.status.toLowerCase()}.`;
+    else if (effectiveStatus !== "SCHEDULED") warning = `Assignment is ${effectiveStatus.toLowerCase().replaceAll("_", " ")}.`;
+    return {
+      id: item.id,
+      workDate: dateInputValue(item.assignmentDate),
+      label: `${dateInputValue(item.assignmentDate)}${context ? ` · ${context}` : ""}${warning ? ` · ${warning}` : ""}`,
+      selectable,
+      warning,
+    };
+  });
 }
 
-export async function getTimesheetFormOptions(primaryEmployeeKey?: string): Promise<TimesheetFormOptions> {
-  const [equipment, workCodes, workOrders, supportPersonnel, scheduleAssignments] = await Promise.all([
+export async function getTimesheetFormOptions({
+  primaryEmployeeId,
+  payrollWeekStartDate,
+  existingAssignmentIds = [],
+}: {
+  primaryEmployeeId?: string;
+  payrollWeekStartDate?: string;
+  existingAssignmentIds?: string[];
+} = {}): Promise<TimesheetFormOptions> {
+  const [employees, equipment, workCodes, workOrders, supportPersonnel, scheduleAssignments] = await Promise.all([
+    prisma.employee.findMany({
+      where: {
+        OR: [
+          { isActive: true },
+          ...(primaryEmployeeId ? [{ id: primaryEmployeeId }] : []),
+        ],
+      },
+      orderBy: [{ displayName: "asc" }, { employeeCode: "asc" }],
+    }),
     prisma.equipment.findMany({ include: { mine: true }, orderBy: { displayName: "asc" } }),
     prisma.timesheetWorkCode.findMany({ orderBy: [{ active: "desc" }, { code: "asc" }] }),
     prisma.timesheetWorkOrder.findMany({ orderBy: [{ active: "desc" }, { workOrderNumber: "asc" }] }),
     prisma.timesheetSupportPerson.findMany({ orderBy: [{ active: "desc" }, { displayName: "asc" }] }),
-    primaryEmployeeKey ? getWorkScheduleAssignmentOptions(primaryEmployeeKey) : Promise.resolve([]),
+    payrollWeekStartDate && (primaryEmployeeId || existingAssignmentIds.length > 0)
+      ? getWorkScheduleAssignmentOptions(primaryEmployeeId ?? "", payrollWeekStartDate, existingAssignmentIds)
+      : Promise.resolve([]),
   ]);
   return {
+    employees: employees.map((employee) => ({
+      id: employee.id,
+      label: `${employee.displayName}${employee.employeeCode ? ` (${employee.employeeCode})` : ""}${employee.isActive ? "" : " — Inactive"}`,
+      active: employee.isActive,
+    })),
     equipment: equipment.map((item) => ({
       id: item.id,
       label: `${item.displayName}${item.equipmentNumber ? ` (#${item.equipmentNumber})` : ""} - ${item.mine.name}`,
@@ -399,6 +477,7 @@ export async function getTimesheetFormOptions(primaryEmployeeKey?: string): Prom
 export function timesheetToFormInput(timesheet: WeeklyTimesheetDetail): WeeklyTimesheetInput {
   return {
     payrollWeekStartDate: dateInputValue(timesheet.payrollWeekStartDate),
+    primaryEmployeeId: timesheet.primaryEmployeeId ?? "",
     primaryEmployeeDisplayName: timesheet.primaryEmployeeDisplayName,
     entries: timesheet.entries.map((entry) => ({
       workDate: dateInputValue(entry.workDate),

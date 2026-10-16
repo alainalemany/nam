@@ -36,6 +36,7 @@ function listItem(
     payrollWeekStartDate: new Date("2026-07-13T00:00:00.000Z"),
     payrollWeekEndDate: new Date("2026-07-19T00:00:00.000Z"),
     status: "DRAFT",
+    primaryEmployeeIdentityStatus: "EXPLICIT_SELECTION",
     primaryEmployeeDisplayName: "Alex Operator",
     workedMinutesTotal: 690,
     regularMinutesTotal: 600,

@@ -1,17 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useMemo, useState, useTransition } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import {
-  getWorkScheduleAssignmentsForOwnerAction,
+  getWorkScheduleAssignmentsForEmployeeAction,
   saveWeeklyTimesheetAction,
 } from "./actions";
 import {
   buildPayrollWeekDates,
   buildTimesheetPreview,
   formatMinutes,
-  normalizeIdentityKey,
   parseDateOnly,
 } from "./calculations";
 import { dayLabels } from "./constants";
@@ -145,10 +144,11 @@ export function TimesheetForm({
     emptyTimesheetFormState,
   );
   const [weekStart, setWeekStart] = useState(initial.payrollWeekStartDate);
-  const [employeeName, setEmployeeName] = useState(initial.primaryEmployeeDisplayName);
+  const [employeeId, setEmployeeId] = useState(initial.primaryEmployeeId ?? "");
   const [days, setDays] = useState<DayState[]>(() => buildDays(initial));
   const [scheduleAssignments, setScheduleAssignments] = useState(options.scheduleAssignments);
   const [loadingScheduleAssignments, startScheduleAssignmentLoad] = useTransition();
+  const scheduleLoadGeneration = useRef(0);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(
     () => new Set(initial.entries.map((entry) => entry.workDate)),
   );
@@ -157,9 +157,38 @@ export function TimesheetForm({
   const preview = buildTimesheetPreview(activeEntries);
   const previewByDate = new Map(preview.entries.map((entry) => [entry.workDate, entry]));
   const payload = useMemo(
-    () => JSON.stringify({ payrollWeekStartDate: weekStart, primaryEmployeeDisplayName: employeeName, entries: activeEntries }),
-    [weekStart, employeeName, activeEntries],
+    () => JSON.stringify({ payrollWeekStartDate: weekStart, primaryEmployeeId: employeeId, primaryEmployeeDisplayName: initial.primaryEmployeeDisplayName, entries: activeEntries }),
+    [weekStart, employeeId, initial.primaryEmployeeDisplayName, activeEntries],
   );
+
+  useEffect(() => {
+    const generation = ++scheduleLoadGeneration.current;
+    if (!employeeId || !/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) {
+      if (!timesheetId || employeeId) setScheduleAssignments([]);
+      return;
+    }
+    startScheduleAssignmentLoad(async () => {
+      const assignments = await getWorkScheduleAssignmentsForEmployeeAction(
+        employeeId,
+        weekStart,
+        timesheetId,
+      );
+      if (generation !== scheduleLoadGeneration.current) return;
+      setScheduleAssignments(assignments);
+      setDays((current) => current.map((day) => {
+        if (day.workScheduleDailyAssignmentId) return day;
+        const eligible = assignments.filter(
+          (assignment) => assignment.workDate === day.workDate && assignment.selectable,
+        );
+        return eligible.length === 1
+          ? { ...day, workScheduleDailyAssignmentId: eligible[0].id }
+          : day;
+      }));
+    });
+    return () => {
+      if (generation === scheduleLoadGeneration.current) scheduleLoadGeneration.current += 1;
+    };
+  }, [employeeId, timesheetId, weekStart]);
 
   function updateDay(index: number, patch: Partial<DayState>) {
     setDays((current) => current.map((day, dayIndex) => (dayIndex === index ? { ...day, ...patch } : day)));
@@ -173,10 +202,19 @@ export function TimesheetForm({
   }
 
   function changeWeek(value: string) {
+    const changed = value !== weekStart;
+    if (changed) {
+      scheduleLoadGeneration.current += 1;
+      setScheduleAssignments([]);
+    }
     setWeekStart(value);
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
       const dates = buildPayrollWeekDates(parseDateOnly(value));
-      setDays((current) => current.map((day, index) => ({ ...day, workDate: dates[index] })));
+      setDays((current) => current.map((day, index) => ({
+        ...day,
+        workDate: dates[index],
+        workScheduleDailyAssignmentId: changed ? "" : day.workScheduleDailyAssignmentId,
+      })));
       setExpandedDates(new Set());
     }
   }
@@ -187,15 +225,6 @@ export function TimesheetForm({
       if (expanded) next.add(workDate);
       else next.delete(workDate);
       return next;
-    });
-  }
-
-
-  function loadScheduleAssignments() {
-    startScheduleAssignmentLoad(async () => {
-      setScheduleAssignments(
-        await getWorkScheduleAssignmentsForOwnerAction(employeeName),
-      );
     });
   }
 
@@ -237,24 +266,28 @@ export function TimesheetForm({
           <div className="form-stack">
             <label>
               <span>Primary employee</span>
-              <input
-                value={employeeName}
-                onChange={(event) => {
-                  setEmployeeName(event.target.value);
-                  setScheduleAssignments([]);
-                }}
-                maxLength={200}
-                required
-              />
+              {timesheetId && !initial.primaryEmployeeId ? (
+                <span className="form-message error">Historical identity: {initial.primaryEmployeeDisplayName}. Employee association is unresolved and will not be guessed.</span>
+              ) : (
+                <select
+                  aria-invalid={Boolean(state.fieldErrors.primaryEmployeeId?.[0])}
+                  disabled={Boolean(timesheetId)}
+                  value={employeeId}
+                  onChange={(event) => {
+                    scheduleLoadGeneration.current += 1;
+                    setEmployeeId(event.target.value);
+                    setScheduleAssignments([]);
+                    setDays((current) => current.map((day) => ({ ...day, workScheduleDailyAssignmentId: "" })));
+                  }}
+                  required
+                >
+                  <option value="">Select employee</option>
+                  {options.employees.map((employee) => <option disabled={!employee.active && employee.id !== employeeId} key={employee.id} value={employee.id}>{employee.label}</option>)}
+                </select>
+              )}
+              <FieldError message={state.fieldErrors.primaryEmployeeId?.[0]} />
             </label>
-            <button
-              className="button secondary"
-              disabled={!employeeName.trim() || loadingScheduleAssignments}
-              type="button"
-              onClick={loadScheduleAssignments}
-            >
-              {loadingScheduleAssignments ? "Loading..." : "Load matching schedule context"}
-            </button>
+            {loadingScheduleAssignments ? <span className="subtle">Loading Work Schedule context...</span> : null}
           </div>
         </div>
       </section>
@@ -351,10 +384,16 @@ export function TimesheetForm({
                         <select value={day.workScheduleDailyAssignmentId ?? ""} onChange={(event) => updateDay(dayIndex, { workScheduleDailyAssignmentId: event.target.value })}>
                           <option value="">No linked assignment</option>
                           {scheduleAssignments
-                            .filter((item) => item.workDate === day.workDate && item.primaryEmployeeKey === normalizeIdentityKey(employeeName))
-                            .map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                            .filter((item) => item.workDate === day.workDate || item.id === day.workScheduleDailyAssignmentId)
+                            .map((item) => <option disabled={!item.selectable && item.id !== day.workScheduleDailyAssignmentId} key={item.id} value={item.id}>{item.label}</option>)}
                         </select>
                         <FieldError message={fieldError(entryIndex, "workScheduleDailyAssignmentId")} />
+                        {scheduleAssignments.some((item) => item.workDate === day.workDate && item.selectable)
+                          ? null
+                          : <span className="subtle">No eligible scheduled assignment. Unscheduled work is allowed.</span>}
+                        {scheduleAssignments.find((item) => item.id === day.workScheduleDailyAssignmentId)?.warning
+                          ? <span className="form-message error">{scheduleAssignments.find((item) => item.id === day.workScheduleDailyAssignmentId)?.warning} The historical link will be preserved unless you clear it.</span>
+                          : null}
                       </label>
                       <label><span>Daily notes</span><input value={day.notes ?? ""} onChange={(event) => updateDay(dayIndex, { notes: event.target.value })} maxLength={1000} /><FieldError message={fieldError(entryIndex, "notes")} /></label>
                     </div>

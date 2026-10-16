@@ -1,4 +1,4 @@
-import type { EquipmentCategory, TimesheetStatus } from "@prisma/client";
+import type { EquipmentCategory, TimesheetIdentityStatus, TimesheetStatus } from "@prisma/client";
 
 export type TimesheetAllocationInput = {
   sequence: number;
@@ -22,6 +22,7 @@ export type DailyTimeEntryInput = {
 
 export type WeeklyTimesheetInput = {
   payrollWeekStartDate: string;
+  primaryEmployeeId?: string;
   primaryEmployeeDisplayName: string;
   entries: DailyTimeEntryInput[];
 };
@@ -30,6 +31,13 @@ export type TimesheetFormState = {
   status: "idle" | "error";
   message: string;
   fieldErrors: Record<string, string[]>;
+  code?: "IDENTITY_REVIEW_REQUIRED";
+};
+
+export type TimesheetMutationState = {
+  ok: boolean;
+  message: string;
+  code?: "IDENTITY_REVIEW_REQUIRED";
 };
 
 export const emptyTimesheetFormState: TimesheetFormState = {
@@ -48,6 +56,11 @@ export type EquipmentSnapshot = {
 };
 
 export type TimesheetFormOptions = {
+  employees: Array<{
+    id: string;
+    label: string;
+    active: boolean;
+  }>;
   equipment: Array<{ id: string; label: string; active: boolean }>;
   workCodes: Array<{ id: string; label: string; active: boolean }>;
   workOrders: Array<{ id: string; label: string; active: boolean }>;
@@ -56,7 +69,8 @@ export type TimesheetFormOptions = {
     id: string;
     workDate: string;
     label: string;
-    primaryEmployeeKey: string;
+    selectable: boolean;
+    warning?: string;
   }>;
 };
 
@@ -65,6 +79,7 @@ export type TimesheetListItem = {
   payrollWeekStartDate: Date;
   payrollWeekEndDate: Date;
   status: TimesheetStatus;
+  primaryEmployeeIdentityStatus: TimesheetIdentityStatus;
   primaryEmployeeDisplayName: string;
   workedMinutesTotal: number;
   regularMinutesTotal: number;

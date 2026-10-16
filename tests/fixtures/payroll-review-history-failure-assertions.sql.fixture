@@ -1,0 +1,35 @@
+DO $failure_assertions$
+BEGIN
+  IF to_regclass('"TimesheetIdentityReviewEvent"') IS NOT NULL
+    OR to_regclass('"PayRateEvidenceReviewEvent"') IS NOT NULL THEN
+    RAISE EXCEPTION 'Migration 37 partially created review-event tables.';
+  END IF;
+
+  IF to_regclass('"WeeklyTimesheet_trusted_employee_week_key"') IS NOT NULL THEN
+    RAISE EXCEPTION 'Migration 37 partially created trusted Timesheet uniqueness.';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_type
+    JOIN pg_namespace ON pg_namespace.oid = pg_type.typnamespace
+    WHERE pg_namespace.nspname = current_schema()
+      AND pg_type.typname IN (
+        'TimesheetIdentityReviewDecisionKind',
+        'PayRateEvidenceReviewDecisionKind',
+        'PayRateEvidenceEventAttributionKind'
+      )
+  ) THEN
+    RAISE EXCEPTION 'Migration 37 partially created review decision enums.';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM "_prisma_migrations"
+    WHERE migration_name = '20261015000200_payroll_historical_evidence_quarantine'
+      AND finished_at IS NOT NULL
+      AND rolled_back_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Migration 36 was not retained after migration 37 failure.';
+  END IF;
+END
+$failure_assertions$;

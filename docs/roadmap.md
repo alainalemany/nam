@@ -24,7 +24,7 @@ future phases.
 - [Daily Log And Historical Search Roadmap](#daily-log-and-historical-search-roadmap)
 - [Dragline Delay Reports Roadmap](#dragline-delay-reports-roadmap)
 - [Knowledge Base Roadmap](#knowledge-base-roadmap)
-- [Payslip Repository Roadmap](#payslip-repository-roadmap)
+- [Payroll Reconciliation Roadmap](#payroll-reconciliation-roadmap)
 - [Equipment Fuel Events Roadmap](#equipment-fuel-events-roadmap)
 - [Operational Pilot Readiness Roadmap](#operational-pilot-readiness-roadmap)
 - [Supply Requests Roadmap](#supply-requests-roadmap)
@@ -714,54 +714,37 @@ integration, analytics, reports, exports, and generic platform infrastructure
 remain outside V1. No later Knowledge Base phase or future enhancement is
 authorized by this closure.
 
-## Payslip Repository Roadmap
+## Payroll Reconciliation Roadmap
 
-Current status: Conceptually planned under ADR-005, but implementation is
-blocked by unresolved privacy, application-access, file-storage, extraction,
-redaction, and export decisions. No accepted Level 2 feature architecture or
-implementation authorization exists. The phases below are conceptual planning
-inputs, not an active delivery sequence.
+Current status: Payroll Reconciliation V1 and the initial licensed Metronic
+foundation are implemented on `feature/payroll-metronic-v1`. Migration,
+environment-secret configuration, review, merge, and deployment remain
+separately controlled.
 
-### Phase 1: Requirements Definition
+### Phase 1: Evidence And Boundary (Complete)
 
-- Confirm required payslip upload workflow
-- Identify payroll provider format from sample PDFs
-- Define required payroll header fields
-- Define earnings, deductions, taxes, employer contributions, and payment distribution line-item categories
-- Define calendar lookup behavior by pay date and pay period
-- Define financial privacy requirements
+- Confirm Work Schedule, NAM Timesheet, and Workday evidence roles
+- Confirm Monday-Sunday cadence and projected following-Friday check date
+- Confirm aggregate-versus-day evidence language and financial privacy boundary
 
-### Phase 2: Data Model Design
+### Phase 2: Data And Reconciliation (Implemented; Migration Pending)
 
-- Define PayslipDocument entity
-- Define Payslip entity
-- Define PayslipEarningLine entity
-- Define PayslipDeductionLine entity
-- Define PayslipTaxLine entity
-- Define PayslipEmployerContributionLine entity
-- Define PayslipPaymentDistribution entity
-- Define PayslipExtractionField entity
-- Define duplicate detection strategy using file hash and payroll identifiers
+- Add employee-scoped PayrollPeriod, Paycheck, and effective-dated rates
+- Add safe duplicate identity, reviewed corrections, exact minutes and Decimal money
+- Derive reconciliation from Schedule, Timesheet, and paycheck records
 
-### Phase 3: V1 Implementation
+### Phase 3: V1 Experience (Implemented; Review Pending)
 
-- Upload and store payslip PDFs
-- Extract PDF text when available
-- Run OCR fallback for image-based PDFs
-- Parse core header fields, totals, and line items
-- Show extraction status and confidence
-- Allow manual correction of extracted values
-- Search payslips by pay date, pay period, amount, and line-item type
-- Show basic date-range and annual totals for gross pay, net pay, taxes, deductions, 401k, insurance, and employer contributions
+- Import readable Workday PDFs without retaining files or raw text
+- Review/correct core dates, paid hours, earnings, deductions, taxes, and net pay
+- Provide protected summary, calendar/day drawer, history/detail, and home widget
+- Use selectively adapted genuine Metronic 9.5.0 design primitives
 
-### Phase 4: Future Enhancements
+### Phase 4: Future Enhancements (Not Authorized)
 
-- Add advanced compensation dashboards
-- Add CSV or spreadsheet export
-- Add tax-year summary reports
-- Add payroll-provider specific parser templates
-- Add automatic Workday import only if the security and maintenance tradeoffs are acceptable
-- Add encryption-at-rest and redacted display modes for sensitive financial fields
+- Consider OCR, permanent source archive, exports, or annual analytics only after
+  separate privacy and product approval
+- Continue gradual Metronic migration after Payroll review
 
 ## Equipment Fuel Events Roadmap
 
@@ -1347,16 +1330,15 @@ Status: Implemented
 - Verify application startup, localhost access, database connectivity, and exposed ports
 - Do not implement authentication, authorization, user management, feature modules, business logic, production deployment, Caddy, HTTPS, monitoring, or background workers during this phase
 
-### Phase 3: Reverse Proxy And HTTPS
+### Phase 3: Private HTTPS Access
 
-Status: Implemented for external development access through `dev.alemany.me`
+Status: Implemented with Tailscale Serve at
+`https://ops-console.tailf57e61.ts.net`
 
-- Install Caddy directly on the VPS host only after the Docker application stack is functional
-- Configure Caddy as the only public reverse proxy
-- Configure HTTPS for `dev.alemany.me`
-- Keep `nam.alemany.me` reserved for future production use
-- Reverse proxy public requests to the localhost-bound Next.js container
-- Verify external access, certificate issuance, and certificate renewal behavior
+- Keep the application bound to loopback
+- Keep PostgreSQL private and Tailscale Funnel disabled
+- Do not add public DNS, public Caddy ingress, or alternate application domains
+- Verify access from authorized tailnet devices
 
 ### Phase 4: Production Operations
 

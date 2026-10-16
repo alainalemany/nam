@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
+import { acquirePayrollEvidenceLock } from "@/features/payroll/evidence-review-locks";
 
 import {
   allocateWeeklyOvertime,
@@ -26,7 +27,7 @@ import {
   type WorkCodeSource,
   type WorkOrderSource,
 } from "./persistence";
-import type { TimesheetFormState, WeeklyTimesheetInput } from "./types";
+import type { TimesheetFormState, TimesheetMutationState, WeeklyTimesheetInput } from "./types";
 import {
   supportPersonSchema,
   validateCompletion,
@@ -36,8 +37,19 @@ import {
 } from "./validation";
 import { getWorkScheduleAssignmentOptions } from "./data";
 
-function errorState(message: string, fieldErrors: Record<string, string[]> = {}): TimesheetFormState {
-  return { status: "error", message, fieldErrors };
+const identityReviewRequiredMessage =
+  "Historical ownership must be reviewed before this Timesheet can be changed.";
+
+function hasTrustedIdentity(status: string | undefined) {
+  return status === "EXPLICIT_SELECTION" || status === "OWNER_VERIFIED";
+}
+
+function errorState(
+  message: string,
+  fieldErrors: Record<string, string[]> = {},
+  code?: TimesheetFormState["code"],
+): TimesheetFormState {
+  return { status: "error", message, fieldErrors, ...(code ? { code } : {}) };
 }
 
 function validationState(error: { issues: Array<{ path: PropertyKey[]; message: string }> }) {
@@ -77,12 +89,35 @@ class TimesheetInputError extends Error {
   }
 }
 
-export async function getWorkScheduleAssignmentsForOwnerAction(
-  primaryEmployeeDisplayName: string,
+export async function getWorkScheduleAssignmentsForEmployeeAction(
+  primaryEmployeeId: string,
+  payrollWeekStartDate: string,
+  timesheetId: string | null,
 ) {
-  const primaryEmployeeKey = normalizeIdentityKey(primaryEmployeeDisplayName);
-  if (!primaryEmployeeKey) return [];
-  return getWorkScheduleAssignmentOptions(primaryEmployeeKey);
+  if (!primaryEmployeeId || !/^\d{4}-\d{2}-\d{2}$/.test(payrollWeekStartDate)) return [];
+  const existing = timesheetId
+    ? await prisma.weeklyTimesheet.findUnique({
+        where: { id: timesheetId },
+        select: {
+          primaryEmployeeId: true,
+          primaryEmployeeIdentityStatus: true,
+          entries: { select: { workScheduleDailyAssignmentId: true } },
+        },
+      })
+    : null;
+  if (
+    existing &&
+    (!hasTrustedIdentity(existing.primaryEmployeeIdentityStatus) ||
+      existing.primaryEmployeeId !== primaryEmployeeId)
+  ) return [];
+  const existingAssignmentIds = existing?.entries
+    .map((entry) => entry.workScheduleDailyAssignmentId)
+    .filter((id): id is string => Boolean(id)) ?? [];
+  return getWorkScheduleAssignmentOptions(
+    primaryEmployeeId,
+    payrollWeekStartDate,
+    existingAssignmentIds,
+  );
 }
 
 const existingInclude = {
@@ -98,6 +133,7 @@ type ExistingTimesheet = Prisma.WeeklyTimesheetGetPayload<{ include: typeof exis
 async function referenceMaps(
   tx: Prisma.TransactionClient,
   input: WeeklyTimesheetInput,
+  primaryEmployeeId: string | null,
   existing?: ExistingTimesheet | null,
 ) {
   const equipmentIds = [
@@ -115,7 +151,11 @@ async function referenceMaps(
     tx.timesheetSupportPerson.findMany({ where: { id: { in: supportPersonIds } } }),
     tx.dailyAssignment.findMany({
       where: { id: { in: assignmentIds } },
-      include: { weeklySchedule: { select: { primaryEmployeeKey: true } } },
+      include: {
+        weeklySchedule: {
+          select: { primaryEmployeeId: true, status: true },
+        },
+      },
     }),
   ]);
 
@@ -177,19 +217,32 @@ async function referenceMaps(
 
   for (const [entryIndex, entry] of input.entries.entries()) {
     const assignment = assignments.find((item) => item.id === entry.workScheduleDailyAssignmentId);
-    if (
-      assignment &&
-      assignment.weeklySchedule.primaryEmployeeKey !==
-        normalizeIdentityKey(input.primaryEmployeeDisplayName)
-    ) {
+    const existingEntry = existingByDate.get(entry.workDate);
+    const unchangedHistoricalLink = Boolean(
+      assignment && existingEntry?.workScheduleDailyAssignmentId === assignment.id,
+    );
+    if (assignment && !unchangedHistoricalLink && assignment.weeklySchedule.primaryEmployeeId !== primaryEmployeeId) {
       throw new TimesheetInputError(
         "ASSIGNMENT_OWNER_MISMATCH",
         `entries.${entryIndex}.workScheduleDailyAssignmentId`,
       );
     }
-    if (assignment && assignment.assignmentDate.getTime() !== parseDateOnly(entry.workDate).getTime()) {
+    if (assignment && !unchangedHistoricalLink && assignment.assignmentDate.getTime() !== parseDateOnly(entry.workDate).getTime()) {
       throw new TimesheetInputError(
         "ASSIGNMENT_DATE_MISMATCH",
+        `entries.${entryIndex}.workScheduleDailyAssignmentId`,
+      );
+    }
+    const effectiveStatus = assignment?.actualStatus !== "UNKNOWN"
+      ? assignment?.actualStatus
+      : assignment?.plannedStatus;
+    if (
+      assignment &&
+      !unchangedHistoricalLink &&
+      (assignment.weeklySchedule.status !== "ACTIVE" || effectiveStatus !== "SCHEDULED")
+    ) {
+      throw new TimesheetInputError(
+        "ASSIGNMENT_INELIGIBLE",
         `entries.${entryIndex}.workScheduleDailyAssignmentId`,
       );
     }
@@ -341,44 +394,84 @@ export async function saveWeeklyTimesheetAction(
   let savedId = timesheetId;
   try {
     savedId = await prisma.$transaction(async (tx) => {
+      if (timesheetId) await acquirePayrollEvidenceLock(tx, "timesheet", timesheetId);
       const existing = timesheetId
         ? await tx.weeklyTimesheet.findUnique({ where: { id: timesheetId }, include: existingInclude })
         : null;
       if (timesheetId && !existing) throw new Error("NOT_FOUND");
+      if (existing && !hasTrustedIdentity(existing.primaryEmployeeIdentityStatus)) {
+        throw new Error("IDENTITY_REVIEW_REQUIRED");
+      }
       if (existing?.status === "COMPLETED") throw new Error("COMPLETED_READ_ONLY");
 
-      const primaryEmployeeKey = normalizeIdentityKey(parsed.data.primaryEmployeeDisplayName);
+      const submittedEmployeeId = parsed.data.primaryEmployeeId || null;
+      let primaryEmployeeId: string | null;
+      let primaryEmployeeDisplayName: string;
+      let primaryEmployeeKey: string;
+      if (existing) {
+        if (submittedEmployeeId !== existing.primaryEmployeeId) {
+          throw new TimesheetInputError("EMPLOYEE_CHANGE_NOT_ALLOWED", "primaryEmployeeId");
+        }
+        primaryEmployeeId = existing.primaryEmployeeId;
+        primaryEmployeeDisplayName = existing.primaryEmployeeDisplayName;
+        primaryEmployeeKey = existing.primaryEmployeeKey;
+      } else {
+        if (!submittedEmployeeId) {
+          throw new TimesheetInputError("EMPLOYEE_REQUIRED", "primaryEmployeeId");
+        }
+        const employee = await tx.employee.findUnique({ where: { id: submittedEmployeeId } });
+        if (!employee) throw new TimesheetInputError("INVALID_EMPLOYEE", "primaryEmployeeId");
+        if (!employee.isActive) throw new TimesheetInputError("INACTIVE_EMPLOYEE", "primaryEmployeeId");
+        primaryEmployeeId = employee.id;
+        primaryEmployeeDisplayName = employee.displayName;
+        primaryEmployeeKey = normalizeIdentityKey(employee.displayName);
+      }
       const weekStart = parseDateOnly(parsed.data.payrollWeekStartDate);
       const weekEnd = endOfPayrollWeek(weekStart);
-      const maps = await referenceMaps(tx, parsed.data, existing);
-      const parent = existing
-        ? await tx.weeklyTimesheet.update({
-            where: { id: existing.id },
-            data: {
-              payrollWeekStartDate: weekStart,
-              payrollWeekEndDate: weekEnd,
-              primaryEmployeeDisplayName: parsed.data.primaryEmployeeDisplayName,
-              primaryEmployeeKey,
-            },
-          })
-        : await tx.weeklyTimesheet.create({
-            data: {
-              payrollWeekStartDate: weekStart,
-              payrollWeekEndDate: weekEnd,
-              primaryEmployeeDisplayName: parsed.data.primaryEmployeeDisplayName,
-              primaryEmployeeKey,
-            },
-          });
-      const calculated = await persistEntries(tx, parent.id, parsed.data, existing, maps);
+      const maps = await referenceMaps(tx, parsed.data, primaryEmployeeId, existing);
+      let parentId: string;
+      if (existing) {
+        const updated = await tx.weeklyTimesheet.updateMany({
+          where: {
+            id: existing.id,
+            primaryEmployeeId: existing.primaryEmployeeId,
+            primaryEmployeeIdentityStatus: { in: ["EXPLICIT_SELECTION", "OWNER_VERIFIED"] },
+            identityVersion: existing.identityVersion,
+          },
+          data: {
+            payrollWeekStartDate: weekStart,
+            payrollWeekEndDate: weekEnd,
+            primaryEmployeeDisplayName,
+            primaryEmployeeKey,
+            primaryEmployeeId,
+          },
+        });
+        if (updated.count !== 1) throw new Error("IDENTITY_REVIEW_REQUIRED");
+        parentId = existing.id;
+      } else {
+        parentId = (await tx.weeklyTimesheet.create({
+          data: {
+            payrollWeekStartDate: weekStart,
+            payrollWeekEndDate: weekEnd,
+            primaryEmployeeDisplayName,
+            primaryEmployeeKey,
+            primaryEmployeeId,
+            primaryEmployeeIdentityStatus: "EXPLICIT_SELECTION",
+            identityCandidateEmployeeId: null,
+            identityVersion: 1,
+          },
+        })).id;
+      }
+      const calculated = await persistEntries(tx, parentId, parsed.data, existing, maps);
       await tx.weeklyTimesheet.update({
-        where: { id: parent.id },
+        where: { id: parentId },
         data: {
           workedMinutesTotal: calculated.reduce((sum, entry) => sum + entry.workedMinutes, 0),
           regularMinutesTotal: calculated.reduce((sum, entry) => sum + entry.regularMinutes, 0),
           overtimeMinutesTotal: calculated.reduce((sum, entry) => sum + entry.overtimeMinutes, 0),
         },
       });
-      return parent.id;
+      return parentId;
     });
   } catch (error) {
     if (isPrismaError(error, "P2002")) return errorState("A Timesheet already exists for this employee and payroll week.");
@@ -386,6 +479,11 @@ export async function saveWeeklyTimesheetAction(
     const known: Record<string, string> = {
       NOT_FOUND: "Timesheet could not be found.",
       COMPLETED_READ_ONLY: "Reopen this Completed Timesheet before editing it.",
+      EMPLOYEE_REQUIRED: "Select a primary employee.",
+      INVALID_EMPLOYEE: "The selected Employee could not be found.",
+      INACTIVE_EMPLOYEE: "Inactive Employees cannot own new Timesheets.",
+      EMPLOYEE_CHANGE_NOT_ALLOWED: "Timesheet ownership cannot be changed during ordinary editing.",
+      IDENTITY_REVIEW_REQUIRED: identityReviewRequiredMessage,
       INVALID_EQUIPMENT: "One or more selected Equipment records could not be found.",
       EQUIPMENT_REQUIRED: "Each Daily Time Entry requires primary Equipment.",
       INVALID_WORK_CODE: "One or more selected Work Codes could not be found.",
@@ -394,11 +492,15 @@ export async function saveWeeklyTimesheetAction(
       INVALID_ASSIGNMENT: "The selected Work Schedule assignment could not be found.",
       ASSIGNMENT_DATE_MISMATCH: "Work Schedule context must match the Daily Time Entry work date.",
       ASSIGNMENT_OWNER_MISMATCH: "Work Schedule context must belong to the same Timesheet employee.",
+      ASSIGNMENT_INELIGIBLE: "Only Active scheduled Work Schedule assignments may be selected.",
       INACTIVE_WORK_CODE: "Inactive Work Codes cannot be selected for new allocations.",
       INACTIVE_WORK_ORDER: "Inactive Work Orders cannot be selected for new allocations.",
       INACTIVE_SUPPORT_PERSON: "Inactive Support Personnel cannot be selected for new allocations.",
     };
     const userMessage = known[message] ?? "Timesheet could not be saved. Review the entries and try again.";
+    if (message === "IDENTITY_REVIEW_REQUIRED") {
+      return errorState(userMessage, {}, "IDENTITY_REVIEW_REQUIRED");
+    }
     return error instanceof TimesheetInputError
       ? errorState(userMessage, { [error.fieldPath]: [userMessage] })
       : errorState(userMessage);
@@ -406,42 +508,117 @@ export async function saveWeeklyTimesheetAction(
 
   revalidatePath("/");
   revalidatePath("/timesheets");
+  revalidatePath("/payroll");
   redirect(`/timesheets/${savedId}`);
 }
 
 export async function completeWeeklyTimesheetAction(
   id: string,
-  _previousState: { ok: boolean; message: string },
+  _previousState: TimesheetMutationState,
   _formData: FormData,
-) {
+): Promise<TimesheetMutationState> {
   const result = await prisma.$transaction(async (tx) => {
+    await acquirePayrollEvidenceLock(tx, "timesheet", id);
     const timesheet = await tx.weeklyTimesheet.findUnique({
       where: { id },
       include: { entries: { orderBy: { workDate: "asc" }, include: { allocations: true } } },
     });
     if (!timesheet) return { ok: false, message: "Timesheet could not be found." };
+    if (!hasTrustedIdentity(timesheet.primaryEmployeeIdentityStatus)) {
+      return {
+        ok: false,
+        code: "IDENTITY_REVIEW_REQUIRED" as const,
+        message: identityReviewRequiredMessage,
+      };
+    }
     if (timesheet.status === "COMPLETED") return { ok: true, message: "" };
     const issues = validateCompletion(timesheet.entries);
     if (issues.length > 0) return { ok: false, message: issues.join(" ") };
-    await tx.weeklyTimesheet.update({ where: { id }, data: { status: "COMPLETED" } });
+    const completed = await tx.weeklyTimesheet.updateMany({
+      where: {
+        id,
+        status: "DRAFT",
+        primaryEmployeeIdentityStatus: { in: ["EXPLICIT_SELECTION", "OWNER_VERIFIED"] },
+      },
+      data: { status: "COMPLETED" },
+    });
+    if (completed.count !== 1) {
+      return {
+        ok: false,
+        code: "IDENTITY_REVIEW_REQUIRED" as const,
+        message: identityReviewRequiredMessage,
+      };
+    }
     return { ok: true, message: "" };
   });
   if (!result.ok) return result;
   revalidatePath("/timesheets");
   revalidatePath(`/timesheets/${id}`);
+  revalidatePath("/payroll");
   redirect(`/timesheets/${id}`);
 }
 
-export async function reopenWeeklyTimesheetAction(id: string) {
-  await prisma.weeklyTimesheet.updateMany({ where: { id, status: "COMPLETED" }, data: { status: "DRAFT" } });
+export async function reopenWeeklyTimesheetAction(
+  id: string,
+  _previousState: TimesheetMutationState,
+  _formData: FormData,
+): Promise<TimesheetMutationState> {
+  const result = await prisma.$transaction(async (tx) => {
+    await acquirePayrollEvidenceLock(tx, "timesheet", id);
+    const timesheet = await tx.weeklyTimesheet.findUnique({
+      where: { id },
+      select: { primaryEmployeeIdentityStatus: true },
+    });
+    if (timesheet && !hasTrustedIdentity(timesheet.primaryEmployeeIdentityStatus)) {
+      return { blocked: true };
+    }
+    await tx.weeklyTimesheet.updateMany({
+      where: {
+        id,
+        status: "COMPLETED",
+        primaryEmployeeIdentityStatus: { in: ["EXPLICIT_SELECTION", "OWNER_VERIFIED"] },
+      },
+      data: { status: "DRAFT" },
+    });
+    return { blocked: false };
+  });
+  if (result.blocked) {
+    return { ok: false, code: "IDENTITY_REVIEW_REQUIRED" as const, message: identityReviewRequiredMessage };
+  }
   revalidatePath("/timesheets");
   revalidatePath(`/timesheets/${id}`);
+  revalidatePath("/payroll");
   redirect(`/timesheets/${id}/edit`);
 }
 
-export async function deleteWeeklyTimesheetAction(id: string) {
-  await prisma.weeklyTimesheet.deleteMany({ where: { id, status: "DRAFT" } });
+export async function deleteWeeklyTimesheetAction(
+  id: string,
+  _previousState: TimesheetMutationState,
+  _formData: FormData,
+): Promise<TimesheetMutationState> {
+  const result = await prisma.$transaction(async (tx) => {
+    await acquirePayrollEvidenceLock(tx, "timesheet", id);
+    const timesheet = await tx.weeklyTimesheet.findUnique({
+      where: { id },
+      select: { primaryEmployeeIdentityStatus: true },
+    });
+    if (timesheet && !hasTrustedIdentity(timesheet.primaryEmployeeIdentityStatus)) {
+      return { blocked: true };
+    }
+    await tx.weeklyTimesheet.deleteMany({
+      where: {
+        id,
+        status: "DRAFT",
+        primaryEmployeeIdentityStatus: { in: ["EXPLICIT_SELECTION", "OWNER_VERIFIED"] },
+      },
+    });
+    return { blocked: false };
+  });
+  if (result.blocked) {
+    return { ok: false, code: "IDENTITY_REVIEW_REQUIRED" as const, message: identityReviewRequiredMessage };
+  }
   revalidatePath("/timesheets");
+  revalidatePath("/payroll");
   redirect("/timesheets");
 }
 

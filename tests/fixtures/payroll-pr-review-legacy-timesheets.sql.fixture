@@ -1,0 +1,34 @@
+-- Synthetic records inserted before Payroll reconciliation migrations so the
+-- real legacy-name backfill is exercised by a clean migration deployment.
+INSERT INTO "Employee" (
+  "id", "employeeCode", "displayName", "isActive", "isSupervisor", "updatedAt"
+) VALUES
+  ('migration-employee-unique', 'MIG-UNIQUE', '  Unique   Operator  ', true, false, CURRENT_TIMESTAMP),
+  ('migration-employee-inactive', 'MIG-INACTIVE', 'Inactive Operator', false, false, CURRENT_TIMESTAMP),
+  ('migration-employee-duplicate-a', 'MIG-DUP-A', 'Duplicate Operator', true, false, CURRENT_TIMESTAMP),
+  ('migration-employee-duplicate-b', 'MIG-DUP-B', '  duplicate   operator  ', true, false, CURRENT_TIMESTAMP);
+
+INSERT INTO "WeeklyTimesheet" (
+  "id",
+  "payrollWeekStartDate",
+  "payrollWeekEndDate",
+  "primaryEmployeeDisplayName",
+  "primaryEmployeeKey",
+  "updatedAt"
+) VALUES
+  (
+    'migration-timesheet-unique', DATE '2026-06-01', DATE '2026-06-07',
+    'Historical UNIQUE Operator Snapshot', 'unique operator', CURRENT_TIMESTAMP
+  ),
+  (
+    'migration-timesheet-inactive', DATE '2026-06-08', DATE '2026-06-14',
+    'Historical Inactive Operator Snapshot', 'inactive operator', CURRENT_TIMESTAMP
+  ),
+  (
+    'migration-timesheet-duplicate', DATE '2026-06-15', DATE '2026-06-21',
+    'Historical Duplicate Operator Snapshot', 'duplicate operator', CURRENT_TIMESTAMP
+  ),
+  (
+    'migration-timesheet-missing', DATE '2026-06-22', DATE '2026-06-28',
+    'Historical Missing Operator Snapshot', 'missing operator', CURRENT_TIMESTAMP
+  );

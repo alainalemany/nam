@@ -40,15 +40,10 @@ Phase 2B includes:
 - Private Docker networking between `app` and `postgres`
 - Application publishing on `127.0.0.1:3000` only
 
-Phase 3.2 external development access adds host-level Caddy in front of the
-existing development app:
-
-- `dev.alemany.me` is the external development hostname.
-- Caddy terminates HTTPS and reverse proxies to `127.0.0.1:3000`.
-- The Docker application service remains bound only to localhost.
-- Port `3000` must not be exposed directly to the public Internet.
-- `nam.alemany.me` is reserved for a future production deployment and is not
-  configured in Caddy yet.
+The current private application endpoint is
+`https://ops-console.tailf57e61.ts.net`. Tailscale Serve reverse proxies to the
+application on `127.0.0.1:3000`; Funnel remains disabled. The historical Caddy
+development hostname is not a NAM application endpoint and must not be used.
 
 ADR-019 approves a managed private overlay, with Tailscale as the implementation
 reference, for the controlled real-data pilot. Tailscale is installed,
@@ -217,6 +212,59 @@ application image and archive have not been exercised together as a rollback
 set, and no post-DDR current-schema backup with disposable-restore proof is
 recorded. The broader Recovery Gate and disaster-recovery acceptance therefore
 remain open.
+
+### Payroll V1 pre-deployment backup and disposable restore
+
+The following prepared procedure is scoped to the Payroll V1 deployment. It
+does not authorize execution. Run it only after separate backup-test approval,
+from `/home/alain/projects/nam`, while the established `nam-postgres` container
+is healthy. It does not publish PostgreSQL to the host and never restores over
+`nam_dashboard`.
+
+Create a uniquely named, permission-restricted custom archive outside Git:
+
+```bash
+umask 077
+NAM_PAYROLL_BACKUP_DIR=/home/alain/backups/nam/postgres
+NAM_PAYROLL_BACKUP_STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+NAM_PAYROLL_BACKUP_FILE="${NAM_PAYROLL_BACKUP_DIR}/nam_dashboard_pre_payroll_v1_${NAM_PAYROLL_BACKUP_STAMP}.dump"
+test -d "$NAM_PAYROLL_BACKUP_DIR"
+test ! -e "$NAM_PAYROLL_BACKUP_FILE"
+sg docker -c 'docker compose exec -T postgres sh -c '\''exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc'\''' > "$NAM_PAYROLL_BACKUP_FILE"
+chmod 0600 "$NAM_PAYROLL_BACKUP_FILE"
+sha256sum "$NAM_PAYROLL_BACKUP_FILE" > "${NAM_PAYROLL_BACKUP_FILE}.sha256"
+pg_restore --list "$NAM_PAYROLL_BACKUP_FILE" > "${NAM_PAYROLL_BACKUP_FILE}.toc"
+sha256sum -c "${NAM_PAYROLL_BACKUP_FILE}.sha256"
+pg_restore --list "$NAM_PAYROLL_BACKUP_FILE" >/dev/null
+```
+
+With separately approved temporary-database authority, restore that archive
+inside the existing PostgreSQL container and compare non-sensitive counts:
+
+```bash
+NAM_PAYROLL_RESTORE_DB="nam_payroll_v1_restore_$(date -u +%Y%m%dt%H%M%Sz)"
+[[ "$NAM_PAYROLL_RESTORE_DB" =~ ^nam_payroll_v1_restore_[0-9]{8}t[0-9]{6}z$ ]]
+test "$NAM_PAYROLL_RESTORE_DB" != nam_dashboard
+sg docker -c "docker compose exec -T postgres createdb -U nam_app --template=template0 '$NAM_PAYROLL_RESTORE_DB'"
+sg docker -c "docker compose exec -T postgres pg_restore -U nam_app -d '$NAM_PAYROLL_RESTORE_DB' --exit-on-error --no-owner --no-privileges" < "$NAM_PAYROLL_BACKUP_FILE"
+sg docker -c "docker compose exec -T postgres psql -X -U nam_app -d '$NAM_PAYROLL_RESTORE_DB' -At -c 'SELECT count(*) FROM \"_prisma_migrations\"; SELECT count(*) FROM \"Employee\"; SELECT count(*) FROM \"WeeklyTimesheet\";'"
+```
+
+Compare those counts with read-only queries against `nam_dashboard`. After the
+restore evidence is accepted, drop only the guarded disposable database:
+
+```bash
+[[ "$NAM_PAYROLL_RESTORE_DB" =~ ^nam_payroll_v1_restore_[0-9]{8}t[0-9]{6}z$ ]]
+test "$NAM_PAYROLL_RESTORE_DB" != nam_dashboard
+sg docker -c "docker compose exec -T postgres dropdb -U nam_app --if-exists '$NAM_PAYROLL_RESTORE_DB'"
+```
+
+Backup creation, checksum validation, guarded disposable restore, count
+comparison, and cleanup can be automated with these exact name guards. A live
+restore, migration repair, backup deletion, or production migration must remain
+an explicit operator decision. Prisma migrations are not automatically
+reversible; after a partial failure, stop and choose a reviewed forward repair
+or restore the verified archive.
 
 ## Planned Operational Safety Checklist Media Storage
 
@@ -388,10 +436,10 @@ The expected sequence is:
 9. Verify app-to-database connectivity.
 10. Verify no unintended public ports are exposed.
 
-## Caddy Configuration
+## Historical Caddy Configuration
 
-Phase 3.2 currently uses host-level Caddy for external development access. This
-public route is not approved for real pilot data.
+The repository retains historical Caddy examples for recovery context only.
+They are not the current application access path and must not be applied for NAM.
 
 The repository-owned Caddy example is:
 
@@ -405,37 +453,16 @@ The live host file is:
 /etc/caddy/Caddyfile
 ```
 
-Approved development route:
-
-```caddyfile
-dev.alemany.me {
-  reverse_proxy 127.0.0.1:3000
-}
-```
-
-Do not add a `nam.alemany.me` site block until production deployment is
-explicitly designed and approved. `nam.alemany.me` remains reserved for future
-production use.
-
-Verify Caddy:
+Verify the current private route:
 
 ```bash
-systemctl is-active caddy
-caddy validate --config /etc/caddy/Caddyfile
-curl -I https://dev.alemany.me
+tailscale serve status
+tailscale funnel status
+curl -I https://ops-console.tailf57e61.ts.net
 ```
 
-If HTTPS does not load externally, verify:
-
-- DNS `A dev.alemany.me` points to the server public IP.
-- Host firewall allows inbound TCP `80` and `443`.
-- Provider firewall/security group allows inbound TCP `80` and `443`.
-- The local app health endpoint succeeds at `http://127.0.0.1:3000/api/health`.
-
-The later ADR-019 implementation must remove this public application route,
-remove public DNS reachability for `dev.alemany.me`, and verify that Caddy does
-not provide an IPv4 or IPv6 bypass. Do not restore unauthenticated public Caddy
-access as a fallback when private overlay access is unavailable.
+The expected status is tailnet-only HTTPS with no Funnel. Do not restore a
+public Caddy application route as a fallback.
 
 ## Firewall Considerations
 

@@ -20,7 +20,7 @@ relationships, enums, and data modeling notes.
 - [Maintenance Tracking Entities](#maintenance-tracking-entities)
 - [Work Schedule Entities](#work-schedule-entities)
 - [Timesheet Entities](#timesheet-entities)
-- [Payslip Repository Entities](#payslip-repository-entities)
+- [Payroll Reconciliation Entities](#payroll-reconciliation-entities)
 - [Equipment Fuel Event Concepts](#equipment-fuel-event-concepts)
 - [Supply Request Concepts](#supply-request-concepts)
 
@@ -1105,6 +1105,7 @@ Implemented fields:
 - primaryEmployeeId
 - primaryEmployeeDisplayName
 - primaryEmployeeKey
+- primaryEmployeeId
 - assignedByEmployeeId
 - assignedByDisplayName
 - receivedAt
@@ -1272,6 +1273,10 @@ Potential fields:
 - status
 - primaryEmployeeDisplayName
 - primaryEmployeeKey
+- primaryEmployeeId
+- primaryEmployeeIdentityStatus
+- identityCandidateEmployeeId
+- identityVersion
 - regularMinutesTotal
 - overtimeMinutesTotal
 - workedMinutesTotal
@@ -1296,9 +1301,14 @@ Uniqueness:
 
 - payrollWeekStartDate + primaryEmployeeKey
 
-`primaryEmployeeKey` is a normalized personal identity key derived
-server-side from `primaryEmployeeDisplayName`. It is not an Employee, User,
-HR, payroll, authentication, or workforce-management identifier.
+`primaryEmployeeId` is authoritative only with `EXPLICIT_SELECTION` or
+`OWNER_VERIFIED`; those states require a non-null relationship. `NEEDS_REVIEW`
+and `REVIEWED_UNASSIGNED` require a null authoritative relationship.
+`identityCandidateEmployeeId` preserves a former association as evidence but is
+not a foreign key and does not establish ownership. `identityVersion` is
+positive. Display/key snapshots and the existing week/key uniqueness constraint
+remain unchanged. Migration 36 applies `NEEDS_REVIEW` to all existing rows
+without matching current names.
 
 ### DailyTimeEntry
 
@@ -1565,15 +1575,82 @@ DailyTimeEntry should also preserve limited primary Equipment display snapshots:
 Users select Equipment only. Mine and City are derived server-side through
 Equipment and should not be selected independently on Timesheet entries.
 
-## Payslip Repository Entities
+## Payroll Reconciliation Entities
 
-Current status: Conceptual only under ADR-005's financial bounded-context
-guidance. No Payslip entity below exists in the current Prisma schema.
-Implementation remains blocked by unresolved privacy, access, file-storage,
-extraction, redaction, and export decisions and by the absence of an accepted
-Level 2 feature architecture.
+Current status: `PayrollPeriod`, `Paycheck`, `EmployeePayRate`, and the optional
+`WeeklyTimesheet.primaryEmployeeId` relation are implemented in the Prisma
+schema. Production revision and migration state must be verified separately
+before deployment. PayrollPeriod is unique by
+employee and date range. Paycheck is employee-scoped, one-to-one with a period,
+uses integer paid minutes and Decimal money, and keeps a unique source
+fingerprint, parser version, review state, and correction timestamp.
 
-### PayslipDocument
+EmployeePayRate is effective-dated and separates verification state from
+provenance kind. `VERIFIED` rates require `PAYCHECK` or `INDEPENDENT`
+provenance. `PAYCHECK` requires `sourcePaycheckId`; `UNKNOWN` and `INDEPENDENT`
+require it to be null. `provenanceCandidatePaycheckId` is non-authoritative
+historical evidence, and `evidenceVersion` is positive. Partial unique indexes
+allow only one verified rate per Employee/effective date and one verified
+Paycheck-derived rate per source Paycheck while permitting uncertain,
+conflicting, superseded, and excluded evidence to coexist.
+The Employee relationship uses restrictive deletion behavior so preserved rate
+evidence cannot be cascade-deleted with its Employee. Supported concurrent rate
+writes serialize the Employee/effective-date slot in their application
+transaction; the partial unique indexes remain database-enforced backstops.
+
+Migration 36 quarantines every existing rate as `NEEDS_REVIEW`/`UNKNOWN`, moves
+any prior source relationship to the candidate field, and preserves its value,
+date, note, Employee, and timestamps. Corrections supersede rather than delete
+trusted evidence. Expected gross excludes every state except `VERIFIED` and
+never falls back to current Paycheck values.
+Reconciliation results are derived from authoritative records rather than
+persisted as a duplicate ledger.
+No uploaded PDF, raw extracted text, bank account, address, or government
+identifier is stored by Payroll V1.
+
+The original Payroll migrations and checksums are preserved. Forward migration
+36 verifies migrations 34 and 35 and their exact checksums before mutation,
+then conservatively quarantines all pre-existing identity and rate evidence in
+one explicit transaction. No migration timestamp, name, amount, date, or note
+is treated as proof.
+
+Migration 37 adds `TimesheetIdentityReviewEvent` and
+`PayRateEvidenceReviewEvent`. Each append-only event records the target-local
+sequence, previous/new status and authoritative relationships, consecutive
+record versions, attribution, mandatory reason, optional bounded evidence
+reference, UUID request token, SHA-256 payload digest, and timestamp. Owner
+review events retain the reviewer Employee and immutable name/code snapshots.
+Automatic Paycheck-correction events instead retain a distinct initiating
+Employee and snapshots; they never fabricate a reviewer or owner-verification
+decision. Target, reviewer, initiator, authoritative Employee, and Paycheck
+foreign keys use Restrict. Unique target/sequence, target/version, and
+attribution/token constraints protect ordering and idempotency; PostgreSQL
+triggers reject every event UPDATE and DELETE.
+
+Insert checks enforce attribution shape, supported decision/status/provenance
+combinations, version progression, contiguous target-local sequence, and
+agreement between each event's new state and the current target row. A new
+Paycheck-derived replacement records null previous status/provenance, previous
+version zero, and its inherited lineage version as the new version. These
+database checks prevent malformed standalone audit rows, but do not claim to
+authenticate business reasons or independently recover every prior row value;
+the locked application transaction validates those properties before updating
+the target and inserting its event.
+
+Review transactions increment `identityVersion` or `evidenceVersion` with
+compare-and-swap semantics and append the corresponding event atomically. A
+Paycheck correction uses the same atomic rule for every superseded linked rate
+and any replacement rate it creates; an event failure rolls back the Paycheck,
+PayrollPeriod, all rate changes, and all events. A
+trusted-only partial unique index permits at most one `EXPLICIT_SELECTION` or
+`OWNER_VERIFIED` Timesheet for a canonical Employee/payroll week. Existing
+verified-rate partial uniqueness remains authoritative. Migration 37 neither
+promotes nor deletes quarantined evidence.
+
+The detailed PayslipDocument design below is a superseded ADR-005 proposal and
+is not part of the current schema or authorized V1.
+
+### Superseded PayslipDocument Proposal
 
 Represents the original uploaded payslip PDF and its extraction status.
 
