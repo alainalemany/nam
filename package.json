@@ -14,6 +14,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ddr": "playwright test tests/e2e/dragline-delay-report-stability.spec.ts",
+    "test:infrastructure": "bash tests/infrastructure/durable-production-compose-config.sh && bash tests/infrastructure/durable-production-compose-config-negative.sh",
     "test:run": "vitest run",
     "test:watch": "vitest"
   },

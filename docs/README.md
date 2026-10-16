@@ -130,6 +130,7 @@ The detailed AI reading order is canonical in [AI Context Guide](ai-context.md).
 | Understand why decisions were made | [ADR Index](decisions/README.md) |
 | Run the application foundation | [Development Guide](development.md) |
 | Operate infrastructure | [Infrastructure Operations](infrastructure.md) |
+| Use the durable immutable production image configuration | [Durable Immutable Deployment Configuration](infrastructure/durable-immutable-deployment.md) |
 | Understand controlled-pilot readiness governance and the earlier re-baseline | [Controlled Pilot Readiness Re-baseline](infrastructure/controlled-pilot-readiness-rebaseline.md) |
 | Review the pre-DDR `0639e4f` backup, rollback-image, migration, and deployment evidence | [Pre-DDR `0639e4f` Deployment And Recovery Evidence](infrastructure/pre-ddr-0639e4f-deployment-recovery-evidence.md) |
 | Review the hardened, non-authorized Gate C candidate deployment and rollback procedure | [Gate C `8a6c652` Deployment And Rollback Procedure](infrastructure/gate-c-8a6c652-deployment-rollback-procedure.md) |
@@ -182,6 +183,7 @@ to that home but should not restate the same policy in detail.
 | Architecture philosophy | `docs/architecture.md`, principles in `docs/philosophy.md` |
 | Architecture decisions | `docs/decisions/` |
 | Infrastructure philosophy | `docs/infrastructure.md`, durable decisions in `docs/decisions/` |
+| Durable production Compose image selection and guarded future commands | `docs/infrastructure/durable-immutable-deployment.md` |
 | Controlled-pilot readiness governance and earlier re-baseline | `docs/infrastructure/controlled-pilot-readiness-rebaseline.md` |
 | Pre-DDR `0639e4f` backup, rollback-image, live-migration, and deployment evidence | `docs/infrastructure/pre-ddr-0639e4f-deployment-recovery-evidence.md` |
 | Operational pilot requirements, future execution, and exit review | `docs/infrastructure/operational-pilot-runbook.md` |

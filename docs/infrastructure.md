@@ -30,6 +30,7 @@ Key documents:
 - `docs/infrastructure/bootstrap-and-verification.md`
 - `docs/infrastructure/server-config.md`
 - `docs/infrastructure/disaster-recovery.md`
+- `docs/infrastructure/durable-immutable-deployment.md`
 - `docs/infrastructure/controlled-pilot-readiness-rebaseline.md`
 - `docs/infrastructure/operational-pilot-runbook.md`
 
@@ -92,6 +93,15 @@ The Compose file is:
 ```text
 compose.yaml
 ```
+
+Production application operations must also use the repository-managed
+`infrastructure/server-config/docker/production-image.override.yaml` after a
+separate operation is authorized. Its exact file order, immutable image
+selection, build/pull guards, secret-safe inspection commands, upgrade process,
+and recovery boundary are canonical in the
+[Durable Immutable Deployment Configuration](infrastructure/durable-immutable-deployment.md).
+The override's presence does not authorize a restart, recreation, deployment,
+image operation, or database operation.
 
 Required behavior:
 
