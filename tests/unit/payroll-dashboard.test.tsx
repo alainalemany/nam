@@ -65,6 +65,12 @@ function dashboardData(status: "RECONCILED" | "NEEDS_REVIEW", reviewStatus: "CON
 }
 
 describe("PayrollDashboard reconciliation presentation", () => {
+  it("shows the review entry only when server-provided capability is true", () => {
+    const { rerender } = render(<PayrollDashboard data={dashboardData("RECONCILED", "CONFIRMED")} canReviewEvidence />);
+    expect(screen.getByRole("link", { name: "Evidence Review" })).toHaveAttribute("href", "/payroll/evidence-review");
+    rerender(<PayrollDashboard data={dashboardData("RECONCILED", "CONFIRMED")} />);
+    expect(screen.queryByRole("link", { name: "Evidence Review" })).not.toBeInTheDocument();
+  });
   it("presents confirmed matching evidence as an aggregate match", () => {
     render(<PayrollDashboard data={dashboardData("RECONCILED", "CONFIRMED")} preview />);
 

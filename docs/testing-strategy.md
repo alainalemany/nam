@@ -366,6 +366,16 @@ event INSERT rejection, audit rollback, and reconciliation after verification.
 All fixtures are synthetic, and the suite fails closed unless the exact
 dedicated test database identity is supplied.
 
+Package 2B component and route-boundary coverage verifies server-controlled
+navigation visibility, authorization before review queries, candidate
+non-selection, duplicate-name and inactive-Employee presentation, mandatory
+reasons and independent references, explicit confirmation, expected-version
+and request-token submission, atomic competitor dispositions, structured error
+presentation, and distinct owner/system audit attribution. The existing
+Package 2A PostgreSQL suite remains the authoritative persistence and
+concurrency layer. Browser smoke coverage remains optional unless executed
+against the repository's isolated test server and synthetic data.
+
 Deferred areas:
 
 - Authentication and authorization.

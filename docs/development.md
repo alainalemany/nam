@@ -79,6 +79,7 @@ POSTGRES_PASSWORD=replace-with-a-strong-local-password
 DATABASE_URL=postgresql://nam_app:replace-with-a-strong-local-password@localhost:5432/nam_dashboard?schema=public
 NAM_CHECKLIST_RESULT_SIGNING_SECRET=replace-with-at-least-32-random-characters
 NAM_PAYROLL_OWNER_EMPLOYEE_ID=replace-with-existing-owner-employee-cuid
+NAM_PAYROLL_EVIDENCE_REVIEWER_EMPLOYEE_ID=replace-with-explicit-reviewer-employee-cuid
 NAM_PAYROLL_ACCESS_KEY=replace-with-at-least-32-random-characters
 NAM_PAYROLL_SESSION_SECRET=replace-with-an-independent-32-character-minimum-secret
 ```

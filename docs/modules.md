@@ -865,10 +865,11 @@ feature branch under ADR-022. Database migration and deployment remain separate
 controlled actions.
 
 Package 2A adds an owner-authorized historical evidence-review service and
-database-immutable decision history under ADR-024. It does not add review UI:
-queues, detail forms, and audit timelines remain Package 2B. Ordinary
-employee-scoped Payroll access cannot load or mutate globally unresolved
-evidence.
+database-immutable decision history under ADR-024. Package 2B adds protected,
+bounded queues; Timesheet identity and rate-provenance detail workflows;
+explicit confirmation; competitor disposition; and immutable timelines.
+Ordinary employee-scoped Payroll access cannot load or mutate globally
+unresolved evidence, and navigation visibility is not an authorization boundary.
 
 ### Purpose
 

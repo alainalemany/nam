@@ -152,14 +152,16 @@ events in the correction transaction. The authenticated correcting Employee is
 retained as an initiator snapshot, distinct from an owner reviewer, so an
 automatic correction transition cannot be presented as owner verification.
 
-Package 2A intentionally has no review queue, detail route, form, or audit
-timeline. Those protected interfaces remain Package 2B work, and production
-release requires separate authorization after both stages.
+Package 2B adds the protected `/payroll/evidence-review` workspace, bounded
+Timesheet and rate queues, evidence detail routes, explicit two-step decision
+forms, atomic competitor resolution, and immutable-history timelines. Routes
+and loaders authorize independently before target queries; client forms reuse
+the Package 2A Server Actions, expected versions, and request-token protocol.
+This implementation does not authorize production release or deployment.
 
 ## Deferred
 
 Permanent PDF storage, OCR, provider sync, exports, exact day-level allocation
 without source evidence, multi-employee HR administration, and application-wide
-identity/RBAC remain outside V1. The owner-only historical evidence review
-interface is deferred Package 2B work. Package 2A exposes only protected Server
-Actions and server-only loaders; it does not add an ordinary Payroll endpoint.
+identity/RBAC remain outside V1. Historical evidence review remains a focused
+owner-only Payroll capability rather than an ordinary employee Payroll surface.

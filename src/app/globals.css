@@ -2822,6 +2822,56 @@ textarea {
   gap: 16px;
 }
 
+.evidence-review-page { max-width: 1380px; }
+.review-metric .card-content { display: grid; gap: 5px; }
+.review-metric strong { color: #172033; font-size: 1.8rem; }
+.review-metric span { color: #64748b; font-size: 0.8rem; font-weight: 650; }
+.review-filter-grid { display: grid; align-items: end; gap: 12px; grid-template-columns: repeat(4, minmax(140px, 1fr)) auto; }
+.review-filter-grid label,
+.review-form-grid label { display: grid; gap: 7px; color: #475569; font-size: 0.78rem; font-weight: 700; }
+.review-filter-grid input,
+.review-filter-grid select,
+.review-form-grid input,
+.review-form-grid select,
+.review-form-grid textarea { width: 100%; min-height: 42px; border: 1px solid #d5dbe5; border-radius: 8px; background: #fff; padding: 9px 11px; color: #1e293b; }
+.review-form-grid textarea { min-height: 110px; resize: vertical; }
+.review-unverified-label,
+.review-attribution { display: inline-flex; border-radius: 999px; background: #fff4d8; color: #765500; padding: 3px 8px; font-size: 0.7rem; font-weight: 800; }
+.review-detail-grid { display: grid; align-items: start; gap: 20px; grid-template-columns: minmax(0, 1.5fr) minmax(320px, .8fr); }
+.review-fact-list { display: grid; gap: 0; margin: 0; }
+.review-fact-list > div { display: grid; gap: 10px; grid-template-columns: minmax(150px, .7fr) minmax(0, 1.3fr); border-bottom: 1px dashed #e4e8ef; padding: 10px 0; }
+.review-fact-list dt { color: #718096; font-size: .78rem; }
+.review-fact-list dd { overflow-wrap: anywhere; margin: 0; color: #263246; font-size: .82rem; font-weight: 700; }
+.review-day-list { display: grid; gap: 12px; margin-top: 20px; }
+.review-day-card { border: 1px solid #dce3eb; border-radius: 9px; padding: 14px; }
+.review-day-card h3 { margin-bottom: 8px; font-size: .95rem; }
+.review-day-card ul { margin-bottom: 0; padding-left: 20px; }
+.review-decision-card,
+.review-history { border: 1px solid var(--border); border-radius: 10px; background: #fff; padding: 20px; box-shadow: var(--shadow); }
+.review-form-grid { display: grid; gap: 16px; margin: 18px 0; }
+.review-form-grid fieldset { display: grid; gap: 12px; border: 1px solid #d5dbe5; border-radius: 8px; padding: 14px; }
+.review-check { display: flex !important; align-items: center; grid-template-columns: auto 1fr; }
+.review-check input { width: auto; min-height: auto; }
+.field-help { color: #64748b; font-size: .72rem; font-weight: 500; }
+.field-warning { color: #8a4b12; font-size: .75rem; font-weight: 700; }
+.review-confirmation { display: grid; gap: 14px; border: 1px solid #8bbbed; border-radius: 9px; background: #f1f7ff; padding: 16px; }
+.review-confirmation dl { display: grid; gap: 8px; margin: 0; }
+.review-confirmation dl > div { display: flex; justify-content: space-between; gap: 14px; }
+.review-confirmation dd { margin: 0; font-weight: 700; text-align: right; }
+.review-timeline { display: grid; gap: 0; margin: 18px 0 0; padding: 0; list-style: none; }
+.review-timeline-item { position: relative; display: grid; gap: 7px; border-left: 3px solid #1b84ff; padding: 0 0 24px 18px; }
+.review-timeline-item--system { border-color: #7c3aed; }
+.review-timeline-item p { margin: 0; overflow-wrap: anywhere; }
+.review-timeline-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.review-timeline-heading strong { font-size: .82rem; text-transform: capitalize; }
+.review-timeline-heading time { color: #64748b; font-size: .7rem; text-align: right; }
+.review-recent-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.review-recent-list li { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); padding: 12px 0; }
+.review-recent-list li > div { display: grid; gap: 4px; }
+.review-recent-list span,
+.review-recent-list time { color: #64748b; font-size: .74rem; }
+.review-pagination { display: flex; justify-content: space-between; gap: 12px; }
+
 @media (max-width: 1100px) {
   .payroll-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2830,6 +2880,9 @@ textarea {
   .payroll-layout-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .review-detail-grid { grid-template-columns: minmax(0, 1fr); }
+  .review-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 780px) {
@@ -2954,6 +3007,8 @@ textarea {
   .payroll-form-grid {
     grid-template-columns: 1fr;
   }
+
+  .review-filter-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 520px) {
@@ -2975,4 +3030,9 @@ textarea {
     padding-inline: 2px;
     font-size: 0.58rem;
   }
+
+  .review-fact-list > div { grid-template-columns: 1fr; gap: 3px; }
+  .review-timeline-heading,
+  .review-recent-list li { flex-direction: column; }
+  .review-timeline-heading time { text-align: left; }
 }

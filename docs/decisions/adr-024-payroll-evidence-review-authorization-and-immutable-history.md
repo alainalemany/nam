@@ -52,8 +52,11 @@ date. Same-token/same-payload requests replay the prior result; token reuse with
 a different payload is rejected.
 
 Package 2A implements this authorization, persistence, action, migration, and
-test foundation without a review queue or form. Package 2B remains required
-before production release and will add protected owner-review interfaces.
+test foundation. Package 2B implements protected bounded queues, Timesheet and
+rate detail workflows, explicit confirmation controls, immutable timelines,
+and structured recovery from stale or conflicting decisions. The interface
+does not weaken the independent loader and mutation authorization boundaries.
+Production release remains separately authorized.
 
 ## Consequences
 
