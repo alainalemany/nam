@@ -2,6 +2,8 @@ import "server-only";
 
 import { cookies } from "next/headers";
 
+import { prisma } from "@/lib/prisma";
+
 import {
   createPayrollSessionToken,
   isConfiguredPayrollValue,
@@ -23,6 +25,15 @@ export {
 export type { PayrollPrincipal } from "./security";
 
 export const PAYROLL_SESSION_COOKIE = "nam-payroll-session";
+
+const payrollEmployeeIdPattern = /^[A-Za-z0-9_-]{1,191}$/u;
+
+export type PayrollEvidenceReviewer = {
+  employeeId: string;
+  expiresAt: number;
+  displayName: string;
+  employeeCode: string | null;
+};
 function requiredConfiguration() {
   const employeeId = process.env.NAM_PAYROLL_OWNER_EMPLOYEE_ID?.trim();
   const accessKey = process.env.NAM_PAYROLL_ACCESS_KEY;
@@ -66,6 +77,34 @@ export async function requirePayrollPrincipal() {
   const principal = await getPayrollPrincipal();
   if (!principal) throw new PayrollAccessDeniedError("Payroll access denied.");
   return principal;
+}
+
+export async function requirePayrollEvidenceReviewer(): Promise<PayrollEvidenceReviewer> {
+  const principal = await requirePayrollPrincipal();
+  const configuredReviewerId = process.env.NAM_PAYROLL_EVIDENCE_REVIEWER_EMPLOYEE_ID?.trim();
+  if (
+    !configuredReviewerId ||
+    !isConfiguredPayrollValue(configuredReviewerId) ||
+    !payrollEmployeeIdPattern.test(configuredReviewerId)
+  ) {
+    throw new PayrollAccessConfigurationError(
+      "Payroll evidence review is unavailable until its reviewer is configured.",
+    );
+  }
+  if (!safePayrollEqual(principal.employeeId, configuredReviewerId)) {
+    throw new PayrollAccessDeniedError("Payroll evidence review access denied.");
+  }
+  const reviewer = await prisma.employee.findUnique({
+    where: { id: principal.employeeId },
+    select: { id: true, displayName: true, employeeCode: true },
+  });
+  if (!reviewer) throw new PayrollAccessDeniedError("Payroll evidence review access denied.");
+  return {
+    employeeId: reviewer.id,
+    expiresAt: principal.expiresAt,
+    displayName: reviewer.displayName,
+    employeeCode: reviewer.employeeCode,
+  };
 }
 
 export async function establishPayrollSession(accessKey: string) {

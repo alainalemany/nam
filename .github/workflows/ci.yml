@@ -66,6 +66,9 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm prisma:generate
 
+      - name: Validate Prisma schema
+        run: pnpm exec prisma validate
+
       - name: Validate TypeScript explicitly
         run: pnpm exec tsc --noEmit
 
@@ -79,6 +82,9 @@ jobs:
         env:
           DATABASE_URL: postgresql://ci_build:unreachable@127.0.0.1:1/nam_ci_build?connect_timeout=1
         run: pnpm build
+
+      - name: Verify repository diff formatting
+        run: git diff --check
 
   postgres-integration:
     name: PostgreSQL Integration
@@ -155,6 +161,13 @@ jobs:
           PHASE_A_TEST_DATABASE_URL: postgresql://nam_phase_a_test:phase_a_ci_only_password@127.0.0.1:5432/nam_phase_a_integration_test
         run: bash scripts/test/verify-payroll-quarantine-migration-failure.sh
 
+      - name: Verify Payroll review-history migration failure rollback
+        env:
+          PHASE_A_POSTGRES_REQUIRED: "1"
+          PHASE_A_TEST_DATABASE_PROFILE: github-actions
+          PHASE_A_TEST_DATABASE_URL: postgresql://nam_phase_a_test:phase_a_ci_only_password@127.0.0.1:5432/nam_phase_a_integration_test
+        run: bash scripts/test/verify-payroll-review-history-migration-failure.sh
+
       - name: Apply and verify migrations with synthetic legacy fixtures
         env:
           PHASE_A_POSTGRES_REQUIRED: "1"
@@ -169,6 +182,13 @@ jobs:
           PHASE_A_TEST_DATABASE_PROFILE: github-actions
           PHASE_A_TEST_DATABASE_URL: postgresql://nam_phase_a_test:phase_a_ci_only_password@127.0.0.1:5432/nam_phase_a_integration_test
         run: pnpm exec vitest run tests/integration/payroll-pr-review-migration-postgres.test.ts --reporter=verbose
+
+      - name: Verify Payroll evidence-review actions and immutable history
+        env:
+          PHASE_A_POSTGRES_REQUIRED: "1"
+          PHASE_A_TEST_DATABASE_PROFILE: github-actions
+          PHASE_A_TEST_DATABASE_URL: postgresql://nam_phase_a_test:phase_a_ci_only_password@127.0.0.1:5432/nam_phase_a_integration_test
+        run: pnpm exec vitest run tests/integration/payroll-evidence-review-postgres.test.ts --reporter=verbose
 
       - name: Run Phase A PostgreSQL integration tests
         env:

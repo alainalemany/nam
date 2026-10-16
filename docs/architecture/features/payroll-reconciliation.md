@@ -136,10 +136,30 @@ included when they are not already represented by the same Paycheck review
 condition. Future scheduled work and the neutral absence of day-level allocation
 inside aggregate evidence are not counted as issues.
 
+## Historical Evidence Review Foundation
+
+Package 2A implements the owner-only review service described by ADR-024. A
+valid signed Payroll session must match the explicitly configured reviewer
+Employee ID. Review actions reauthorize independently, validate explicit
+versioned decisions and source evidence, serialize competing writes, and commit
+the evidence state plus an immutable typed event atomically. Confirmed identity
+and verified-rate decisions participate in the next reconciliation read; no
+derived totals are persisted. Candidate IDs remain non-authoritative.
+
+Paycheck correction is also an audited evidence-transition source. Superseded
+linked rates and newly created replacements receive system-attributed immutable
+events in the correction transaction. The authenticated correcting Employee is
+retained as an initiator snapshot, distinct from an owner reviewer, so an
+automatic correction transition cannot be presented as owner verification.
+
+Package 2A intentionally has no review queue, detail route, form, or audit
+timeline. Those protected interfaces remain Package 2B work, and production
+release requires separate authorization after both stages.
+
 ## Deferred
 
 Permanent PDF storage, OCR, provider sync, exports, exact day-level allocation
 without source evidence, multi-employee HR administration, and application-wide
 identity/RBAC remain outside V1. The owner-only historical evidence review
-interface and append-only review-event history are deferred Package 2 work.
-Package 1 exposes no mutation that promotes quarantined evidence.
+interface is deferred Package 2B work. Package 2A exposes only protected Server
+Actions and server-only loaders; it does not add an ordinary Payroll endpoint.

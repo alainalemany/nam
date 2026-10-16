@@ -11,6 +11,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
   transaction: vi.fn(), weeklyFind: vi.fn(), weeklyCreate: vi.fn(), weeklyUpdate: vi.fn(), weeklyUpdateMany: vi.fn(),
+  executeRaw: vi.fn(),
   weeklyDeleteMany: vi.fn(),
   employeeFind: vi.fn(),
   equipmentFind: vi.fn(), workCodeFind: vi.fn(), workOrderFind: vi.fn(), supportFind: vi.fn(), assignmentFind: vi.fn(),
@@ -63,11 +64,13 @@ function formDataWith(update: (value: ReturnType<typeof payload>) => void) {
 
 function tx() {
   return {
+    $executeRaw: mocks.executeRaw,
     weeklyTimesheet: {
       findUnique: mocks.weeklyFind,
       create: mocks.weeklyCreate,
       update: mocks.weeklyUpdate,
       updateMany: mocks.weeklyUpdateMany,
+      deleteMany: mocks.weeklyDeleteMany,
     },
     employee: { findUnique: mocks.employeeFind },
     equipment: { findMany: mocks.equipmentFind },
@@ -85,6 +88,7 @@ describe("Timesheet Server Actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.transaction.mockImplementation((callback) => callback(tx()));
+    mocks.executeRaw.mockResolvedValue(1);
     mocks.weeklyFind.mockResolvedValue(null);
     mocks.weeklyCreate.mockResolvedValue({ id: "timesheet-1" });
     mocks.weeklyUpdate.mockResolvedValue({ id: "timesheet-1" });

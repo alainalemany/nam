@@ -17,6 +17,9 @@ const mocks = vi.hoisted(() => ({
   rateCreate: vi.fn(),
   rateUpdateMany: vi.fn(),
   executeRaw: vi.fn(),
+  queryRaw: vi.fn(),
+  employeeFindUnique: vi.fn(),
+  rateEventCreate: vi.fn(),
   revalidatePath: vi.fn(),
 }));
 
@@ -34,6 +37,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: mocks.transaction } }))
 function tx() {
   return {
     $executeRaw: mocks.executeRaw,
+    $queryRaw: mocks.queryRaw,
     paycheck: {
       findUnique: mocks.paycheckFindUnique,
       findFirst: mocks.paycheckFindFirst,
@@ -47,6 +51,8 @@ function tx() {
       create: mocks.rateCreate,
       updateMany: mocks.rateUpdateMany,
     },
+    employee: { findUnique: mocks.employeeFindUnique },
+    payRateEvidenceReviewEvent: { create: mocks.rateEventCreate },
   };
 }
 
@@ -96,9 +102,12 @@ describe("Payroll payday persistence actions", () => {
     mocks.periodUpdate.mockResolvedValue({ id: "period-1" });
     mocks.rateFindMany.mockResolvedValue([]);
     mocks.rateFindFirst.mockResolvedValue(null);
-    mocks.rateCreate.mockResolvedValue({ id: "rate-1" });
-    mocks.rateUpdateMany.mockResolvedValue({ count: 0 });
+    mocks.rateCreate.mockImplementation(async ({ data }) => ({ id: "rate-1", ...data }));
+    mocks.rateUpdateMany.mockResolvedValue({ count: 1 });
     mocks.executeRaw.mockResolvedValue(1);
+    mocks.queryRaw.mockResolvedValue([]);
+    mocks.employeeFindUnique.mockResolvedValue({ id: "employee-1", displayName: "Owner", employeeCode: "E-1" });
+    mocks.rateEventCreate.mockResolvedValue({ id: "event-1" });
   });
 
   it("persists Wednesday as the projected date for a Monday-Sunday NAM period", async () => {
@@ -220,6 +229,10 @@ describe("Payroll payday persistence actions", () => {
       employeeId: "employee-1",
       sourcePaycheckId: "paycheck-1",
       evidenceVersion: 1,
+      effectiveFrom: new Date("2026-09-14T00:00:00.000Z"),
+      verificationStatus: "VERIFIED",
+      provenanceKind: "PAYCHECK",
+      reviewEvents: [],
     }]);
 
     await correctPaycheckAction(
@@ -228,7 +241,7 @@ describe("Payroll payday persistence actions", () => {
     );
 
     expect(mocks.rateUpdateMany).toHaveBeenCalledWith({
-      where: { id: { in: ["rate-linked"] } },
+      where: { id: "rate-linked", evidenceVersion: 1, verificationStatus: "VERIFIED" },
       data: { verificationStatus: "SUPERSEDED", evidenceVersion: { increment: 1 } },
     });
     expect(mocks.rateCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
@@ -237,6 +250,24 @@ describe("Payroll payday persistence actions", () => {
       verificationStatus: "VERIFIED",
       evidenceVersion: 2,
     }) });
+    expect(mocks.rateEventCreate).toHaveBeenCalledTimes(2);
+    expect(mocks.rateEventCreate).toHaveBeenNthCalledWith(1, { data: expect.objectContaining({
+      decisionKind: "PAYCHECK_CORRECTION_SUPERSEDED",
+      attributionKind: "PAYCHECK_CORRECTION_SYSTEM",
+      previousVersion: 1,
+      newVersion: 2,
+      initiatedByEmployeeId: "employee-1",
+    }) });
+    expect(mocks.rateEventCreate).toHaveBeenNthCalledWith(2, { data: expect.objectContaining({
+      decisionKind: "PAYCHECK_CORRECTION_CREATED",
+      attributionKind: "PAYCHECK_CORRECTION_SYSTEM",
+      previousStatus: null,
+      previousVersion: 0,
+      newVersion: 2,
+      initiatedByEmployeeId: "employee-1",
+    }) });
+    expect(mocks.rateEventCreate.mock.calls[0][0].data).not.toHaveProperty("reviewerEmployeeId");
+    expect(mocks.rateEventCreate.mock.calls[1][0].data).not.toHaveProperty("reviewerEmployeeId");
   });
 
   it("removes a linked paycheck-derived rate when baseRate is cleared", async () => {
@@ -251,6 +282,10 @@ describe("Payroll payday persistence actions", () => {
       employeeId: "employee-1",
       sourcePaycheckId: "paycheck-1",
       evidenceVersion: 1,
+      effectiveFrom: new Date("2026-09-14T00:00:00.000Z"),
+      verificationStatus: "VERIFIED",
+      provenanceKind: "PAYCHECK",
+      reviewEvents: [],
     }]);
 
     await correctPaycheckAction(
@@ -259,10 +294,15 @@ describe("Payroll payday persistence actions", () => {
     );
 
     expect(mocks.rateUpdateMany).toHaveBeenCalledWith({
-      where: { id: { in: ["rate-linked"] } },
+      where: { id: "rate-linked", evidenceVersion: 1, verificationStatus: "VERIFIED" },
       data: { verificationStatus: "SUPERSEDED", evidenceVersion: { increment: 1 } },
     });
     expect(mocks.rateCreate).not.toHaveBeenCalled();
+    expect(mocks.rateEventCreate).toHaveBeenCalledOnce();
+    expect(mocks.rateEventCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
+      decisionKind: "PAYCHECK_CORRECTION_SUPERSEDED",
+      newStatus: "SUPERSEDED",
+    }) });
   });
 
   it("preserves an unrelated destination rate instead of overwriting it", async () => {
@@ -277,6 +317,10 @@ describe("Payroll payday persistence actions", () => {
       employeeId: "employee-1",
       sourcePaycheckId: "paycheck-1",
       evidenceVersion: 1,
+      effectiveFrom: new Date("2026-09-14T00:00:00.000Z"),
+      verificationStatus: "VERIFIED",
+      provenanceKind: "PAYCHECK",
+      reviewEvents: [],
     }]);
     mocks.rateFindFirst.mockResolvedValueOnce({ id: "rate-manual", sourcePaycheckId: null });
 
@@ -295,6 +339,10 @@ describe("Payroll payday persistence actions", () => {
       code: "RATE_EVIDENCE_CONFLICT",
       rateEvidence: "CONFLICT",
     });
+    expect(mocks.rateEventCreate).toHaveBeenNthCalledWith(2, { data: expect.objectContaining({
+      decisionKind: "PAYCHECK_CORRECTION_CREATED",
+      newStatus: "CONFLICT",
+    }) });
   });
 
   it("fails closed when stored rate provenance belongs to another employee", async () => {
@@ -309,6 +357,10 @@ describe("Payroll payday persistence actions", () => {
       employeeId: "employee-2",
       sourcePaycheckId: "paycheck-1",
       evidenceVersion: 1,
+      effectiveFrom: new Date("2026-09-14T00:00:00.000Z"),
+      verificationStatus: "VERIFIED",
+      provenanceKind: "PAYCHECK",
+      reviewEvents: [],
     }]);
 
     const result = await correctPaycheckAction(
@@ -344,5 +396,42 @@ describe("Payroll payday persistence actions", () => {
         provenanceKind: "PAYCHECK",
       }),
     });
+    expect(mocks.rateEventCreate).toHaveBeenCalledOnce();
+    expect(mocks.rateEventCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
+      decisionKind: "PAYCHECK_CORRECTION_CREATED",
+      previousStatus: null,
+      newStatus: "VERIFIED",
+      previousVersion: 0,
+      newVersion: 1,
+    }) });
+  });
+
+  it("audits a submitted no-op rate correction as supersession plus replacement", async () => {
+    mocks.paycheckFindFirst.mockResolvedValue({
+      id: "paycheck-1",
+      employeeId: "employee-1",
+      payrollPeriodId: "period-1",
+      payrollPeriod: {},
+    });
+    mocks.rateFindMany.mockResolvedValueOnce([{
+      id: "rate-linked",
+      employeeId: "employee-1",
+      sourcePaycheckId: "paycheck-1",
+      evidenceVersion: 1,
+      effectiveFrom: new Date("2026-09-14T00:00:00.000Z"),
+      hourlyRate: new Prisma.Decimal("33.15"),
+      verificationStatus: "VERIFIED",
+      provenanceKind: "PAYCHECK",
+      reviewEvents: [],
+    }]);
+
+    await correctPaycheckAction(
+      { status: "idle", message: "" },
+      formData(payload({ baseRate: "33.15" }), "paycheck-1"),
+    );
+
+    expect(mocks.rateUpdateMany).toHaveBeenCalledOnce();
+    expect(mocks.rateCreate).toHaveBeenCalledOnce();
+    expect(mocks.rateEventCreate).toHaveBeenCalledTimes(2);
   });
 });

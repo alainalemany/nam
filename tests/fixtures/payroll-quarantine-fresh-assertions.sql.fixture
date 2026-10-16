@@ -12,6 +12,25 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1
+    FROM "_prisma_migrations"
+    WHERE migration_name = '20261015000300_payroll_evidence_review_history'
+      AND finished_at IS NOT NULL
+      AND rolled_back_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Migration 37 is not recorded as successfully applied.';
+  END IF;
+
+  IF to_regclass('"TimesheetIdentityReviewEvent"') IS NULL
+    OR to_regclass('"PayRateEvidenceReviewEvent"') IS NULL THEN
+    RAISE EXCEPTION 'Fresh schema is missing Package 2A review-event tables.';
+  END IF;
+
+  IF to_regclass('"WeeklyTimesheet_trusted_employee_week_key"') IS NULL THEN
+    RAISE EXCEPTION 'Fresh schema is missing trusted Timesheet Employee/week uniqueness.';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
     FROM information_schema.columns
     WHERE table_schema = current_schema()
       AND table_name = 'WeeklyTimesheet'

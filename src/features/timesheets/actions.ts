@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
+import { acquirePayrollEvidenceLock } from "@/features/payroll/evidence-review-locks";
 
 import {
   allocateWeeklyOvertime,
@@ -393,6 +394,7 @@ export async function saveWeeklyTimesheetAction(
   let savedId = timesheetId;
   try {
     savedId = await prisma.$transaction(async (tx) => {
+      if (timesheetId) await acquirePayrollEvidenceLock(tx, "timesheet", timesheetId);
       const existing = timesheetId
         ? await tx.weeklyTimesheet.findUnique({ where: { id: timesheetId }, include: existingInclude })
         : null;
@@ -516,6 +518,7 @@ export async function completeWeeklyTimesheetAction(
   _formData: FormData,
 ): Promise<TimesheetMutationState> {
   const result = await prisma.$transaction(async (tx) => {
+    await acquirePayrollEvidenceLock(tx, "timesheet", id);
     const timesheet = await tx.weeklyTimesheet.findUnique({
       where: { id },
       include: { entries: { orderBy: { workDate: "asc" }, include: { allocations: true } } },
@@ -560,21 +563,28 @@ export async function reopenWeeklyTimesheetAction(
   _previousState: TimesheetMutationState,
   _formData: FormData,
 ): Promise<TimesheetMutationState> {
-  const timesheet = await prisma.weeklyTimesheet.findUnique({
-    where: { id },
-    select: { primaryEmployeeIdentityStatus: true },
+  const result = await prisma.$transaction(async (tx) => {
+    await acquirePayrollEvidenceLock(tx, "timesheet", id);
+    const timesheet = await tx.weeklyTimesheet.findUnique({
+      where: { id },
+      select: { primaryEmployeeIdentityStatus: true },
+    });
+    if (timesheet && !hasTrustedIdentity(timesheet.primaryEmployeeIdentityStatus)) {
+      return { blocked: true };
+    }
+    await tx.weeklyTimesheet.updateMany({
+      where: {
+        id,
+        status: "COMPLETED",
+        primaryEmployeeIdentityStatus: { in: ["EXPLICIT_SELECTION", "OWNER_VERIFIED"] },
+      },
+      data: { status: "DRAFT" },
+    });
+    return { blocked: false };
   });
-  if (timesheet && !hasTrustedIdentity(timesheet.primaryEmployeeIdentityStatus)) {
+  if (result.blocked) {
     return { ok: false, code: "IDENTITY_REVIEW_REQUIRED" as const, message: identityReviewRequiredMessage };
   }
-  await prisma.weeklyTimesheet.updateMany({
-    where: {
-      id,
-      status: "COMPLETED",
-      primaryEmployeeIdentityStatus: { in: ["EXPLICIT_SELECTION", "OWNER_VERIFIED"] },
-    },
-    data: { status: "DRAFT" },
-  });
   revalidatePath("/timesheets");
   revalidatePath(`/timesheets/${id}`);
   revalidatePath("/payroll");
@@ -586,20 +596,27 @@ export async function deleteWeeklyTimesheetAction(
   _previousState: TimesheetMutationState,
   _formData: FormData,
 ): Promise<TimesheetMutationState> {
-  const timesheet = await prisma.weeklyTimesheet.findUnique({
-    where: { id },
-    select: { primaryEmployeeIdentityStatus: true },
+  const result = await prisma.$transaction(async (tx) => {
+    await acquirePayrollEvidenceLock(tx, "timesheet", id);
+    const timesheet = await tx.weeklyTimesheet.findUnique({
+      where: { id },
+      select: { primaryEmployeeIdentityStatus: true },
+    });
+    if (timesheet && !hasTrustedIdentity(timesheet.primaryEmployeeIdentityStatus)) {
+      return { blocked: true };
+    }
+    await tx.weeklyTimesheet.deleteMany({
+      where: {
+        id,
+        status: "DRAFT",
+        primaryEmployeeIdentityStatus: { in: ["EXPLICIT_SELECTION", "OWNER_VERIFIED"] },
+      },
+    });
+    return { blocked: false };
   });
-  if (timesheet && !hasTrustedIdentity(timesheet.primaryEmployeeIdentityStatus)) {
+  if (result.blocked) {
     return { ok: false, code: "IDENTITY_REVIEW_REQUIRED" as const, message: identityReviewRequiredMessage };
   }
-  await prisma.weeklyTimesheet.deleteMany({
-    where: {
-      id,
-      status: "DRAFT",
-      primaryEmployeeIdentityStatus: { in: ["EXPLICIT_SELECTION", "OWNER_VERIFIED"] },
-    },
-  });
   revalidatePath("/timesheets");
   revalidatePath("/payroll");
   redirect("/timesheets");

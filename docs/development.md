@@ -204,6 +204,8 @@ silently skipping the suite.
 The Phase A database helper accepts two test-only profiles:
 
 - Default/local: the existing `nam-phase-a-test-postgres` container identity.
+- Explicit local loopback: exact `127.0.0.1:55439`, the dedicated Phase A test
+  database and user, and `PHASE_A_TEST_DATABASE_PROFILE=local-loopback`.
 - `github-actions`: exact `127.0.0.1:5432` loopback, the dedicated Phase A test
   database and user, and both GitHub's `GITHUB_ACTIONS=true` and `CI=true`
   markers.

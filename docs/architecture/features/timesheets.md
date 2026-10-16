@@ -94,6 +94,9 @@ Timesheet is responsible for:
 - Read-only Weekly Timesheet history filtering and pagination.
 - Feature-owned queries, Server Actions, validation, constants, forms, and
   tests.
+- Coordination between ordinary Timesheet mutations and the owner-authorized
+  historical identity-review transaction through the shared Timesheet advisory
+  lock. Original employee display/key snapshots remain immutable during review.
 
 V1 foundation should include:
 

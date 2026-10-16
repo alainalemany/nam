@@ -355,6 +355,17 @@ weekly overlap whose child entries fall outside a Workday period, open-issue
 deduplication, restrictive Employee deletion, and concurrent same-date rate
 writes that retain one verified record plus one conflict record.
 
+Package 2A extends the same guarded PostgreSQL 18 job through migration 37.
+Fresh and staged migration checks verify predecessor checksums, transactional
+rollback, event constraints, restrictive foreign keys, immutable-event triggers,
+and trusted Timesheet uniqueness. Runtime coverage exercises reviewer
+authorization, explicit identity/rate transitions, stale-version rejection,
+advisory-lock concurrency, idempotent replay, token misuse, atomic competitor
+resolution, Paycheck-correction supersession/replacement history, malformed
+event INSERT rejection, audit rollback, and reconciliation after verification.
+All fixtures are synthetic, and the suite fails closed unless the exact
+dedicated test database identity is supplied.
+
 Deferred areas:
 
 - Authentication and authorization.

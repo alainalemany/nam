@@ -1139,10 +1139,11 @@ describePostgres("Phase A PostgreSQL integration", () => {
     expect(missing).toMatchObject({ status: "NEEDS_REVIEW", reasons: expect.arrayContaining(["MISSING_TIMESHEET_EVIDENCE"]) });
   });
 
-  it("excludes legacy null-ID evidence and flags duplicate canonical work dates", async () => {
+  it("excludes legacy null-ID evidence and rejects duplicate trusted Employee/week evidence", async () => {
     await createEmployee("employee-1");
     await createTimesheet({ id: "canonical-a", employeeId: "employee-1", weekStart: "2026-10-12", entries: [entry("canonical-entry-a", "2026-10-14", 600)] });
-    await createTimesheet({ id: "canonical-b", employeeId: "employee-1", employeeKey: "employee-1-alias", weekStart: "2026-10-12", entries: [entry("canonical-entry-b", "2026-10-14", 600)] });
+    await expect(createTimesheet({ id: "canonical-b", employeeId: "employee-1", employeeKey: "employee-1-alias", weekStart: "2026-10-12", entries: [entry("canonical-entry-b", "2026-10-14", 600)] }))
+      .rejects.toMatchObject({ code: "P2002" });
     await createTimesheet({
       id: "legacy",
       employeeId: null,
@@ -1163,10 +1164,9 @@ describePostgres("Phase A PostgreSQL integration", () => {
     expect(dashboard.paychecks[0]).toMatchObject({
       status: "NEEDS_REVIEW",
       reasons: expect.arrayContaining([
-        "AMBIGUOUS_TIMESHEET_EVIDENCE",
         "UNRESOLVED_EMPLOYEE_IDENTITY",
       ]),
-      differences: { totalMinutes: 0 },
+      differences: { totalMinutes: -600 },
     });
   });
 

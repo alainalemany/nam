@@ -864,6 +864,12 @@ Current status: Payroll Reconciliation V1 is implemented on the dedicated
 feature branch under ADR-022. Database migration and deployment remain separate
 controlled actions.
 
+Package 2A adds an owner-authorized historical evidence-review service and
+database-immutable decision history under ADR-024. It does not add review UI:
+queues, detail forms, and audit timelines remain Package 2B. Ordinary
+employee-scoped Payroll access cannot load or mutate globally unresolved
+evidence.
+
 ### Purpose
 
 Make weekly pay timing, recorded hours, Workday-confirmed totals, and actionable

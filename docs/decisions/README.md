@@ -33,6 +33,7 @@ maintainability.
 | [ADR-021](adr-021-canonical-us-geography-reference-data.md) | 2026-08-29 | Data/application architecture | U.S. States and Cities use shared database reference records and an offline idempotent Census Gazetteer import. |
 | [ADR-022](adr-022-payroll-reconciliation-structured-evidence.md) | 2026-10-08 | Security/data boundaries | Payroll Reconciliation V1 uses reviewed structured evidence without retaining source PDFs or raw text. |
 | [ADR-023](adr-023-payroll-historical-evidence-quarantine.md) | 2026-10-15 | Financial integrity/data architecture | Unverifiable historical Timesheet identities and pay-rate provenance are preserved in quarantine and excluded from financial conclusions. |
+| [ADR-024](adr-024-payroll-evidence-review-authorization-and-immutable-history.md) | 2026-10-15 | Security/financial integrity/data architecture | Historical evidence review requires explicit owner authorization, atomic versioned decisions, and database-immutable event history. |
 
 ## Categories
 
@@ -54,6 +55,7 @@ Data architecture and boundaries:
 - ADR-021
 - ADR-022
 - ADR-023
+- ADR-024
 
 Application architecture:
 

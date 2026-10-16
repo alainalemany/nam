@@ -241,6 +241,29 @@ enum PayRateProvenanceKind {
   INDEPENDENT
 }
 
+enum TimesheetIdentityReviewDecisionKind {
+  OWNER_VERIFIED
+  REVIEWED_UNASSIGNED
+  REOPENED_UNCERTAINTY
+  OWNER_CORRECTED
+}
+
+enum PayRateEvidenceReviewDecisionKind {
+  VERIFIED_PAYCHECK
+  VERIFIED_INDEPENDENT
+  MARKED_CONFLICT
+  EXCLUDED
+  REOPENED_REVIEW
+  SUPERSEDED
+  PAYCHECK_CORRECTION_SUPERSEDED
+  PAYCHECK_CORRECTION_CREATED
+}
+
+enum PayRateEvidenceEventAttributionKind {
+  OWNER_REVIEWER
+  PAYCHECK_CORRECTION_SYSTEM
+}
+
 enum EquipmentFuelType {
   DIESEL
   OFF_ROAD_DIESEL
@@ -901,24 +924,29 @@ model FuelServicePerson {
 }
 
 model Employee {
-  id                             String                        @id @default(cuid())
-  employeeCode                   String?                       @unique
-  displayName                    String
-  isActive                       Boolean                       @default(true)
-  isSupervisor                   Boolean                       @default(false)
-  primarySchedules               WeeklySchedule[]              @relation("WeeklySchedulePrimaryEmployee")
-  assignedSchedules              WeeklySchedule[]              @relation("WeeklyScheduleAssignedByEmployee")
-  assignmentCrewMembers          AssignmentCrewMember[]
-  weeklyTimesheets               WeeklyTimesheet[]
-  payrollPeriods                 PayrollPeriod[]
-  paychecks                      Paycheck[]
-  payRates                       EmployeePayRate[]
-  draglineDelayReportOperators   DraglineDelayReportOperator[] @relation("DraglineDelayReportOperatorEmployee")
-  supervisedDraglineDelayReports DraglineDelayReport[]         @relation("DraglineDelayReportSupervisor")
-  dayShiftFieldLeadReports       DraglineDelayReport[]         @relation("DraglineDelayReportDayShiftFieldLead")
-  nightShiftFieldLeadReports     DraglineDelayReport[]         @relation("DraglineDelayReportNightShiftFieldLead")
-  createdAt                      DateTime                      @default(now())
-  updatedAt                      DateTime                      @updatedAt
+  id                              String                         @id @default(cuid())
+  employeeCode                    String?                        @unique
+  displayName                     String
+  isActive                        Boolean                        @default(true)
+  isSupervisor                    Boolean                        @default(false)
+  primarySchedules                WeeklySchedule[]               @relation("WeeklySchedulePrimaryEmployee")
+  assignedSchedules               WeeklySchedule[]               @relation("WeeklyScheduleAssignedByEmployee")
+  assignmentCrewMembers           AssignmentCrewMember[]
+  weeklyTimesheets                WeeklyTimesheet[]
+  payrollPeriods                  PayrollPeriod[]
+  paychecks                       Paycheck[]
+  payRates                        EmployeePayRate[]
+  reviewedTimesheetIdentityEvents TimesheetIdentityReviewEvent[] @relation("TimesheetIdentityReviewReviewer")
+  previousTimesheetOwnerEvents    TimesheetIdentityReviewEvent[] @relation("TimesheetIdentityReviewPreviousOwner")
+  newTimesheetOwnerEvents         TimesheetIdentityReviewEvent[] @relation("TimesheetIdentityReviewNewOwner")
+  reviewedPayRateEvidenceEvents   PayRateEvidenceReviewEvent[]   @relation("PayRateEvidenceReviewReviewer")
+  initiatedPayRateEvidenceEvents  PayRateEvidenceReviewEvent[]   @relation("PayRateEvidenceReviewInitiator")
+  draglineDelayReportOperators    DraglineDelayReportOperator[]  @relation("DraglineDelayReportOperatorEmployee")
+  supervisedDraglineDelayReports  DraglineDelayReport[]          @relation("DraglineDelayReportSupervisor")
+  dayShiftFieldLeadReports        DraglineDelayReport[]          @relation("DraglineDelayReportDayShiftFieldLead")
+  nightShiftFieldLeadReports      DraglineDelayReport[]          @relation("DraglineDelayReportNightShiftFieldLead")
+  createdAt                       DateTime                       @default(now())
+  updatedAt                       DateTime                       @updatedAt
 
   @@index([isActive])
   @@index([isSupervisor, isActive])
@@ -1178,23 +1206,24 @@ model AssignmentCrewMember {
 }
 
 model WeeklyTimesheet {
-  id                            String                  @id @default(cuid())
-  payrollWeekStartDate          DateTime                @db.Date
-  payrollWeekEndDate            DateTime                @db.Date
-  status                        TimesheetStatus         @default(DRAFT)
+  id                            String                         @id @default(cuid())
+  payrollWeekStartDate          DateTime                       @db.Date
+  payrollWeekEndDate            DateTime                       @db.Date
+  status                        TimesheetStatus                @default(DRAFT)
   primaryEmployeeDisplayName    String
   primaryEmployeeKey            String
   primaryEmployeeId             String?
-  primaryEmployee               Employee?               @relation(fields: [primaryEmployeeId], references: [id], onDelete: SetNull, map: "WeeklyTimesheet_primaryEmployee_fkey")
-  primaryEmployeeIdentityStatus TimesheetIdentityStatus @default(NEEDS_REVIEW)
+  primaryEmployee               Employee?                      @relation(fields: [primaryEmployeeId], references: [id], onDelete: SetNull, map: "WeeklyTimesheet_primaryEmployee_fkey")
+  primaryEmployeeIdentityStatus TimesheetIdentityStatus        @default(NEEDS_REVIEW)
   identityCandidateEmployeeId   String?
-  identityVersion               Int                     @default(1)
-  workedMinutesTotal            Int                     @default(0)
-  regularMinutesTotal           Int                     @default(0)
-  overtimeMinutesTotal          Int                     @default(0)
+  identityVersion               Int                            @default(1)
+  workedMinutesTotal            Int                            @default(0)
+  regularMinutesTotal           Int                            @default(0)
+  overtimeMinutesTotal          Int                            @default(0)
   entries                       DailyTimeEntry[]
-  createdAt                     DateTime                @default(now())
-  updatedAt                     DateTime                @updatedAt
+  identityReviewEvents          TimesheetIdentityReviewEvent[]
+  createdAt                     DateTime                       @default(now())
+  updatedAt                     DateTime                       @updatedAt
 
   @@unique([payrollWeekStartDate, primaryEmployeeKey])
   @@index([payrollWeekStartDate])
@@ -1223,59 +1252,139 @@ model PayrollPeriod {
 }
 
 model Paycheck {
-  id                      String              @id @default(cuid())
-  employeeId              String
-  employee                Employee            @relation(fields: [employeeId], references: [id], onDelete: Restrict, map: "Paycheck_employee_fkey")
-  payrollPeriodId         String              @unique(map: "Paycheck_payrollPeriodId_key")
-  payrollPeriod           PayrollPeriod       @relation(fields: [payrollPeriodId], references: [id], onDelete: Restrict, map: "Paycheck_payrollPeriod_fkey")
-  checkDate               DateTime            @db.Date
-  regularPaidMinutes      Int
-  overtimePaidMinutes     Int
-  baseRate                Decimal?            @db.Decimal(10, 4)
-  regularEarnings         Decimal             @db.Decimal(12, 2)
-  overtimeBaseEarnings    Decimal             @default(0) @db.Decimal(12, 2)
-  overtimePremiumEarnings Decimal             @default(0) @db.Decimal(12, 2)
-  otherCashEarnings       Decimal             @default(0) @db.Decimal(12, 2)
-  grossCashPay            Decimal             @db.Decimal(12, 2)
-  noncashImputedEarnings  Decimal             @default(0) @db.Decimal(12, 2)
-  preTaxDeductions        Decimal             @default(0) @db.Decimal(12, 2)
-  employeeTaxes           Decimal             @default(0) @db.Decimal(12, 2)
-  postTaxDeductions       Decimal             @default(0) @db.Decimal(12, 2)
-  adjustments             Decimal             @default(0) @db.Decimal(12, 2)
-  netPay                  Decimal             @db.Decimal(12, 2)
-  sourceFingerprint       String
-  parserVersion           String
-  reviewStatus            PayrollReviewStatus @default(NEEDS_REVIEW)
-  notes                   String?
-  importedAt              DateTime            @default(now())
-  correctedAt             DateTime?
-  derivedPayRates         EmployeePayRate[]   @relation("PaycheckDerivedPayRate")
-  createdAt               DateTime            @default(now())
-  updatedAt               DateTime            @updatedAt
+  id                       String                       @id @default(cuid())
+  employeeId               String
+  employee                 Employee                     @relation(fields: [employeeId], references: [id], onDelete: Restrict, map: "Paycheck_employee_fkey")
+  payrollPeriodId          String                       @unique(map: "Paycheck_payrollPeriodId_key")
+  payrollPeriod            PayrollPeriod                @relation(fields: [payrollPeriodId], references: [id], onDelete: Restrict, map: "Paycheck_payrollPeriod_fkey")
+  checkDate                DateTime                     @db.Date
+  regularPaidMinutes       Int
+  overtimePaidMinutes      Int
+  baseRate                 Decimal?                     @db.Decimal(10, 4)
+  regularEarnings          Decimal                      @db.Decimal(12, 2)
+  overtimeBaseEarnings     Decimal                      @default(0) @db.Decimal(12, 2)
+  overtimePremiumEarnings  Decimal                      @default(0) @db.Decimal(12, 2)
+  otherCashEarnings        Decimal                      @default(0) @db.Decimal(12, 2)
+  grossCashPay             Decimal                      @db.Decimal(12, 2)
+  noncashImputedEarnings   Decimal                      @default(0) @db.Decimal(12, 2)
+  preTaxDeductions         Decimal                      @default(0) @db.Decimal(12, 2)
+  employeeTaxes            Decimal                      @default(0) @db.Decimal(12, 2)
+  postTaxDeductions        Decimal                      @default(0) @db.Decimal(12, 2)
+  adjustments              Decimal                      @default(0) @db.Decimal(12, 2)
+  netPay                   Decimal                      @db.Decimal(12, 2)
+  sourceFingerprint        String
+  parserVersion            String
+  reviewStatus             PayrollReviewStatus          @default(NEEDS_REVIEW)
+  notes                    String?
+  importedAt               DateTime                     @default(now())
+  correctedAt              DateTime?
+  derivedPayRates          EmployeePayRate[]            @relation("PaycheckDerivedPayRate")
+  previousRateReviewEvents PayRateEvidenceReviewEvent[] @relation("PayRateEvidenceReviewPreviousPaycheck")
+  newRateReviewEvents      PayRateEvidenceReviewEvent[] @relation("PayRateEvidenceReviewNewPaycheck")
+  createdAt                DateTime                     @default(now())
+  updatedAt                DateTime                     @updatedAt
 
   @@unique([employeeId, sourceFingerprint], map: "Paycheck_employee_fingerprint_key")
   @@index([employeeId, checkDate], map: "Paycheck_employee_checkDate_idx")
 }
 
 model EmployeePayRate {
-  id                            String                    @id @default(cuid())
+  id                            String                       @id @default(cuid())
   employeeId                    String
-  employee                      Employee                  @relation(fields: [employeeId], references: [id], onDelete: Restrict, map: "EmployeePayRate_employee_fkey")
-  effectiveFrom                 DateTime                  @db.Date
-  hourlyRate                    Decimal                   @db.Decimal(10, 4)
+  employee                      Employee                     @relation(fields: [employeeId], references: [id], onDelete: Restrict, map: "EmployeePayRate_employee_fkey")
+  effectiveFrom                 DateTime                     @db.Date
+  hourlyRate                    Decimal                      @db.Decimal(10, 4)
   sourceNote                    String?
   sourcePaycheckId              String?
-  sourcePaycheck                Paycheck?                 @relation("PaycheckDerivedPayRate", fields: [sourcePaycheckId], references: [id], onDelete: SetNull, map: "EmployeePayRate_sourcePaycheck_fkey")
-  verificationStatus            PayRateVerificationStatus @default(NEEDS_REVIEW)
-  provenanceKind                PayRateProvenanceKind     @default(UNKNOWN)
+  sourcePaycheck                Paycheck?                    @relation("PaycheckDerivedPayRate", fields: [sourcePaycheckId], references: [id], onDelete: SetNull, map: "EmployeePayRate_sourcePaycheck_fkey")
+  verificationStatus            PayRateVerificationStatus    @default(NEEDS_REVIEW)
+  provenanceKind                PayRateProvenanceKind        @default(UNKNOWN)
   provenanceCandidatePaycheckId String?
-  evidenceVersion               Int                       @default(1)
-  createdAt                     DateTime                  @default(now())
-  updatedAt                     DateTime                  @updatedAt
+  evidenceVersion               Int                          @default(1)
+  reviewEvents                  PayRateEvidenceReviewEvent[]
+  createdAt                     DateTime                     @default(now())
+  updatedAt                     DateTime                     @updatedAt
 
   @@index([employeeId, effectiveFrom], map: "EmployeePayRate_employee_effective_idx")
   @@index([employeeId, verificationStatus, effectiveFrom], map: "EmployeePayRate_employee_verification_effective_idx")
   @@index([sourcePaycheckId], map: "EmployeePayRate_sourcePaycheckId_idx")
+}
+
+model TimesheetIdentityReviewEvent {
+  id                                  String                              @id @default(cuid())
+  weeklyTimesheetId                   String
+  weeklyTimesheet                     WeeklyTimesheet                     @relation(fields: [weeklyTimesheetId], references: [id], onDelete: Restrict, map: "TimesheetIdentityReviewEvent_timesheet_fkey")
+  sequence                            Int
+  decisionKind                        TimesheetIdentityReviewDecisionKind
+  previousStatus                      TimesheetIdentityStatus
+  newStatus                           TimesheetIdentityStatus
+  previousPrimaryEmployeeId           String?
+  previousPrimaryEmployee             Employee?                           @relation("TimesheetIdentityReviewPreviousOwner", fields: [previousPrimaryEmployeeId], references: [id], onDelete: Restrict, map: "TimesheetIdentityReviewEvent_previousEmployee_fkey")
+  previousEmployeeDisplayNameSnapshot String?
+  previousEmployeeCodeSnapshot        String?
+  newPrimaryEmployeeId                String?
+  newPrimaryEmployee                  Employee?                           @relation("TimesheetIdentityReviewNewOwner", fields: [newPrimaryEmployeeId], references: [id], onDelete: Restrict, map: "TimesheetIdentityReviewEvent_newEmployee_fkey")
+  newEmployeeDisplayNameSnapshot      String?
+  newEmployeeCodeSnapshot             String?
+  previousVersion                     Int
+  newVersion                          Int
+  reviewerEmployeeId                  String
+  reviewerEmployee                    Employee                            @relation("TimesheetIdentityReviewReviewer", fields: [reviewerEmployeeId], references: [id], onDelete: Restrict, map: "TimesheetIdentityReviewEvent_reviewer_fkey")
+  reviewerDisplayNameSnapshot         String
+  reviewerEmployeeCodeSnapshot        String?
+  reason                              String                              @db.VarChar(1000)
+  sourceEvidenceReference             String?                             @db.VarChar(500)
+  requestToken                        String                              @db.Uuid
+  requestDigest                       String                              @db.Char(64)
+  createdAt                           DateTime                            @default(now())
+
+  @@unique([weeklyTimesheetId, sequence], map: "TimesheetIdentityReviewEvent_target_sequence_key")
+  @@unique([weeklyTimesheetId, previousVersion], map: "TimesheetIdentityReviewEvent_target_previousVersion_key")
+  @@unique([weeklyTimesheetId, newVersion], map: "TimesheetIdentityReviewEvent_target_newVersion_key")
+  @@unique([weeklyTimesheetId, requestToken], map: "TimesheetIdentityReviewEvent_target_requestToken_key")
+  @@index([reviewerEmployeeId, requestToken], map: "TimesheetIdentityReviewEvent_reviewer_requestToken_idx")
+  @@index([weeklyTimesheetId, createdAt], map: "TimesheetIdentityReviewEvent_target_createdAt_idx")
+  @@index([createdAt], map: "TimesheetIdentityReviewEvent_createdAt_idx")
+}
+
+model PayRateEvidenceReviewEvent {
+  id                              String                              @id @default(cuid())
+  employeePayRateId               String
+  employeePayRate                 EmployeePayRate                     @relation(fields: [employeePayRateId], references: [id], onDelete: Restrict, map: "PayRateEvidenceReviewEvent_rate_fkey")
+  sequence                        Int
+  decisionKind                    PayRateEvidenceReviewDecisionKind
+  attributionKind                 PayRateEvidenceEventAttributionKind @default(OWNER_REVIEWER)
+  previousStatus                  PayRateVerificationStatus?
+  newStatus                       PayRateVerificationStatus
+  previousProvenanceKind          PayRateProvenanceKind?
+  newProvenanceKind               PayRateProvenanceKind
+  previousSourcePaycheckId        String?
+  previousSourcePaycheck          Paycheck?                           @relation("PayRateEvidenceReviewPreviousPaycheck", fields: [previousSourcePaycheckId], references: [id], onDelete: Restrict, map: "PayRateEvidenceReviewEvent_previousPaycheck_fkey")
+  newSourcePaycheckId             String?
+  newSourcePaycheck               Paycheck?                           @relation("PayRateEvidenceReviewNewPaycheck", fields: [newSourcePaycheckId], references: [id], onDelete: Restrict, map: "PayRateEvidenceReviewEvent_newPaycheck_fkey")
+  previousVersion                 Int
+  newVersion                      Int
+  reviewerEmployeeId              String?
+  reviewerEmployee                Employee?                           @relation("PayRateEvidenceReviewReviewer", fields: [reviewerEmployeeId], references: [id], onDelete: Restrict, map: "PayRateEvidenceReviewEvent_reviewer_fkey")
+  reviewerDisplayNameSnapshot     String?
+  reviewerEmployeeCodeSnapshot    String?
+  initiatedByEmployeeId           String?
+  initiatedByEmployee             Employee?                           @relation("PayRateEvidenceReviewInitiator", fields: [initiatedByEmployeeId], references: [id], onDelete: Restrict, map: "PayRateEvidenceReviewEvent_initiator_fkey")
+  initiatedByDisplayNameSnapshot  String?
+  initiatedByEmployeeCodeSnapshot String?
+  reason                          String                              @db.VarChar(1000)
+  sourceEvidenceReference         String?                             @db.VarChar(500)
+  requestToken                    String                              @db.Uuid
+  requestDigest                   String                              @db.Char(64)
+  createdAt                       DateTime                            @default(now())
+
+  @@unique([employeePayRateId, sequence], map: "PayRateEvidenceReviewEvent_target_sequence_key")
+  @@unique([employeePayRateId, previousVersion], map: "PayRateEvidenceReviewEvent_target_previousVersion_key")
+  @@unique([employeePayRateId, newVersion], map: "PayRateEvidenceReviewEvent_target_newVersion_key")
+  @@unique([employeePayRateId, requestToken], map: "PayRateEvidenceReviewEvent_target_requestToken_key")
+  @@index([reviewerEmployeeId, requestToken], map: "PayRateEvidenceReviewEvent_reviewer_requestToken_idx")
+  @@index([employeePayRateId, createdAt], map: "PayRateEvidenceReviewEvent_target_createdAt_idx")
+  @@index([createdAt], map: "PayRateEvidenceReviewEvent_createdAt_idx")
 }
 
 model DailyTimeEntry {

@@ -1,5 +1,7 @@
 "use server";
 
+import { createHash, randomUUID } from "node:crypto";
+
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -14,6 +16,7 @@ import {
   requirePayrollPrincipal,
 } from "./auth";
 import { projectedCheckDateForNamPeriod } from "./calculations";
+import { acquirePayrollEvidenceLock, rateSlotLockKey } from "./evidence-review-locks";
 import { extractPaycheckPdf } from "./parser";
 import { manualPaycheckFingerprint } from "./fingerprint";
 import type { PayrollImportState } from "./types";
@@ -85,18 +88,6 @@ function parseReviewPayload(formData: FormData) {
   }
 }
 
-async function acquireEvidenceLock(
-  tx: Prisma.TransactionClient,
-  scope: "paycheck" | "rate-slot",
-  key: string,
-) {
-  await tx.$executeRaw`
-    SELECT pg_advisory_xact_lock(
-      hashtextextended(CAST(${`nam-payroll:${scope}:${key}`} AS text), 0::bigint)
-    )
-  `;
-}
-
 function uniqueConflictKind(error: unknown) {
   if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
     return undefined;
@@ -130,37 +121,84 @@ async function reconcilePaycheckDerivedRate(
     effectiveFrom: Date;
     hourlyRate: Prisma.Decimal | null;
     sourceNote: string;
+    auditCorrection?: boolean;
   },
 ): Promise<"VERIFIED" | "CONFLICT" | "NOT_ESTABLISHED"> {
-  await acquireEvidenceLock(tx, "paycheck", input.paycheckId);
-  if (input.hourlyRate !== null) {
-    await acquireEvidenceLock(
-      tx,
-      "rate-slot",
-      `${input.employeeId}:${input.effectiveFrom.toISOString().slice(0, 10)}`,
-    );
-  }
+  await acquirePayrollEvidenceLock(tx, "paycheck", input.paycheckId);
   const linkedRates = await tx.employeePayRate.findMany({
     where: {
       sourcePaycheckId: input.paycheckId,
       provenanceKind: "PAYCHECK",
       verificationStatus: { in: ["VERIFIED", "CONFLICT"] },
     },
+    include: { reviewEvents: { select: { sequence: true } } },
     orderBy: [{ evidenceVersion: "desc" }, { createdAt: "desc" }],
   });
   if (linkedRates.some((rate) => rate.employeeId !== input.employeeId)) {
     throw new Error("PAY_RATE_PROVENANCE_MISMATCH");
   }
 
-  const nextEvidenceVersion = (linkedRates[0]?.evidenceVersion ?? 0) + 1;
+  const slotKeys = [
+    ...(input.hourlyRate !== null ? [rateSlotLockKey(input.employeeId, input.effectiveFrom)] : []),
+    ...linkedRates.map((rate) => rateSlotLockKey(rate.employeeId, rate.effectiveFrom)),
+  ];
+  for (const slotKey of [...new Set(slotKeys)].sort()) {
+    await acquirePayrollEvidenceLock(tx, "rate-slot", slotKey);
+  }
   if (linkedRates.length > 0) {
-    await tx.employeePayRate.updateMany({
-      where: { id: { in: linkedRates.map((rate) => rate.id) } },
-      data: {
-        verificationStatus: "SUPERSEDED",
-        evidenceVersion: { increment: 1 },
-      },
+    await tx.$queryRaw(
+      Prisma.sql`SELECT "id" FROM "EmployeePayRate" WHERE "id" IN (${Prisma.join(linkedRates.map((rate) => rate.id).sort())}) ORDER BY "id" FOR UPDATE`,
+    );
+  }
+
+  const initiator = input.auditCorrection
+    ? await tx.employee.findUnique({
+        where: { id: input.employeeId },
+        select: { id: true, displayName: true, employeeCode: true },
+      })
+    : null;
+  if (input.auditCorrection && !initiator) throw new Error("ACCESS_DENIED");
+  const correctionToken = input.auditCorrection ? randomUUID() : null;
+  const correctionDigest = input.auditCorrection
+    ? createHash("sha256").update(JSON.stringify({
+        paycheckId: input.paycheckId,
+        effectiveFrom: input.effectiveFrom.toISOString(),
+        hourlyRate: input.hourlyRate?.toString() ?? null,
+      })).digest("hex")
+    : null;
+
+  const nextEvidenceVersion = (linkedRates[0]?.evidenceVersion ?? 0) + 1;
+  for (const rate of linkedRates.sort((left, right) => left.id.localeCompare(right.id))) {
+    const updated = await tx.employeePayRate.updateMany({
+      where: { id: rate.id, evidenceVersion: rate.evidenceVersion, verificationStatus: rate.verificationStatus },
+      data: { verificationStatus: "SUPERSEDED", evidenceVersion: { increment: 1 } },
     });
+    if (updated.count !== 1) throw new Error("STALE_RATE_EVIDENCE");
+    if (input.auditCorrection) {
+      await tx.payRateEvidenceReviewEvent.create({
+        data: {
+          employeePayRateId: rate.id,
+          sequence: Math.max(0, ...rate.reviewEvents.map((event) => event.sequence)) + 1,
+          decisionKind: "PAYCHECK_CORRECTION_SUPERSEDED",
+          attributionKind: "PAYCHECK_CORRECTION_SYSTEM",
+          previousStatus: rate.verificationStatus,
+          newStatus: "SUPERSEDED",
+          previousProvenanceKind: rate.provenanceKind,
+          newProvenanceKind: rate.provenanceKind,
+          previousSourcePaycheckId: rate.sourcePaycheckId,
+          newSourcePaycheckId: rate.sourcePaycheckId,
+          previousVersion: rate.evidenceVersion,
+          newVersion: rate.evidenceVersion + 1,
+          initiatedByEmployeeId: initiator!.id,
+          initiatedByDisplayNameSnapshot: initiator!.displayName,
+          initiatedByEmployeeCodeSnapshot: initiator!.employeeCode,
+          reason: "Automatic supersession caused by an authenticated Paycheck correction.",
+          sourceEvidenceReference: `Paycheck correction ${input.paycheckId}`,
+          requestToken: correctionToken!,
+          requestDigest: correctionDigest!,
+        },
+      });
+    }
   }
 
   if (input.hourlyRate === null) {
@@ -175,7 +213,7 @@ async function reconcilePaycheckDerivedRate(
     },
   });
   const verificationStatus = competingRate ? "CONFLICT" as const : "VERIFIED" as const;
-  await tx.employeePayRate.create({
+  const createdRate = await tx.employeePayRate.create({
     data: {
       employeeId: input.employeeId,
       effectiveFrom: input.effectiveFrom,
@@ -188,6 +226,31 @@ async function reconcilePaycheckDerivedRate(
       evidenceVersion: nextEvidenceVersion,
     },
   });
+  if (input.auditCorrection) {
+    await tx.payRateEvidenceReviewEvent.create({
+      data: {
+        employeePayRateId: createdRate.id,
+        sequence: 1,
+        decisionKind: "PAYCHECK_CORRECTION_CREATED",
+        attributionKind: "PAYCHECK_CORRECTION_SYSTEM",
+        previousStatus: null,
+        newStatus: verificationStatus,
+        previousProvenanceKind: null,
+        newProvenanceKind: "PAYCHECK",
+        previousSourcePaycheckId: null,
+        newSourcePaycheckId: input.paycheckId,
+        previousVersion: 0,
+        newVersion: createdRate.evidenceVersion,
+        initiatedByEmployeeId: initiator!.id,
+        initiatedByDisplayNameSnapshot: initiator!.displayName,
+        initiatedByEmployeeCodeSnapshot: initiator!.employeeCode,
+        reason: "Automatic replacement rate created by an authenticated Paycheck correction.",
+        sourceEvidenceReference: `Paycheck correction ${input.paycheckId}`,
+        requestToken: correctionToken!,
+        requestDigest: correctionDigest!,
+      },
+    });
+  }
   return verificationStatus;
 }
 
@@ -352,7 +415,7 @@ export async function correctPaycheckAction(
   const value = parsed.data;
   try {
     const rateEvidence = await prisma.$transaction(async (tx) => {
-      await acquireEvidenceLock(tx, "paycheck", paycheckId);
+      await acquirePayrollEvidenceLock(tx, "paycheck", paycheckId);
       const current = await tx.paycheck.findFirst({
         where: { id: paycheckId, employeeId: principal.employeeId },
         include: { payrollPeriod: true },
@@ -398,6 +461,7 @@ export async function correctPaycheckAction(
         effectiveFrom: periodStart,
         hourlyRate: value.baseRate == null ? null : new Prisma.Decimal(value.baseRate),
         sourceNote: "Corrected Workday paycheck evidence",
+        auditCorrection: true,
       });
     });
     revalidatePath("/");

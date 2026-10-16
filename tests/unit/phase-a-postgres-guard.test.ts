@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   PHASE_A_CI_TEST_DATABASE_HOST,
   PHASE_A_CI_TEST_DATABASE_PROFILE,
+  PHASE_A_LOCAL_LOOPBACK_TEST_DATABASE_HOST,
+  PHASE_A_LOCAL_LOOPBACK_TEST_DATABASE_PORT,
+  PHASE_A_LOCAL_LOOPBACK_TEST_DATABASE_PROFILE,
   guardedPhaseADatabaseUrl,
   PHASE_A_TEST_DATABASE_HOST,
   PHASE_A_TEST_DATABASE_NAME,
@@ -15,6 +18,9 @@ const validUrl =
 const validCiUrl =
   `postgresql://${PHASE_A_TEST_DATABASE_USER}:synthetic-secret@` +
   `${PHASE_A_CI_TEST_DATABASE_HOST}:5432/${PHASE_A_TEST_DATABASE_NAME}`;
+const validLocalLoopbackUrl =
+  `postgresql://${PHASE_A_TEST_DATABASE_USER}:synthetic-secret@` +
+  `${PHASE_A_LOCAL_LOOPBACK_TEST_DATABASE_HOST}:${PHASE_A_LOCAL_LOOPBACK_TEST_DATABASE_PORT}/${PHASE_A_TEST_DATABASE_NAME}`;
 
 describe("Phase A PostgreSQL identity guard", () => {
   it("skips without the dedicated URL unless execution is explicitly required", () => {
@@ -73,6 +79,22 @@ describe("Phase A PostgreSQL identity guard", () => {
       },
     ]) {
       expect(() => guardedPhaseADatabaseUrl(environment)).toThrow();
+    }
+  });
+
+  it("accepts only the dedicated high-port loopback target for explicit local runs", () => {
+    const environment = {
+      PHASE_A_TEST_DATABASE_URL: validLocalLoopbackUrl,
+      PHASE_A_TEST_DATABASE_PROFILE: PHASE_A_LOCAL_LOOPBACK_TEST_DATABASE_PROFILE,
+    };
+    expect(guardedPhaseADatabaseUrl(environment)).toBe(validLocalLoopbackUrl);
+    for (const value of [
+      validLocalLoopbackUrl.replace("127.0.0.1", "localhost"),
+      validLocalLoopbackUrl.replace(":55439", ":5432"),
+      validLocalLoopbackUrl.replace(PHASE_A_TEST_DATABASE_NAME, "nam_dashboard"),
+      validLocalLoopbackUrl.replace(PHASE_A_TEST_DATABASE_USER, "nam_app"),
+    ]) {
+      expect(() => guardedPhaseADatabaseUrl({ ...environment, PHASE_A_TEST_DATABASE_URL: value })).toThrow();
     }
   });
 });

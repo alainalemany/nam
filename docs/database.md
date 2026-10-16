@@ -1614,6 +1614,39 @@ then conservatively quarantines all pre-existing identity and rate evidence in
 one explicit transaction. No migration timestamp, name, amount, date, or note
 is treated as proof.
 
+Migration 37 adds `TimesheetIdentityReviewEvent` and
+`PayRateEvidenceReviewEvent`. Each append-only event records the target-local
+sequence, previous/new status and authoritative relationships, consecutive
+record versions, attribution, mandatory reason, optional bounded evidence
+reference, UUID request token, SHA-256 payload digest, and timestamp. Owner
+review events retain the reviewer Employee and immutable name/code snapshots.
+Automatic Paycheck-correction events instead retain a distinct initiating
+Employee and snapshots; they never fabricate a reviewer or owner-verification
+decision. Target, reviewer, initiator, authoritative Employee, and Paycheck
+foreign keys use Restrict. Unique target/sequence, target/version, and
+attribution/token constraints protect ordering and idempotency; PostgreSQL
+triggers reject every event UPDATE and DELETE.
+
+Insert checks enforce attribution shape, supported decision/status/provenance
+combinations, version progression, contiguous target-local sequence, and
+agreement between each event's new state and the current target row. A new
+Paycheck-derived replacement records null previous status/provenance, previous
+version zero, and its inherited lineage version as the new version. These
+database checks prevent malformed standalone audit rows, but do not claim to
+authenticate business reasons or independently recover every prior row value;
+the locked application transaction validates those properties before updating
+the target and inserting its event.
+
+Review transactions increment `identityVersion` or `evidenceVersion` with
+compare-and-swap semantics and append the corresponding event atomically. A
+Paycheck correction uses the same atomic rule for every superseded linked rate
+and any replacement rate it creates; an event failure rolls back the Paycheck,
+PayrollPeriod, all rate changes, and all events. A
+trusted-only partial unique index permits at most one `EXPLICIT_SELECTION` or
+`OWNER_VERIFIED` Timesheet for a canonical Employee/payroll week. Existing
+verified-rate partial uniqueness remains authoritative. Migration 37 neither
+promotes nor deletes quarantined evidence.
+
 The detailed PayslipDocument design below is a superseded ADR-005 proposal and
 is not part of the current schema or authorized V1.
 

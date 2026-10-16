@@ -1,0 +1,2 @@
+DROP SCHEMA IF EXISTS "payroll_review_history_guard_failure" CASCADE;
+DROP SCHEMA IF EXISTS "payroll_review_history_postmutation_failure" CASCADE;
