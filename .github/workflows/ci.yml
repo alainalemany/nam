@@ -27,6 +27,8 @@ jobs:
     name: Application Quality
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    env:
+      DATABASE_URL: postgresql://ci_validate:unreachable@127.0.0.1:1/nam_ci_validate?connect_timeout=1
 
     steps:
       - name: Check out repository
@@ -79,8 +81,6 @@ jobs:
         run: pnpm test:run
 
       - name: Build production application
-        env:
-          DATABASE_URL: postgresql://ci_build:unreachable@127.0.0.1:1/nam_ci_build?connect_timeout=1
         run: pnpm build
 
       - name: Verify repository diff formatting
