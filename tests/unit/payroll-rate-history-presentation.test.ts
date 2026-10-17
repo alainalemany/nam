@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { primaryRateClassification, validateCandidateDate } from "@/features/payroll/rate-history-presentation";
+import { orderedRateClassifications, primaryRateClassification, validateCandidateDate } from "@/features/payroll/rate-history-presentation";
 
 describe("rate-history presentation rules", () => {
   it.each([
@@ -21,5 +21,18 @@ describe("rate-history presentation rules", () => {
   it("prioritizes conflict and direction labels over generic uncertainty", () => {
     expect(primaryRateClassification(["UNCERTAIN_EFFECTIVE_DATE_CHANGE", "CANDIDATE_INCREASE"])).toBe("CANDIDATE_INCREASE");
     expect(primaryRateClassification(["CANDIDATE_DECREASE", "SAME_DATE_CONFLICT"])).toBe("SAME_DATE_CONFLICT");
+  });
+
+  it("retains every distinct classification in deterministic presentation order", () => {
+    expect(orderedRateClassifications([
+      "UNCERTAIN_EFFECTIVE_DATE_CHANGE",
+      "CANDIDATE_DECREASE",
+      "SAME_DATE_CONFLICT",
+      "CANDIDATE_DECREASE",
+    ])).toEqual([
+      "SAME_DATE_CONFLICT",
+      "CANDIDATE_DECREASE",
+      "UNCERTAIN_EFFECTIVE_DATE_CHANGE",
+    ]);
   });
 });

@@ -49,8 +49,14 @@ const classificationPriority = [
   "CORRECTED_OR_SUPERSEDED_OBSERVATION",
 ];
 
+export function orderedRateClassifications(kinds: string[]) {
+  const remaining = new Set(kinds);
+  const ordered = classificationPriority.filter((kind) => remaining.delete(kind));
+  return [...ordered, ...[...remaining].sort()];
+}
+
 export function primaryRateClassification(kinds: string[]) {
-  return classificationPriority.find((kind) => kinds.includes(kind)) ?? "UNCERTAIN_EFFECTIVE_DATE_CHANGE";
+  return orderedRateClassifications(kinds)[0] ?? "UNCERTAIN_EFFECTIVE_DATE_CHANGE";
 }
 export function validateCandidateDate(value: string, earliest: string, latest: string | null) {
   if (!value) return "Select an exact effective date.";

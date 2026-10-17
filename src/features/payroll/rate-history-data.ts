@@ -6,7 +6,7 @@ import { dateKeyInTimeZone } from "@/lib/zoned-date-time";
 import { prisma } from "@/lib/prisma";
 
 import { requirePayrollEvidenceReviewer } from "./auth";
-import { primaryRateClassification } from "./rate-history-presentation";
+import { orderedRateClassifications, primaryRateClassification } from "./rate-history-presentation";
 
 const PAGE_SIZE = 20;
 const HISTORY_LIMIT = 60;
@@ -153,7 +153,7 @@ export async function getRateHistoryOverview(input: { status?: RateHistoryStatus
     rate.effectiveFrom <= dateValue(today)!);
   const candidateViews = candidates.map((candidate) => {
     const observations = candidate.observations.map(observationView);
-    const classifications = [...new Set(observations.flatMap((item) => item.classifications))];
+    const classifications = orderedRateClassifications(observations.flatMap((item) => item.classifications));
     return {
       id: candidate.id,
       observedHourlyRate: candidate.observedHourlyRate.toString(),
@@ -198,7 +198,7 @@ export async function getRateBoundaryCandidateDetail(id: string) {
   if (!candidate) return undefined;
 
   const observations = candidate.observations.map(observationView);
-  const classifications = [...new Set(observations.flatMap((item) => item.classifications))];
+  const classifications = orderedRateClassifications(observations.flatMap((item) => item.classifications));
   const latest = candidate.latestEffectiveDate ?? new Date("9999-12-31T00:00:00.000Z");
   const [previousRate, conflicts, affectedEntries] = await Promise.all([
     prisma.employeePayRate.findFirst({

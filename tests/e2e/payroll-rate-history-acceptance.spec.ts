@@ -74,6 +74,15 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
   });
 
   test("an authorized reviewer sees verified history, provenance, support, and open classifications", async ({ browser }) => {
+    const persistedDecrease = await prisma.payRateBoundaryCandidate.findUniqueOrThrow({
+      where: { id: "browser-candidate-decrease" },
+      include: { observations: { include: { observation: { include: { classifications: true } } } } },
+    });
+    expect(persistedDecrease).toMatchObject({ employeeId: "browser-owner", status: "OPEN" });
+    expect(persistedDecrease.observations.flatMap((link) =>
+      link.observation.classifications.map((classification) => classification.kind)))
+      .toEqual(expect.arrayContaining(["CANDIDATE_DECREASE", "SAME_DATE_CONFLICT"]));
+
     const context = await browser.newContext();
     const page = await authenticatedPage(context);
     await page.goto("/payroll/rate-history");
@@ -87,8 +96,9 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     await expect(verifiedRateRow.getByRole("cell").nth(4)).toHaveText("2");
     await expect(page.getByText("2026-07-01–2026-07-14, 2026-07-15–2026-07-28").first()).toBeVisible();
     await expect(page.getByText("Proposed increase").first()).toBeVisible();
-    await expect(page.getByText("Proposed decrease").first()).toBeVisible();
-    await expect(page.getByText("Conflicting evidence").first()).toBeVisible();
+    const decreaseCandidateRow = page.getByRole("row").filter({ has: page.getByText("$31.0000/hr") });
+    await expect(decreaseCandidateRow.getByText("Proposed decrease")).toBeVisible();
+    await expect(decreaseCandidateRow.getByText("Conflicting evidence")).toBeVisible();
     await expect(page.getByText("Repeated supporting observation")).toHaveCount(0);
     await expect(page.getByText("Expected gross is protected by unresolved rate evidence.")).toBeVisible();
     await context.close();

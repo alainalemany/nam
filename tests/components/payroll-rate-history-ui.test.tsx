@@ -72,12 +72,37 @@ describe("progressive rate-history overview", () => {
   });
 
   it.each([
+    ["FIRST_RATE_CANDIDATE", "First observed rate"],
     ["CANDIDATE_DECREASE", "Proposed decrease"],
     ["SAME_DATE_CONFLICT", "Conflicting evidence"],
     ["REPEATED_SUPPORTING_OBSERVATION", "Repeated supporting observation"],
   ])("presents %s with explicit text", (classification, label) => {
     const data = overview();
     data.candidates[0] = { ...data.candidates[0], classifications: [classification], primaryClassification: classification };
+    render(<RateHistoryOverview data={data} />);
+    expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+  });
+
+  it("shows a candidate's decrease direction even when conflict is the primary classification", () => {
+    const data = overview();
+    data.candidates[0] = {
+      ...data.candidates[0],
+      classifications: ["SAME_DATE_CONFLICT", "CANDIDATE_DECREASE", "UNCERTAIN_EFFECTIVE_DATE_CHANGE"],
+      primaryClassification: "SAME_DATE_CONFLICT",
+    };
+    render(<RateHistoryOverview data={data} />);
+    const candidateRow = screen.getAllByRole("row")[1];
+    expect(within(candidateRow).getByText("Conflicting evidence")).toBeInTheDocument();
+    expect(within(candidateRow).getByText("Proposed decrease")).toBeInTheDocument();
+    expect(within(candidateRow).getByText("Uncertain effective date")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["REJECTED", "Rejected candidate"],
+    ["SUPERSEDED", "Superseded candidate"],
+  ] as const)("distinguishes %s candidates from open uncertainty", (status, label) => {
+    const data = overview();
+    data.candidates[0] = { ...data.candidates[0], status };
     render(<RateHistoryOverview data={data} />);
     expect(screen.getAllByText(label).length).toBeGreaterThan(0);
   });
