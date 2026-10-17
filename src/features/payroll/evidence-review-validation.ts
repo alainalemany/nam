@@ -6,6 +6,7 @@ const reason = z.string().trim().min(1, "A review reason is required.").max(1000
 const optionalEvidenceReference = z.string().trim().min(1).max(500).optional();
 const requiredEvidenceReference = z.string().trim().min(1, "An evidence reference is required.").max(500);
 const requestToken = z.string().uuid();
+const dateOnly = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.");
 
 const common = {
   reason,
@@ -107,6 +108,27 @@ export const payRateEvidenceResolutionInputSchema = z.object({
   }
 });
 
+export const payRateBoundaryVerificationInputSchema = z.object({
+  decision: z.literal("VERIFY_EXACT_BOUNDARY"),
+  candidateId: recordId,
+  expectedEvidenceVersion: expectedVersion,
+  exactEffectiveDate: dateOnly,
+  reason,
+  sourceEvidenceReference: optionalEvidenceReference,
+  requestToken,
+}).strict();
+
+export const payRateBoundaryRejectionInputSchema = z.object({
+  decision: z.literal("REJECT_BOUNDARY_CANDIDATE"),
+  candidateId: recordId,
+  expectedEvidenceVersion: expectedVersion,
+  reason,
+  sourceEvidenceReference: optionalEvidenceReference,
+  requestToken,
+}).strict();
+
 export type TimesheetIdentityReviewInput = z.infer<typeof timesheetIdentityReviewInputSchema>;
 export type PayRateEvidenceReviewInput = z.infer<typeof payRateEvidenceReviewInputSchema>;
 export type PayRateEvidenceResolutionInput = z.infer<typeof payRateEvidenceResolutionInputSchema>;
+export type PayRateBoundaryVerificationInput = z.infer<typeof payRateBoundaryVerificationInputSchema>;
+export type PayRateBoundaryRejectionInput = z.infer<typeof payRateBoundaryRejectionInputSchema>;

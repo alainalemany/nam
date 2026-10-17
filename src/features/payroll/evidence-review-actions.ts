@@ -13,6 +13,10 @@ import {
   reviewTimesheetIdentity,
 } from "./evidence-review-persistence";
 import {
+  rejectPayRateBoundaryCandidate,
+  verifyExactPayRateBoundary,
+} from "./rate-boundary-persistence";
+import {
   EvidenceReviewError,
   type EvidenceReviewFailure,
   type EvidenceReviewResult,
@@ -20,6 +24,8 @@ import {
 import {
   payRateEvidenceResolutionInputSchema,
   payRateEvidenceReviewInputSchema,
+  payRateBoundaryRejectionInputSchema,
+  payRateBoundaryVerificationInputSchema,
   timesheetIdentityReviewInputSchema,
 } from "./evidence-review-validation";
 
@@ -119,6 +125,38 @@ export async function resolvePayRateEvidenceCompetitorsAction(
     const parsed = payRateEvidenceResolutionInputSchema.safeParse(parsePayload(formData));
     if (!parsed.success) return validationFailure(parsed.error.issues);
     const result = await resolvePayRateEvidenceCompetitors(reviewer, parsed.data);
+    revalidateRateReview(result.targetId);
+    return result;
+  } catch (error) {
+    return actionFailure(error);
+  }
+}
+
+export async function verifyExactPayRateBoundaryAction(
+  _previousState: EvidenceReviewResult,
+  formData: FormData,
+): Promise<EvidenceReviewResult> {
+  try {
+    const reviewer = await requirePayrollEvidenceReviewer();
+    const parsed = payRateBoundaryVerificationInputSchema.safeParse(parsePayload(formData));
+    if (!parsed.success) return validationFailure(parsed.error.issues);
+    const result = await verifyExactPayRateBoundary(reviewer, parsed.data);
+    revalidateRateReview(result.targetId);
+    return result;
+  } catch (error) {
+    return actionFailure(error);
+  }
+}
+
+export async function rejectPayRateBoundaryCandidateAction(
+  _previousState: EvidenceReviewResult,
+  formData: FormData,
+): Promise<EvidenceReviewResult> {
+  try {
+    const reviewer = await requirePayrollEvidenceReviewer();
+    const parsed = payRateBoundaryRejectionInputSchema.safeParse(parsePayload(formData));
+    if (!parsed.success) return validationFailure(parsed.error.issues);
+    const result = await rejectPayRateBoundaryCandidate(reviewer, parsed.data);
     revalidateRateReview(result.targetId);
     return result;
   } catch (error) {

@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
   reviewTimesheet: vi.fn(),
   reviewRate: vi.fn(),
   resolveRates: vi.fn(),
+  verifyBoundary: vi.fn(),
+  rejectBoundary: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -21,11 +23,17 @@ vi.mock("@/features/payroll/evidence-review-persistence", () => ({
   reviewPayRateEvidence: mocks.reviewRate,
   resolvePayRateEvidenceCompetitors: mocks.resolveRates,
 }));
+vi.mock("@/features/payroll/rate-boundary-persistence", () => ({
+  verifyExactPayRateBoundary: mocks.verifyBoundary,
+  rejectPayRateBoundaryCandidate: mocks.rejectBoundary,
+}));
 
 import {
   resolvePayRateEvidenceCompetitorsAction,
+  rejectPayRateBoundaryCandidateAction,
   reviewPayRateEvidenceAction,
   reviewTimesheetIdentityAction,
+  verifyExactPayRateBoundaryAction,
 } from "@/features/payroll/evidence-review-actions";
 import { PayrollAccessDeniedError } from "@/features/payroll/security";
 import { EvidenceReviewError } from "@/features/payroll/evidence-review-types";
@@ -59,6 +67,31 @@ function rateFormData(resolve = false) {
   return data;
 }
 
+function boundaryFormData() {
+  const data = new FormData();
+  data.set("payload", JSON.stringify({
+    decision: "VERIFY_EXACT_BOUNDARY",
+    candidateId: "candidate-1",
+    expectedEvidenceVersion: 2,
+    exactEffectiveDate: "2026-09-17",
+    reason: "Authenticated observations bound the change and the owner confirmed the exact date.",
+    requestToken: "123e4567-e89b-42d3-a456-426614174003",
+  }));
+  return data;
+}
+
+function boundaryRejectionFormData() {
+  const data = new FormData();
+  data.set("payload", JSON.stringify({
+    decision: "REJECT_BOUNDARY_CANDIDATE",
+    candidateId: "candidate-1",
+    expectedEvidenceVersion: 2,
+    reason: "Authenticated evidence disproves this candidate.",
+    requestToken: "123e4567-e89b-42d3-a456-426614174004",
+  }));
+  return data;
+}
+
 describe("Payroll evidence review Server Actions", () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -72,12 +105,60 @@ describe("Payroll evidence review Server Actions", () => {
     expect(mocks.reviewTimesheet).not.toHaveBeenCalled();
   });
 
-  it("protects both rate actions before persistence", async () => {
+  it("protects every rate action before persistence", async () => {
     mocks.requireReviewer.mockRejectedValue(new PayrollAccessDeniedError("expired or wrong reviewer"));
     await expect(reviewPayRateEvidenceAction(idle, rateFormData())).resolves.toMatchObject({ code: "UNAUTHORIZED_REVIEW" });
     await expect(resolvePayRateEvidenceCompetitorsAction(idle, rateFormData(true))).resolves.toMatchObject({ code: "UNAUTHORIZED_REVIEW" });
+    await expect(verifyExactPayRateBoundaryAction(idle, boundaryFormData())).resolves.toMatchObject({ code: "UNAUTHORIZED_REVIEW" });
+    await expect(rejectPayRateBoundaryCandidateAction(idle, boundaryRejectionFormData())).resolves.toMatchObject({ code: "UNAUTHORIZED_REVIEW" });
     expect(mocks.reviewRate).not.toHaveBeenCalled();
     expect(mocks.resolveRates).not.toHaveBeenCalled();
+    expect(mocks.verifyBoundary).not.toHaveBeenCalled();
+    expect(mocks.rejectBoundary).not.toHaveBeenCalled();
+  });
+
+  it("passes a rejection only after server-side reviewer authorization", async () => {
+    const actor = { employeeId: "reviewer-1", displayName: "Reviewer", employeeCode: "R-1" };
+    mocks.requireReviewer.mockResolvedValue(actor);
+    mocks.rejectBoundary.mockResolvedValue({
+      ok: true,
+      targetId: "candidate-1",
+      newState: "REJECTED",
+      newVersion: 3,
+      auditEventId: "boundary-event-2",
+      idempotencyReplay: false,
+    });
+    await expect(rejectPayRateBoundaryCandidateAction(idle, boundaryRejectionFormData())).resolves.toMatchObject({
+      ok: true,
+      newState: "REJECTED",
+    });
+    expect(mocks.rejectBoundary).toHaveBeenCalledWith(actor, expect.objectContaining({
+      candidateId: "candidate-1",
+      expectedEvidenceVersion: 2,
+      reason: "Authenticated evidence disproves this candidate.",
+    }));
+  });
+
+  it("passes an exact boundary decision only after server-side reviewer authorization", async () => {
+    const actor = { employeeId: "reviewer-1", displayName: "Reviewer", employeeCode: "R-1" };
+    mocks.requireReviewer.mockResolvedValue(actor);
+    mocks.verifyBoundary.mockResolvedValue({
+      ok: true,
+      targetId: "candidate-1",
+      newState: "RESOLVED",
+      newVersion: 3,
+      auditEventId: "boundary-event-1",
+      idempotencyReplay: false,
+    });
+    await expect(verifyExactPayRateBoundaryAction(idle, boundaryFormData())).resolves.toMatchObject({
+      ok: true,
+      newState: "RESOLVED",
+    });
+    expect(mocks.verifyBoundary).toHaveBeenCalledWith(actor, expect.objectContaining({
+      candidateId: "candidate-1",
+      expectedEvidenceVersion: 2,
+      exactEffectiveDate: "2026-09-17",
+    }));
   });
 
   it("maps invalid payloads and persistence errors to structured contracts", async () => {

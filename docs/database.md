@@ -1577,7 +1577,8 @@ Equipment and should not be selected independently on Timesheet entries.
 
 ## Payroll Reconciliation Entities
 
-Current status: `PayrollPeriod`, `Paycheck`, `EmployeePayRate`, and the optional
+Current status: `PayrollPeriod`, `Paycheck`, `EmployeePayRate`, progressive
+pay-rate observation/boundary models, and the optional
 `WeeklyTimesheet.primaryEmployeeId` relation are implemented in the Prisma
 schema. Production revision and migration state must be verified separately
 before deployment. PayrollPeriod is unique by
@@ -1605,25 +1606,64 @@ trusted evidence. Expected gross excludes every state except `VERIFIED` and
 never falls back to current Paycheck values.
 Reconciliation results are derived from authoritative records rather than
 persisted as a duplicate ledger.
-Regular-rate observations produced during PDF extraction are preview-only
-structured data in the current package. They do not add a table, do not become
-`EmployeePayRate` rows directly, and do not change the existing evidence or
-review-event schema. Only an unchanged, supported observation set authenticated
-by a short-lived, employee-scoped, purpose-separated server envelope may
-continue through the existing confirmed-Paycheck rate path; uncertain or edited
-extraction cannot create an authoritative rate. Manually entered or edited rate
-values are retained only as non-authoritative review candidates and remain
-excluded from trusted calculations. Manual entry never creates verified
-Paycheck-derived rate evidence. Correction
-envelopes are issued from server-owned current state: an unchanged rate context
-may preserve the existing verified correction path only when the active linked
-`VERIFIED` evidence matches the stored amount and effective date, while a
-changed rate or period supersedes active direct Paycheck evidence without creating a verified
-replacement. Historical `NEEDS_REVIEW`/`UNKNOWN` rows linked only by
+Migration 38 adds progressive rate observations without changing
+`EmployeePayRate`'s authority. `PayRateObservation` is append-only and records
+the canonical Employee, source Paycheck and evidence revision, row sequence,
+nullable observed rate/minutes/earnings, frozen period and optional explicit row
+bounds, extraction basis, date confidence, state, parser version, normalized
+digest, and creation time. Append-only classification rows preserve first-rate,
+repeated-support, increase, decrease, split, same-date conflict, uncertainty,
+unsupported, and correction/supersession conclusions. A digest is indexed for
+semantic comparison but is not globally unique because several Payslips may
+legitimately reinforce the same rate.
+
+`PayRateObservationSupersession` links an earlier immutable observation to its
+replacement after a Paycheck correction. `Paycheck.evidenceRevision` is positive
+and increments on correction. Database triggers require every inserted
+observation to match the current source Paycheck Employee, revision, and frozen
+period. Manual and correction observations are review-only and cannot satisfy
+the authenticated Workday support check.
+
+`PayRateBoundaryCandidate` is the versioned uncertainty projection. It stores a
+rate and the earliest/latest effective dates supported by linked observations.
+Those bounds describe where a rate was observed and the possible boundary
+window; an explicit multi-day row range does not prove that its first day was
+the employment-wide effective date.
+Repeated observations link to one candidate rather than creating duplicate
+authoritative history. Stronger evidence may narrow an open window, while an
+authenticated out-of-order observation from an earlier disjoint period may
+move the complete window earlier without unioning a guessed interval.
+`PayRateObservationSupport` links supported observations to one verified
+`EmployeePayRate` as primary or reinforcing evidence. All observation,
+classification, supersession, candidate-observation, support, and boundary-event
+history is database append-only.
+
+An exact owner decision resolves an open candidate and creates one verified
+`EmployeePayRate` in the same transaction. `PayRateBoundaryDecisionEvent`
+preserves sequence, previous/new status and version, exact date, resulting rate,
+reviewer snapshots, mandatory reason, request token/digest, and timestamp.
+Insert triggers require the event to agree with the resolved candidate and
+verified rate. A typed rejection event instead records an `OPEN` to `REJECTED`
+decision with no rate or exact-date payload. Deferred constraint triggers reject
+either terminal state at transaction commit unless its matching immutable event
+exists. Cross-domain application locks and replay checks prevent one reviewer
+token from being reused between Timesheet, Package 2A rate, and boundary
+decisions.
+
+Support insert triggers require a current confirmed source Paycheck revision,
+supported Workday provenance, matching Employee and amount, non-superseded
+observation, and valid supporting date context. Deferred referenced-state checks
+prevent Paycheck confirmation/revision or supersession changes from leaving a
+verified rate without current eligible support. Open candidates suppress expected gross from their earliest
+potentially affected date; earlier unrelated dates remain eligible.
+
+Correction envelopes remain bound to server-owned current state. Unchanged rate
+context preserves the existing verified boundary without creating another.
+Changed rate context supersedes active direct `VERIFIED`/`CONFLICT` Paycheck
+evidence through migration-37 system events, appends review-only replacement
+observations, and never creates a verified replacement. Historical
+`NEEDS_REVIEW`/`UNKNOWN` rows linked only by
 `provenanceCandidatePaycheckId` remain unchanged and non-authoritative.
-`periodStart` remains the temporary `effectiveFrom` for an eligible authenticated
-import, but it is not proof of the exact rate-change date and is deferred to
-Phase 5B.2.
 No uploaded PDF, raw extracted text, bank account, address, or government
 identifier is stored by Payroll V1.
 
@@ -1659,14 +1699,23 @@ the target and inserting its event.
 Review transactions increment `identityVersion` or `evidenceVersion` with
 compare-and-swap semantics and append the corresponding event atomically. A
 Paycheck correction uses the same atomic rule for every superseded active
-`VERIFIED`/`CONFLICT` Paycheck rate and any replacement rate it creates;
-candidate-only quarantined rows are locked and validated but are not mutated.
+`VERIFIED`/`CONFLICT` Paycheck rate. Replacement observations and boundary
+candidates remain non-authoritative; candidate-only quarantined rows are locked
+and validated but are not mutated.
 An event failure rolls back the Paycheck,
 PayrollPeriod, all rate changes, and all events. A
 trusted-only partial unique index permits at most one `EXPLICIT_SELECTION` or
 `OWNER_VERIFIED` Timesheet for a canonical Employee/payroll week. Existing
 verified-rate partial uniqueness remains authoritative. Migration 37 neither
 promotes nor deletes quarantined evidence.
+
+Migration 38 verifies migration 37's exact checksum, adds the observation and
+boundary structures in one explicit transaction, and performs no legacy
+backfill. Existing verified, conflicting, superseded, excluded, and quarantined
+rates retain their exact values and states. The migration is additive for the
+current application, but activating Phase 5B.2 code requires a separately
+authorized coordinated migration/application release; a code-only rollout or
+rollback across this boundary is unsupported.
 
 The detailed PayslipDocument design below is a superseded ADR-005 proposal and
 is not part of the current schema or authorized V1.

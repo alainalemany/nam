@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   timesheetFindMany: vi.fn(),
   paycheckFindMany: vi.fn(),
   payRateFindMany: vi.fn(),
+  rateCandidateFindMany: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -18,6 +19,7 @@ vi.mock("@/lib/prisma", () => ({
     weeklyTimesheet: { findMany: mocks.timesheetFindMany },
     paycheck: { findMany: mocks.paycheckFindMany },
     employeePayRate: { findMany: mocks.payRateFindMany },
+    payRateBoundaryCandidate: { findMany: mocks.rateCandidateFindMany },
   },
 }));
 
@@ -120,6 +122,7 @@ describe("Payroll interval reconciliation data", () => {
     vi.clearAllMocks();
     mocks.employeeFindUnique.mockResolvedValue({ id: "employee-1", displayName: "Alex Operator" });
     mocks.assignmentFindMany.mockResolvedValue([]);
+    mocks.rateCandidateFindMany.mockResolvedValue([]);
     mocks.payRateFindMany.mockResolvedValue([{
       id: "verified-rate",
       effectiveFrom: new Date("2020-01-01T00:00:00.000Z"),
@@ -270,6 +273,59 @@ describe("Payroll interval reconciliation data", () => {
       pendingGrossStatus: "UNAVAILABLE",
       pendingGrossReason: "RATE_EVIDENCE_CONFLICT",
       pendingGrossUncoveredEntryCount: 1,
+    });
+  });
+
+  it("withholds expected gross from the earliest open rate-change boundary without suppressing earlier dates", async () => {
+    mocks.rateCandidateFindMany.mockResolvedValue([{
+      earliestEffectiveDate: new Date("2026-10-15T00:00:00.000Z"),
+    }]);
+    arrange([
+      timesheet("week-oct", "2026-10-12", "COMPLETED", [
+        entry("entry-before", "2026-10-14", 600, 0),
+        entry("entry-affected", "2026-10-15", 600, 0),
+      ]),
+    ], []);
+
+    const data = await getPayrollDashboardData("employee-1", "2026-10");
+
+    expect(data.days.find((day) => day.date === "2026-10-14")).toMatchObject({
+      estimatedGrossStatus: "AVAILABLE",
+    });
+    expect(data.days.find((day) => day.date === "2026-10-15")).toMatchObject({
+      estimatedGross: undefined,
+      estimatedGrossStatus: "UNAVAILABLE",
+      estimatedGrossReason: "RATE_CHANGE_UNCERTAINTY",
+    });
+    expect(data.summary).toMatchObject({
+      pendingGross: undefined,
+      pendingGrossStatus: "UNAVAILABLE",
+      pendingGrossReason: "RATE_CHANGE_UNCERTAINTY",
+      pendingGrossUncoveredEntryCount: 1,
+    });
+  });
+
+  it("restores expected gross after an audited rejection removes the candidate from the OPEN projection", async () => {
+    mocks.rateCandidateFindMany.mockResolvedValue([]);
+    arrange([
+      timesheet("week-oct", "2026-10-12", "COMPLETED", [
+        entry("entry-after-rejection", "2026-10-15", 600, 0),
+      ]),
+    ], []);
+
+    const data = await getPayrollDashboardData("employee-1", "2026-10");
+
+    expect(mocks.rateCandidateFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { employeeId: "employee-1", status: "OPEN" },
+    }));
+    expect(data.days.find((day) => day.date === "2026-10-15")).toMatchObject({
+      estimatedGrossStatus: "AVAILABLE",
+      estimatedGross: "$331.50",
+    });
+    expect(data.summary).toMatchObject({
+      pendingGrossStatus: "AVAILABLE",
+      pendingGross: "$331.50",
+      pendingGrossUncoveredEntryCount: 0,
     });
   });
 

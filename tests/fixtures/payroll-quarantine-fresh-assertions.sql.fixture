@@ -25,6 +25,50 @@ BEGIN
     RAISE EXCEPTION 'Fresh schema is missing Package 2A review-event tables.';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1
+    FROM "_prisma_migrations"
+    WHERE migration_name = '20261017000100_progressive_pay_rate_observations'
+      AND finished_at IS NOT NULL
+      AND rolled_back_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Migration 38 is not recorded as successfully applied.';
+  END IF;
+
+  IF to_regclass('"PayRateObservation"') IS NULL
+    OR to_regclass('"PayRateBoundaryCandidate"') IS NULL
+    OR to_regclass('"PayRateBoundaryDecisionEvent"') IS NULL THEN
+    RAISE EXCEPTION 'Fresh schema is missing progressive pay-rate observation tables.';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_enum enum_value
+    JOIN pg_type enum_type ON enum_type.oid = enum_value.enumtypid
+    WHERE enum_type.typname = 'PayRateBoundaryCandidateStatus'
+      AND enum_value.enumlabel = 'REJECTED'
+  ) OR NOT EXISTS (
+    SELECT 1
+    FROM pg_enum enum_value
+    JOIN pg_type enum_type ON enum_type.oid = enum_value.enumtypid
+    WHERE enum_type.typname = 'PayRateBoundaryDecisionKind'
+      AND enum_value.enumlabel = 'REJECTED'
+  ) THEN
+    RAISE EXCEPTION 'Fresh schema is missing the audited candidate-rejection contract.';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'PayRateBoundaryCandidate_decision_required'
+      AND tgconstraint <> 0
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'Paycheck_verified_rate_support_deferred'
+      AND tgconstraint <> 0
+  ) THEN
+    RAISE EXCEPTION 'Fresh schema is missing deferred progressive-rate integrity triggers.';
+  END IF;
+
   IF to_regclass('"WeeklyTimesheet_trusted_employee_week_key"') IS NULL THEN
     RAISE EXCEPTION 'Fresh schema is missing trusted Timesheet Employee/week uniqueness.';
   END IF;

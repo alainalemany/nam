@@ -896,7 +896,7 @@ describePostgres("Phase A PostgreSQL integration", () => {
       ]));
   });
 
-  it("supersedes authenticated Paycheck-derived evidence without verifying changed correction values", async () => {
+  it("supersedes authenticated Paycheck observations without verifying changed correction values", async () => {
     await createEmployee("employee-1");
     const saved = await savePaycheckAction(
       { status: "idle", message: "" },
@@ -905,17 +905,24 @@ describePostgres("Phase A PostgreSQL integration", () => {
     expect(saved.status).toBe("saved");
     const paycheckId = saved.status === "saved" ? (saved.paycheckId ?? "") : "";
 
-    let rate = await prisma.employeePayRate.findFirstOrThrow({
-      where: { sourcePaycheckId: paycheckId, verificationStatus: "VERIFIED" },
+    const originalObservation = await prisma.payRateObservation.findFirstOrThrow({
+      where: { sourcePaycheckId: paycheckId, sourcePaycheckEvidenceRevision: 1 },
+      include: { boundaryCandidates: { include: { candidate: true } } },
     });
-    expect(rate).toMatchObject({
+    expect(originalObservation).toMatchObject({
       employeeId: "employee-1",
-      effectiveFrom: date("2026-09-14"),
       sourcePaycheckId: paycheckId,
-      verificationStatus: "VERIFIED",
-      provenanceKind: "PAYCHECK",
+      observedHourlyRate: new Prisma.Decimal("33.1500"),
+      observationState: "SUPPORTED",
+      boundaryCandidates: [expect.objectContaining({
+        candidate: expect.objectContaining({
+          status: "OPEN",
+          earliestEffectiveDate: date("2026-09-14"),
+          latestEffectiveDate: date("2026-09-20"),
+        }),
+      })],
     });
-    expect(rate.hourlyRate.toString()).toBe("33.15");
+    expect(await prisma.employeePayRate.count({ where: { employeeId: "employee-1" } })).toBe(0);
 
     const corrected = await correctPaycheckAction(
       { status: "idle", message: "" },
@@ -929,19 +936,27 @@ describePostgres("Phase A PostgreSQL integration", () => {
       }),
     );
     expect(corrected).toMatchObject({ status: "saved", rateEvidence: "NEEDS_REVIEW" });
-    expect(await prisma.employeePayRate.findFirst({
-      where: { sourcePaycheckId: paycheckId, verificationStatus: "VERIFIED" },
-    })).toBeNull();
-    expect(await prisma.employeePayRate.findFirst({
-      where: { sourcePaycheckId: paycheckId, verificationStatus: "CONFLICT" },
-    })).not.toBeNull();
-    expect(await prisma.employeePayRate.count({
-      where: { sourcePaycheckId: paycheckId, verificationStatus: "SUPERSEDED" },
-    })).toBe(1);
+    expect(await prisma.employeePayRate.count({ where: { employeeId: "employee-1" } })).toBe(0);
+    expect(await prisma.payRateObservationSupersession.findUnique({
+      where: { priorObservationId: originalObservation.id },
+    })).toMatchObject({ replacementObservationId: expect.any(String) });
+    expect(await prisma.payRateBoundaryCandidate.findUniqueOrThrow({
+      where: { id: originalObservation.boundaryCandidates[0]!.candidate.id },
+    })).toMatchObject({ status: "SUPERSEDED", evidenceVersion: 2 });
+    const correctedObservation = await prisma.payRateObservation.findFirstOrThrow({
+      where: { sourcePaycheckId: paycheckId, sourcePaycheckEvidenceRevision: 2 },
+      include: { boundaryCandidates: { include: { candidate: true } } },
+    });
+    expect(correctedObservation).toMatchObject({
+      observedHourlyRate: new Prisma.Decimal("34.2500"),
+      extractionBasis: "PAYCHECK_CORRECTION",
+      observationState: "REVIEW_REQUIRED",
+      boundaryCandidates: [expect.objectContaining({
+        candidate: expect.objectContaining({ status: "OPEN" }),
+      })],
+    });
     expect((await prisma.paycheck.findUniqueOrThrow({ where: { id: paycheckId } })).baseRate?.toString()).toBe("34.25");
-    expect(await prisma.payRateEvidenceReviewEvent.count({
-      where: { decisionKind: "PAYCHECK_CORRECTION_SUPERSEDED" },
-    })).toBe(1);
+    expect(await prisma.payRateEvidenceReviewEvent.count()).toBe(0);
   });
 
   it("keeps an unchanged correction of an unverified import candidate under review", async () => {
@@ -966,14 +981,14 @@ describePostgres("Phase A PostgreSQL integration", () => {
     );
 
     expect(corrected).toMatchObject({ status: "saved", rateEvidence: "NEEDS_REVIEW" });
-    expect(await prisma.employeePayRate.findFirst({
-      where: { sourcePaycheckId: paycheckId, verificationStatus: "VERIFIED" },
-    })).toBeNull();
-    expect(await prisma.employeePayRate.count({
-      where: { sourcePaycheckId: paycheckId, verificationStatus: "CONFLICT" },
+    expect(await prisma.employeePayRate.count({ where: { employeeId: "employee-1" } })).toBe(0);
+    expect(await prisma.payRateObservation.count({ where: { sourcePaycheckId: paycheckId } })).toBe(2);
+    expect(await prisma.payRateObservationSupersession.count()).toBe(1);
+    expect(await prisma.payRateBoundaryCandidate.count({
+      where: { employeeId: "employee-1", status: "SUPERSEDED" },
     })).toBe(1);
-    expect(await prisma.employeePayRate.count({
-      where: { sourcePaycheckId: paycheckId, verificationStatus: "SUPERSEDED" },
+    expect(await prisma.payRateBoundaryCandidate.count({
+      where: { employeeId: "employee-1", status: "OPEN" },
     })).toBe(1);
   });
 
@@ -991,6 +1006,8 @@ describePostgres("Phase A PostgreSQL integration", () => {
         effectiveFrom: date("2026-09-21"),
         hourlyRate: new Prisma.Decimal("40.00"),
         sourceNote: "Synthetic independently supported rate",
+        verificationStatus: "VERIFIED",
+        provenanceKind: "INDEPENDENT",
       },
     });
 
@@ -1009,9 +1026,10 @@ describePostgres("Phase A PostgreSQL integration", () => {
       status: "saved",
       rateEvidence: "NEEDS_REVIEW",
     });
-    expect(await prisma.employeePayRate.findFirst({
-      where: { sourcePaycheckId: paycheckId, verificationStatus: "CONFLICT" },
-    })).not.toBeNull();
+    expect(await prisma.employeePayRate.count({ where: { sourcePaycheckId: paycheckId } })).toBe(0);
+    expect(await prisma.payRateBoundaryCandidate.count({
+      where: { employeeId: "employee-1", status: "OPEN", observedHourlyRate: new Prisma.Decimal("34.2500") },
+    })).toBe(1);
     expect((await prisma.employeePayRate.findUniqueOrThrow({
       where: { id: "manual-destination-rate" },
     })).hourlyRate.toString()).toBe("40");
@@ -1026,6 +1044,8 @@ describePostgres("Phase A PostgreSQL integration", () => {
       },
     });
     const before = await prisma.paycheck.findUniqueOrThrow({ where: { id: paycheckId } });
+    const observationCountBefore = await prisma.payRateObservation.count({ where: { sourcePaycheckId: paycheckId } });
+    const candidateCountBefore = await prisma.payRateBoundaryCandidate.count({ where: { employeeId: "employee-1" } });
     const failed = await correctPaycheckAction(
       { status: "idle", message: "" },
       await phaseCorrectionForm(paycheckId, {
@@ -1039,13 +1059,15 @@ describePostgres("Phase A PostgreSQL integration", () => {
     );
     expect(failed).toMatchObject({ status: "error", message: expect.stringMatching(/conflict/) });
     expect(await prisma.paycheck.findUniqueOrThrow({ where: { id: paycheckId } })).toEqual(before);
+    expect(await prisma.payRateObservation.count({ where: { sourcePaycheckId: paycheckId } })).toBe(observationCountBefore);
+    expect(await prisma.payRateBoundaryCandidate.count({ where: { employeeId: "employee-1" } })).toBe(candidateCountBefore);
     expect(await prisma.payrollPeriod.findUniqueOrThrow({ where: { id: conflictingPeriod.id } }))
       .toMatchObject({ periodStart: date("2026-10-05"), periodEnd: date("2026-10-11") });
     expect((await prisma.employeePayRate.findUniqueOrThrow({ where: { id: "manual-destination-rate" } })).hourlyRate.toString())
       .toBe("40");
   });
 
-  it("serializes concurrent same-date rate imports and preserves the losing evidence as conflict", async () => {
+  it("serializes concurrent same-date rate imports and preserves both as conflicting candidates", async () => {
     await createEmployee("employee-1");
 
     const [first, second] = await Promise.all([
@@ -1075,25 +1097,20 @@ describePostgres("Phase A PostgreSQL integration", () => {
     ]);
 
     expect([first.status, second.status]).toEqual(["saved", "saved"]);
-    expect([first.rateEvidence, second.rateEvidence].sort()).toEqual(["CONFLICT", "VERIFIED"]);
+    expect([first.rateEvidence, second.rateEvidence]).toEqual(["NEEDS_REVIEW", "NEEDS_REVIEW"]);
     expect(await prisma.paycheck.count()).toBe(2);
-    expect(await prisma.employeePayRate.count({
-      where: { employeeId: "employee-1", effectiveFrom: date("2026-09-14") },
+    expect(await prisma.employeePayRate.count({ where: { employeeId: "employee-1" } })).toBe(0);
+    expect(await prisma.payRateBoundaryCandidate.count({
+      where: { employeeId: "employee-1", status: "OPEN" },
     })).toBe(2);
-    expect(await prisma.employeePayRate.count({
-      where: {
-        employeeId: "employee-1",
-        effectiveFrom: date("2026-09-14"),
-        verificationStatus: "VERIFIED",
-      },
-    })).toBe(1);
-    expect(await prisma.employeePayRate.count({
-      where: {
-        employeeId: "employee-1",
-        effectiveFrom: date("2026-09-14"),
-        verificationStatus: "CONFLICT",
-      },
-    })).toBe(1);
+    const observations = await prisma.payRateObservation.findMany({
+      where: { employeeId: "employee-1" },
+      include: { classifications: true },
+    });
+    expect(observations).toHaveLength(2);
+    expect(observations.every((observation) =>
+      observation.classifications.some((classification) => classification.kind === "SAME_DATE_CONFLICT")))
+      .toBe(true);
   });
 
   it("uses inclusive midweek boundaries across two NAM weeks without double counting", async () => {

@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 
 export async function acquirePayrollEvidenceLock(
   transaction: Prisma.TransactionClient,
-  scope: "paycheck" | "rate-slot" | "review-request" | "timesheet",
+  scope: "paycheck" | "rate-timeline" | "rate-slot" | "review-request" | "timesheet",
   key: string,
 ) {
   await transaction.$executeRaw`
@@ -14,4 +14,8 @@ export async function acquirePayrollEvidenceLock(
 
 export function rateSlotLockKey(employeeId: string, effectiveFrom: Date) {
   return `${employeeId}:${effectiveFrom.toISOString().slice(0, 10)}`;
+}
+
+export function rateTimelineLockKey(employeeId: string) {
+  return employeeId;
 }

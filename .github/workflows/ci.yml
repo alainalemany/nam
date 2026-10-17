@@ -193,6 +193,13 @@ jobs:
           PHASE_A_TEST_DATABASE_URL: postgresql://nam_phase_a_test:phase_a_ci_only_password@127.0.0.1:5432/nam_phase_a_integration_test
         run: pnpm exec vitest run tests/integration/payroll-evidence-review-postgres.test.ts --reporter=verbose
 
+      - name: Verify progressive pay-rate observations and boundaries
+        env:
+          PHASE_A_POSTGRES_REQUIRED: "1"
+          PHASE_A_TEST_DATABASE_PROFILE: github-actions
+          PHASE_A_TEST_DATABASE_URL: postgresql://nam_phase_a_test:phase_a_ci_only_password@127.0.0.1:5432/nam_phase_a_integration_test
+        run: pnpm exec vitest run tests/integration/payroll-rate-observations-postgres.test.ts --reporter=verbose
+
       - name: Run Phase A PostgreSQL integration tests
         env:
           PHASE_A_POSTGRES_REQUIRED: "1"

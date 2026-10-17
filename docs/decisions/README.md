@@ -34,6 +34,7 @@ maintainability.
 | [ADR-022](adr-022-payroll-reconciliation-structured-evidence.md) | 2026-10-08 | Security/data boundaries | Payroll Reconciliation V1 uses reviewed structured evidence without retaining source PDFs or raw text. |
 | [ADR-023](adr-023-payroll-historical-evidence-quarantine.md) | 2026-10-15 | Financial integrity/data architecture | Unverifiable historical Timesheet identities and pay-rate provenance are preserved in quarantine and excluded from financial conclusions. |
 | [ADR-024](adr-024-payroll-evidence-review-authorization-and-immutable-history.md) | 2026-10-15 | Security/financial integrity/data architecture | Historical evidence review requires explicit owner authorization, atomic versioned decisions, and database-immutable event history. |
+| [ADR-025](adr-025-progressive-pay-rate-observations-and-exact-boundaries.md) | 2026-10-17 | Financial integrity/data architecture | Immutable Paycheck observations remain distinct from owner-verified exact pay-rate boundaries and explicitly block calculations while change dates are uncertain. |
 
 ## Categories
 
@@ -56,6 +57,7 @@ Data architecture and boundaries:
 - ADR-022
 - ADR-023
 - ADR-024
+- ADR-025
 
 Application architecture:
 

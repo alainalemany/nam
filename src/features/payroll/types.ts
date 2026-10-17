@@ -105,7 +105,7 @@ export type PayrollCalendarDay = {
   evidenceLevel?: "aggregate";
   estimatedGross?: string;
   estimatedGrossStatus?: "AVAILABLE" | "UNAVAILABLE";
-  estimatedGrossReason?: "MISSING_VERIFIED_RATE" | "RATE_EVIDENCE_CONFLICT";
+  estimatedGrossReason?: "MISSING_VERIFIED_RATE" | "RATE_EVIDENCE_CONFLICT" | "RATE_CHANGE_UNCERTAINTY";
   detail: string;
   actionHref?: string;
   actionLabel?: string;

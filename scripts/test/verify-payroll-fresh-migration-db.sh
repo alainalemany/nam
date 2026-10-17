@@ -40,4 +40,4 @@ DATABASE_URL="${fresh_database_url}" \
     --schema prisma/schema.prisma \
     --file tests/fixtures/payroll-quarantine-fresh-assertions.sql.fixture
 
-echo "Fresh migration chain, including migration 37, applied successfully in an isolated schema."
+echo "Fresh migration chain, including migration 38, applied successfully in an isolated schema."

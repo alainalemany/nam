@@ -6,7 +6,11 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
-import { acquirePayrollEvidenceLock, rateSlotLockKey } from "./evidence-review-locks";
+import {
+  acquirePayrollEvidenceLock,
+  rateSlotLockKey,
+  rateTimelineLockKey,
+} from "./evidence-review-locks";
 import {
   EvidenceReviewError,
   type EvidenceReviewerActor,
@@ -57,7 +61,7 @@ async function existingOperation(
   reviewerEmployeeId: string,
   requestToken: string,
 ) {
-  const [timesheetEvents, rateEvents] = await Promise.all([
+  const [timesheetEvents, rateEvents, boundaryEvents] = await Promise.all([
     transaction.timesheetIdentityReviewEvent.findMany({
       where: { reviewerEmployeeId, requestToken },
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
@@ -66,8 +70,12 @@ async function existingOperation(
       where: { reviewerEmployeeId, requestToken },
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     }),
+    transaction.payRateBoundaryDecisionEvent.findMany({
+      where: { reviewerEmployeeId, requestToken },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    }),
   ]);
-  return { timesheetEvents, rateEvents };
+  return { timesheetEvents, rateEvents, boundaryEvents };
 }
 
 function assertReplayDigest(events: Array<{ requestDigest: string }>, digest: string) {
@@ -105,7 +113,7 @@ export async function reviewTimesheetIdentity(
     return await client.$transaction(async (transaction) => {
       await acquirePayrollEvidenceLock(transaction, "review-request", `${actor.employeeId}:${input.requestToken}`);
       const priorOperation = await existingOperation(transaction, actor.employeeId, input.requestToken);
-      if (priorOperation.rateEvents.length > 0) replayMismatch();
+      if (priorOperation.rateEvents.length > 0 || priorOperation.boundaryEvents.length > 0) replayMismatch();
       if (priorOperation.timesheetEvents.length > 0) {
         assertReplayDigest(priorOperation.timesheetEvents, digest);
         const event = priorOperation.timesheetEvents.find(
@@ -368,7 +376,7 @@ export async function reviewPayRateEvidence(
     return await client.$transaction(async (transaction) => {
       await acquirePayrollEvidenceLock(transaction, "review-request", `${actor.employeeId}:${input.requestToken}`);
       const priorOperation = await existingOperation(transaction, actor.employeeId, input.requestToken);
-      if (priorOperation.timesheetEvents.length > 0) replayMismatch();
+      if (priorOperation.timesheetEvents.length > 0 || priorOperation.boundaryEvents.length > 0) replayMismatch();
       if (priorOperation.rateEvents.length > 0) {
         assertReplayDigest(priorOperation.rateEvents, digest);
         const event = priorOperation.rateEvents.find((candidate) => candidate.employeePayRateId === input.rateId);
@@ -383,6 +391,7 @@ export async function reviewPayRateEvidence(
       for (const paycheckId of [...new Set(paycheckIds)]) {
         await acquirePayrollEvidenceLock(transaction, "paycheck", paycheckId);
       }
+      await acquirePayrollEvidenceLock(transaction, "rate-timeline", rateTimelineLockKey(initial.employeeId));
       await acquirePayrollEvidenceLock(transaction, "rate-slot", rateSlotLockKey(initial.employeeId, initial.effectiveFrom));
       await lockRateRows(transaction, [initial.id]);
       const current = await loadRate(transaction, initial.id);
@@ -459,7 +468,7 @@ export async function resolvePayRateEvidenceCompetitors(
     return await client.$transaction(async (transaction) => {
       await acquirePayrollEvidenceLock(transaction, "review-request", `${actor.employeeId}:${input.requestToken}`);
       const priorOperation = await existingOperation(transaction, actor.employeeId, input.requestToken);
-      if (priorOperation.timesheetEvents.length > 0) replayMismatch();
+      if (priorOperation.timesheetEvents.length > 0 || priorOperation.boundaryEvents.length > 0) replayMismatch();
       if (priorOperation.rateEvents.length > 0) {
         assertReplayDigest(priorOperation.rateEvents, digest);
         const event = priorOperation.rateEvents.find((candidate) => candidate.employeePayRateId === input.selectedRateId);
@@ -477,6 +486,11 @@ export async function resolvePayRateEvidenceCompetitors(
       for (const paycheckId of [...new Set(paycheckIds)]) {
         await acquirePayrollEvidenceLock(transaction, "paycheck", paycheckId);
       }
+      await acquirePayrollEvidenceLock(
+        transaction,
+        "rate-timeline",
+        rateTimelineLockKey(selectedInitial.employeeId),
+      );
       await acquirePayrollEvidenceLock(transaction, "rate-slot", rateSlotLockKey(selectedInitial.employeeId, selectedInitial.effectiveFrom));
       await lockRateRows(transaction, suppliedIds);
 

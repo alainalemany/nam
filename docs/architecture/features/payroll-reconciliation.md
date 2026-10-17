@@ -73,9 +73,11 @@ Corrections receive their own short-lived signed envelope
 from current server-owned Paycheck state. An unchanged rate context can preserve
 the existing correction behavior only when an active linked `VERIFIED` rate
 matches the stored amount and effective date; changing the period, regular
-hours, rate, or regular earnings supersedes active direct Paycheck evidence
-without creating a verified replacement; the submitted replacement is retained in a conflict/review state
-with an immutable system correction event. Historical `NEEDS_REVIEW`/`UNKNOWN`
+hours, rate, or regular earnings supersedes eligible active direct Paycheck
+rate evidence without creating a verified replacement. The submitted value is
+retained as a review-only correction observation and open boundary candidate,
+while the superseded authoritative row receives an immutable system correction
+event. Historical `NEEDS_REVIEW`/`UNKNOWN`
 rows linked only through candidate provenance remain unchanged; they are not
 active Paycheck evidence and the correction system cannot attribute an owner
 review transition to them. Explicit owner evidence review remains the only
@@ -147,12 +149,43 @@ pending entry lacks verified coverage, or the latest applicable evidence is in
 conflict, the complete estimate is unavailable; NAM does not present zero or a
 partial amount as the total.
 
-Authenticated supported imports temporarily retain the preexisting behavior of
-using `PayrollPeriod.periodStart` as `EmployeePayRate.effectiveFrom`. The signed
-envelope prevents the client from changing that boundary while retaining rate
-eligibility, but the boundary is evidence context rather than proof of the
-historical instant a rate changed. Phase 5B.2 must resolve progressive history
-and uncertain effective-date semantics before any stronger claim is made.
+Confirmed imports persist every safely structured regular-rate row as an
+immutable `PayRateObservation` authenticated by the signed preview. A period
+start/end pair bounds evidence but never proves an exact rate-change date.
+Repeated matching observations reinforce an existing verified boundary without
+creating another `EmployeePayRate`; first or changed rates create an open
+`PayRateBoundaryCandidate`. Open candidates suppress expected gross from their
+earliest potentially affected date while preserving unrelated earlier results.
+Only an owner-authorized, versioned exact-date decision inside the supported
+window can create a new verified boundary. Manual and corrected values remain
+review evidence and cannot impersonate parser-backed Workday observations.
+
+Explicit row dates remain observation bounds, not automatic employment-wide
+effective dates. Timeline classification considers verified boundaries, open
+and resolved candidates, earlier/later contradictions, and supersession under
+the Employee timeline lock. Promotion reclassifies later observations in the
+same transaction; approving a raise cannot cause a later observation of the old
+rate to be silently treated as uninterrupted historical support. That later
+evidence remains an unresolved possible decrease and keeps affected expected
+gross unavailable. Import order does not change the resulting uncertainty
+projection.
+
+PostgreSQL rejects supported provenance unless it is a current-revision,
+confirmed, non-superseded Workday observation for the same Employee, amount,
+and valid date context. Deferred checks also reject referenced Paycheck or
+supersession changes that would leave a verified boundary without eligible
+support. A terminal candidate update cannot commit without the matching
+immutable typed decision event. Owner rejection is a separate versioned,
+reasoned, idempotent decision that preserves the candidate and observations;
+only a valid audited rejection removes that candidate from expected-gross
+suppression. Reviewer tokens are serialized and checked across Timesheet,
+Package 2A rate, and boundary-decision domains.
+
+Corrections increment the Paycheck evidence revision, append observations, and
+link prior observations through immutable supersession history. Changed context
+supersedes eligible direct Paycheck-derived rates through Package 2A system
+events; it does not create a verified replacement. Migration-36 quarantine is
+not reinterpreted or automatically promoted.
 
 ## UI Composition
 
@@ -194,8 +227,9 @@ and verified-rate decisions participate in the next reconciliation read; no
 derived totals are persisted. Candidate IDs remain non-authoritative.
 
 Paycheck correction is also an audited evidence-transition source. Superseded
-active `VERIFIED`/`CONFLICT` Paycheck rates and newly created replacements
-receive system-attributed immutable events in the correction transaction.
+active `VERIFIED`/`CONFLICT` Paycheck rates receive system-attributed immutable
+events in the correction transaction. Replacement observations and candidates
+remain non-authoritative and do not receive migration-37 rate-review events.
 Quarantined candidate-only rows retain their original state and provenance. The
 authenticated correcting Employee is
 retained as an initiator snapshot, distinct from an owner reviewer, so an
