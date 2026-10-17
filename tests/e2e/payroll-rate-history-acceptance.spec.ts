@@ -97,9 +97,10 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     await page.goto("/payroll/rate-history");
 
     await expect(page.getByRole("heading", { name: "Progressive Rate History" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Verified Rate History" })).toBeVisible();
     await expect(page.getByText("Browser Payroll Owner With An Intentionally Long Synthetic Identifier")).toBeVisible();
     await expect(page.getByText("$32.0000/hr").first()).toBeVisible();
-    await expect(page.getByText(/Current verified base rate · effective Jul 1, 2026/)).toBeVisible();
+    await expect(page.getByText(/Latest verified rate · effective Jul 1, 2026 · current rate uncertain/)).toBeVisible();
     await expect(page.getByText("Confirmed Paycheck").first()).toBeVisible();
     const verifiedRateRow = page.getByRole("row").filter({ hasText: "Jul 1, 2026" }).filter({ hasText: "$32.0000/hr" }).first();
     await expect(verifiedRateRow.getByRole("cell").nth(4)).toHaveText("2");
@@ -120,7 +121,7 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     await page.goto("/payroll/rate-history");
 
     await expect(page.getByText("Not established", { exact: true })).toBeVisible();
-    await expect(page.getByText("Current verified base rate · no trusted boundary")).toBeVisible();
+    await expect(page.getByText("Current rate not established · no verified boundary")).toBeVisible();
     await expect(page.getByText("No trusted rate history")).toBeVisible();
     await expect(page.getByText("$35.0000/hr").first()).toBeVisible();
     await context.close();
@@ -178,7 +179,8 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     await expect(page.getByRole("button", { name: "Review proposed decision" })).toBeDisabled();
 
     await exactDate.fill("2026-07-31");
-    await expect(page.getByRole("alert")).toContainText("Select a date inside the evidence window");
+    await expect(candidateDecisionRegion(page).getByRole("alert")).toContainText("Select a date inside the evidence window");
+    await expect(exactDate).toBeFocused();
     await expect(page.getByRole("button", { name: "Review proposed decision" })).toBeDisabled();
     await context.close();
   });
@@ -220,6 +222,7 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
 
     await page.getByRole("link", { name: "Return to refreshed rate history" }).click();
     await expect(page.getByText("$35.0000/hr").first()).toBeVisible();
+    await expect(page.getByText(/Latest verified rate · effective Aug 5, 2026 · current rate uncertain/)).toBeVisible();
     await expect(page.getByText("Expected gross is protected by unresolved rate evidence.")).toBeVisible();
     expect(await prisma.payRateBoundaryCandidate.count({ where: { status: "OPEN" } })).toBe(3);
     await context.close();
@@ -259,7 +262,7 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     await first.getByRole("button", { name: "Confirm rejection" }).click();
     await expect(first.locator(".rate-decision-success").getByRole("status")).toContainText("Authoritative candidate state: REJECTED");
     await second.getByRole("button", { name: "Confirm rejection" }).click();
-    const stale = second.getByRole("alert");
+    const stale = candidateDecisionRegion(second).getByRole("alert");
     await expect(stale).toContainText("This candidate changed. Refresh");
     await expect(stale).toBeFocused();
 

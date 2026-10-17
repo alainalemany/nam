@@ -22,6 +22,7 @@ import {
   type ReconciliationReason,
 } from "./calculations";
 import { payrollStatusLabels, type PayrollStatus } from "./constants";
+import { effectiveRateForDate } from "./rate-trust";
 import type { PayrollCalendarDay } from "./types";
 
 const paycheckInclude = { payrollPeriod: true } satisfies Prisma.PaycheckInclude;
@@ -59,39 +60,6 @@ function paycheckView(paycheck: PaycheckRecord) {
     parserVersion: paycheck.parserVersion,
     fingerprint: paycheck.sourceFingerprint,
   };
-}
-
-function effectiveRate(
-  rates: Array<{
-    effectiveFrom: Date;
-    hourlyRate: Prisma.Decimal;
-    verificationStatus: string;
-    provenanceKind: string;
-  }>,
-  openCandidates: Array<{ earliestEffectiveDate: Date }>,
-  date: string,
-) {
-  if (openCandidates.some((candidate) => dateInputValue(candidate.earliestEffectiveDate) <= date)) {
-    return { status: "UNAVAILABLE" as const, reason: "RATE_CHANGE_UNCERTAINTY" as const };
-  }
-  const eligible = rates.filter((rate) => dateInputValue(rate.effectiveFrom) <= date);
-  const latestDate = eligible.reduce<string | undefined>((latest, rate) => {
-    const candidate = dateInputValue(rate.effectiveFrom);
-    return !latest || candidate > latest ? candidate : latest;
-  }, undefined);
-  if (!latestDate) {
-    return { status: "UNAVAILABLE" as const, reason: "MISSING_VERIFIED_RATE" as const };
-  }
-  const latest = eligible.filter((rate) => dateInputValue(rate.effectiveFrom) === latestDate);
-  if (latest.some((rate) => rate.verificationStatus === "CONFLICT")) {
-    return { status: "UNAVAILABLE" as const, reason: "RATE_EVIDENCE_CONFLICT" as const };
-  }
-  const verified = latest.find((rate) =>
-    rate.verificationStatus === "VERIFIED" &&
-    (rate.provenanceKind === "PAYCHECK" || rate.provenanceKind === "INDEPENDENT"));
-  return verified
-    ? { status: "AVAILABLE" as const, hourlyRate: verified.hourlyRate.toString() }
-    : { status: "UNAVAILABLE" as const, reason: "MISSING_VERIFIED_RATE" as const };
 }
 
 function intervalsOverlap(firstStart: Date, firstEnd: Date, secondStart: Date, secondEnd: Date) {
@@ -457,7 +425,7 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
       actionHref = `/timesheets/${timesheet.id}${timesheet.status === "DRAFT" ? "/edit" : ""}`;
       actionLabel = "Open Timesheet";
     }
-    const rate = effectiveRate(payRates, openRateCandidates, key);
+    const rate = effectiveRateForDate(payRates, openRateCandidates, key);
     if (date >= range.first && date <= range.last && entry && rate.status === "UNAVAILABLE") {
       openIssueKeys.add(`rate-evidence-date:${key}`);
     }
@@ -511,7 +479,7 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
   const pendingMinutes = pendingEntries.reduce((sum, item) => sum + item.workedMinutes, 0);
   const pendingRateResults = pendingEntries.map((entry) => ({
     entry,
-    rate: effectiveRate(payRates, openRateCandidates, dateInputValue(entry.workDate)),
+    rate: effectiveRateForDate(payRates, openRateCandidates, dateInputValue(entry.workDate)),
   }));
   const unavailablePendingRates = pendingRateResults.filter((item) => item.rate.status === "UNAVAILABLE");
   const pendingGrossCents = unavailablePendingRates.length === 0

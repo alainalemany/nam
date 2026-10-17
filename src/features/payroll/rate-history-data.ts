@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 
 import { requirePayrollEvidenceReviewer } from "./auth";
 import { orderedRateClassifications, primaryRateClassification } from "./rate-history-presentation";
+import { effectiveRateForDate } from "./rate-trust";
 
 const PAGE_SIZE = 20;
 const HISTORY_LIMIT = 60;
@@ -98,13 +99,18 @@ export async function getRateHistoryOverview(input: { status?: RateHistoryStatus
   const page = Math.max(1, Math.min(input.page ?? 1, 10_000));
   const where = { employeeId: reviewer.employeeId, ...(candidateStatus(status) ? { status: candidateStatus(status) } : {}) };
   const today = new Date(`${dateKeyInTimeZone(new Date())}T00:00:00.000Z`);
-  const [employee, rates, candidates, candidateCount, statusCounts] = await Promise.all([
+  const todayKey = dateValue(today)!;
+  const [employee, rates, latestVerifiedRate, currentOpenCandidate, candidates, candidateCount, statusCounts] = await Promise.all([
     prisma.employee.findUnique({
       where: { id: reviewer.employeeId },
       select: { id: true, displayName: true, employeeCode: true, isActive: true },
     }),
     prisma.employeePayRate.findMany({
-      where: { employeeId: reviewer.employeeId },
+      where: {
+        employeeId: reviewer.employeeId,
+        verificationStatus: "VERIFIED",
+        provenanceKind: { in: ["PAYCHECK", "INDEPENDENT"] },
+      },
       include: {
         sourcePaycheck: { include: { payrollPeriod: true } },
         observationSupports: {
@@ -114,6 +120,21 @@ export async function getRateHistoryOverview(input: { status?: RateHistoryStatus
       },
       orderBy: [{ effectiveFrom: "desc" }, { createdAt: "desc" }],
       take: HISTORY_LIMIT,
+    }),
+    prisma.employeePayRate.findFirst({
+      where: {
+        employeeId: reviewer.employeeId,
+        verificationStatus: "VERIFIED",
+        provenanceKind: { in: ["PAYCHECK", "INDEPENDENT"] },
+        effectiveFrom: { lte: today },
+      },
+      select: { id: true, effectiveFrom: true, hourlyRate: true, verificationStatus: true, provenanceKind: true },
+      orderBy: [{ effectiveFrom: "desc" }, { createdAt: "desc" }],
+    }),
+    prisma.payRateBoundaryCandidate.findFirst({
+      where: { employeeId: reviewer.employeeId, status: "OPEN", earliestEffectiveDate: { lte: today } },
+      select: { earliestEffectiveDate: true },
+      orderBy: [{ earliestEffectiveDate: "asc" }, { createdAt: "asc" }],
     }),
     prisma.payRateBoundaryCandidate.findMany({
       where,
@@ -131,26 +152,60 @@ export async function getRateHistoryOverview(input: { status?: RateHistoryStatus
   ]);
   if (!employee) throw new Error("Configured Payroll reviewer could not be found.");
 
-  const rateViews = rates.map((rate) => {
-    const supports = rate.observationSupports.map((support) => support.observation);
-    return {
-      id: rate.id,
-      effectiveFrom: dateValue(rate.effectiveFrom)!,
-      hourlyRate: rate.hourlyRate.toString(),
-      verificationStatus: rate.verificationStatus,
-      provenanceKind: rate.provenanceKind,
-      sourceNote: rate.sourceNote,
-      sourcePaycheckId: rate.sourcePaycheckId,
-      evidenceVersion: rate.evidenceVersion,
-      supportCount: supports.length,
-      supportingPeriods: [...new Set(supports.map((item) => `${dateValue(item.payPeriodStart)}–${dateValue(item.payPeriodEnd)}`))],
-      sourcePeriod: rate.sourcePaycheck ? `${dateValue(rate.sourcePaycheck.payrollPeriod.periodStart)}–${dateValue(rate.sourcePaycheck.payrollPeriod.periodEnd)}` : null,
-    };
-  });
-  const currentVerifiedRate = rateViews.find((rate) =>
-    rate.verificationStatus === "VERIFIED" &&
-    (rate.provenanceKind === "PAYCHECK" || rate.provenanceKind === "INDEPENDENT") &&
-    rate.effectiveFrom <= dateValue(today)!);
+  const unresolvedRateEvidence = latestVerifiedRate ? await prisma.employeePayRate.findMany({
+    where: {
+      employeeId: reviewer.employeeId,
+      verificationStatus: { in: ["NEEDS_REVIEW", "CONFLICT"] },
+      effectiveFrom: { gte: latestVerifiedRate.effectiveFrom, lte: today },
+    },
+    select: { effectiveFrom: true, hourlyRate: true, verificationStatus: true, provenanceKind: true },
+    orderBy: [{ effectiveFrom: "asc" }, { createdAt: "asc" }],
+  }) : [];
+
+  const rateViews = rates
+    .filter((rate) => rate.verificationStatus === "VERIFIED" && (rate.provenanceKind === "PAYCHECK" || rate.provenanceKind === "INDEPENDENT"))
+    .map((rate) => {
+      const supports = rate.observationSupports.map((support) => support.observation);
+      return {
+        id: rate.id,
+        effectiveFrom: dateValue(rate.effectiveFrom)!,
+        hourlyRate: rate.hourlyRate.toString(),
+        verificationStatus: rate.verificationStatus,
+        provenanceKind: rate.provenanceKind,
+        sourceNote: rate.sourceNote,
+        sourcePaycheckId: rate.sourcePaycheckId,
+        evidenceVersion: rate.evidenceVersion,
+        supportCount: supports.length,
+        supportingPeriods: [...new Set(supports.map((item) => `${dateValue(item.payPeriodStart)}–${dateValue(item.payPeriodEnd)}`))],
+        sourcePeriod: rate.sourcePaycheck ? `${dateValue(rate.sourcePaycheck.payrollPeriod.periodStart)}–${dateValue(rate.sourcePaycheck.payrollPeriod.periodEnd)}` : null,
+      };
+    });
+  const conflictingEvidence = unresolvedRateEvidence.filter((rate) => rate.verificationStatus === "CONFLICT");
+  const differingNeedsReviewEvidence = unresolvedRateEvidence.filter((rate) =>
+    rate.verificationStatus === "NEEDS_REVIEW" && rate.hourlyRate.toString() !== latestVerifiedRate?.hourlyRate.toString());
+  const financialSelection = effectiveRateForDate(
+    [...(latestVerifiedRate ? [latestVerifiedRate] : []), ...conflictingEvidence],
+    currentOpenCandidate ? [currentOpenCandidate] : [],
+    todayKey,
+  );
+  const uncertaintyDates = [
+    currentOpenCandidate?.earliestEffectiveDate,
+    ...conflictingEvidence.map((rate) => rate.effectiveFrom),
+    ...differingNeedsReviewEvidence.map((rate) => rate.effectiveFrom),
+  ].filter((value): value is Date => Boolean(value));
+  const currentRateTrust = !latestVerifiedRate ? {
+    status: "NOT_ESTABLISHED" as const,
+    uncertaintyStart: null,
+    reasons: [] as Array<"OPEN_CANDIDATE" | "CONFLICT" | "NEEDS_REVIEW">,
+  } : {
+    status: financialSelection.status === "AVAILABLE" && differingNeedsReviewEvidence.length === 0 ? "TRUSTED" as const : "UNCERTAIN" as const,
+    uncertaintyStart: uncertaintyDates.length ? dateValue(new Date(Math.min(...uncertaintyDates.map((value) => value.getTime())))) : null,
+    reasons: [
+      ...(currentOpenCandidate ? ["OPEN_CANDIDATE" as const] : []),
+      ...(conflictingEvidence.length ? ["CONFLICT" as const] : []),
+      ...(differingNeedsReviewEvidence.length ? ["NEEDS_REVIEW" as const] : []),
+    ],
+  };
   const candidateViews = candidates.map((candidate) => {
     const observations = candidate.observations.map(observationView);
     const classifications = orderedRateClassifications(observations.flatMap((item) => item.classifications));
@@ -173,7 +228,12 @@ export async function getRateHistoryOverview(input: { status?: RateHistoryStatus
 
   return {
     employee,
-    currentVerifiedRate,
+    latestVerifiedRate: latestVerifiedRate ? {
+      id: latestVerifiedRate.id,
+      effectiveFrom: dateValue(latestVerifiedRate.effectiveFrom)!,
+      hourlyRate: latestVerifiedRate.hourlyRate.toString(),
+    } : undefined,
+    currentRateTrust,
     rates: rateViews,
     candidates: candidateViews,
     page,

@@ -30,9 +30,8 @@ const candidate: BoundaryDecisionCandidate = {
 function overview(overrides: Partial<RateHistoryOverviewData> = {}): RateHistoryOverviewData {
   return {
     employee: { id: "employee-1", displayName: "Alex Employee", employeeCode: "A1", isActive: true },
-    currentVerifiedRate: {
-      id: "rate-1", effectiveFrom: "2026-01-01", hourlyRate: "30.0000", verificationStatus: "VERIFIED", provenanceKind: "PAYCHECK", sourceNote: null, sourcePaycheckId: "paycheck-1", evidenceVersion: 1, supportCount: 2, supportingPeriods: ["2026-01-01–2026-01-14"], sourcePeriod: "2026-01-01–2026-01-14",
-    },
+    latestVerifiedRate: { id: "rate-1", effectiveFrom: "2026-01-01", hourlyRate: "30.0000" },
+    currentRateTrust: { status: "UNCERTAIN", uncertaintyStart: "2026-09-01", reasons: ["OPEN_CANDIDATE"] },
     rates: [{
       id: "rate-1", effectiveFrom: "2026-01-01", hourlyRate: "30.0000", verificationStatus: "VERIFIED", provenanceKind: "PAYCHECK", sourceNote: null, sourcePaycheckId: "paycheck-1", evidenceVersion: 1, supportCount: 2, supportingPeriods: ["2026-01-01–2026-01-14"], sourcePeriod: "2026-01-01–2026-01-14",
     }],
@@ -69,12 +68,37 @@ describe("progressive rate-history overview", () => {
     expect(screen.getAllByText(/1 promotable/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Proposed increase").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Uncertain effective date").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Latest verified rate · effective Jan 1, 2026 · current rate uncertain/)).toBeInTheDocument();
+    expect(screen.getByText("Latest verified rate — current rate uncertain.")).toBeInTheDocument();
     expect(screen.getByText(/Expected gross is protected/)).toBeInTheDocument();
   });
 
+  it("presents the latest verified boundary as current only without applicable unresolved evidence", () => {
+    render(<RateHistoryOverview data={overview({
+      currentRateTrust: { status: "TRUSTED", uncertaintyStart: null, reasons: [] },
+      candidates: [],
+      candidateCount: 0,
+      counts: { all: 0, open: 0, resolved: 0, rejected: 0, superseded: 0 },
+    })} />);
+    expect(screen.getByText(/Current verified rate · effective Jan 1, 2026/)).toBeInTheDocument();
+    expect(screen.queryByText("Latest verified rate — current rate uncertain.")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["CONFLICT", "conflicting rate evidence"],
+    ["NEEDS_REVIEW", "newer review-required rate evidence"],
+  ] as const)("explains %s evidence without promoting it", (reason, explanation) => {
+    render(<RateHistoryOverview data={overview({
+      currentRateTrust: { status: "UNCERTAIN", uncertaintyStart: "2026-08-15", reasons: [reason] },
+    })} />);
+    expect(screen.getByText(new RegExp(explanation))).toBeInTheDocument();
+    expect(screen.getByText(/Expected-gross availability remains date-specific and server-controlled/)).toBeInTheDocument();
+  });
+
   it("does not infer a current rate when no verified timeline exists", () => {
-    render(<RateHistoryOverview data={overview({ currentVerifiedRate: undefined, rates: [], candidates: [], candidateCount: 0, counts: { all: 0, open: 0, resolved: 0, rejected: 0, superseded: 0 } })} />);
+    render(<RateHistoryOverview data={overview({ latestVerifiedRate: undefined, currentRateTrust: { status: "NOT_ESTABLISHED", uncertaintyStart: null, reasons: [] }, rates: [], candidates: [], candidateCount: 0, counts: { all: 0, open: 0, resolved: 0, rejected: 0, superseded: 0 } })} />);
     expect(screen.getByText("Not established")).toBeInTheDocument();
+    expect(screen.getByText("Current rate not established · no verified boundary")).toBeInTheDocument();
     expect(screen.getByText("No trusted rate history")).toBeInTheDocument();
     expect(screen.getByText("No candidates match this filter")).toBeInTheDocument();
   });
@@ -134,8 +158,10 @@ describe("rate-boundary candidate decisions", () => {
     const exactDate = exactEffectiveDateInput();
     expect(exactDate).toHaveAttribute("type", "date");
     expect(exactDate).toHaveValue("");
+    exactDate.focus();
     fireEvent.change(exactDate, { target: { value: "2026-09-30" } });
-    expect(screen.getByRole("alert")).toHaveTextContent(/inside the evidence window/);
+    expect(within(decision).getByRole("alert")).toHaveTextContent(/inside the evidence window/);
+    expect(exactDate).toHaveFocus();
     fireEvent.change(screen.getByLabelText("Reason"), { target: { value: "Confirmed from retained evidence." } });
     expect(screen.getByRole("button", { name: "Review proposed decision" })).toBeDisabled();
   });

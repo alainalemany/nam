@@ -20,15 +20,20 @@ function SecondaryClassifications({ classifications, primary }: { classification
 }
 
 export function RateHistoryOverview({ data }: { data: RateHistoryOverviewData }) {
-  const current = data.currentVerifiedRate;
-  const verifiedRates = data.rates.filter((rate) => rate.verificationStatus === "VERIFIED");
+  const latestVerified = data.latestVerifiedRate;
+  const currentIsUncertain = data.currentRateTrust.status === "UNCERTAIN";
+  const uncertaintyReasons = data.currentRateTrust.reasons.map((reason) => reason === "OPEN_CANDIDATE"
+    ? "an open rate-change candidate"
+    : reason === "CONFLICT" ? "conflicting rate evidence" : "newer review-required rate evidence");
   return <>
     <section className="payroll-summary-grid rate-summary-grid" aria-label="Rate history summary">
-      <Card className="payroll-metric"><CardContent><span className="payroll-metric-icon rate-icon--verified"><Banknote aria-hidden="true" /></span><strong className="payroll-metric-value">{current ? formatRate(current.hourlyRate) : "Not established"}</strong><span className="payroll-metric-label">Current verified base rate{current ? ` · effective ${formatReviewDate(current.effectiveFrom)}` : " · no trusted boundary"}</span></CardContent></Card>
-      <Card className="payroll-metric"><CardContent><span className="payroll-metric-icon rate-icon--verified"><BadgeCheck aria-hidden="true" /></span><strong className="payroll-metric-value">{verifiedRates.length}</strong><span className="payroll-metric-label">Verified exact boundaries shown</span></CardContent></Card>
+      <Card className="payroll-metric"><CardContent><span className="payroll-metric-icon rate-icon--verified"><Banknote aria-hidden="true" /></span><strong className="payroll-metric-value">{latestVerified ? formatRate(latestVerified.hourlyRate) : "Not established"}</strong><span className="payroll-metric-label">{latestVerified ? currentIsUncertain ? `Latest verified rate · effective ${formatReviewDate(latestVerified.effectiveFrom)} · current rate uncertain` : `Current verified rate · effective ${formatReviewDate(latestVerified.effectiveFrom)}` : "Current rate not established · no verified boundary"}</span></CardContent></Card>
+      <Card className="payroll-metric"><CardContent><span className="payroll-metric-icon rate-icon--verified"><BadgeCheck aria-hidden="true" /></span><strong className="payroll-metric-value">{data.rates.length}</strong><span className="payroll-metric-label">Verified exact boundaries shown</span></CardContent></Card>
       <Card className="payroll-metric"><CardContent><span className="payroll-metric-icon rate-icon--warning"><FileClock aria-hidden="true" /></span><strong className="payroll-metric-value">{data.counts.open}</strong><span className="payroll-metric-label">Open change candidates</span></CardContent></Card>
       <Card className="payroll-metric"><CardContent><span className="payroll-metric-icon rate-icon--danger"><AlertTriangle aria-hidden="true" /></span><strong className="payroll-metric-value">{data.candidates.filter((item) => item.classifications.includes("SAME_DATE_CONFLICT")).length}</strong><span className="payroll-metric-label">Conflicts on this page</span></CardContent></Card>
     </section>
+
+    {currentIsUncertain ? <div className="payroll-notice payroll-notice--warning" role="status"><strong>Latest verified rate — current rate uncertain.</strong><p>Unresolved evidence from {data.currentRateTrust.uncertaintyStart ? formatReviewDate(data.currentRateTrust.uncertaintyStart) : "an unknown date"} may supersede the historical boundary: {uncertaintyReasons.join(", ")}. Expected-gross availability remains date-specific and server-controlled.</p></div> : null}
 
     {data.counts.open > 0 ? <div className="payroll-notice payroll-notice--warning" role="status"><strong>Expected gross is protected by unresolved rate evidence.</strong><p>Work dates on or after an open candidate&apos;s earliest possible boundary remain unavailable until the backend confirms that no unresolved uncertainty applies.</p></div> : null}
 
@@ -47,7 +52,7 @@ export function RateHistoryOverview({ data }: { data: RateHistoryOverviewData })
     </Card>
 
     <Card>
-      <CardHeader><div><CardTitle>Authoritative rate timeline</CardTitle><p className="subtle">Only verified exact boundaries are used for expected-gross calculations.</p></div></CardHeader>
+      <CardHeader><div><CardTitle>Verified Rate History</CardTitle><p className="subtle">Only authoritative VERIFIED exact boundaries are shown. Quarantined, conflicting, superseded, and excluded evidence remains outside this timeline.</p></div></CardHeader>
       {data.rates.length ? <><div className="payroll-table-scroll rate-history-table-shell"><table className="payroll-history-table rate-history-table"><thead><tr><th>Effective date</th><th>Hourly rate</th><th>Status</th><th>Provenance</th><th>Supporting observations</th><th>Supporting periods</th></tr></thead><tbody>{data.rates.map((rate) => <tr key={rate.id}><td>{formatReviewDate(rate.effectiveFrom)}</td><td><strong>{formatRate(rate.hourlyRate)}</strong></td><td><Status value={rateStatusLabels[rate.verificationStatus]} tone={rate.verificationStatus.toLowerCase()} /></td><td>{provenanceLabels[rate.provenanceKind]}</td><td>{rate.supportCount}</td><td>{rate.supportingPeriods.length ? rate.supportingPeriods.join(", ") : rate.sourcePeriod ?? "No linked Paycheck period"}</td></tr>)}</tbody></table></div><div className="rate-timeline-list" aria-label="Authoritative rate timeline">{data.rates.map((rate) => <article key={rate.id}><div className="rate-candidate-heading"><div><span>Effective {formatReviewDate(rate.effectiveFrom)}</span><strong>{formatRate(rate.hourlyRate)}</strong></div><Status value={rateStatusLabels[rate.verificationStatus]} tone={rate.verificationStatus.toLowerCase()} /></div><dl><div><dt>Provenance</dt><dd>{provenanceLabels[rate.provenanceKind]}</dd></div><div><dt>Supporting observations</dt><dd>{rate.supportCount}</dd></div><div><dt>Supporting periods</dt><dd>{rate.supportingPeriods.length ? rate.supportingPeriods.join(", ") : rate.sourcePeriod ?? "No linked Paycheck period"}</dd></div></dl></article>)}</div></> : <div className="payroll-empty"><Banknote aria-hidden="true" /><strong>No trusted rate history</strong><span>A current rate will appear only after an exact boundary has authoritative verified evidence.</span></div>}
     </Card>
   </>;
