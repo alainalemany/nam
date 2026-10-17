@@ -2872,6 +2872,65 @@ textarea {
 .review-recent-list time { color: #64748b; font-size: .74rem; }
 .review-pagination { display: flex; justify-content: space-between; gap: 12px; }
 
+.rate-history-page { max-width: 1440px; }
+.rate-summary-grid .payroll-metric { min-height: 150px; }
+.rate-icon--verified { --metric-color: #17c653; }
+.rate-icon--warning { --metric-color: #f6b100; }
+.rate-icon--danger { --metric-color: #f8285a; }
+.rate-filter-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.rate-filter-tabs a { display: inline-flex; min-height: 40px; align-items: center; gap: 7px; border: 1px solid #d5dbe5; border-radius: 999px; padding: 8px 13px; color: #475569; font-size: .76rem; font-weight: 750; text-decoration: none; }
+.rate-filter-tabs a[aria-current="page"] { border-color: #1b84ff; background: #eff7ff; color: #174f8f; }
+.rate-filter-tabs span { display: grid; min-width: 21px; min-height: 21px; place-items: center; border-radius: 999px; background: #e8edf3; padding: 0 6px; font-size: .68rem; }
+.rate-history-table-shell { border-top: 1px solid var(--border); }
+.rate-history-table td { vertical-align: top; }
+.rate-history-table td:first-child { min-width: 210px; white-space: normal; }
+.rate-history-table td:last-child { text-align: right; }
+.rate-cell-note { display: block; margin-top: 4px; color: #718096; font-size: .7rem; }
+.rate-status { display: inline-flex; align-items: center; border: 1px solid #cbd5e1; border-radius: 999px; background: #f8fafc; color: #475569; padding: 4px 9px; font-size: .68rem; font-weight: 800; line-height: 1.2; white-space: normal; }
+.rate-status--verified,
+.rate-status--resolved,
+.rate-status--supported { border-color: #91d5aa; background: #effaf3; color: #176238; }
+.rate-status--open,
+.rate-status--review_required { border-color: #e5c66a; background: #fff8dd; color: #765500; }
+.rate-status--conflict,
+.rate-status--unsupported { border-color: #eba1b5; background: #ffeef3; color: #a40e35; }
+.rate-status--rejected,
+.rate-status--excluded,
+.rate-status--superseded { border-color: #cbd5e1; background: #f1f5f9; color: #526079; }
+.rate-candidate-list,
+.rate-timeline-list { display: none; }
+.rate-candidate-summary { display: grid; gap: 16px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.rate-candidate-summary .card-content { display: grid; gap: 7px; min-height: 128px; align-content: start; }
+.rate-candidate-summary svg { width: 20px; color: #1b84ff; }
+.rate-candidate-summary span { color: #718096; font-size: .74rem; font-weight: 700; }
+.rate-candidate-summary strong { overflow-wrap: anywhere; color: #172033; font-size: 1rem; }
+.rate-review-grid { grid-template-columns: minmax(0, 1.65fr) minmax(330px, .72fr); }
+.rate-observation-list { display: grid; gap: 14px; }
+.rate-observation { display: grid; gap: 12px; border: 1px solid #dce3eb; border-radius: 10px; padding: 16px; }
+.rate-observation--superseded { background: #f8fafc; opacity: .78; }
+.rate-observation-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.rate-observation-heading > div { display: grid; gap: 4px; }
+.rate-observation-heading > div span { color: #64748b; font-size: .72rem; }
+.rate-observation dl { display: grid; gap: 9px; margin: 0; }
+.rate-observation dl > div { display: grid; gap: 10px; grid-template-columns: minmax(170px, .65fr) minmax(0, 1.35fr); }
+.rate-observation dt { color: #718096; font-size: .75rem; }
+.rate-observation dd { min-width: 0; overflow-wrap: anywhere; margin: 0; color: #263246; font-size: .78rem; font-weight: 650; }
+.rate-conflict-list,
+.rate-affected-dates { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.rate-conflict-list li,
+.rate-affected-dates li { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); padding: 12px 0; }
+.rate-conflict-list li > div,
+.rate-affected-dates li { min-width: 0; }
+.rate-conflict-list li > div { display: grid; gap: 4px; }
+.rate-conflict-list span,
+.rate-affected-dates span { overflow-wrap: anywhere; color: #64748b; font-size: .74rem; }
+.rate-decision-choice { display: grid; gap: 10px; margin: 18px 0; }
+.rate-decision-choice label { display: grid; min-height: 48px; align-items: center; grid-template-columns: auto minmax(0, 1fr); gap: 10px; border: 1px solid #d5dbe5; border-radius: 9px; padding: 11px 13px; color: #334155; font-size: .8rem; font-weight: 750; }
+.rate-decision-choice label:has(input:checked) { border-color: #1b84ff; background: #f1f7ff; }
+.rate-decision-choice input { width: 18px; height: 18px; }
+.rate-decision-success { display: grid; gap: 14px; }
+.rate-history-page :focus-visible { outline: 3px solid #1f6feb; outline-offset: 2px; }
+
 @media (max-width: 1100px) {
   .payroll-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2883,6 +2942,8 @@ textarea {
 
   .review-detail-grid { grid-template-columns: minmax(0, 1fr); }
   .review-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rate-candidate-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rate-review-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 780px) {
@@ -3009,6 +3070,26 @@ textarea {
   }
 
   .review-filter-grid { grid-template-columns: 1fr; }
+  .rate-history-table-shell { display: none; }
+  .rate-candidate-list,
+  .rate-timeline-list { display: grid; }
+  .rate-candidate-list article,
+  .rate-timeline-list article { display: grid; gap: 15px; border-top: 1px solid var(--border); padding: 18px; }
+  .rate-candidate-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .rate-candidate-heading > div { display: grid; min-width: 0; gap: 4px; }
+  .rate-candidate-heading span { overflow-wrap: anywhere; color: #718096; font-size: .72rem; }
+  .rate-candidate-list dl,
+  .rate-timeline-list dl { display: grid; gap: 12px; margin: 0; }
+  .rate-candidate-list dl > div,
+  .rate-timeline-list dl > div { display: grid; gap: 3px; }
+  .rate-candidate-list dt,
+  .rate-timeline-list dt { color: #718096; font-size: .72rem; }
+  .rate-candidate-list dd,
+  .rate-timeline-list dd { overflow-wrap: anywhere; margin: 0; font-size: .82rem; font-weight: 700; }
+  .rate-candidate-list .button { width: 100%; }
+  .rate-observation-heading,
+  .rate-conflict-list li,
+  .rate-affected-dates li { align-items: stretch; flex-direction: column; }
 }
 
 @media (max-width: 520px) {
@@ -3035,4 +3116,7 @@ textarea {
   .review-timeline-heading,
   .review-recent-list li { flex-direction: column; }
   .review-timeline-heading time { text-align: left; }
+  .rate-candidate-summary { grid-template-columns: minmax(0, 1fr); }
+  .rate-observation dl > div { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+  .rate-filter-tabs a { flex: 1 1 calc(50% - 8px); justify-content: center; }
 }

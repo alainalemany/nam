@@ -82,6 +82,8 @@ function revalidateRateReview(id: string) {
   revalidatePath("/payroll");
   revalidatePath("/payroll/evidence-review");
   revalidatePath(`/payroll/evidence-review/rates/${id}`);
+  revalidatePath("/payroll/rate-history");
+  revalidatePath(`/payroll/rate-history/candidates/${id}`);
 }
 
 export async function reviewTimesheetIdentityAction(

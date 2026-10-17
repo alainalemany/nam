@@ -6,17 +6,15 @@ import { guardedPackage2BBrowserTestConfiguration } from "../helpers/package-2b-
 
 const browserTestConfiguration = guardedPackage2BBrowserTestConfiguration();
 const prisma = new PrismaClient({ datasourceUrl: browserTestConfiguration.databaseUrl });
-const accessKey = "package2b-browser-access-key-000000000000";
-const sessionSecret = "package2b-browser-session-secret-0000000000";
 
 function signedOwnerSession() {
-  const payload = Buffer.from(JSON.stringify({ employeeId: "browser-owner", expiresAt: Math.floor(Date.now() / 1000) + 3600 })).toString("base64url");
-  return `${payload}.${createHmac("sha256", sessionSecret).update(payload).digest("base64url")}`;
+  const payload = Buffer.from(JSON.stringify({ employeeId: browserTestConfiguration.ownerEmployeeId, expiresAt: Math.floor(Date.now() / 1000) + 3600 })).toString("base64url");
+  return `${payload}.${createHmac("sha256", browserTestConfiguration.sessionSecret).update(payload).digest("base64url")}`;
 }
 
 async function unlock(page: Page, origin = browserTestConfiguration.authorizedOrigin) {
   await page.goto(`${origin}/payroll/access`);
-  await page.getByLabel("Payroll access key").fill(accessKey);
+  await page.getByLabel("Payroll access key").fill(browserTestConfiguration.accessKey);
   await page.getByRole("button", { name: "Unlock Payroll" }).click();
   await expect(page).toHaveURL(new RegExp(`${origin.replaceAll(".", "\\.")}/payroll`));
   await page.context().addCookies([{ name: "nam-payroll-session", value: signedOwnerSession(), url: origin, httpOnly: true, secure: false, sameSite: "Strict" }]);

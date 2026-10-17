@@ -2,12 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import {
   PACKAGE_2B_BROWSER_AUTHORIZED_ORIGIN,
+  PACKAGE_2B_BROWSER_AUTHORIZED_REVIEWER_EMPLOYEE_ID,
+  PACKAGE_2B_BROWSER_ACCESS_KEY,
   PACKAGE_2B_BROWSER_DATABASE_HOST,
   PACKAGE_2B_BROWSER_DATABASE_NAME,
   PACKAGE_2B_BROWSER_DATABASE_PORT,
   PACKAGE_2B_BROWSER_DATABASE_USER,
   PACKAGE_2B_BROWSER_FIXTURE_MARKER,
   PACKAGE_2B_BROWSER_MISMATCHED_ORIGIN,
+  PACKAGE_2B_BROWSER_MISMATCHED_REVIEWER_EMPLOYEE_ID,
+  PACKAGE_2B_BROWSER_OWNER_EMPLOYEE_ID,
+  PACKAGE_2B_BROWSER_SESSION_SECRET,
   PACKAGE_2B_BROWSER_TEST_MARKER,
   guardedPackage2BBrowserTestConfiguration,
 } from "../helpers/package-2b-browser-guard";
@@ -21,6 +26,11 @@ const validEnvironment = {
   PACKAGE_2B_BROWSER_MISMATCHED_APP_DATABASE_URL: validUrl,
   PACKAGE_2B_BROWSER_AUTHORIZED_ORIGIN,
   PACKAGE_2B_BROWSER_MISMATCHED_ORIGIN,
+  PACKAGE_2B_BROWSER_OWNER_EMPLOYEE_ID,
+  PACKAGE_2B_BROWSER_AUTHORIZED_REVIEWER_EMPLOYEE_ID,
+  PACKAGE_2B_BROWSER_MISMATCHED_REVIEWER_EMPLOYEE_ID,
+  PACKAGE_2B_BROWSER_ACCESS_KEY,
+  PACKAGE_2B_BROWSER_SESSION_SECRET,
 };
 
 describe("Package 2B browser-test environment guard", () => {
@@ -29,6 +39,11 @@ describe("Package 2B browser-test environment guard", () => {
       databaseUrl: validUrl,
       authorizedOrigin: PACKAGE_2B_BROWSER_AUTHORIZED_ORIGIN,
       mismatchedReviewerOrigin: PACKAGE_2B_BROWSER_MISMATCHED_ORIGIN,
+      ownerEmployeeId: PACKAGE_2B_BROWSER_OWNER_EMPLOYEE_ID,
+      authorizedReviewerEmployeeId: PACKAGE_2B_BROWSER_AUTHORIZED_REVIEWER_EMPLOYEE_ID,
+      mismatchedReviewerEmployeeId: PACKAGE_2B_BROWSER_MISMATCHED_REVIEWER_EMPLOYEE_ID,
+      accessKey: PACKAGE_2B_BROWSER_ACCESS_KEY,
+      sessionSecret: PACKAGE_2B_BROWSER_SESSION_SECRET,
     });
   });
 
@@ -63,6 +78,11 @@ describe("Package 2B browser-test environment guard", () => {
     ["mismatched reviewer app database", { PACKAGE_2B_BROWSER_MISMATCHED_APP_DATABASE_URL: `${validUrl}&application=wrong` }],
     ["unexpected authorized origin", { PACKAGE_2B_BROWSER_AUTHORIZED_ORIGIN: "https://dev.alemany.me" }],
     ["unexpected reviewer origin", { PACKAGE_2B_BROWSER_MISMATCHED_ORIGIN: "http://127.0.0.1:3000" }],
+    ["unexpected owner Employee", { PACKAGE_2B_BROWSER_OWNER_EMPLOYEE_ID: "production-owner" }],
+    ["unexpected authorized reviewer", { PACKAGE_2B_BROWSER_AUTHORIZED_REVIEWER_EMPLOYEE_ID: "production-reviewer" }],
+    ["unexpected mismatched reviewer", { PACKAGE_2B_BROWSER_MISMATCHED_REVIEWER_EMPLOYEE_ID: "browser-owner" }],
+    ["unexpected access key", { PACKAGE_2B_BROWSER_ACCESS_KEY: "production-access-key" }],
+    ["unexpected session secret", { PACKAGE_2B_BROWSER_SESSION_SECRET: "production-session-secret" }],
   ])("rejects %s", (_label, replacement) => {
     expect(() => guardedPackage2BBrowserTestConfiguration({ ...validEnvironment, ...replacement })).toThrow();
   });

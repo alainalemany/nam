@@ -868,6 +868,10 @@ Package 2A adds an owner-authorized historical evidence-review service and
 database-immutable decision history under ADR-024. Package 2B adds protected,
 bounded queues; Timesheet identity and rate-provenance detail workflows;
 explicit confirmation; competitor disposition; and immutable timelines.
+Phase 5B.3 adds a protected progressive rate-history and boundary-candidate
+workspace. It shows only verified exact boundaries as authoritative, presents
+repeated support without unnecessary decisions, and provides explicit
+exact-date promotion or evidence-preserving rejection for uncertain changes.
 Ordinary employee-scoped Payroll access cannot load or mutate globally
 unresolved evidence, and navigation visibility is not an authorization boundary.
 
@@ -928,6 +932,7 @@ correction supersession. Only open candidates suppress expected gross.
 - Missing Timesheet detection only when evidence supports it
 - Unique actionable issue counts without repeating one period issue per day
 - Responsive calendar, summary, history, detail, and protected home overview
+- Responsive verified-rate history, candidate evidence comparison, decision confirmation, and immutable boundary timeline
 - Employee-scoped server authorization that fails closed when unconfigured
 
 ### Relationship To Other Modules

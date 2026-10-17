@@ -37,7 +37,7 @@ export function PayrollDashboard({ data, preview = false, lockAction, canReviewE
       {preview ? <div className="payroll-notice">Preview data only — no financial record is being shown or changed.</div> : null}
       <header className="payroll-hero">
         <div><p className="eyebrow">Personal payroll reconciliation</p><h1>Payroll</h1><p className="summary">Schedule, NAM Timesheets, and Workday evidence in one trustworthy view for {data.employee.displayName}.</p></div>
-        <div className="payroll-actions"><Link className="button secondary" href="/timesheets">Open Timesheets</Link>{canReviewEvidence ? <Link className="button secondary" href="/payroll/evidence-review">Evidence Review</Link> : null}<Link className="button primary" href="/payroll/import">Import Paycheck</Link>{!preview && lockAction ? <form action={lockAction}><button className="button secondary" type="submit">Lock</button></form> : null}</div>
+        <div className="payroll-actions"><Link className="button secondary" href="/timesheets">Open Timesheets</Link>{canReviewEvidence ? <Link className="button secondary" href="/payroll/rate-history">Rate History</Link> : null}{canReviewEvidence ? <Link className="button secondary" href="/payroll/evidence-review">Evidence Review</Link> : null}<Link className="button primary" href="/payroll/import">Import Paycheck</Link>{!preview && lockAction ? <form action={lockAction}><button className="button secondary" type="submit">Lock</button></form> : null}</div>
       </header>
       <section className="payroll-summary-grid" aria-label="Payroll summary">
         <Metric icon={FileCheck2} value={formatHours(data.summary.reconciledMinutes)} label={`Reconciled hours · ${data.summary.reconciledScopeLabel}`} color="#17c653" />

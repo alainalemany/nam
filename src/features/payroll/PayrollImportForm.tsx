@@ -64,7 +64,7 @@ const fields: Array<{ name: EditableKey; label: string; type?: string; step?: st
   { name: "notes", label: "Review notes", wide: true },
 ];
 
-export function PaycheckReviewEditor({ initial, paycheckId }: { initial: ParsedPaycheck; paycheckId?: string }) {
+export function PaycheckReviewEditor({ initial, paycheckId, canReviewRateHistory = false }: { initial: ParsedPaycheck; paycheckId?: string; canReviewRateHistory?: boolean }) {
   const [values, setValues] = useState(initial);
   const submitAction = paycheckId
     ? correctPaycheckAction
@@ -94,7 +94,7 @@ export function PaycheckReviewEditor({ initial, paycheckId }: { initial: ParsedP
     const rateConflict = state.code === "RATE_EVIDENCE_CONFLICT";
     const rateNeedsReview = state.rateEvidence === "NEEDS_REVIEW";
     const rateNotEstablished = state.rateEvidence === "NOT_ESTABLISHED" || rateNeedsReview;
-    return <div className="payroll-empty">{rateConflict || rateNotEstablished ? <AlertTriangle aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}<strong>{rateConflict || rateNeedsReview ? "Paycheck saved — rate review required" : rateNotEstablished ? "Paycheck saved — rate not established" : "Paycheck saved — verified rate established"}</strong><span>{rateConflict || rateNotEstablished ? state.message : "Authenticated payslip evidence established the verified rate. Reconciliation has been recalculated."}</span><Link className="button primary" href={state.paycheckId ? `/payroll/paychecks/${state.paycheckId}` : "/payroll"}>View Paycheck</Link></div>;
+    return <div className="payroll-empty">{rateConflict || rateNotEstablished ? <AlertTriangle aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}<strong>{rateConflict || rateNeedsReview ? "Paycheck saved — rate review required" : rateNotEstablished ? "Paycheck saved — rate not established" : "Paycheck saved — verified rate evidence recorded"}</strong><span>{rateConflict ? "Conflicting rate evidence was retained for explicit review; no tentative rate was made authoritative." : rateNeedsReview ? "A new or uncertain rate observation was retained for explicit review; no tentative rate was made authoritative." : rateNotEstablished ? state.message : "Authenticated evidence either established a trusted boundary or added support to the existing verified rate. Reconciliation has been recalculated."}</span><div className="payroll-actions"><Link className="button primary" href={state.paycheckId ? `/payroll/paychecks/${state.paycheckId}` : "/payroll"}>View Paycheck</Link>{canReviewRateHistory ? <Link className="button secondary" href="/payroll/rate-history">View Rate History</Link> : null}</div></div>;
   }
   return <form className="grid gap-5" action={action}>
     {paycheckId ? <input type="hidden" name="paycheckId" value={paycheckId} /> : null}
@@ -117,11 +117,11 @@ export function PaycheckReviewEditor({ initial, paycheckId }: { initial: ParsedP
   </form>;
 }
 
-export function PayrollImportForm() {
+export function PayrollImportForm({ canReviewRateHistory = false }: { canReviewRateHistory?: boolean }) {
   const [state, action, pending] = useActionState(parsePaycheckAction, initialState);
   const [manual, setManual] = useState(false);
-  if (state.status === "review" && state.values) return <PaycheckReviewEditor key={state.values.fingerprint} initial={state.values} />;
-  if (manual) return <PaycheckReviewEditor initial={emptyPaycheck} />;
+  if (state.status === "review" && state.values) return <PaycheckReviewEditor key={state.values.fingerprint} initial={state.values} canReviewRateHistory={canReviewRateHistory} />;
+  if (manual) return <PaycheckReviewEditor initial={emptyPaycheck} canReviewRateHistory={canReviewRateHistory} />;
   return <div className="grid gap-5">
     <form className="grid gap-4" action={action}>
       <label className="payroll-import-dropzone"><FileUp aria-hidden="true" /><strong>Select a Workday payslip PDF</strong><span>Readable text is extracted in memory. The PDF and raw text are not retained.</span><input name="payslip" type="file" accept="application/pdf,.pdf" required /></label>
