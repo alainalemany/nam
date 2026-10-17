@@ -45,7 +45,7 @@ prepare_through_migration_36() {
 
   for migration_directory in prisma/migrations/*/; do
     migration_name="$(basename "${migration_directory}")"
-    if [[ "${migration_name}" != "20261015000300_payroll_evidence_review_history" ]]; then
+    if [[ "${migration_name}" != "20261015000300_payroll_evidence_review_history" && "${migration_name}" != "20261017000100_progressive_pay_rate_observations" ]]; then
       cp -R "${migration_directory}" "${prisma_directory}/migrations/"
     fi
   done

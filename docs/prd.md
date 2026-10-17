@@ -978,9 +978,12 @@ For known Workday layouts, import preserves all regular-pay rows and identifies
 whether rate evidence is supported, requires review, or is unsupported. Multiple
 or internally inconsistent rates must not be collapsed into a guessed rate.
 Editing paycheck facts must not erase the source observations, and ambiguous
-extraction must not create authoritative pay-rate evidence. This extraction
-contract does not itself implement progressive rate history or decide an exact
-raise date from a payroll-period boundary.
+extraction must not create authoritative pay-rate evidence. Confirmed Paychecks
+persist immutable structured observations; repeated rates reinforce existing
+evidence without adding authoritative boundaries. A first or changed rate is a
+versioned candidate, not a verified effective-date decision, and a decrease
+always requires explicit review. A payroll-period boundary never becomes an
+exact raise date by inference.
 
 PDF preview evidence must be authenticated by a short-lived server signature
 bound to the authorized Employee, byte fingerprint, parser version, dates,
@@ -991,7 +994,26 @@ verified rate. Corrections may preserve an unchanged authenticated rate context
 only when matching active linked `VERIFIED` evidence exists, but a rate-relevant or period change requires evidence review and cannot create
 a verified replacement automatically. Byte fingerprints make an exact reupload
 idempotent; regenerated semantically equivalent PDFs can have different bytes
-and therefore require ordinary review as distinct source documents.
+and therefore remain distinct source documents. Matching normalized evidence
+reinforces the same candidate or verified rate rather than proving a different
+wage rate.
+
+Only the configured Payroll evidence reviewer may promote a candidate. The
+decision requires an exact date within authenticated evidence bounds, expected
+version, mandatory reason, and idempotency token, and must append immutable
+audit history atomically with the verified `EmployeePayRate`. Open uncertainty
+withholds expected-gross calculations from the earliest potentially affected
+date while preserving unrelated earlier results. The polished history and
+candidate-review interface is deferred to Phase 5B.3; absence of that interface
+must never make a candidate authoritative.
+
+An observed row-date range does not by itself prove an employment-wide change
+date. Resolving an earlier candidate must retain and reclassify contradictory
+later observations, including a possible return to an older rate. The Payroll
+evidence reviewer may explicitly reject a disproven candidate only with a
+mandatory reason, expected version, idempotency token, and immutable decision
+event. Rejection preserves evidence and releases expected-gross suppression
+only when the audited transition succeeds.
 
 Workday payslip periods and check dates are authoritative. A valid
 Monday-Sunday NAM week projects the following Wednesday and remains labeled

@@ -389,6 +389,30 @@ correction-event guarantees. PDF lifecycle tests
 mock the parser boundary; a genuine generated-PDF bridge fixture remains a
 documented gap rather than being represented as completed coverage.
 
+Phase 5B.2 PostgreSQL coverage applies migration 38 to PostgreSQL 18 and tests
+immutable observation inserts, stable-digest idempotency, first and repeated
+rates, increases, mandatory-review decreases, multiple-rate splits, same-date
+conflicts, missing/zero-hour observations, out-of-order imports, correction
+revisions and supersession lineage, stronger exact-date evidence, owner boundary
+promotion, historical quarantine preservation, append-only triggers, audit
+rollback, concurrent neighboring imports, and correction-versus-review lock
+ordering. Corrective coverage also proves upload-order-independent temporal
+reclassification, retention of a later possible decrease after raise approval,
+row-range preservation, rejection of manual/unconfirmed/stale/superseded
+support, commit-time decision-event enforcement, cross-domain token rejection,
+authorized candidate rejection with rollback and stale-version protection, and
+expected-gross restoration only after valid rejection. Unit coverage
+independently proves digest normalization, reviewer-action validation, and
+expected-gross suppression from the earliest open uncertainty date.
+Shared-database suites run sequentially.
+
+Corrective Phase 5B.2 coverage also verifies that edited PDF periods preserve
+authenticated original observation bounds only after downgrade, downgraded
+evidence cannot promote an exact boundary, unchanged corrections carry
+supported, review-required, and unsupported parser rows through repeated
+revisions, uncertainty continues to suppress expected gross, and impossible
+Gregorian exact-boundary dates create neither a rate nor an audit event.
+
 Package 2B component and route-boundary coverage verifies server-controlled
 navigation visibility, authorization before review queries, candidate
 non-selection, duplicate-name and inactive-Employee presentation, mandatory

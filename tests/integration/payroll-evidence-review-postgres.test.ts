@@ -573,7 +573,7 @@ describePostgres("Payroll Package 2A evidence review", () => {
     await expect(prisma.$executeRawUnsafe(`DELETE FROM "PayRateEvidenceReviewEvent" WHERE "id" = '${rateResult.auditEventId}'`)).rejects.toThrow(/append-only/);
   });
 
-  it("audits Paycheck correction supersession and replacement atomically", async () => {
+  it("preserves an unchanged verified boundary and records correction evidence without inventing a replacement", async () => {
     await createEmployee("correction-employee", "Correction Owner");
     const paycheck = await createPaycheck("correction-paycheck", "correction-employee");
     const rate = await createRate("correction-rate", "correction-employee");
@@ -586,22 +586,21 @@ describePostgres("Payroll Package 2A evidence review", () => {
       .resolves.toMatchObject({ status: "saved", rateEvidence: "VERIFIED" });
 
     const oldRate = await prisma.employeePayRate.findUniqueOrThrow({ where: { id: rate.id } });
-    expect(oldRate).toMatchObject({ verificationStatus: "SUPERSEDED", evidenceVersion: 2 });
-    const replacement = await prisma.employeePayRate.findFirstOrThrow({
-      where: { sourcePaycheckId: paycheck.id, verificationStatus: "VERIFIED" },
-      orderBy: { createdAt: "desc" },
+    expect(oldRate).toMatchObject({ verificationStatus: "VERIFIED", evidenceVersion: 1 });
+    expect(await prisma.employeePayRate.count({ where: { employeeId: "correction-employee" } })).toBe(1);
+    const observation = await prisma.payRateObservation.findFirstOrThrow({
+      where: { sourcePaycheckId: paycheck.id, sourcePaycheckEvidenceRevision: 2 },
+      include: { classifications: true, supersession: true, boundaryCandidates: true, rateSupports: true },
     });
-    const events = await prisma.payRateEvidenceReviewEvent.findMany({
-      orderBy: [{ createdAt: "asc" }, { employeePayRateId: "asc" }],
+    expect(observation).toMatchObject({
+      extractionBasis: "PAYCHECK_CORRECTION",
+      observationState: "REVIEW_REQUIRED",
+      supersession: null,
+      boundaryCandidates: [],
+      rateSupports: [],
+      classifications: [expect.objectContaining({ kind: "REPEATED_SUPPORTING_OBSERVATION" })],
     });
-    const correctionEvents = events.filter((event) =>
-      event.decisionKind === "PAYCHECK_CORRECTION_SUPERSEDED" || event.decisionKind === "PAYCHECK_CORRECTION_CREATED");
-    expect(correctionEvents).toHaveLength(2);
-    expect(correctionEvents).toEqual(expect.arrayContaining([
-      expect.objectContaining({ employeePayRateId: rate.id, previousVersion: 1, newVersion: 2, reviewerEmployeeId: null, initiatedByEmployeeId: "correction-employee" }),
-      expect.objectContaining({ employeePayRateId: replacement.id, previousStatus: null, previousVersion: 0, newVersion: 2, reviewerEmployeeId: null, initiatedByEmployeeId: "correction-employee" }),
-    ]));
-    expect(new Set(correctionEvents.map((event) => event.requestToken)).size).toBe(1);
+    expect(await prisma.payRateEvidenceReviewEvent.count()).toBe(0);
   });
 
   it("corrects a Paycheck without rewriting its quarantined historical rate candidate", async () => {
@@ -629,20 +628,16 @@ describePostgres("Payroll Package 2A evidence review", () => {
       where: { employeePayRateId: quarantined.id },
     })).toBe(0);
 
-    const replacement = await prisma.employeePayRate.findFirstOrThrow({
-      where: {
-        sourcePaycheckId: paycheck.id,
-        verificationStatus: "CONFLICT",
-        provenanceKind: "PAYCHECK",
-      },
-      include: { reviewEvents: true },
+    expect(await prisma.employeePayRate.count({ where: { sourcePaycheckId: paycheck.id } })).toBe(0);
+    const observation = await prisma.payRateObservation.findFirstOrThrow({
+      where: { sourcePaycheckId: paycheck.id, sourcePaycheckEvidenceRevision: 2 },
+      include: { boundaryCandidates: { include: { candidate: true } } },
     });
-    expect(replacement).toMatchObject({
-      provenanceCandidatePaycheckId: paycheck.id,
-      reviewEvents: [expect.objectContaining({
-        decisionKind: "PAYCHECK_CORRECTION_CREATED",
-        previousStatus: null,
-        newStatus: "CONFLICT",
+    expect(observation).toMatchObject({
+      extractionBasis: "PAYCHECK_CORRECTION",
+      observationState: "REVIEW_REQUIRED",
+      boundaryCandidates: [expect.objectContaining({
+        candidate: expect.objectContaining({ status: "OPEN", observedHourlyRate: new Prisma.Decimal("33.1500") }),
       })],
     });
   });
@@ -670,7 +665,11 @@ describePostgres("Payroll Package 2A evidence review", () => {
         FOR EACH ROW EXECUTE FUNCTION "reject_test_correction_event"()
     `);
     try {
-      const form = await correctionForm(paycheck.id);
+      const form = await correctionForm(paycheck.id, {
+        baseRate: "34.0000",
+        regularEarnings: "1360.00",
+        grossCashPay: "1360.00",
+      });
       await expect(payrollActions.correctPaycheckAction({ status: "idle", message: "" }, form))
         .resolves.toMatchObject({ status: "error" });
     } finally {
@@ -908,7 +907,11 @@ describePostgres("Payroll Package 2A evidence review", () => {
       decision: "REOPEN_REVIEW", rateId: rate.id, expectedEvidenceVersion: 1,
       reason: "Synthetic review race.", requestToken: token(),
     }, { client: prisma });
-    const form = await correctionForm(paycheck.id);
+    const form = await correctionForm(paycheck.id, {
+      baseRate: "34.0000",
+      regularEarnings: "1360.00",
+      grossCashPay: "1360.00",
+    });
     const correction = payrollActions.correctPaycheckAction({ status: "idle", message: "" }, form);
     await waitForAdvisoryWaiters(2);
     blocker.release();
@@ -919,12 +922,14 @@ describePostgres("Payroll Package 2A evidence review", () => {
     const rates = await prisma.employeePayRate.findMany({
       where: { employeeId: "correction-employee" }, include: { reviewEvents: true },
     });
-    expect(rates.flatMap((item) => item.reviewEvents)).toHaveLength(2);
+    expect(rates.flatMap((item) => item.reviewEvents)).toHaveLength(1);
     expect(rates.filter((item) => item.verificationStatus === "VERIFIED").length).toBeLessThanOrEqual(1);
-    expect(rates.some((item) =>
-      item.sourcePaycheckId === paycheck.id &&
-      ["VERIFIED", "CONFLICT", "SUPERSEDED"].includes(item.verificationStatus)))
-      .toBe(true);
+    expect(await prisma.payRateObservation.count({
+      where: { sourcePaycheckId: paycheck.id, sourcePaycheckEvidenceRevision: 2 },
+    })).toBe(1);
+    expect(await prisma.payRateBoundaryCandidate.count({
+      where: { employeeId: "correction-employee", status: "OPEN" },
+    })).toBe(1);
     if (reviewOutcome.status === "rejected") {
       expect(reviewOutcome.reason).toMatchObject({ code: "STALE_REVIEW" });
     }

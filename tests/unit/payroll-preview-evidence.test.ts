@@ -68,7 +68,14 @@ describe("Payroll preview evidence envelopes", () => {
     const evidence = pdfEvidence();
     const token = createPdfPreviewEnvelope("employee-1", evidence, secret, now);
     expect(verifyPdfPreviewEnvelope(token, "employee-1", evidence, secret, now + 1_000))
-      .toMatchObject({ ok: true, rateContextMatches: true });
+      .toMatchObject({
+        ok: true,
+        rateContextMatches: true,
+        claims: {
+          sourcePeriodStart: "2026-09-14",
+          sourcePeriodEnd: "2026-09-20",
+        },
+      });
   });
 
   it.each([

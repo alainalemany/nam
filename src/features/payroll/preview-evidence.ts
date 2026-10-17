@@ -38,6 +38,8 @@ const pdfClaimsSchema = commonClaimsSchema.extend({
   issueCodes: z.array(z.string().min(1).max(80)).max(100),
   observationCount: z.number().int().nonnegative().max(50),
   rateContextDigest: z.string().regex(/^[a-f\d]{64}$/u),
+  sourcePeriodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
+  sourcePeriodEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
 });
 
 const correctionClaimsSchema = commonClaimsSchema.extend({
@@ -209,6 +211,8 @@ export function createPdfPreviewEnvelope(
     disposition: input.rateExtraction.disposition,
     issueCodes: input.rateExtraction.issues.map((issue) => issue.code),
     observationCount: input.rateExtraction.observations.length,
+    sourcePeriodStart: input.periodStart,
+    sourcePeriodEnd: input.periodEnd,
   }, sessionSecret);
 }
 

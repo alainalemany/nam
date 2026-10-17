@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   payRateEvidenceResolutionInputSchema,
   payRateEvidenceReviewInputSchema,
+  payRateBoundaryVerificationInputSchema,
+  payRateBoundaryRejectionInputSchema,
   timesheetIdentityReviewInputSchema,
 } from "@/features/payroll/evidence-review-validation";
 
@@ -66,5 +68,53 @@ describe("Payroll evidence review validation", () => {
       ...base,
       competitors: [{ rateId: "rate-1", expectedEvidenceVersion: 1, disposition: "CONFLICT" }],
     }).success).toBe(false);
+  });
+
+  it("requires a versioned exact-date boundary decision with a reason and idempotency token", () => {
+    const valid = {
+      decision: "VERIFY_EXACT_BOUNDARY" as const,
+      candidateId: "candidate-1",
+      expectedEvidenceVersion: 2,
+      exactEffectiveDate: "2026-09-17",
+      reason: "Owner confirmed the exact effective date from authenticated evidence.",
+      requestToken: token,
+    };
+    expect(payRateBoundaryVerificationInputSchema.safeParse(valid).success).toBe(true);
+    expect(payRateBoundaryVerificationInputSchema.safeParse({ ...valid, exactEffectiveDate: "09/17/2026" }).success).toBe(false);
+    expect(payRateBoundaryVerificationInputSchema.safeParse({ ...valid, reason: "" }).success).toBe(false);
+    expect(payRateBoundaryVerificationInputSchema.safeParse({ ...valid, expectedEvidenceVersion: 0 }).success).toBe(false);
+  });
+
+  it.each([
+    ["2026-02-30", false],
+    ["2025-02-29", false],
+    ["2024-02-29", true],
+    ["2026-04-31", false],
+    ["2026-12-31", true],
+    ["2026-13-01", false],
+    ["2026-00-10", false],
+  ])("validates exact boundary calendar date %s", (exactEffectiveDate, expected) => {
+    expect(payRateBoundaryVerificationInputSchema.safeParse({
+      decision: "VERIFY_EXACT_BOUNDARY",
+      candidateId: "candidate-1",
+      expectedEvidenceVersion: 2,
+      exactEffectiveDate,
+      reason: "Owner confirmed the exact effective date from authenticated evidence.",
+      requestToken: token,
+    }).success).toBe(expected);
+  });
+
+  it("requires a versioned candidate rejection with a reason and idempotency token", () => {
+    const valid = {
+      decision: "REJECT_BOUNDARY_CANDIDATE" as const,
+      candidateId: "candidate-1",
+      expectedEvidenceVersion: 2,
+      reason: "The authenticated source disproves this rate-change candidate.",
+      requestToken: token,
+    };
+    expect(payRateBoundaryRejectionInputSchema.safeParse(valid).success).toBe(true);
+    expect(payRateBoundaryRejectionInputSchema.safeParse({ ...valid, reason: "" }).success).toBe(false);
+    expect(payRateBoundaryRejectionInputSchema.safeParse({ ...valid, expectedEvidenceVersion: 0 }).success).toBe(false);
+    expect(payRateBoundaryRejectionInputSchema.safeParse({ ...valid, requestToken: "not-a-uuid" }).success).toBe(false);
   });
 });

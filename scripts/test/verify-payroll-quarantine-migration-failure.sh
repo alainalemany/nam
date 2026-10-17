@@ -46,7 +46,7 @@ prepare_through_migration_35() {
   for migration_directory in prisma/migrations/*/; do
     migration_name="$(basename "${migration_directory}")"
     case "${migration_name}" in
-      20261008000100_payroll_reconciliation_v1|20261015000100_payroll_pr_review_corrections|20261015000200_payroll_historical_evidence_quarantine|20261015000300_payroll_evidence_review_history)
+      20261008000100_payroll_reconciliation_v1|20261015000100_payroll_pr_review_corrections|20261015000200_payroll_historical_evidence_quarantine|20261015000300_payroll_evidence_review_history|20261017000100_progressive_pay_rate_observations)
         ;;
       *)
         cp -R "${migration_directory}" "${prisma_directory}/migrations/"

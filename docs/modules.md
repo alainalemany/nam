@@ -888,15 +888,26 @@ The operator should be able to answer questions such as:
 The operator imports a readable Workday PDF or enters values manually, reviews
 every structured value, then explicitly confirms persistence. The PDF and raw
 text are discarded; reviewed Workday dates and amounts are the payroll evidence.
-Known Workday regular-pay rows are preserved as non-persistent extraction
-observations. Ambiguous rates remain visible for review and are withheld from
-authoritative rate evidence rather than guessed. The server authenticates PDF
+Known Workday regular-pay rows are preserved first as signed-preview extraction
+observations and, after Paycheck confirmation, as immutable structured
+`PayRateObservation` evidence without retaining PDF bytes or raw text.
+Ambiguous rates remain visible for review and are withheld from authoritative
+rate boundaries rather than guessed. The server authenticates PDF
 preview evidence with a short-lived principal- and purpose-bound envelope;
 client assertions, fingerprints, parser versions, and observations are never
 trusted by themselves. Manual entry is a separate non-verifying workflow, and
 rate-relevant corrections without unchanged server-authenticated context
-supersede rather than replace trusted rate evidence. Candidate-only historical
-quarantine remains unchanged until explicit owner evidence review.
+supersede rather than replace trusted rate evidence. Repeated rates reinforce a
+verified boundary; first or changed rates remain open candidates until an exact
+supported date receives owner review. Candidate-only historical quarantine
+remains unchanged until explicit owner evidence review.
+
+Observed row ranges bound the evidence but do not prove an exact
+employment-wide change date. Temporal reclassification preserves later
+contradictory evidence when an earlier candidate is resolved. The configured
+reviewer may reject a disproven candidate through the versioned immutable
+decision contract; rejection preserves its evidence and differs from source
+correction supersession. Only open candidates suppress expected gross.
 
 ### Required Capabilities
 
@@ -904,6 +915,10 @@ quarantine remains unchanged until explicit owner evidence review.
 - Ordered regular-rate observations with machine-readable extraction findings
 - Exact rate/regular-hours/regular-earnings consistency checks
 - Fail-closed handling for multiple rates, uncertain columns, and adjustment-only rows
+- Immutable confirmed-Paycheck observation rows with revision and supersession lineage
+- Progressive first/repeated/increase/decrease/split/conflict classification
+- Exact-date owner decisions for authoritative rate boundaries
+- Expected-gross suppression from the earliest unresolved rate-change date
 - Duplicate-safe persistence and controlled correction
 - Exact integer-minute and Decimal money handling
 - Aggregate Timesheet/paycheck comparison without day-level overstatement

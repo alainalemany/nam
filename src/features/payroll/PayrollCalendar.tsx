@@ -101,7 +101,7 @@ export function PayrollCalendar({
               <div><dt>Payroll evidence</dt><dd>{selected.paidEvidenceLabel ?? "Not imported"}</dd></div>
               {selected.payrollPeriodLabel ? <div><dt>Covered period</dt><dd>{selected.payrollPeriodLabel}</dd></div> : null}
               {selected.estimatedGross ? <div><dt>Estimated gross</dt><dd>{selected.estimatedGross}</dd></div> : null}
-              {selected.estimatedGrossStatus === "UNAVAILABLE" ? <div><dt>Estimated gross</dt><dd>Unavailable — {selected.estimatedGrossReason === "RATE_EVIDENCE_CONFLICT" ? "rate evidence conflicts" : "no verified rate covers this date"}.</dd></div> : null}
+              {selected.estimatedGrossStatus === "UNAVAILABLE" ? <div><dt>Estimated gross</dt><dd>Unavailable — {selected.estimatedGrossReason === "RATE_EVIDENCE_CONFLICT" ? "rate evidence conflicts" : selected.estimatedGrossReason === "RATE_CHANGE_UNCERTAINTY" ? "a possible rate change has no verified effective date" : "no verified rate covers this date"}.</dd></div> : null}
             </dl>
             {selected.evidenceLevel === "aggregate" ? <div className="payroll-notice">The paycheck confirms only the period total, not this date&apos;s individual paid allocation.</div> : null}
             {selected.actionHref ? <Link className="button primary" href={selected.actionHref}>{selected.actionLabel}</Link> : null}

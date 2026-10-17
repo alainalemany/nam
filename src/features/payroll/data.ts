@@ -68,8 +68,12 @@ function effectiveRate(
     verificationStatus: string;
     provenanceKind: string;
   }>,
+  openCandidates: Array<{ earliestEffectiveDate: Date }>,
   date: string,
 ) {
+  if (openCandidates.some((candidate) => dateInputValue(candidate.earliestEffectiveDate) <= date)) {
+    return { status: "UNAVAILABLE" as const, reason: "RATE_CHANGE_UNCERTAINTY" as const };
+  }
   const eligible = rates.filter((rate) => dateInputValue(rate.effectiveFrom) <= date);
   const latestDate = eligible.reduce<string | undefined>((latest, rate) => {
     const candidate = dateInputValue(rate.effectiveFrom);
@@ -232,7 +236,7 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
     (latest, paycheck) => paycheck.payrollPeriod.periodEnd > latest ? paycheck.payrollPeriod.periodEnd : latest,
     range.calendarEnd,
   );
-  const [timesheets, unresolvedTimesheets, payRates, assignments] = await Promise.all([
+  const [timesheets, unresolvedTimesheets, payRates, openRateCandidates, assignments] = await Promise.all([
     prisma.weeklyTimesheet.findMany({
       where: {
         primaryEmployeeId: employeeId,
@@ -258,6 +262,11 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
         verificationStatus: { in: ["VERIFIED", "CONFLICT"] },
       },
       orderBy: [{ effectiveFrom: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.payRateBoundaryCandidate.findMany({
+      where: { employeeId, status: "OPEN" },
+      select: { earliestEffectiveDate: true },
+      orderBy: [{ earliestEffectiveDate: "asc" }, { createdAt: "asc" }],
     }),
     prisma.dailyAssignment.findMany({
       where: {
@@ -448,7 +457,7 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
       actionHref = `/timesheets/${timesheet.id}${timesheet.status === "DRAFT" ? "/edit" : ""}`;
       actionLabel = "Open Timesheet";
     }
-    const rate = effectiveRate(payRates, key);
+    const rate = effectiveRate(payRates, openRateCandidates, key);
     if (date >= range.first && date <= range.last && entry && rate.status === "UNAVAILABLE") {
       openIssueKeys.add(`rate-evidence-date:${key}`);
     }
@@ -502,7 +511,7 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
   const pendingMinutes = pendingEntries.reduce((sum, item) => sum + item.workedMinutes, 0);
   const pendingRateResults = pendingEntries.map((entry) => ({
     entry,
-    rate: effectiveRate(payRates, dateInputValue(entry.workDate)),
+    rate: effectiveRate(payRates, openRateCandidates, dateInputValue(entry.workDate)),
   }));
   const unavailablePendingRates = pendingRateResults.filter((item) => item.rate.status === "UNAVAILABLE");
   const pendingGrossCents = unavailablePendingRates.length === 0
@@ -533,6 +542,9 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
           ? "UNAVAILABLE" as const
           : "AVAILABLE" as const,
       pendingGrossReason: unavailablePendingRates.some((item) =>
+        item.rate.status === "UNAVAILABLE" && item.rate.reason === "RATE_CHANGE_UNCERTAINTY")
+        ? "RATE_CHANGE_UNCERTAINTY" as const
+        : unavailablePendingRates.some((item) =>
         item.rate.status === "UNAVAILABLE" && item.rate.reason === "RATE_EVIDENCE_CONFLICT")
         ? "RATE_EVIDENCE_CONFLICT" as const
         : unavailablePendingRates.length > 0

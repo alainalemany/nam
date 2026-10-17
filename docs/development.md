@@ -213,10 +213,11 @@ operation.
 
 `PostgreSQL Integration` starts an ephemeral PostgreSQL 18 service on the
 GitHub-hosted runner, applies all committed migrations, verifies migration
-status, exercises staged migrations 34, 35, and 36 with synthetic historical
-identity/rate fixtures, verifies both checksum-guard and forced post-mutation
-constraint-failure rollback in isolated schemas, and runs the Phase A integration
-suite. The job sets
+status, exercises staged migrations 34–38 with synthetic historical
+identity/rate fixtures, verifies migration 36 and 37 checksum guards and forced
+post-mutation rollback in isolated schemas, verifies the complete migration-38
+fresh schema and integrity triggers, and runs the Payroll PostgreSQL suites. The
+job sets
 `PHASE_A_POSTGRES_REQUIRED=1`, so missing test configuration fails rather than
 silently skipping the suite.
 
@@ -251,6 +252,15 @@ The failure-path command is:
 ```bash
 bash scripts/test/verify-payroll-quarantine-migration-failure.sh
 ```
+
+The progressive rate-observation PostgreSQL regression is:
+
+```bash
+pnpm exec vitest run tests/integration/payroll-rate-observations-postgres.test.ts --reporter=verbose
+```
+
+It requires the same guarded disposable PostgreSQL 18 environment and must run
+sequentially with the Package 2A and Phase A PostgreSQL suites.
 
 All three require the guarded `PHASE_A_TEST_DATABASE_URL`; they must never be pointed
 at an application or production database.
