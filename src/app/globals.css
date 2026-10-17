@@ -2828,7 +2828,8 @@ textarea {
 .review-metric span { color: #64748b; font-size: 0.8rem; font-weight: 650; }
 .review-filter-grid { display: grid; align-items: end; gap: 12px; grid-template-columns: repeat(4, minmax(140px, 1fr)) auto; }
 .review-filter-grid label,
-.review-form-grid label { display: grid; gap: 7px; color: #475569; font-size: 0.78rem; font-weight: 700; }
+.review-form-grid label,
+.review-form-grid .review-form-field { display: grid; gap: 7px; color: #475569; font-size: 0.78rem; font-weight: 700; }
 .review-filter-grid input,
 .review-filter-grid select,
 .review-form-grid input,

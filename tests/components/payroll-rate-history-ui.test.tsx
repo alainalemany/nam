@@ -46,6 +46,14 @@ function overview(overrides: Partial<RateHistoryOverviewData> = {}): RateHistory
   };
 }
 
+function candidateDecisionRegion() {
+  return screen.getByRole("region", { name: "Candidate decision" });
+}
+
+function exactEffectiveDateInput() {
+  return within(candidateDecisionRegion()).getByLabelText("Exact effective date");
+}
+
 afterEach(cleanup);
 beforeEach(() => {
   vi.clearAllMocks();
@@ -117,11 +125,16 @@ describe("progressive rate-history overview", () => {
 });
 
 describe("rate-boundary candidate decisions", () => {
-  it("requires an explicit real in-window date and never preselects one", () => {
+  it("uniquely identifies the promotion form and never preselects an exact date", () => {
     render(<RateBoundaryDecisionForm candidate={candidate} />);
-    fireEvent.click(screen.getByLabelText("Confirm exact effective date"));
-    expect(screen.getByLabelText(/^Exact effective date/)).toHaveValue("");
-    fireEvent.change(screen.getByLabelText(/^Exact effective date/), { target: { value: "2026-09-30" } });
+    const decision = candidateDecisionRegion();
+    expect(decision).toBeInTheDocument();
+    expect(within(decision).getByRole("radiogroup", { name: "Candidate decision" })).toBeInTheDocument();
+    fireEvent.click(within(decision).getByLabelText("Confirm exact effective date"));
+    const exactDate = exactEffectiveDateInput();
+    expect(exactDate).toHaveAttribute("type", "date");
+    expect(exactDate).toHaveValue("");
+    fireEvent.change(exactDate, { target: { value: "2026-09-30" } });
     expect(screen.getByRole("alert")).toHaveTextContent(/inside the evidence window/);
     fireEvent.change(screen.getByLabelText("Reason"), { target: { value: "Confirmed from retained evidence." } });
     expect(screen.getByRole("button", { name: "Review proposed decision" })).toBeDisabled();
@@ -137,10 +150,15 @@ describe("rate-boundary candidate decisions", () => {
   it("shows previous/proposed rates and impact before submitting versioned promotion", async () => {
     render(<RateBoundaryDecisionForm candidate={candidate} />);
     fireEvent.click(screen.getByLabelText("Confirm exact effective date"));
-    fireEvent.change(screen.getByLabelText(/^Exact effective date/), { target: { value: "2026-09-07" } });
+    const exactDate = exactEffectiveDateInput();
+    fireEvent.change(exactDate, { target: { value: "2026-09-07" } });
     fireEvent.change(screen.getByLabelText("Reason"), { target: { value: "Exact date confirmed from authenticated row evidence." } });
     fireEvent.click(screen.getByRole("button", { name: "Review proposed decision" }));
-    expect(screen.getByText("Confirm verified boundary")).toBeInTheDocument();
+    const confirmation = screen.getByRole("group", { name: "Confirm rate boundary decision" });
+    await waitFor(() => expect(confirmation).toHaveFocus());
+    expect(within(confirmation).getByText("Confirm verified boundary")).toBeInTheDocument();
+    expect(within(confirmation).getByText("2026-09-07")).toBeInTheDocument();
+    expect(exactDate).toHaveValue("2026-09-07");
     expect(screen.getByText("$30.0000/hr")).toBeInTheDocument();
     expect(screen.getByText("$32.5000/hr")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
@@ -155,10 +173,12 @@ describe("rate-boundary candidate decisions", () => {
   it("requires confirmation and a reason to reject while explaining evidence retention", async () => {
     render(<RateBoundaryDecisionForm candidate={candidate} />);
     fireEvent.click(screen.getByLabelText("Reject proposed boundary"));
+    expect(within(candidateDecisionRegion()).queryByLabelText("Exact effective date")).not.toBeInTheDocument();
     expect(screen.getByText("Reject the boundary, not the evidence")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Review proposed decision" })).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Reason"), { target: { value: "Source evidence disproves this proposed boundary." } });
     fireEvent.click(screen.getByRole("button", { name: "Review proposed decision" }));
+    expect(within(candidateDecisionRegion()).queryByLabelText("Exact effective date")).not.toBeInTheDocument();
     expect(mocks.reject).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Confirm rejection" }));
     await waitFor(() => expect(mocks.reject).toHaveBeenCalledOnce());
@@ -185,7 +205,7 @@ describe("rate-boundary candidate decisions", () => {
     mocks.verify.mockResolvedValue({ ok: false, code: "STALE_REVIEW", message: "stale" });
     render(<RateBoundaryDecisionForm candidate={candidate} />);
     fireEvent.click(screen.getByLabelText("Confirm exact effective date"));
-    fireEvent.change(screen.getByLabelText(/^Exact effective date/), { target: { value: "2026-09-07" } });
+    fireEvent.change(exactEffectiveDateInput(), { target: { value: "2026-09-07" } });
     fireEvent.change(screen.getByLabelText("Reason"), { target: { value: "Evidence reviewed." } });
     fireEvent.click(screen.getByRole("button", { name: "Review proposed decision" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm exact boundary" }));

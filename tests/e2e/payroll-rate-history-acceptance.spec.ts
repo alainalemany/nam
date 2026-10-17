@@ -37,9 +37,18 @@ async function authenticatedPage(context: BrowserContext) {
   return page;
 }
 
+function candidateDecisionRegion(page: Page) {
+  return page.getByRole("region", { name: "Candidate decision" });
+}
+
+function exactEffectiveDateInput(page: Page) {
+  return candidateDecisionRegion(page).getByLabel("Exact effective date", { exact: true });
+}
+
 async function chooseRejection(page: Page, reason: string) {
-  await page.getByLabel("Reject proposed boundary").check();
-  await page.getByLabel("Reason").fill(reason);
+  const decision = candidateDecisionRegion(page);
+  await decision.getByLabel("Reject proposed boundary", { exact: true }).check();
+  await decision.getByLabel("Reason", { exact: true }).fill(reason);
   await page.getByRole("button", { name: "Review proposed decision" }).click();
   await expect(page.getByRole("group", { name: "Confirm rate boundary decision" })).toBeFocused();
 }
@@ -130,8 +139,14 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     await expect(page.getByText(/8h 00m regular · 0h 00m overtime · expected gross unavailable/).first()).toBeVisible();
     await expect(page.getByText("System classification")).toBeVisible();
     await expect(page.getByText("Owner review decision")).toHaveCount(0);
-    await page.getByLabel("Confirm exact effective date").check();
-    await expect(page.getByLabel("Exact effective date")).toHaveValue("");
+    const decision = candidateDecisionRegion(page);
+    await expect(decision).toHaveCount(1);
+    await decision.getByLabel("Confirm exact effective date", { exact: true }).check();
+    const exactDate = exactEffectiveDateInput(page);
+    await expect(exactDate).toHaveCount(1);
+    await expect(exactDate).toHaveAttribute("type", "date");
+    await expect(exactDate).toBeEditable();
+    await expect(exactDate).toHaveValue("");
 
     await page.goto("/payroll/rate-history/candidates/browser-candidate-decrease");
     await expect(page.getByRole("heading", { name: "Conflicting evidence" })).toBeVisible();
@@ -142,7 +157,7 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     await page.goto("/payroll/rate-history/candidates/browser-candidate-missing-evidence");
     await expect(page.getByText("Candidate evidence is missing")).toBeVisible();
     await expect(page.getByText("Promotion unavailable")).toBeVisible();
-    await expect(page.getByLabel("Confirm exact effective date")).toBeDisabled();
+    await expect(candidateDecisionRegion(page).getByLabel("Confirm exact effective date", { exact: true })).toBeDisabled();
     await context.close();
   });
 
@@ -150,8 +165,8 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     const context = await browser.newContext();
     const page = await authenticatedPage(context);
     await page.goto("/payroll/rate-history/candidates/browser-candidate-increase");
-    await page.getByLabel("Confirm exact effective date").check();
-    const exactDate = page.getByLabel("Exact effective date");
+    await candidateDecisionRegion(page).getByLabel("Confirm exact effective date", { exact: true }).check();
+    const exactDate = exactEffectiveDateInput(page);
     await expect(exactDate).toHaveValue("");
 
     await exactDate.evaluate((input: HTMLInputElement) => {
@@ -172,8 +187,8 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     const context = await browser.newContext();
     const page = await authenticatedPage(context);
     await page.goto("/payroll/rate-history/candidates/browser-candidate-increase");
-    await page.getByLabel("Confirm exact effective date").check();
-    await page.getByLabel("Exact effective date").fill("2026-08-05");
+    await candidateDecisionRegion(page).getByLabel("Confirm exact effective date", { exact: true }).check();
+    await exactEffectiveDateInput(page).fill("2026-08-05");
     await page.getByLabel("Reason").fill("Synthetic wage notice confirms the exact boundary.");
     await page.getByLabel(/Evidence reference/).fill("SYNTHETIC-WAGE-NOTICE-2026-08-05");
     await page.getByRole("button", { name: "Review proposed decision" }).click();
@@ -214,7 +229,9 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     const context = await browser.newContext();
     const page = await authenticatedPage(context);
     await page.goto("/payroll/rate-history/candidates/browser-candidate-increase");
-    await page.getByLabel("Reject proposed boundary").check();
+    const decision = candidateDecisionRegion(page);
+    await decision.getByLabel("Reject proposed boundary", { exact: true }).check();
+    await expect(decision.getByLabel("Exact effective date", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Review proposed decision" })).toBeDisabled();
     await page.getByLabel("Reason").fill("Synthetic source confirms this proposed boundary is not authoritative.");
     await page.getByRole("button", { name: "Review proposed decision" }).click();
@@ -270,14 +287,19 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
 
       await page.goto("/payroll/rate-history/candidates/browser-candidate-increase");
       await expect(page.getByText("Structured source evidence")).toBeVisible();
-      await expect(page.getByLabel("Reject proposed boundary")).toBeVisible();
+      const decision = candidateDecisionRegion(page);
+      await expect(decision).toHaveCount(1);
+      await expect(decision.getByRole("radiogroup", { name: "Candidate decision" })).toBeVisible();
+      await expect(decision.getByLabel("Reject proposed boundary", { exact: true })).toBeVisible();
+      await decision.getByLabel("Confirm exact effective date", { exact: true }).check();
+      await expect(exactEffectiveDateInput(page)).toHaveValue("");
       await expectNoPageOverflow(page);
     }
 
-    await page.getByLabel("Confirm exact effective date").focus();
+    await candidateDecisionRegion(page).getByLabel("Confirm exact effective date", { exact: true }).focus();
     await page.keyboard.press("Space");
     await page.keyboard.press("Tab");
-    await expect(page.getByLabel("Exact effective date")).toBeFocused();
+    await expect(exactEffectiveDateInput(page)).toBeFocused();
     await context.close();
   });
 });
