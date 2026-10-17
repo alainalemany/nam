@@ -168,9 +168,13 @@ function decimalObservationValue(value: string) {
   return observationDecimal.test(value) ? value : null;
 }
 
-function pdfObservationDrafts(value: PaycheckInput): RateObservationDraft[] {
-  const periodStart = parseDateOnly(value.periodStart);
-  const periodEnd = parseDateOnly(value.periodEnd);
+function pdfObservationDrafts(
+  value: PaycheckInput,
+  sourcePeriod: { start: string; end: string },
+  rateContextMatches: boolean,
+): RateObservationDraft[] {
+  const sourcePeriodStart = parseDateOnly(sourcePeriod.start);
+  const sourcePeriodEnd = parseDateOnly(sourcePeriod.end);
   const observations = value.rateExtraction?.observations ?? [];
   if (observations.length === 0) {
     return [{
@@ -180,8 +184,8 @@ function pdfObservationDrafts(value: PaycheckInput): RateObservationDraft[] {
       regularEarnings: null,
       observedDateStart: null,
       observedDateEnd: null,
-      payPeriodStart: periodStart,
-      payPeriodEnd: periodEnd,
+      payPeriodStart: sourcePeriodStart,
+      payPeriodEnd: sourcePeriodEnd,
       extractionBasis: "WORKDAY_REGULAR_ROW",
       dateConfidence: "PAY_PERIOD_ONLY",
       observationState: "UNSUPPORTED",
@@ -199,11 +203,14 @@ function pdfObservationDrafts(value: PaycheckInput): RateObservationDraft[] {
     const structurallySupported = observation.eligibleForVerification &&
       rate !== null && new Prisma.Decimal(rate).greaterThan(0) &&
       earnings !== null && minutes !== null && minutes > 0;
-    const observationState = severities.includes("UNSUPPORTED")
+    const sourceObservationState = severities.includes("UNSUPPORTED")
       ? "UNSUPPORTED" as const
       : structurallySupported && severities.every((severity) => severity === "INFO")
         ? "SUPPORTED" as const
         : "REVIEW_REQUIRED" as const;
+    const observationState = !rateContextMatches && sourceObservationState === "SUPPORTED"
+      ? "REVIEW_REQUIRED" as const
+      : sourceObservationState;
     return {
       sourceRowSequence: observation.sequence,
       observedHourlyRate: rate,
@@ -211,8 +218,12 @@ function pdfObservationDrafts(value: PaycheckInput): RateObservationDraft[] {
       regularEarnings: earnings,
       observedDateStart: observation.rowDateStart ? parseDateOnly(observation.rowDateStart) : null,
       observedDateEnd: observation.rowDateEnd ? parseDateOnly(observation.rowDateEnd) : null,
-      payPeriodStart: periodStart,
-      payPeriodEnd: periodEnd,
+      payPeriodStart: observation.payPeriodStart
+        ? parseDateOnly(observation.payPeriodStart)
+        : sourcePeriodStart,
+      payPeriodEnd: observation.payPeriodEnd
+        ? parseDateOnly(observation.payPeriodEnd)
+        : sourcePeriodEnd,
       extractionBasis: "WORKDAY_REGULAR_ROW" as const,
       dateConfidence: observation.dateConfidence,
       observationState,
@@ -259,7 +270,6 @@ async function correctionObservationDrafts(
         sourcePaycheckEvidenceRevision: evidenceRevision,
         supersession: null,
         extractionBasis: "WORKDAY_REGULAR_ROW",
-        observationState: "SUPPORTED",
       },
       orderBy: [{ sourceRowSequence: "asc" }, { id: "asc" }],
     });
@@ -271,11 +281,11 @@ async function correctionObservationDrafts(
         regularEarnings: observation.regularEarnings?.toString() ?? null,
         observedDateStart: observation.observedDateStart,
         observedDateEnd: observation.observedDateEnd,
-        payPeriodStart: parseDateOnly(value.periodStart),
-        payPeriodEnd: parseDateOnly(value.periodEnd),
+        payPeriodStart: observation.payPeriodStart,
+        payPeriodEnd: observation.payPeriodEnd,
         extractionBasis: "WORKDAY_REGULAR_ROW",
         dateConfidence: observation.dateConfidence,
-        observationState: "SUPPORTED",
+        observationState: observation.observationState,
         parserVersion: observation.parserVersion,
       }));
     }
@@ -470,7 +480,14 @@ export async function savePaycheckAction(
     parserVersion: verified.claims.parserVersion,
     authoritativeRate,
     reviewCandidateRate,
-    observations: pdfObservationDrafts(value),
+    observations: pdfObservationDrafts(
+      value,
+      {
+        start: verified.claims.sourcePeriodStart,
+        end: verified.claims.sourcePeriodEnd,
+      },
+      verified.rateContextMatches,
+    ),
   });
 }
 

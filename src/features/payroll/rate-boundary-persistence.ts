@@ -2,9 +2,9 @@ import { createHash } from "node:crypto";
 
 import { Prisma, PrismaClient } from "@prisma/client";
 
-import { parseDateOnly } from "@/features/timesheets/calculations";
 import { prisma } from "@/lib/prisma";
 
+import { parsePayrollDateOnly } from "./date-only";
 import {
   acquirePayrollEvidenceLock,
   rateSlotLockKey,
@@ -94,6 +94,12 @@ export async function verifyExactPayRateBoundary(
 ): Promise<EvidenceReviewSuccess> {
   const client = dependencies.client ?? prisma;
   const digest = requestDigest(input);
+  let exactEffectiveDate: Date;
+  try {
+    exactEffectiveDate = parsePayrollDateOnly(input.exactEffectiveDate);
+  } catch {
+    invalid("The exact effective date must be a real calendar date in YYYY-MM-DD format.");
+  }
   try {
     return await client.$transaction(async (tx) => {
       await acquirePayrollEvidenceLock(tx, "review-request", `${actor.employeeId}:${input.requestToken}`);
@@ -111,7 +117,6 @@ export async function verifyExactPayRateBoundary(
         await acquirePayrollEvidenceLock(tx, "paycheck", paycheckId);
       }
       await acquirePayrollEvidenceLock(tx, "rate-timeline", rateTimelineLockKey(initial.employeeId));
-      const exactEffectiveDate = parseDateOnly(input.exactEffectiveDate);
       await acquirePayrollEvidenceLock(tx, "rate-slot", rateSlotLockKey(initial.employeeId, exactEffectiveDate));
       await tx.$queryRaw`SELECT "id" FROM "PayRateBoundaryCandidate" WHERE "id" = ${initial.id} FOR UPDATE`;
 

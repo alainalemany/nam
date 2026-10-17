@@ -331,8 +331,13 @@ BEGIN
   IF NOT FOUND
     OR paycheck_employee_id <> NEW."employeeId"
     OR paycheck_revision <> NEW."sourcePaycheckEvidenceRevision"
-    OR paycheck_period_start <> NEW."payPeriodStart"
-    OR paycheck_period_end <> NEW."payPeriodEnd"
+    OR (
+      NEW."observationState" = 'SUPPORTED'
+      AND (
+        paycheck_period_start <> NEW."payPeriodStart"
+        OR paycheck_period_end <> NEW."payPeriodEnd"
+      )
+    )
     OR paycheck_review_status <> 'CONFIRMED' THEN
     RAISE EXCEPTION 'Pay-rate observation does not match its source Paycheck evidence revision.' USING ERRCODE = '23514';
   END IF;

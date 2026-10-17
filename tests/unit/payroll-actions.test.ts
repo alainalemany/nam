@@ -301,6 +301,12 @@ describe("Payroll paycheck persistence actions", () => {
       paycheckId: "paycheck-1",
       evidenceRevision: 1,
       supersedePriorRevision: false,
+      observations: [expect.objectContaining({
+        sourceRowSequence: 1,
+        payPeriodStart: new Date("2026-09-14T00:00:00.000Z"),
+        payPeriodEnd: new Date("2026-09-20T00:00:00.000Z"),
+        observationState: "SUPPORTED",
+      })],
     }));
   });
 
@@ -332,8 +338,9 @@ describe("Payroll paycheck persistence actions", () => {
   });
 
   it.each([
-    ["period start", { periodStart: "2026-09-15", periodEnd: "2026-09-21" }],
-    ["period end", { periodEnd: "2026-09-21" }],
+    ["period start", { periodStart: "2026-09-15" }],
+    ["period end", { periodEnd: "2026-09-19" }],
+    ["both period dates", { periodStart: "2026-09-15", periodEnd: "2026-09-21" }],
     ["rate", { baseRate: "34.00" }],
     ["hours", { regularHours: "39" }],
     ["earnings", { regularEarnings: "1300.00", grossCashPay: "1300.00" }],
@@ -347,7 +354,44 @@ describe("Payroll paycheck persistence actions", () => {
       message: expect.stringMatching(/no exact effective-date boundary.*owner review/u),
     });
     expect(mocks.paycheckCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ baseRate: expect.objectContaining({}) }) });
+    expect(mocks.ingestObservations).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      observations: [expect.objectContaining({
+        payPeriodStart: new Date("2026-09-14T00:00:00.000Z"),
+        payPeriodEnd: new Date("2026-09-20T00:00:00.000Z"),
+        observationState: "REVIEW_REQUIRED",
+        extractionBasis: "WORKDAY_REGULAR_ROW",
+      })],
+    }));
     expect(mocks.rateCreate).not.toHaveBeenCalled();
+  });
+
+  it("preserves explicit source row bounds while downgrading edited PDF period evidence", async () => {
+    const explicitExtraction = extraction();
+    explicitExtraction.observations[0] = {
+      ...explicitExtraction.observations[0],
+      rowDateStart: "2026-09-17",
+      rowDateEnd: "2026-09-18",
+      dateConfidence: "EXPLICIT_ROW_RANGE",
+    };
+    const values = signedPdfPayload({ rateExtraction: explicitExtraction });
+    values.periodStart = "2026-09-15";
+    values.periodEnd = "2026-09-21";
+
+    await expect(savePaycheckAction(
+      { status: "idle", message: "" },
+      formData(values),
+    )).resolves.toMatchObject({ status: "saved", rateEvidence: "NEEDS_REVIEW" });
+
+    expect(mocks.ingestObservations).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      observations: [expect.objectContaining({
+        observedDateStart: new Date("2026-09-17T00:00:00.000Z"),
+        observedDateEnd: new Date("2026-09-18T00:00:00.000Z"),
+        payPeriodStart: new Date("2026-09-14T00:00:00.000Z"),
+        payPeriodEnd: new Date("2026-09-20T00:00:00.000Z"),
+        dateConfidence: "EXPLICIT_ROW_RANGE",
+        observationState: "REVIEW_REQUIRED",
+      })],
+    }));
   });
 
   it("allows an ambiguous PDF rate to remain blank without creating evidence", async () => {
@@ -492,6 +536,125 @@ describe("Payroll paycheck persistence actions", () => {
     expect(mocks.rateUpdateMany).not.toHaveBeenCalled();
     expect(mocks.rateCreate).not.toHaveBeenCalled();
     expect(mocks.rateEventCreate).not.toHaveBeenCalled();
+  });
+
+  it("carries every active parser observation forward without changing its state or source bounds", async () => {
+    mocks.observationFindMany.mockResolvedValueOnce([
+      {
+        id: "supported",
+        sourceRowSequence: 1,
+        observedHourlyRate: new Prisma.Decimal("33.15"),
+        regularMinutes: 1200,
+        regularEarnings: new Prisma.Decimal("663.00"),
+        observedDateStart: new Date("2026-09-14T00:00:00.000Z"),
+        observedDateEnd: new Date("2026-09-16T00:00:00.000Z"),
+        payPeriodStart: new Date("2026-09-14T00:00:00.000Z"),
+        payPeriodEnd: new Date("2026-09-20T00:00:00.000Z"),
+        dateConfidence: "EXPLICIT_ROW_RANGE",
+        observationState: "SUPPORTED",
+        parserVersion: PAYROLL_PARSER_VERSION,
+      },
+      {
+        id: "review",
+        sourceRowSequence: 2,
+        observedHourlyRate: new Prisma.Decimal("34.00"),
+        regularMinutes: 600,
+        regularEarnings: new Prisma.Decimal("340.00"),
+        observedDateStart: null,
+        observedDateEnd: null,
+        payPeriodStart: new Date("2026-09-14T00:00:00.000Z"),
+        payPeriodEnd: new Date("2026-09-20T00:00:00.000Z"),
+        dateConfidence: "PAY_PERIOD_ONLY",
+        observationState: "REVIEW_REQUIRED",
+        parserVersion: PAYROLL_PARSER_VERSION,
+      },
+      {
+        id: "unsupported",
+        sourceRowSequence: 3,
+        observedHourlyRate: null,
+        regularMinutes: 0,
+        regularEarnings: null,
+        observedDateStart: null,
+        observedDateEnd: null,
+        payPeriodStart: new Date("2026-09-14T00:00:00.000Z"),
+        payPeriodEnd: new Date("2026-09-20T00:00:00.000Z"),
+        dateConfidence: "UNKNOWN",
+        observationState: "UNSUPPORTED",
+        parserVersion: PAYROLL_PARSER_VERSION,
+      },
+    ]);
+    mocks.rateFindFirst.mockResolvedValueOnce(linkedRate());
+
+    const result = await correctPaycheckAction(
+      { status: "idle", message: "" },
+      formData(correctionPayload({ notes: "Notes-only correction" }), "paycheck-1"),
+    );
+
+    expect(result).toMatchObject({ status: "saved", rateEvidence: "VERIFIED" });
+    expect(mocks.observationFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.not.objectContaining({ observationState: expect.anything() }),
+    }));
+    expect(mocks.ingestObservations).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      supersedePriorRevision: true,
+      preserveExistingVerifiedRate: true,
+      observations: [
+        expect.objectContaining({ sourceRowSequence: 1, observationState: "SUPPORTED", extractionBasis: "WORKDAY_REGULAR_ROW" }),
+        expect.objectContaining({ sourceRowSequence: 2, observationState: "REVIEW_REQUIRED", extractionBasis: "WORKDAY_REGULAR_ROW" }),
+        expect.objectContaining({ sourceRowSequence: 3, observationState: "UNSUPPORTED", extractionBasis: "WORKDAY_REGULAR_ROW" }),
+      ],
+    }));
+    const observations = mocks.ingestObservations.mock.calls.at(-1)?.[1].observations;
+    expect(observations.map((item: { payPeriodStart: Date; payPeriodEnd: Date }) => [
+      item.payPeriodStart.toISOString().slice(0, 10),
+      item.payPeriodEnd.toISOString().slice(0, 10),
+    ])).toEqual([
+      ["2026-09-14", "2026-09-20"],
+      ["2026-09-14", "2026-09-20"],
+      ["2026-09-14", "2026-09-20"],
+    ]);
+  });
+
+  it.each([
+    ["SUPPORTED", "check-date-only", { checkDate: "2026-09-26" }],
+    ["REVIEW_REQUIRED", "overtime-only", { overtimeHours: "2" }],
+    ["UNSUPPORTED", "notes-only", { notes: "Notes-only correction" }],
+  ] as const)("carries a %s-only observation through a %s correction", async (
+    observationState,
+    _label,
+    change,
+  ) => {
+    mocks.observationFindMany.mockResolvedValueOnce([{
+      id: `observation-${observationState.toLowerCase()}`,
+      sourceRowSequence: 1,
+      observedHourlyRate: observationState === "UNSUPPORTED" ? null : new Prisma.Decimal("33.15"),
+      regularMinutes: observationState === "UNSUPPORTED" ? 0 : 2400,
+      regularEarnings: observationState === "UNSUPPORTED" ? null : new Prisma.Decimal("1326.00"),
+      observedDateStart: null,
+      observedDateEnd: null,
+      payPeriodStart: new Date("2026-09-14T00:00:00.000Z"),
+      payPeriodEnd: new Date("2026-09-20T00:00:00.000Z"),
+      dateConfidence: observationState === "UNSUPPORTED" ? "UNKNOWN" : "PAY_PERIOD_ONLY",
+      observationState,
+      parserVersion: PAYROLL_PARSER_VERSION,
+    }]);
+    mocks.rateFindFirst.mockResolvedValueOnce(linkedRate());
+
+    await expect(correctPaycheckAction(
+      { status: "idle", message: "" },
+      formData(correctionPayload(change), "paycheck-1"),
+    )).resolves.toMatchObject({ status: "saved", rateEvidence: "VERIFIED" });
+
+    expect(mocks.ingestObservations).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      supersedePriorRevision: true,
+      preserveExistingVerifiedRate: true,
+      observations: [expect.objectContaining({
+        sourceRowSequence: 1,
+        observationState,
+        extractionBasis: "WORKDAY_REGULAR_ROW",
+        payPeriodStart: new Date("2026-09-14T00:00:00.000Z"),
+        payPeriodEnd: new Date("2026-09-20T00:00:00.000Z"),
+      })],
+    }));
   });
 
   it.each([

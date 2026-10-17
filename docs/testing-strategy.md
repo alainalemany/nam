@@ -406,6 +406,13 @@ independently proves digest normalization, reviewer-action validation, and
 expected-gross suppression from the earliest open uncertainty date.
 Shared-database suites run sequentially.
 
+Corrective Phase 5B.2 coverage also verifies that edited PDF periods preserve
+authenticated original observation bounds only after downgrade, downgraded
+evidence cannot promote an exact boundary, unchanged corrections carry
+supported, review-required, and unsupported parser rows through repeated
+revisions, uncertainty continues to suppress expected gross, and impossible
+Gregorian exact-boundary dates create neither a rate nor an audit event.
+
 Package 2B component and route-boundary coverage verifies server-controlled
 navigation visibility, authorization before review queries, candidate
 non-selection, duplicate-name and inactive-Employee presentation, mandatory

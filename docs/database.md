@@ -1717,6 +1717,16 @@ current application, but activating Phase 5B.2 code requires a separately
 authorized coordinated migration/application release; a code-only rollout or
 rollback across this boundary is unsupported.
 
+The corrected undeployed migration 38 checksum is
+`7f97235ad4ab02cf2e0ca82deff1012076e389f363ad2d38f0ea254d26869657`.
+Its observation trigger still requires `SUPPORTED` rows to match the current
+confirmed Paycheck period exactly. Only non-promotable `REVIEW_REQUIRED` or
+`UNSUPPORTED` rows may retain authenticated original PDF period bounds after
+the editable Paycheck period changes. Such rows cannot support a verified
+boundary. Unchanged corrections carry all active parser-derived states and
+source bounds into the next evidence revision with append-only supersession
+lineage.
+
 The detailed PayslipDocument design below is a superseded ADR-005 proposal and
 is not part of the current schema or authorized V1.
 

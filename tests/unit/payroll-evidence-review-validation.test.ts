@@ -85,6 +85,25 @@ describe("Payroll evidence review validation", () => {
     expect(payRateBoundaryVerificationInputSchema.safeParse({ ...valid, expectedEvidenceVersion: 0 }).success).toBe(false);
   });
 
+  it.each([
+    ["2026-02-30", false],
+    ["2025-02-29", false],
+    ["2024-02-29", true],
+    ["2026-04-31", false],
+    ["2026-12-31", true],
+    ["2026-13-01", false],
+    ["2026-00-10", false],
+  ])("validates exact boundary calendar date %s", (exactEffectiveDate, expected) => {
+    expect(payRateBoundaryVerificationInputSchema.safeParse({
+      decision: "VERIFY_EXACT_BOUNDARY",
+      candidateId: "candidate-1",
+      expectedEvidenceVersion: 2,
+      exactEffectiveDate,
+      reason: "Owner confirmed the exact effective date from authenticated evidence.",
+      requestToken: token,
+    }).success).toBe(expected);
+  });
+
   it("requires a versioned candidate rejection with a reason and idempotency token", () => {
     const valid = {
       decision: "REJECT_BOUNDARY_CANDIDATE" as const,

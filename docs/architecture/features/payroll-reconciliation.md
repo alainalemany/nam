@@ -187,6 +187,18 @@ supersedes eligible direct Paycheck-derived rates through Package 2A system
 events; it does not create a verified replacement. Migration-36 quarantine is
 not reinterpreted or automatically promoted.
 
+The signed PDF envelope retains the authenticated document-derived period
+bounds separately from editable Paycheck dates. If any signed rate-context fact
+changes, parser rows retain their original order, amounts, row bounds, period
+bounds, and provenance, but formerly supported rows become non-promotable
+review-required observations. An unchanged correction carries every active
+parser row forward at its existing supported, review-required, or unsupported
+state and preserves its source bounds while linking revisions atomically.
+
+Exact-boundary review accepts only real Gregorian `YYYY-MM-DD` dates with exact
+round-trip equivalence. The request validator and persistence service both
+reject impossible dates before any rate or decision event can be written.
+
 ## UI Composition
 
 `/payroll` owns summary cards, Monday-Sunday calendar, day drawer, current

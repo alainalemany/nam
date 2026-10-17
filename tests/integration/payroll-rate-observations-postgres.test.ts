@@ -142,14 +142,16 @@ describePostgres("progressive hourly-rate observations", () => {
   });
 
   it("installs migration 38 without reinterpreting quarantined history", async () => {
-    const migration = await prisma.$queryRaw<Array<{ count: bigint }>>`
-      SELECT COUNT(*)::bigint AS count
+    const migration = await prisma.$queryRaw<Array<{ checksum: string }>>`
+      SELECT checksum
       FROM "_prisma_migrations"
       WHERE migration_name = '20261017000100_progressive_pay_rate_observations'
         AND finished_at IS NOT NULL
         AND rolled_back_at IS NULL
     `;
-    expect(Number(migration[0].count)).toBe(1);
+    expect(migration).toEqual([{
+      checksum: "7f97235ad4ab02cf2e0ca82deff1012076e389f363ad2d38f0ea254d26869657",
+    }]);
     await prisma.employeePayRate.create({
       data: {
         id: "quarantined-rate",
@@ -169,6 +171,88 @@ describePostgres("progressive hourly-rate observations", () => {
         provenanceKind: "UNKNOWN",
         provenanceCandidatePaycheckId: "historical-paycheck-reference",
       });
+  });
+
+  it("persists downgraded original PDF bounds across correction while rejecting supported mismatched periods", async () => {
+    await paycheck("edited-period", "employee-1", "2026-09-15", "2026-09-21");
+    const originalDraft = observation("2026-09-14", "2026-09-20", {
+      observedDateStart: date("2026-09-17"),
+      observedDateEnd: date("2026-09-18"),
+      dateConfidence: "EXPLICIT_ROW_RANGE",
+      observationState: "REVIEW_REQUIRED",
+    });
+    const first = await ingest("edited-period", "employee-1", 1, [originalDraft]);
+    expect(first[0]).toMatchObject({
+      sourceRowSequence: 1,
+      payPeriodStart: date("2026-09-14"),
+      payPeriodEnd: date("2026-09-20"),
+      observedDateStart: date("2026-09-17"),
+      observedDateEnd: date("2026-09-18"),
+      observationState: "REVIEW_REQUIRED",
+      extractionBasis: "WORKDAY_REGULAR_ROW",
+    });
+    const firstCandidate = await prisma.payRateBoundaryCandidate.findFirstOrThrow({
+      where: { observations: { some: { observationId: first[0].id } } },
+    });
+    await expect(verifyExactPayRateBoundary(actor, {
+      decision: "VERIFY_EXACT_BOUNDARY",
+      candidateId: firstCandidate.id,
+      expectedEvidenceVersion: firstCandidate.evidenceVersion,
+      exactEffectiveDate: "2026-09-17",
+      reason: "Downgraded evidence must not support promotion.",
+      requestToken: token(),
+    }, { client: prisma })).rejects.toMatchObject({ code: "INVALID_TRANSITION" });
+    expect(await prisma.employeePayRate.count()).toBe(0);
+    expect(await prisma.payRateBoundaryDecisionEvent.count()).toBe(0);
+
+    await prisma.paycheck.update({
+      where: { id: "edited-period" },
+      data: { evidenceRevision: 2 },
+    });
+    const replacement = await ingest("edited-period", "employee-1", 2, [originalDraft], true);
+    expect(await prisma.payRateObservation.count({ where: { sourcePaycheckId: "edited-period" } })).toBe(2);
+    expect(await prisma.payRateObservationSupersession.findUniqueOrThrow({
+      where: { priorObservationId: first[0].id },
+    })).toMatchObject({ replacementObservationId: replacement[0].id });
+    expect(replacement[0]).toMatchObject({
+      payPeriodStart: date("2026-09-14"),
+      payPeriodEnd: date("2026-09-20"),
+      observationState: "REVIEW_REQUIRED",
+    });
+
+    await paycheck("supported-period-mismatch", "employee-1", "2026-10-02", "2026-10-08");
+    await expect(ingest(
+      "supported-period-mismatch",
+      "employee-1",
+      1,
+      [observation("2026-10-01", "2026-10-07")],
+    )).rejects.toThrow(/does not match its source Paycheck evidence revision/i);
+    expect(await prisma.payRateObservation.count({ where: { sourcePaycheckId: "supported-period-mismatch" } })).toBe(0);
+  });
+
+  it("rejects a normalized impossible exact boundary without creating a rate or audit event", async () => {
+    await paycheck("invalid-calendar-boundary", "employee-1", "2026-02-28", "2026-03-07", { rate: "36.0000" });
+    await ingest("invalid-calendar-boundary", "employee-1", 1, [observation("2026-02-28", "2026-03-07", {
+      observedHourlyRate: "36.0000",
+      regularEarnings: "1440.00",
+    })]);
+    const candidate = await prisma.payRateBoundaryCandidate.findFirstOrThrow({
+      where: { status: "OPEN", observedHourlyRate: new Prisma.Decimal("36.0000") },
+    });
+
+    await expect(verifyExactPayRateBoundary(actor, {
+      decision: "VERIFY_EXACT_BOUNDARY",
+      candidateId: candidate.id,
+      expectedEvidenceVersion: candidate.evidenceVersion,
+      exactEffectiveDate: "2026-02-30",
+      reason: "This impossible date must not normalize into March.",
+      requestToken: token(),
+    }, { client: prisma })).rejects.toMatchObject({ code: "INVALID_TRANSITION" });
+
+    expect(await prisma.employeePayRate.count()).toBe(0);
+    expect(await prisma.payRateBoundaryDecisionEvent.count()).toBe(0);
+    expect(await prisma.payRateBoundaryCandidate.findUniqueOrThrow({ where: { id: candidate.id } }))
+      .toMatchObject({ status: "OPEN", evidenceVersion: candidate.evidenceVersion });
   });
 
   it("keeps first and repeated period-only rates in one uncertain candidate while a row range narrows without inventing an exact date", async () => {
