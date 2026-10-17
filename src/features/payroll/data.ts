@@ -54,6 +54,7 @@ function paycheckView(paycheck: PaycheckRecord) {
     netPay: paycheck.netPay.toString(),
     reviewStatus: paycheck.reviewStatus,
     importedAt: paycheck.importedAt,
+    updatedAt: paycheck.updatedAt.toISOString(),
     notes: paycheck.notes ?? "",
     parserVersion: paycheck.parserVersion,
     fingerprint: paycheck.sourceFingerprint,

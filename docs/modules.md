@@ -888,10 +888,22 @@ The operator should be able to answer questions such as:
 The operator imports a readable Workday PDF or enters values manually, reviews
 every structured value, then explicitly confirms persistence. The PDF and raw
 text are discarded; reviewed Workday dates and amounts are the payroll evidence.
+Known Workday regular-pay rows are preserved as non-persistent extraction
+observations. Ambiguous rates remain visible for review and are withheld from
+authoritative rate evidence rather than guessed. The server authenticates PDF
+preview evidence with a short-lived principal- and purpose-bound envelope;
+client assertions, fingerprints, parser versions, and observations are never
+trusted by themselves. Manual entry is a separate non-verifying workflow, and
+rate-relevant corrections without unchanged server-authenticated context
+supersede rather than replace trusted rate evidence. Candidate-only historical
+quarantine remains unchanged until explicit owner evidence review.
 
 ### Required Capabilities
 
 - Deterministic readable-PDF extraction with manual fallback and review
+- Ordered regular-rate observations with machine-readable extraction findings
+- Exact rate/regular-hours/regular-earnings consistency checks
+- Fail-closed handling for multiple rates, uncertain columns, and adjustment-only rows
 - Duplicate-safe persistence and controlled correction
 - Exact integer-minute and Decimal money handling
 - Aggregate Timesheet/paycheck comparison without day-level overstatement

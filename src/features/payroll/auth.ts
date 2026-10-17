@@ -54,6 +54,10 @@ function requiredConfiguration() {
   return { employeeId, accessKey, sessionSecret };
 }
 
+export function payrollPreviewSigningSecret() {
+  return requiredConfiguration().sessionSecret;
+}
+
 export function verifyPayrollAccessKey(candidate: string) {
   const configuration = requiredConfiguration();
   return safePayrollEqual(candidate, configuration.accessKey)

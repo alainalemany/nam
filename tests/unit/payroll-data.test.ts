@@ -105,6 +105,7 @@ function paycheck(
     reviewStatus,
     notes: null,
     importedAt: new Date("2026-10-21T12:00:00.000Z"),
+    updatedAt: new Date("2026-10-21T12:00:00.000Z"),
     correctedAt: null,
   };
 }

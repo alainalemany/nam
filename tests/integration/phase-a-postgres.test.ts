@@ -10,6 +10,13 @@ import {
 } from "vitest";
 
 import { guardedPhaseADatabaseUrl } from "../helpers/phase-a-postgres-guard";
+import { PAYROLL_PARSER_VERSION } from "@/features/payroll/constants";
+import {
+  createCorrectionPreviewEnvelope,
+  createPdfPreviewEnvelope,
+} from "@/features/payroll/preview-evidence";
+
+const previewSecret = "phase-a-preview-test-secret".repeat(2);
 
 const injected = vi.hoisted(() => ({
   prisma: undefined as unknown,
@@ -23,6 +30,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: injected.prisma }));
 vi.mock("@/features/payroll/auth", () => ({
   clearPayrollSession: vi.fn(),
   establishPayrollSession: vi.fn(),
+  payrollPreviewSigningSecret: () => previewSecret,
   requirePayrollPrincipal: injected.requirePayrollPrincipal,
 }));
 
@@ -149,9 +157,10 @@ function payloadFormData(payload: ReturnType<typeof timesheetPayload>) {
 }
 
 function paycheckPayload(overrides: Record<string, string> = {}) {
-  return {
+  const values = {
+    importMode: "PDF_IMPORT" as const,
     fingerprint: "a".repeat(64),
-    parserVersion: "phase-a-integration-v1",
+    parserVersion: PAYROLL_PARSER_VERSION,
     periodStart: "2026-09-14",
     periodEnd: "2026-09-20",
     checkDate: "2026-09-23",
@@ -173,6 +182,31 @@ function paycheckPayload(overrides: Record<string, string> = {}) {
     warnings: [],
     ...overrides,
   };
+  const rateExtraction = {
+    disposition: "SUPPORTED" as const,
+    observations: [{
+      sequence: 1,
+      rowIndex: 1,
+      hourlyRate: values.baseRate,
+      regularHours: values.regularHours,
+      regularEarnings: values.regularEarnings,
+      payPeriodStart: values.periodStart,
+      payPeriodEnd: values.periodEnd,
+      extractionBasis: "EXPLICIT_WORKDAY_REGULAR_ROW" as const,
+      dateConfidence: "PAY_PERIOD_ONLY" as const,
+      issues: [],
+      eligibleForVerification: true,
+    }],
+    issues: [],
+  };
+  return {
+    ...values,
+    rateExtraction,
+    evidenceEnvelope: createPdfPreviewEnvelope("employee-1", {
+      ...values,
+      rateExtraction,
+    }, previewSecret),
+  };
 }
 
 function paycheckFormData(values: ReturnType<typeof paycheckPayload>, paycheckId?: string) {
@@ -180,6 +214,54 @@ function paycheckFormData(values: ReturnType<typeof paycheckPayload>, paycheckId
   formData.set("payload", JSON.stringify(values));
   if (paycheckId) formData.set("paycheckId", paycheckId);
   return formData;
+}
+
+async function phaseCorrectionForm(
+  paycheckId: string,
+  overrides: Record<string, string> = {},
+) {
+  const paycheck = await prisma.paycheck.findUniqueOrThrow({
+    where: { id: paycheckId },
+    include: { payrollPeriod: true },
+  });
+  const periodStart = paycheck.payrollPeriod.periodStart.toISOString().slice(0, 10);
+  const periodEnd = paycheck.payrollPeriod.periodEnd.toISOString().slice(0, 10);
+  const payload = {
+    importMode: "CORRECTION",
+    fingerprint: paycheck.sourceFingerprint,
+    parserVersion: paycheck.parserVersion,
+    periodStart,
+    periodEnd,
+    checkDate: paycheck.checkDate.toISOString().slice(0, 10),
+    regularHours: String(paycheck.regularPaidMinutes / 60),
+    overtimeHours: String(paycheck.overtimePaidMinutes / 60),
+    baseRate: paycheck.baseRate?.toString() ?? "",
+    regularEarnings: paycheck.regularEarnings.toString(),
+    overtimeBaseEarnings: paycheck.overtimeBaseEarnings.toString(),
+    overtimePremiumEarnings: paycheck.overtimePremiumEarnings.toString(),
+    otherCashEarnings: paycheck.otherCashEarnings.toString(),
+    grossCashPay: paycheck.grossCashPay.toString(),
+    noncashImputedEarnings: paycheck.noncashImputedEarnings.toString(),
+    preTaxDeductions: paycheck.preTaxDeductions.toString(),
+    employeeTaxes: paycheck.employeeTaxes.toString(),
+    postTaxDeductions: paycheck.postTaxDeductions.toString(),
+    adjustments: paycheck.adjustments.toString(),
+    netPay: paycheck.netPay.toString(),
+    notes: paycheck.notes ?? "Synthetic correction fixture",
+    warnings: [],
+  };
+  const evidenceEnvelope = createCorrectionPreviewEnvelope("employee-1", {
+    paycheckId,
+    recordUpdatedAt: paycheck.updatedAt.toISOString(),
+    fingerprint: paycheck.sourceFingerprint,
+    parserVersion: paycheck.parserVersion,
+    periodStart,
+    periodEnd,
+    regularHours: payload.regularHours,
+    baseRate: payload.baseRate,
+    regularEarnings: payload.regularEarnings,
+  }, previewSecret);
+  return paycheckFormData({ ...payload, evidenceEnvelope, ...overrides } as ReturnType<typeof paycheckPayload>, paycheckId);
 }
 
 type EntryFixture = {
@@ -814,14 +896,14 @@ describePostgres("Phase A PostgreSQL integration", () => {
       ]));
   });
 
-  it("preserves and supersedes paycheck-derived rates through moves, clears, and repeated corrections", async () => {
+  it("supersedes authenticated Paycheck-derived evidence without verifying changed correction values", async () => {
     await createEmployee("employee-1");
     const saved = await savePaycheckAction(
       { status: "idle", message: "" },
       paycheckFormData(paycheckPayload()),
     );
     expect(saved.status).toBe("saved");
-    const paycheckId = saved.status === "saved" ? saved.paycheckId : "";
+    const paycheckId = saved.status === "saved" ? (saved.paycheckId ?? "") : "";
 
     let rate = await prisma.employeePayRate.findFirstOrThrow({
       where: { sourcePaycheckId: paycheckId, verificationStatus: "VERIFIED" },
@@ -835,69 +917,64 @@ describePostgres("Phase A PostgreSQL integration", () => {
     });
     expect(rate.hourlyRate.toString()).toBe("33.15");
 
-    await correctPaycheckAction(
+    const corrected = await correctPaycheckAction(
       { status: "idle", message: "" },
-      paycheckFormData(paycheckPayload({
+      await phaseCorrectionForm(paycheckId, {
         periodStart: "2026-09-21",
         periodEnd: "2026-09-27",
         baseRate: "34.25",
         regularEarnings: "1370.00",
         grossCashPay: "1370.00",
         netPay: "1370.00",
-      }), paycheckId),
+      }),
     );
-    rate = await prisma.employeePayRate.findFirstOrThrow({
+    expect(corrected).toMatchObject({ status: "saved", rateEvidence: "NEEDS_REVIEW" });
+    expect(await prisma.employeePayRate.findFirst({
       where: { sourcePaycheckId: paycheckId, verificationStatus: "VERIFIED" },
-    });
-    expect(rate.effectiveFrom).toEqual(date("2026-09-21"));
-    expect(rate.hourlyRate.toString()).toBe("34.25");
+    })).toBeNull();
+    expect(await prisma.employeePayRate.findFirst({
+      where: { sourcePaycheckId: paycheckId, verificationStatus: "CONFLICT" },
+    })).not.toBeNull();
     expect(await prisma.employeePayRate.count({
       where: { sourcePaycheckId: paycheckId, verificationStatus: "SUPERSEDED" },
     })).toBe(1);
+    expect((await prisma.paycheck.findUniqueOrThrow({ where: { id: paycheckId } })).baseRate?.toString()).toBe("34.25");
+    expect(await prisma.payRateEvidenceReviewEvent.count({
+      where: { decisionKind: "PAYCHECK_CORRECTION_SUPERSEDED" },
+    })).toBe(1);
+  });
 
-    await correctPaycheckAction(
+  it("keeps an unchanged correction of an unverified import candidate under review", async () => {
+    await createEmployee("employee-1");
+    const authenticated = paycheckPayload();
+    const candidateImport = await savePaycheckAction(
       { status: "idle", message: "" },
-      paycheckFormData(paycheckPayload({
-        periodStart: "2026-09-21",
-        periodEnd: "2026-09-27",
-        baseRate: "35.50",
-        regularEarnings: "1420.00",
-        grossCashPay: "1420.00",
-        netPay: "1420.00",
-      }), paycheckId),
+      paycheckFormData({
+        ...authenticated,
+        baseRate: "34.25",
+        regularEarnings: "1370.00",
+        grossCashPay: "1370.00",
+        netPay: "1370.00",
+      }),
     );
-    expect((await prisma.employeePayRate.findFirstOrThrow({
-      where: { sourcePaycheckId: paycheckId, verificationStatus: "VERIFIED" },
-    })).hourlyRate.toString()).toBe("35.5");
-    expect(await prisma.employeePayRate.count({ where: { employeeId: "employee-1" } })).toBe(3);
-    expect(await prisma.employeePayRate.count({
-      where: { sourcePaycheckId: paycheckId, verificationStatus: "SUPERSEDED" },
-    })).toBe(2);
+    expect(candidateImport).toMatchObject({ status: "saved", rateEvidence: "NEEDS_REVIEW" });
+    const paycheckId = candidateImport.status === "saved" ? (candidateImport.paycheckId ?? "") : "";
 
-    await createTimesheet({
-      id: "corrected-rate-timesheet",
-      employeeId: "employee-1",
-      weekStart: "2026-09-21",
-      entries: [entry("corrected-rate-entry", "2026-09-23", 2400)],
-    });
-    const dashboard = await getPayrollDashboardData("employee-1", "2026-09");
-    expect(dashboard.days.find((item) => item.date === "2026-09-23")?.estimatedGross)
-      .toBe("$1,420.00");
-
-    await correctPaycheckAction(
+    const corrected = await correctPaycheckAction(
       { status: "idle", message: "" },
-      paycheckFormData(paycheckPayload({
-        periodStart: "2026-09-21",
-        periodEnd: "2026-09-27",
-        baseRate: "",
-      }), paycheckId),
+      await phaseCorrectionForm(paycheckId),
     );
+
+    expect(corrected).toMatchObject({ status: "saved", rateEvidence: "NEEDS_REVIEW" });
     expect(await prisma.employeePayRate.findFirst({
-      where: { sourcePaycheckId: paycheckId, verificationStatus: { in: ["VERIFIED", "CONFLICT"] } },
+      where: { sourcePaycheckId: paycheckId, verificationStatus: "VERIFIED" },
     })).toBeNull();
     expect(await prisma.employeePayRate.count({
+      where: { sourcePaycheckId: paycheckId, verificationStatus: "CONFLICT" },
+    })).toBe(1);
+    expect(await prisma.employeePayRate.count({
       where: { sourcePaycheckId: paycheckId, verificationStatus: "SUPERSEDED" },
-    })).toBe(3);
+    })).toBe(1);
   });
 
   it("preserves unrelated rates on destination collisions and rolls back failed corrections", async () => {
@@ -906,7 +983,7 @@ describePostgres("Phase A PostgreSQL integration", () => {
       { status: "idle", message: "" },
       paycheckFormData(paycheckPayload()),
     );
-    const paycheckId = saved.status === "saved" ? saved.paycheckId : "";
+    const paycheckId = saved.status === "saved" ? (saved.paycheckId ?? "") : "";
     await prisma.employeePayRate.create({
       data: {
         id: "manual-destination-rate",
@@ -919,19 +996,18 @@ describePostgres("Phase A PostgreSQL integration", () => {
 
     const corrected = await correctPaycheckAction(
       { status: "idle", message: "" },
-      paycheckFormData(paycheckPayload({
+      await phaseCorrectionForm(paycheckId, {
         periodStart: "2026-09-21",
         periodEnd: "2026-09-27",
         baseRate: "34.25",
         regularEarnings: "1370.00",
         grossCashPay: "1370.00",
         netPay: "1370.00",
-      }), paycheckId),
+      }),
     );
     expect(corrected).toMatchObject({
       status: "saved",
-      code: "RATE_EVIDENCE_CONFLICT",
-      rateEvidence: "CONFLICT",
+      rateEvidence: "NEEDS_REVIEW",
     });
     expect(await prisma.employeePayRate.findFirst({
       where: { sourcePaycheckId: paycheckId, verificationStatus: "CONFLICT" },
@@ -952,14 +1028,14 @@ describePostgres("Phase A PostgreSQL integration", () => {
     const before = await prisma.paycheck.findUniqueOrThrow({ where: { id: paycheckId } });
     const failed = await correctPaycheckAction(
       { status: "idle", message: "" },
-      paycheckFormData(paycheckPayload({
+      await phaseCorrectionForm(paycheckId, {
         periodStart: "2026-10-05",
         periodEnd: "2026-10-11",
         baseRate: "36.00",
         regularEarnings: "1440.00",
         grossCashPay: "1440.00",
         netPay: "1440.00",
-      }), paycheckId),
+      }),
     );
     expect(failed).toMatchObject({ status: "error", message: expect.stringMatching(/conflict/) });
     expect(await prisma.paycheck.findUniqueOrThrow({ where: { id: paycheckId } })).toEqual(before);
@@ -991,6 +1067,9 @@ describePostgres("Phase A PostgreSQL integration", () => {
           periodEnd: "2026-09-21",
           checkDate: "2026-09-24",
           baseRate: "34.25",
+          regularEarnings: "1370.00",
+          grossCashPay: "1370.00",
+          netPay: "1370.00",
         })),
       ),
     ]);

@@ -29,6 +29,7 @@ function dashboardData(status: "RECONCILED" | "NEEDS_REVIEW", reviewStatus: "CON
     netPay: "1679.46",
     reviewStatus,
     importedAt: new Date("2026-10-21T12:00:00.000Z"),
+    updatedAt: "2026-10-21T12:00:00.000Z",
     notes: "",
     parserVersion: "synthetic-v1",
     fingerprint: "a".repeat(64),
