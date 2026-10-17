@@ -4,11 +4,18 @@ import { AlertTriangle, CheckCircle2, FileUp, Keyboard } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 
-import { correctPaycheckAction, parsePaycheckAction, savePaycheckAction } from "./actions";
+import {
+  correctPaycheckAction,
+  parsePaycheckAction,
+  saveManualPaycheckAction,
+  savePaycheckAction,
+} from "./actions";
 import { PAYROLL_PARSER_VERSION } from "./constants";
+import { rateSubmissionMatchesExtraction } from "./rate-extraction";
 import type { ParsedPaycheck, PayrollImportState } from "./types";
 
 const emptyPaycheck: ParsedPaycheck = {
+  importMode: "MANUAL_ENTRY",
   fingerprint: "",
   parserVersion: PAYROLL_PARSER_VERSION,
   periodStart: "",
@@ -34,7 +41,8 @@ const emptyPaycheck: ParsedPaycheck = {
 
 const initialState: PayrollImportState = { status: "idle", message: "" };
 
-type EditableKey = Exclude<keyof ParsedPaycheck, "warnings" | "fingerprint" | "parserVersion">;
+type EditableKey = Exclude<keyof ParsedPaycheck,
+  "warnings" | "fingerprint" | "parserVersion" | "rateExtraction" | "importMode" | "evidenceEnvelope">;
 const fields: Array<{ name: EditableKey; label: string; type?: string; step?: string; wide?: boolean }> = [
   { name: "periodStart", label: "Payroll period start", type: "date" },
   { name: "periodEnd", label: "Payroll period end", type: "date" },
@@ -58,18 +66,51 @@ const fields: Array<{ name: EditableKey; label: string; type?: string; step?: st
 
 export function PaycheckReviewEditor({ initial, paycheckId }: { initial: ParsedPaycheck; paycheckId?: string }) {
   const [values, setValues] = useState(initial);
-  const [state, action, pending] = useActionState(paycheckId ? correctPaycheckAction : savePaycheckAction, initialState);
+  const submitAction = paycheckId
+    ? correctPaycheckAction
+    : initial.importMode === "PDF_IMPORT"
+      ? savePaycheckAction
+      : saveManualPaycheckAction;
+  const [state, action, pending] = useActionState(submitAction, initialState);
+  const rateExtraction = values.rateExtraction;
+  const extractedRateIsAmbiguous = Boolean(rateExtraction && rateExtraction.disposition !== "SUPPORTED");
+  const correctionRateContextUnchanged = values.importMode === "CORRECTION" &&
+    values.periodStart === initial.periodStart &&
+    values.periodEnd === initial.periodEnd &&
+    values.regularHours === initial.regularHours &&
+    values.baseRate === initial.baseRate &&
+    values.regularEarnings === initial.regularEarnings;
+  const rateWillBeEstablished = values.importMode === "PDF_IMPORT"
+    ? Boolean(rateExtraction && values.baseRate && rateSubmissionMatchesExtraction(
+        rateExtraction,
+        {
+          regularHours: values.regularHours,
+          hourlyRate: values.baseRate,
+          regularEarnings: values.regularEarnings,
+        },
+      ))
+    : correctionRateContextUnchanged && Boolean(values.baseRate);
   if (state.status === "saved") {
     const rateConflict = state.code === "RATE_EVIDENCE_CONFLICT";
-    return <div className="payroll-empty">{rateConflict ? <AlertTriangle aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}<strong>{rateConflict ? "Paycheck saved — rate review required" : "Paycheck saved"}</strong><span>{rateConflict ? state.message : "Reconciliation has been recalculated from the current source records."}</span><Link className="button primary" href={state.paycheckId ? `/payroll/paychecks/${state.paycheckId}` : "/payroll"}>View Paycheck</Link></div>;
+    const rateNeedsReview = state.rateEvidence === "NEEDS_REVIEW";
+    const rateNotEstablished = state.rateEvidence === "NOT_ESTABLISHED" || rateNeedsReview;
+    return <div className="payroll-empty">{rateConflict || rateNotEstablished ? <AlertTriangle aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}<strong>{rateConflict || rateNeedsReview ? "Paycheck saved — rate review required" : rateNotEstablished ? "Paycheck saved — rate not established" : "Paycheck saved — verified rate established"}</strong><span>{rateConflict || rateNotEstablished ? state.message : "Authenticated payslip evidence established the verified rate. Reconciliation has been recalculated."}</span><Link className="button primary" href={state.paycheckId ? `/payroll/paychecks/${state.paycheckId}` : "/payroll"}>View Paycheck</Link></div>;
   }
   return <form className="grid gap-5" action={action}>
     {paycheckId ? <input type="hidden" name="paycheckId" value={paycheckId} /> : null}
     <input type="hidden" name="payload" value={JSON.stringify(values)} />
     {values.warnings.length ? <div className="payroll-notice payroll-notice--warning"><strong>Review required</strong><ul>{values.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div> : null}
+    {values.importMode === "MANUAL_ENTRY" ? <div className="payroll-notice payroll-notice--warning"><strong>Manual paycheck entry</strong><p>The Paycheck can be saved, but manually entered numbers do not establish verified hourly-rate evidence. Use the owner evidence-review workflow for independently supported rates.</p></div> : null}
+    {values.importMode === "CORRECTION" ? <div className="payroll-notice"><strong>Controlled correction</strong><p>An unchanged rate context can preserve an existing linked verified rate only after the server checks that evidence. Editing its period, regular hours, rate, or regular earnings saves the Paycheck with its rate withheld for explicit evidence review.</p>{!rateWillBeEstablished ? <p role="status"><strong>Rate review required:</strong> this correction will not create replacement verified-rate evidence.</p> : null}</div> : null}
+    {rateExtraction ? <section className="payroll-notice" aria-labelledby="regular-rate-observations">
+      <strong id="regular-rate-observations">Regular-rate observations</strong>
+      <p>{rateExtraction.disposition === "SUPPORTED" ? "The supported Workday rows agree. Editing extracted hours, rate, or regular earnings breaks that evidence match until the original values are restored." : "The document contains ambiguous or unsupported rate evidence. Its paycheck values remain editable, but no hourly rate will be established from this import."}</p>
+      <ol>{rateExtraction.observations.map((observation) => <li key={`${observation.sequence}-${observation.rowIndex}`}><strong>Row {observation.sequence}</strong>: hours {observation.regularHours || "not identified"}; rate {observation.hourlyRate || "not identified"}; earnings {observation.regularEarnings || "not identified"}; date evidence {observation.rowDateStart && observation.rowDateEnd ? `${observation.rowDateStart} to ${observation.rowDateEnd}` : "pay period only"}.</li>)}</ol>
+      {!rateWillBeEstablished ? <p role="status"><strong>Hourly rate withheld:</strong> saving this review will not create authoritative rate evidence.</p> : null}
+    </section> : null}
     <div className="payroll-notice">Workday&apos;s Overtime 1X and Overtime Premium 0.5X represent the same overtime hours. Confirm hours once; earnings remain separate.{paycheckId ? " The original import fingerprint remains as provenance." : ""}</div>
     <div className="payroll-form-grid">
-      {fields.map((field) => <label className={field.wide ? "payroll-field--wide" : undefined} key={field.name}>{field.label}{field.name === "notes" ? <textarea rows={3} value={values[field.name]} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} /> : <input required={field.name !== "baseRate"} type={field.type} step={field.step} min={field.name === "adjustments" ? undefined : "0"} value={values[field.name]} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} />}</label>)}
+      {fields.map((field) => <label className={field.wide ? "payroll-field--wide" : undefined} key={field.name}>{field.label}{field.name === "notes" ? <textarea rows={3} value={values[field.name]} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} /> : <input disabled={field.name === "baseRate" && extractedRateIsAmbiguous} required={field.name !== "baseRate"} type={field.type} step={field.step} min={field.name === "adjustments" ? undefined : "0"} value={values[field.name]} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} />}</label>)}
     </div>
     {state.status === "error" ? <div className="payroll-notice payroll-notice--error" role="alert">{state.message}</div> : null}
     <div className="payroll-actions"><button className="button primary" disabled={pending} type="submit">{pending ? "Saving…" : paycheckId ? "Save Correction" : "Confirm and Save"}</button><Link className="button secondary" href={paycheckId ? `/payroll/paychecks/${paycheckId}` : "/payroll"}>Cancel</Link></div>

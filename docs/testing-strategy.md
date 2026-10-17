@@ -366,6 +366,28 @@ event INSERT rejection, audit rollback, and reconciliation after verification.
 All fixtures are synthetic, and the suite fails closed unless the exact
 dedicated test database identity is supplied.
 
+The hybrid Workday extraction foundation uses synthetic text fixtures for an
+ordinary single rate, repeated same-rate rows, different rates with and without
+row dates, missing rate or earnings, rate/earnings mismatch, zero-hour regular
+pay, adjustment-only documents, current/YTD ambiguity, split overtime, and
+unfamiliar numeric columns. Unit tests assert ordered observations and issue
+severity. Component and action tests prove that observations survive preview
+edits, supported imports remain compatible, stale or ambiguous metadata cannot
+create authoritative rate evidence, and duplicate Paychecks do not duplicate
+rate evidence. These tests do not require production PDFs, secrets, or a
+database.
+
+Security coverage signs only synthetic preview evidence and rejects missing,
+tampered, expired, wrong-principal, wrong-purpose, stale-parser, changed
+fingerprint, fabricated-observation, and edited rate-context submissions.
+Separate action coverage proves that manual entry cannot create a verified rate,
+correction envelopes are checked against current server-owned record state, and
+rate or period corrections withhold replacement evidence. Package 2A PostgreSQL
+tests remain responsible for transaction rollback, advisory-lock serialization,
+supersession, and immutable correction-event guarantees. PDF lifecycle tests
+mock the parser boundary; a genuine generated-PDF bridge fixture remains a
+documented gap rather than being represented as completed coverage.
+
 Package 2B component and route-boundary coverage verifies server-controlled
 navigation visibility, authorization before review queries, candidate
 non-selection, duplicate-name and inactive-Employee presentation, mandatory

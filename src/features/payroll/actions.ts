@@ -13,15 +13,26 @@ import { prisma } from "@/lib/prisma";
 import {
   clearPayrollSession,
   establishPayrollSession,
+  payrollPreviewSigningSecret,
   requirePayrollPrincipal,
 } from "./auth";
+import type { PayrollPrincipal } from "./auth";
 import { projectedCheckDateForNamPeriod } from "./calculations";
 import { acquirePayrollEvidenceLock, rateSlotLockKey } from "./evidence-review-locks";
 import { extractPaycheckPdf } from "./parser";
 import { manualPaycheckFingerprint } from "./fingerprint";
+import {
+  type EvidenceEnvelopeFailure,
+  verifyCorrectionPreviewEnvelope,
+  verifyPdfPreviewEnvelope,
+  createPdfPreviewEnvelope,
+} from "./preview-evidence";
+import {
+  rateSubmissionMatchesExtraction,
+} from "./rate-extraction";
 import type { PayrollImportState } from "./types";
 import { payrollUnlockClientKey, payrollUnlockRateLimiter } from "./unlock-rate-limit";
-import { paycheckInputSchema } from "./validation";
+import { paycheckInputSchema, type PaycheckInput } from "./validation";
 
 export async function unlockPayrollAction(
   _state: { ok: boolean; message: string },
@@ -58,13 +69,19 @@ export async function parsePaycheckAction(
   _state: PayrollImportState,
   formData: FormData,
 ): Promise<PayrollImportState> {
-  await requirePayrollPrincipal();
+  const principal = await requirePayrollPrincipal();
   const file = formData.get("payslip");
   if (!(file instanceof File)) {
     return { status: "error", message: "Choose a Workday PDF to continue." };
   }
   try {
     const values = await extractPaycheckPdf(file);
+    if (!values.rateExtraction) throw new Error("Rate extraction metadata is unavailable. Use manual entry instead.");
+    values.evidenceEnvelope = createPdfPreviewEnvelope(
+      principal.employeeId,
+      { ...values, rateExtraction: values.rateExtraction },
+      payrollPreviewSigningSecret(),
+    );
     return {
       status: "review",
       message: "Review every extracted value before saving. The PDF has been discarded from memory.",
@@ -113,6 +130,34 @@ function uniqueConflictKind(error: unknown) {
   return "OTHER" as const;
 }
 
+function evidenceEnvelopeError(reason: EvidenceEnvelopeFailure, correction = false): PayrollImportState {
+  if (reason === "EXPIRED") {
+    return {
+      status: "error",
+      code: "PREVIEW_EXPIRED",
+      message: correction
+        ? "This correction review expired. Reload the Paycheck before trying again. No values were changed."
+        : "This payslip preview expired. Re-upload the PDF and review the new extraction before saving.",
+    };
+  }
+  if (reason === "STALE") {
+    return {
+      status: "error",
+      code: "PREVIEW_STALE",
+      message: correction
+        ? "This correction is stale. Reload the Paycheck before trying again. No values were changed."
+        : "This payslip preview no longer matches its authenticated extraction. Re-upload the PDF before saving.",
+    };
+  }
+  return {
+    status: "error",
+    code: "PREVIEW_INVALID",
+    message: correction
+      ? "Correction evidence could not be authenticated. Reload the Paycheck before trying again. No values were changed."
+      : "Payslip preview evidence could not be authenticated. Re-upload the PDF before saving.",
+  };
+}
+
 async function reconcilePaycheckDerivedRate(
   tx: Prisma.TransactionClient,
   input: {
@@ -120,16 +165,20 @@ async function reconcilePaycheckDerivedRate(
     employeeId: string;
     effectiveFrom: Date;
     hourlyRate: Prisma.Decimal | null;
+    reviewRequired?: boolean;
+    preserveExistingVerifiedRate?: boolean;
     sourceNote: string;
     auditCorrection?: boolean;
   },
-): Promise<"VERIFIED" | "CONFLICT" | "NOT_ESTABLISHED"> {
+): Promise<"VERIFIED" | "CONFLICT" | "NEEDS_REVIEW" | "NOT_ESTABLISHED"> {
   await acquirePayrollEvidenceLock(tx, "paycheck", input.paycheckId);
   const linkedRates = await tx.employeePayRate.findMany({
     where: {
-      sourcePaycheckId: input.paycheckId,
-      provenanceKind: "PAYCHECK",
-      verificationStatus: { in: ["VERIFIED", "CONFLICT"] },
+      verificationStatus: { in: ["NEEDS_REVIEW", "VERIFIED", "CONFLICT"] },
+      OR: [
+        { sourcePaycheckId: input.paycheckId, provenanceKind: "PAYCHECK" },
+        { provenanceCandidatePaycheckId: input.paycheckId },
+      ],
     },
     include: { reviewEvents: { select: { sequence: true } } },
     orderBy: [{ evidenceVersion: "desc" }, { createdAt: "desc" }],
@@ -150,6 +199,15 @@ async function reconcilePaycheckDerivedRate(
       Prisma.sql`SELECT "id" FROM "EmployeePayRate" WHERE "id" IN (${Prisma.join(linkedRates.map((rate) => rate.id).sort())}) ORDER BY "id" FOR UPDATE`,
     );
   }
+
+  const reviewRequired = input.reviewRequired === true ||
+    (input.preserveExistingVerifiedRate === true && input.hourlyRate !== null &&
+      !linkedRates.some((rate) =>
+        rate.verificationStatus === "VERIFIED" &&
+        rate.provenanceKind === "PAYCHECK" &&
+        rate.sourcePaycheckId === input.paycheckId &&
+        rate.effectiveFrom.getTime() === input.effectiveFrom.getTime() &&
+        rate.hourlyRate.equals(input.hourlyRate!)));
 
   const initiator = input.auditCorrection
     ? await tx.employee.findUnique({
@@ -205,6 +263,48 @@ async function reconcilePaycheckDerivedRate(
     return "NOT_ESTABLISHED" as const;
   }
 
+  if (reviewRequired) {
+    const candidate = await tx.employeePayRate.create({
+      data: {
+        employeeId: input.employeeId,
+        effectiveFrom: input.effectiveFrom,
+        hourlyRate: input.hourlyRate,
+        sourceNote: input.sourceNote,
+        sourcePaycheckId: input.paycheckId,
+        verificationStatus: "CONFLICT",
+        provenanceKind: "PAYCHECK",
+        provenanceCandidatePaycheckId: input.paycheckId,
+        evidenceVersion: nextEvidenceVersion,
+      },
+    });
+    if (input.auditCorrection) {
+      await tx.payRateEvidenceReviewEvent.create({
+        data: {
+          employeePayRateId: candidate.id,
+          sequence: 1,
+          decisionKind: "PAYCHECK_CORRECTION_CREATED",
+          attributionKind: "PAYCHECK_CORRECTION_SYSTEM",
+          previousStatus: null,
+          newStatus: "CONFLICT",
+          previousProvenanceKind: null,
+          newProvenanceKind: "PAYCHECK",
+          previousSourcePaycheckId: null,
+          newSourcePaycheckId: input.paycheckId,
+          previousVersion: 0,
+          newVersion: candidate.evidenceVersion,
+          initiatedByEmployeeId: initiator!.id,
+          initiatedByDisplayNameSnapshot: initiator!.displayName,
+          initiatedByEmployeeCodeSnapshot: initiator!.employeeCode,
+          reason: "Unverified replacement rate recorded by an authenticated Paycheck correction.",
+          sourceEvidenceReference: `Paycheck correction ${input.paycheckId}`,
+          requestToken: correctionToken!,
+          requestDigest: correctionDigest!,
+        },
+      });
+    }
+    return "NEEDS_REVIEW" as const;
+  }
+
   const competingRate = await tx.employeePayRate.findFirst({
     where: {
       employeeId: input.employeeId,
@@ -254,29 +354,18 @@ async function reconcilePaycheckDerivedRate(
   return verificationStatus;
 }
 
-export async function savePaycheckAction(
-  _state: PayrollImportState,
-  formData: FormData,
+async function persistReviewedPaycheck(
+  principal: PayrollPrincipal,
+  value: PaycheckInput,
+  options: {
+    sourceFingerprint: string;
+    parserVersion: string;
+    authoritativeRate: Prisma.Decimal | null;
+    reviewCandidateRate: Prisma.Decimal | null;
+    sourceNote: string;
+  },
 ): Promise<PayrollImportState> {
-  const principal = await requirePayrollPrincipal();
-  const parsed = parseReviewPayload(formData);
-  if (!parsed?.success) {
-    return {
-      status: "error",
-      message: parsed?.error.issues[0]?.message ?? "Review data could not be read.",
-    };
-  }
-  const value = parsed.data;
-  const sourceFingerprint = value.fingerprint || manualPaycheckFingerprint(
-    principal.employeeId,
-    {
-      periodStart: value.periodStart,
-      periodEnd: value.periodEnd,
-      checkDate: value.checkDate,
-      grossCashPay: value.grossCashPay,
-      netPay: value.netPay,
-    },
-  );
+  const { authoritativeRate, reviewCandidateRate, sourceFingerprint } = options;
   try {
     const saved = await prisma.$transaction(async (tx) => {
       const duplicate = await tx.paycheck.findUnique({
@@ -298,8 +387,11 @@ export async function savePaycheckAction(
         });
         return {
           paycheckId: duplicate.id,
-          rateEvidence: rate?.verificationStatus === "CONFLICT"
-            ? "CONFLICT" as const
+          rateEvidence: rate?.verificationStatus === "CONFLICT" &&
+            rate.provenanceCandidatePaycheckId === duplicate.id
+            ? "NEEDS_REVIEW" as const
+            : rate?.verificationStatus === "CONFLICT"
+              ? "CONFLICT" as const
             : rate?.verificationStatus === "VERIFIED"
               ? "VERIFIED" as const
               : "NOT_ESTABLISHED" as const,
@@ -336,7 +428,7 @@ export async function savePaycheckAction(
           checkDate,
           regularPaidMinutes: Math.round(value.regularHours * 60),
           overtimePaidMinutes: Math.round(value.overtimeHours * 60),
-          baseRate: value.baseRate == null ? null : new Prisma.Decimal(value.baseRate),
+          baseRate: authoritativeRate ?? reviewCandidateRate,
           regularEarnings: new Prisma.Decimal(value.regularEarnings),
           overtimeBaseEarnings: new Prisma.Decimal(value.overtimeBaseEarnings),
           overtimePremiumEarnings: new Prisma.Decimal(value.overtimePremiumEarnings),
@@ -349,7 +441,7 @@ export async function savePaycheckAction(
           adjustments: new Prisma.Decimal(value.adjustments),
           netPay: new Prisma.Decimal(value.netPay),
           sourceFingerprint,
-          parserVersion: value.parserVersion,
+          parserVersion: options.parserVersion,
           reviewStatus: "CONFIRMED",
           notes: value.notes || null,
         },
@@ -358,8 +450,9 @@ export async function savePaycheckAction(
         paycheckId: paycheck.id,
         employeeId: principal.employeeId,
         effectiveFrom: periodStart,
-        hourlyRate: value.baseRate == null ? null : new Prisma.Decimal(value.baseRate),
-        sourceNote: "Imported Workday paycheck evidence",
+        hourlyRate: authoritativeRate ?? reviewCandidateRate,
+        reviewRequired: authoritativeRate === null && reviewCandidateRate !== null,
+        sourceNote: options.sourceNote,
       });
       return { paycheckId: paycheck.id, rateEvidence };
     });
@@ -369,7 +462,11 @@ export async function savePaycheckAction(
       status: "saved",
       message: saved.rateEvidence === "CONFLICT"
         ? "Paycheck saved. Rate evidence conflicts with an existing rate and will not be used for estimates."
-        : "Paycheck saved.",
+        : saved.rateEvidence === "NEEDS_REVIEW"
+          ? "Paycheck saved. The entered hourly rate is non-authoritative and requires explicit owner evidence review before estimates can use it."
+        : saved.rateEvidence === "NOT_ESTABLISHED"
+          ? "Paycheck saved. No authoritative hourly rate was established; expected-gross estimates remain unavailable until supported rate evidence is reviewed."
+          : "Paycheck saved.",
       paycheckId: saved.paycheckId,
       rateEvidence: saved.rateEvidence,
       ...(saved.rateEvidence === "CONFLICT" ? { code: "RATE_EVIDENCE_CONFLICT" as const } : {}),
@@ -397,6 +494,100 @@ export async function savePaycheckAction(
   }
 }
 
+export async function savePaycheckAction(
+  _state: PayrollImportState,
+  formData: FormData,
+): Promise<PayrollImportState> {
+  const principal = await requirePayrollPrincipal();
+  const parsed = parseReviewPayload(formData);
+  if (!parsed?.success) {
+    return {
+      status: "error",
+      message: parsed?.error.issues[0]?.message ?? "Review data could not be read.",
+    };
+  }
+  const value = parsed.data;
+  if (value.importMode !== "PDF_IMPORT" || !value.rateExtraction) {
+    return evidenceEnvelopeError("MISSING");
+  }
+  const verified = verifyPdfPreviewEnvelope(
+    value.evidenceEnvelope,
+    principal.employeeId,
+    {
+      fingerprint: value.fingerprint,
+      parserVersion: value.parserVersion,
+      periodStart: value.periodStart,
+      periodEnd: value.periodEnd,
+      checkDate: value.checkDate,
+      regularHours: String(value.regularHours),
+      baseRate: value.baseRate == null ? "" : String(value.baseRate),
+      regularEarnings: String(value.regularEarnings),
+      rateExtraction: value.rateExtraction,
+    },
+    payrollPreviewSigningSecret(),
+  );
+  if (!verified.ok) return evidenceEnvelopeError(verified.reason);
+  const authoritativeRate = value.baseRate != null && verified.rateContextMatches &&
+      rateSubmissionMatchesExtraction(value.rateExtraction, {
+        regularHours: String(value.regularHours),
+        hourlyRate: String(value.baseRate),
+        regularEarnings: String(value.regularEarnings),
+      })
+    ? new Prisma.Decimal(value.baseRate)
+    : null;
+  const reviewCandidateRate = value.baseRate != null && authoritativeRate === null
+    ? new Prisma.Decimal(value.baseRate)
+    : null;
+  return persistReviewedPaycheck(principal, value, {
+    sourceFingerprint: verified.claims.fingerprint,
+    parserVersion: verified.claims.parserVersion,
+    authoritativeRate,
+    reviewCandidateRate,
+    sourceNote: "Authenticated Workday paycheck evidence",
+  });
+}
+
+export async function saveManualPaycheckAction(
+  _state: PayrollImportState,
+  formData: FormData,
+): Promise<PayrollImportState> {
+  const principal = await requirePayrollPrincipal();
+  const parsed = parseReviewPayload(formData);
+  if (!parsed?.success) {
+    return {
+      status: "error",
+      message: parsed?.error.issues[0]?.message ?? "Manual paycheck data could not be read.",
+    };
+  }
+  const value = parsed.data;
+  if (
+    value.importMode !== "MANUAL_ENTRY" ||
+    value.fingerprint !== "" ||
+    value.evidenceEnvelope ||
+    value.rateExtraction
+  ) {
+    return {
+      status: "error",
+      code: "PREVIEW_INVALID",
+      message: "Manual entry could not be authenticated as a manual workflow. Start a new manual entry.",
+    };
+  }
+  const sourceFingerprint = manualPaycheckFingerprint(principal.employeeId, {
+    periodStart: value.periodStart,
+    periodEnd: value.periodEnd,
+    checkDate: value.checkDate,
+    grossCashPay: value.grossCashPay,
+    netPay: value.netPay,
+  });
+  return persistReviewedPaycheck(principal, value, {
+    sourceFingerprint,
+    parserVersion: value.parserVersion,
+    authoritativeRate: null,
+    reviewCandidateRate: value.baseRate == null ? null : new Prisma.Decimal(value.baseRate),
+    sourceNote: "Manual paycheck entry without authenticated rate evidence",
+  });
+}
+
 export async function correctPaycheckAction(
   _state: PayrollImportState,
   formData: FormData,
@@ -413,6 +604,9 @@ export async function correctPaycheckAction(
     };
   }
   const value = parsed.data;
+  if (value.importMode !== "CORRECTION" || !value.evidenceEnvelope || value.rateExtraction) {
+    return evidenceEnvelopeError("MISSING", true);
+  }
   try {
     const rateEvidence = await prisma.$transaction(async (tx) => {
       await acquirePayrollEvidenceLock(tx, "paycheck", paycheckId);
@@ -421,6 +615,48 @@ export async function correctPaycheckAction(
         include: { payrollPeriod: true },
       });
       if (!current) throw new Error("ACCESS_DENIED");
+      const storedEvidence = verifyCorrectionPreviewEnvelope(
+        value.evidenceEnvelope,
+        principal.employeeId,
+        {
+          paycheckId,
+          recordUpdatedAt: current.updatedAt.toISOString(),
+          fingerprint: current.sourceFingerprint,
+          parserVersion: current.parserVersion,
+          periodStart: current.payrollPeriod.periodStart.toISOString().slice(0, 10),
+          periodEnd: current.payrollPeriod.periodEnd.toISOString().slice(0, 10),
+          regularHours: String(current.regularPaidMinutes / 60),
+          baseRate: current.baseRate?.toString() ?? "",
+          regularEarnings: current.regularEarnings.toString(),
+        },
+        payrollPreviewSigningSecret(),
+      );
+      if (!storedEvidence.ok || !storedEvidence.rateContextMatches) {
+        throw new Error(`PAYROLL_PREVIEW_${storedEvidence.ok ? "STALE" : storedEvidence.reason}`);
+      }
+      const verified = verifyCorrectionPreviewEnvelope(
+        value.evidenceEnvelope,
+        principal.employeeId,
+        {
+          paycheckId,
+          recordUpdatedAt: current.updatedAt.toISOString(),
+          fingerprint: value.fingerprint,
+          parserVersion: value.parserVersion,
+          periodStart: value.periodStart,
+          periodEnd: value.periodEnd,
+          regularHours: String(value.regularHours),
+          baseRate: value.baseRate == null ? "" : String(value.baseRate),
+          regularEarnings: String(value.regularEarnings),
+        },
+        payrollPreviewSigningSecret(),
+      );
+      if (!verified.ok) throw new Error(`PAYROLL_PREVIEW_${verified.reason}`);
+      const authoritativeRate = verified.rateContextMatches && current.baseRate !== null
+        ? current.baseRate
+        : null;
+      const reviewCandidateRate = value.baseRate != null && authoritativeRate === null
+        ? new Prisma.Decimal(value.baseRate)
+        : null;
       const periodStart = parseDateOnly(value.periodStart);
       const periodEnd = parseDateOnly(value.periodEnd);
       const checkDate = parseDateOnly(value.checkDate);
@@ -438,7 +674,7 @@ export async function correctPaycheckAction(
           checkDate,
           regularPaidMinutes: Math.round(value.regularHours * 60),
           overtimePaidMinutes: Math.round(value.overtimeHours * 60),
-          baseRate: value.baseRate == null ? null : new Prisma.Decimal(value.baseRate),
+          baseRate: authoritativeRate ?? reviewCandidateRate,
           regularEarnings: new Prisma.Decimal(value.regularEarnings),
           overtimeBaseEarnings: new Prisma.Decimal(value.overtimeBaseEarnings),
           overtimePremiumEarnings: new Prisma.Decimal(value.overtimePremiumEarnings),
@@ -459,7 +695,9 @@ export async function correctPaycheckAction(
         paycheckId: current.id,
         employeeId: principal.employeeId,
         effectiveFrom: periodStart,
-        hourlyRate: value.baseRate == null ? null : new Prisma.Decimal(value.baseRate),
+        hourlyRate: authoritativeRate ?? reviewCandidateRate,
+        reviewRequired: authoritativeRate === null && reviewCandidateRate !== null,
+        preserveExistingVerifiedRate: verified.rateContextMatches && current.baseRate !== null,
         sourceNote: "Corrected Workday paycheck evidence",
         auditCorrection: true,
       });
@@ -471,12 +709,20 @@ export async function correctPaycheckAction(
       status: "saved",
       message: rateEvidence === "CONFLICT"
         ? "Paycheck correction saved. Rate evidence conflicts with an existing rate and will not be used for estimates."
-        : "Paycheck correction saved.",
+        : rateEvidence === "NEEDS_REVIEW"
+          ? "Paycheck correction saved. The corrected hourly rate is non-authoritative and requires explicit owner evidence review before estimates can use it."
+        : rateEvidence === "NOT_ESTABLISHED"
+          ? "Paycheck correction saved. No authoritative hourly rate was established; expected-gross estimates remain unavailable until supported rate evidence is reviewed."
+          : "Paycheck correction saved.",
       paycheckId,
       rateEvidence,
       ...(rateEvidence === "CONFLICT" ? { code: "RATE_EVIDENCE_CONFLICT" as const } : {}),
     };
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith("PAYROLL_PREVIEW_")) {
+      const reason = error.message.slice("PAYROLL_PREVIEW_".length) as EvidenceEnvelopeFailure;
+      return evidenceEnvelopeError(reason, true);
+    }
     if (error instanceof Error && error.message === "PAY_RATE_PROVENANCE_MISMATCH") {
       return {
         status: "error",

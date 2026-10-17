@@ -15,13 +15,62 @@ const hours = z
   .refine((value) => value >= 0 && value <= 168, "Hours must be between 0 and 168.")
   .refine((value) => Number.isInteger(value * 60), "Hours must resolve to whole minutes.");
 
+const extractionIssueSchema = z.object({
+  code: z.enum([
+    "MULTIPLE_REGULAR_ROWS",
+    "MULTIPLE_REGULAR_RATES",
+    "MULTIPLE_REGULAR_RATES_WITHOUT_EXPLICIT_DATES",
+    "MISSING_REGULAR_HOURS",
+    "MISSING_REGULAR_RATE",
+    "MISSING_REGULAR_EARNINGS",
+    "ZERO_HOUR_REGULAR_ROW",
+    "REGULAR_HOURS_NOT_WHOLE_MINUTES",
+    "RATE_EARNINGS_MISMATCH",
+    "AMBIGUOUS_REGULAR_COLUMNS",
+    "CURRENT_YTD_AMBIGUOUS",
+    "ROW_DATE_RANGE_INVALID",
+    "ROW_DATE_OUTSIDE_PAY_PERIOD",
+    "PAY_PERIOD_RANGE_INVALID",
+    "ADJUSTMENT_ONLY_DOCUMENT",
+    "NO_REGULAR_RATE_OBSERVATIONS",
+  ]),
+  severity: z.enum(["INFO", "REVIEW_REQUIRED", "UNSUPPORTED"]),
+  message: z.string().trim().min(1).max(500),
+  observationSequence: z.number().int().positive().optional(),
+});
+
+const regularRateObservationSchema = z.object({
+  sequence: z.number().int().positive(),
+  rowIndex: z.number().int().nonnegative(),
+  hourlyRate: z.string().max(40),
+  regularHours: z.string().max(40),
+  regularMinutes: z.number().int().nonnegative().optional(),
+  regularEarnings: z.string().max(40),
+  rowDateStart: dateOnly.optional(),
+  rowDateEnd: dateOnly.optional(),
+  payPeriodStart: z.union([dateOnly, z.literal("")]),
+  payPeriodEnd: z.union([dateOnly, z.literal("")]),
+  extractionBasis: z.literal("EXPLICIT_WORKDAY_REGULAR_ROW"),
+  dateConfidence: z.enum(["EXPLICIT_ROW_RANGE", "PAY_PERIOD_ONLY", "UNKNOWN"]),
+  issues: z.array(extractionIssueSchema).max(20),
+  eligibleForVerification: z.boolean(),
+});
+
+const rateExtractionSchema = z.object({
+  disposition: z.enum(["SUPPORTED", "REVIEW_REQUIRED", "UNSUPPORTED"]),
+  observations: z.array(regularRateObservationSchema).max(50),
+  issues: z.array(extractionIssueSchema).max(100),
+});
+
 export const paycheckInputSchema = z
   .object({
+    importMode: z.enum(["PDF_IMPORT", "MANUAL_ENTRY", "CORRECTION"]),
     fingerprint: z.union([
       z.string().regex(/^[a-f\d]{64}$/, "Import fingerprint is invalid."),
       z.literal(""),
     ]),
     parserVersion: z.string().trim().min(1).max(80),
+    evidenceEnvelope: z.string().trim().min(1).max(8_000).optional(),
     periodStart: dateOnly,
     periodEnd: dateOnly,
     checkDate: dateOnly,
@@ -41,6 +90,7 @@ export const paycheckInputSchema = z
     netPay: nonnegativeMoney,
     notes: z.string().trim().max(2_000),
     warnings: z.array(z.string().max(300)).max(20).default([]),
+    rateExtraction: rateExtractionSchema.optional(),
   })
   .superRefine((value, context) => {
     if (value.periodEnd < value.periodStart) {

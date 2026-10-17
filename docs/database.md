@@ -1605,6 +1605,23 @@ trusted evidence. Expected gross excludes every state except `VERIFIED` and
 never falls back to current Paycheck values.
 Reconciliation results are derived from authoritative records rather than
 persisted as a duplicate ledger.
+Regular-rate observations produced during PDF extraction are preview-only
+structured data in the current package. They do not add a table, do not become
+`EmployeePayRate` rows directly, and do not change the existing evidence or
+review-event schema. Only an unchanged, supported observation set authenticated
+by a short-lived, employee-scoped, purpose-separated server envelope may
+continue through the existing confirmed-Paycheck rate path; uncertain or edited
+extraction cannot create an authoritative rate. Manually entered or edited rate
+values are retained only as non-authoritative review candidates and remain
+excluded from trusted calculations. Manual entry never creates verified
+Paycheck-derived rate evidence. Correction
+envelopes are issued from server-owned current state: an unchanged rate context
+may preserve the existing verified correction path only when the active linked
+`VERIFIED` evidence matches the stored amount and effective date, while a changed rate or
+period supersedes linked evidence without creating a verified replacement.
+`periodStart` remains the temporary `effectiveFrom` for an eligible authenticated
+import, but it is not proof of the exact rate-change date and is deferred to
+Phase 5B.2.
 No uploaded PDF, raw extracted text, bank account, address, or government
 identifier is stored by Payroll V1.
 

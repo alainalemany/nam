@@ -2,9 +2,14 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getPayrollPrincipal, PayrollAccessConfigurationError } from "@/features/payroll/auth";
+import {
+  getPayrollPrincipal,
+  PayrollAccessConfigurationError,
+  payrollPreviewSigningSecret,
+} from "@/features/payroll/auth";
 import { getPaycheckDetail } from "@/features/payroll/data";
 import { PaycheckReviewEditor } from "@/features/payroll/PayrollImportForm";
+import { createCorrectionPreviewEnvelope } from "@/features/payroll/preview-evidence";
 
 export const dynamic = "force-dynamic";
 
@@ -17,13 +22,30 @@ export default async function CorrectPaycheckPage({ params }: { params: Promise<
   if (!principal) redirect("/payroll/access");
   const paycheck = await getPaycheckDetail(principal.employeeId, (await params).id);
   if (!paycheck) notFound();
-  const values = {
+  const correctionEvidence = {
+    paycheckId: paycheck.id,
+    recordUpdatedAt: paycheck.updatedAt,
     fingerprint: paycheck.fingerprint,
     parserVersion: paycheck.parserVersion,
     periodStart: paycheck.periodStart,
     periodEnd: paycheck.periodEnd,
-    checkDate: paycheck.checkDate,
     regularHours: String(paycheck.regularPaidMinutes / 60),
+    baseRate: paycheck.baseRate ?? "",
+    regularEarnings: paycheck.regularEarnings,
+  };
+  const values = {
+    importMode: "CORRECTION" as const,
+    fingerprint: paycheck.fingerprint,
+    parserVersion: paycheck.parserVersion,
+    evidenceEnvelope: createCorrectionPreviewEnvelope(
+      principal.employeeId,
+      correctionEvidence,
+      payrollPreviewSigningSecret(),
+    ),
+    periodStart: paycheck.periodStart,
+    periodEnd: paycheck.periodEnd,
+    checkDate: paycheck.checkDate,
+    regularHours: correctionEvidence.regularHours,
     overtimeHours: String(paycheck.overtimePaidMinutes / 60),
     baseRate: paycheck.baseRate ?? "",
     regularEarnings: paycheck.regularEarnings,

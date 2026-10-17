@@ -1,7 +1,12 @@
+import { createHash } from "node:crypto";
+
 import { Prisma, PrismaClient } from "@prisma/client";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { guardedPhaseADatabaseUrl } from "../helpers/phase-a-postgres-guard";
+import { createCorrectionPreviewEnvelope } from "@/features/payroll/preview-evidence";
+
+const previewSecret = "postgres-preview-test-secret".repeat(2);
 
 const injected = vi.hoisted(() => ({ prisma: undefined as unknown }));
 vi.mock("@/lib/prisma", () => ({ prisma: injected.prisma }));
@@ -11,6 +16,7 @@ vi.mock("@/features/payroll/auth", () => ({
   requirePayrollPrincipal: vi.fn(async () => ({ employeeId: "correction-employee", expiresAt: 4_000_000_000 })),
   clearPayrollSession: vi.fn(),
   establishPayrollSession: vi.fn(),
+  payrollPreviewSigningSecret: () => previewSecret,
 }));
 
 const databaseUrl = guardedPhaseADatabaseUrl();
@@ -128,11 +134,62 @@ async function createPaycheck(
       regularEarnings: new Prisma.Decimal("1326.00"),
       grossCashPay: new Prisma.Decimal("1326.00"),
       netPay: new Prisma.Decimal("1000.00"),
-      sourceFingerprint: `${id}-fingerprint`,
+      sourceFingerprint: createHash("sha256").update(id).digest("hex"),
       parserVersion: "review-test-v1",
       reviewStatus,
     },
   });
+}
+
+async function correctionForm(
+  paycheckId: string,
+  overrides: Record<string, string> = {},
+) {
+  const paycheck = await prisma.paycheck.findUniqueOrThrow({
+    where: { id: paycheckId },
+    include: { payrollPeriod: true },
+  });
+  const periodStart = paycheck.payrollPeriod.periodStart.toISOString().slice(0, 10);
+  const periodEnd = paycheck.payrollPeriod.periodEnd.toISOString().slice(0, 10);
+  const payload = {
+    importMode: "CORRECTION",
+    fingerprint: paycheck.sourceFingerprint,
+    parserVersion: paycheck.parserVersion,
+    periodStart,
+    periodEnd,
+    checkDate: paycheck.checkDate.toISOString().slice(0, 10),
+    regularHours: String(paycheck.regularPaidMinutes / 60),
+    overtimeHours: String(paycheck.overtimePaidMinutes / 60),
+    baseRate: paycheck.baseRate?.toString() ?? "",
+    regularEarnings: paycheck.regularEarnings.toString(),
+    overtimeBaseEarnings: paycheck.overtimeBaseEarnings.toString(),
+    overtimePremiumEarnings: paycheck.overtimePremiumEarnings.toString(),
+    otherCashEarnings: paycheck.otherCashEarnings.toString(),
+    grossCashPay: paycheck.grossCashPay.toString(),
+    noncashImputedEarnings: paycheck.noncashImputedEarnings.toString(),
+    preTaxDeductions: paycheck.preTaxDeductions.toString(),
+    employeeTaxes: paycheck.employeeTaxes.toString(),
+    postTaxDeductions: paycheck.postTaxDeductions.toString(),
+    adjustments: paycheck.adjustments.toString(),
+    netPay: paycheck.netPay.toString(),
+    notes: paycheck.notes ?? "Synthetic correction",
+    warnings: [],
+  };
+  const evidenceEnvelope = createCorrectionPreviewEnvelope("correction-employee", {
+    paycheckId,
+    recordUpdatedAt: paycheck.updatedAt.toISOString(),
+    fingerprint: paycheck.sourceFingerprint,
+    parserVersion: paycheck.parserVersion,
+    periodStart,
+    periodEnd,
+    regularHours: payload.regularHours,
+    baseRate: payload.baseRate,
+    regularEarnings: payload.regularEarnings,
+  }, previewSecret);
+  const form = new FormData();
+  form.set("paycheckId", paycheckId);
+  form.set("payload", JSON.stringify({ ...payload, evidenceEnvelope, ...overrides }));
+  return form;
 }
 
 async function createRate(id: string, employeeId: string, amount = "33.1500") {
@@ -524,18 +581,7 @@ describePostgres("Payroll Package 2A evidence review", () => {
       where: { id: rate.id },
       data: { verificationStatus: "VERIFIED", provenanceKind: "PAYCHECK", sourcePaycheckId: paycheck.id },
     });
-    const payload = {
-      fingerprint: "c".repeat(64), parserVersion: "correction-test-v1",
-      periodStart: "2026-07-01", periodEnd: "2026-07-07", checkDate: "2026-07-10",
-      regularHours: "40", overtimeHours: "0", baseRate: "34.25", regularEarnings: "1370.00",
-      overtimeBaseEarnings: "0", overtimePremiumEarnings: "0", otherCashEarnings: "0",
-      grossCashPay: "1370.00", noncashImputedEarnings: "0", preTaxDeductions: "0",
-      employeeTaxes: "200", postTaxDeductions: "0", adjustments: "0", netPay: "1170.00",
-      notes: "Synthetic correction", warnings: [],
-    };
-    const form = new FormData();
-    form.set("paycheckId", paycheck.id);
-    form.set("payload", JSON.stringify(payload));
+    const form = await correctionForm(paycheck.id);
     await expect(payrollActions.correctPaycheckAction({ status: "idle", message: "" }, form))
       .resolves.toMatchObject({ status: "saved", rateEvidence: "VERIFIED" });
 
@@ -581,17 +627,7 @@ describePostgres("Payroll Package 2A evidence review", () => {
         FOR EACH ROW EXECUTE FUNCTION "reject_test_correction_event"()
     `);
     try {
-      const form = new FormData();
-      form.set("paycheckId", paycheck.id);
-      form.set("payload", JSON.stringify({
-        fingerprint: "d".repeat(64), parserVersion: "correction-test-v1",
-        periodStart: "2026-06-01", periodEnd: "2026-06-07", checkDate: "2026-06-10",
-        regularHours: "40", overtimeHours: "0", baseRate: "35.00", regularEarnings: "1400.00",
-        overtimeBaseEarnings: "0", overtimePremiumEarnings: "0", otherCashEarnings: "0",
-        grossCashPay: "1400.00", noncashImputedEarnings: "0", preTaxDeductions: "0",
-        employeeTaxes: "200", postTaxDeductions: "0", adjustments: "0", netPay: "1200.00",
-        notes: "Synthetic rollback correction", warnings: [],
-      }));
+      const form = await correctionForm(paycheck.id);
       await expect(payrollActions.correctPaycheckAction({ status: "idle", message: "" }, form))
         .resolves.toMatchObject({ status: "error" });
     } finally {
@@ -829,17 +865,7 @@ describePostgres("Payroll Package 2A evidence review", () => {
       decision: "REOPEN_REVIEW", rateId: rate.id, expectedEvidenceVersion: 1,
       reason: "Synthetic review race.", requestToken: token(),
     }, { client: prisma });
-    const form = new FormData();
-    form.set("paycheckId", paycheck.id);
-    form.set("payload", JSON.stringify({
-      fingerprint: "e".repeat(64), parserVersion: "correction-race-v1",
-      periodStart: "2026-07-01", periodEnd: "2026-07-07", checkDate: "2026-07-10",
-      regularHours: "40", overtimeHours: "0", baseRate: "36.00", regularEarnings: "1440.00",
-      overtimeBaseEarnings: "0", overtimePremiumEarnings: "0", otherCashEarnings: "0",
-      grossCashPay: "1440.00", noncashImputedEarnings: "0", preTaxDeductions: "0",
-      employeeTaxes: "200", postTaxDeductions: "0", adjustments: "0", netPay: "1240.00",
-      notes: "Synthetic correction race", warnings: [],
-    }));
+    const form = await correctionForm(paycheck.id);
     const correction = payrollActions.correctPaycheckAction({ status: "idle", message: "" }, form);
     await waitForAdvisoryWaiters(2);
     blocker.release();
@@ -851,7 +877,11 @@ describePostgres("Payroll Package 2A evidence review", () => {
       where: { employeeId: "correction-employee" }, include: { reviewEvents: true },
     });
     expect(rates.flatMap((item) => item.reviewEvents)).toHaveLength(2);
-    expect(rates.some((item) => item.verificationStatus === "VERIFIED" && item.sourcePaycheckId === paycheck.id)).toBe(true);
+    expect(rates.filter((item) => item.verificationStatus === "VERIFIED").length).toBeLessThanOrEqual(1);
+    expect(rates.some((item) =>
+      item.sourcePaycheckId === paycheck.id &&
+      ["VERIFIED", "CONFLICT", "SUPERSEDED"].includes(item.verificationStatus)))
+      .toBe(true);
     if (reviewOutcome.status === "rejected") {
       expect(reviewOutcome.reason).toMatchObject({ code: "STALE_REVIEW" });
     }
@@ -877,17 +907,7 @@ describePostgres("Payroll Package 2A evidence review", () => {
       reason: "Synthetic competitor resolution race.",
       requestToken: token(),
     }, { client: prisma });
-    const form = new FormData();
-    form.set("paycheckId", paycheck.id);
-    form.set("payload", JSON.stringify({
-      fingerprint: "f".repeat(64), parserVersion: "resolution-race-v1",
-      periodStart: "2026-07-01", periodEnd: "2026-07-07", checkDate: "2026-07-10",
-      regularHours: "40", overtimeHours: "0", baseRate: "36.00", regularEarnings: "1440.00",
-      overtimeBaseEarnings: "0", overtimePremiumEarnings: "0", otherCashEarnings: "0",
-      grossCashPay: "1440.00", noncashImputedEarnings: "0", preTaxDeductions: "0",
-      employeeTaxes: "200", postTaxDeductions: "0", adjustments: "0", netPay: "1240.00",
-      notes: "Synthetic resolution race", warnings: [],
-    }));
+    const form = await correctionForm(paycheck.id);
     const correction = payrollActions.correctPaycheckAction({ status: "idle", message: "" }, form);
     await waitForAdvisoryWaiters(2);
     blocker.release();
@@ -903,6 +923,10 @@ describePostgres("Payroll Package 2A evidence review", () => {
         expect(rateRow.reviewEvents.length).toBeGreaterThan(0);
       }
     }
-    expect(rates.some((item) => item.verificationStatus === "VERIFIED" && item.sourcePaycheckId === paycheck.id)).toBe(true);
+    expect(rates.filter((item) => item.verificationStatus === "VERIFIED").length).toBeLessThanOrEqual(1);
+    expect(rates.some((item) =>
+      item.sourcePaycheckId === paycheck.id &&
+      ["VERIFIED", "CONFLICT", "SUPERSEDED"].includes(item.verificationStatus)))
+      .toBe(true);
   });
 });

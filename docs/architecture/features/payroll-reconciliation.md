@@ -46,8 +46,38 @@ and revalidated after relevant mutations.
 PDF import accepts a bounded readable PDF, extracts text in memory, parses known
 Workday fields deterministically, presents every value for review, and then
 persists structured values plus a fingerprint. Bytes and raw text are discarded.
-Manual entry is available when extraction is incomplete. Corrections update the
-reviewed record and record `correctedAt` without changing import provenance.
+The parser preserves every recognized regular-pay row in source order as a
+typed, extraction-only observation. It checks exact hours × rate consistency,
+current-versus-YTD column shape, row/pay-period date evidence, and multiple-rate
+documents. Observations are classified as supported, review-required, or
+unsupported; they are not authoritative `EmployeePayRate` records and a payroll
+period start alone does not prove a rate's exact effective date.
+
+Manual entry is available when extraction is incomplete. The review surface
+keeps conflicting observations visible when editable paycheck totals change.
+The server issues a purpose-separated, 15-minute signed PDF-preview envelope
+bound to the Payroll principal, byte fingerprint, current parser version,
+pay-period bounds, check date, complete observation set, disposition, issue
+codes, and extracted rate context. Only unchanged, supported evidence under a
+valid envelope may use the existing Paycheck-derived verified-rate path.
+Review-required, unsupported, or edited extraction can save reviewed Paycheck
+facts, but its base rate is withheld and no authoritative rate evidence is
+created. Missing, invalid, expired, cross-principal, wrong-purpose, or stale
+envelopes fail closed and require a fresh parse.
+
+Manual entry uses a separate Server Action and domain fingerprint. It can save
+a Paycheck but never creates verified Paycheck-derived rate evidence from
+client-entered values. A supplied manual or edited rate is retained only as
+non-authoritative review evidence and cannot affect expected-gross calculations.
+Corrections receive their own short-lived signed envelope
+from current server-owned Paycheck state. An unchanged rate context can preserve
+the existing correction behavior only when an active linked `VERIFIED` rate
+matches the stored amount and effective date; changing the period, regular hours, rate, or
+regular earnings supersedes linked evidence without creating a verified
+replacement; the submitted replacement is retained in a conflict/review state
+with an immutable system correction event. Explicit owner evidence review remains the only promotion path
+when authenticated support is unavailable. Corrections record `correctedAt`
+without changing import provenance.
 New Paycheck-derived rates retain a direct source relation and verified
 provenance. Corrections mark prior evidence `SUPERSEDED` and append replacement
 evidence when applicable. Clearing a base rate does not delete the prior row.
@@ -64,7 +94,13 @@ that do not follow this path.
 All Payroll pages, reads, imports, and corrections require a signed HTTP-only
 session scoped to `NAM_PAYROLL_OWNER_EMPLOYEE_ID`. The module fails closed if
 its access key or signing secret is not configured. The home page displays only
-a locked Payroll card outside that session.
+a locked Payroll card outside that session. Preview envelopes derive independent
+HMAC keys for PDF-import and correction purposes from the existing server-only
+session secret; the root secret is never sent to the client and no additional
+configuration secret is required. Envelopes are stateless and replayable only
+during their short lifetime. Exact PDF replay remains idempotent through the
+employee-scoped byte fingerprint. A regenerated PDF with different bytes has a
+different fingerprint even when its visible payroll content is equivalent.
 
 ## Reconciliation And Evidence
 
@@ -106,6 +142,13 @@ provenance. There is no fallback to a Paycheck's current `baseRate`. If any
 pending entry lacks verified coverage, or the latest applicable evidence is in
 conflict, the complete estimate is unavailable; NAM does not present zero or a
 partial amount as the total.
+
+Authenticated supported imports temporarily retain the preexisting behavior of
+using `PayrollPeriod.periodStart` as `EmployeePayRate.effectiveFrom`. The signed
+envelope prevents the client from changing that boundary while retaining rate
+eligibility, but the boundary is evidence context rather than proof of the
+historical instant a rate changed. Phase 5B.2 must resolve progressive history
+and uncertain effective-date semantics before any stronger claim is made.
 
 ## UI Composition
 

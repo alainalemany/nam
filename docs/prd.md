@@ -974,6 +974,25 @@ correct the structured result, and see aggregate hour matches, discrepancies,
 hours awaiting payroll confirmation, and narrowly defined Missing Timesheet
 issues in a Monday-Sunday calendar.
 
+For known Workday layouts, import preserves all regular-pay rows and identifies
+whether rate evidence is supported, requires review, or is unsupported. Multiple
+or internally inconsistent rates must not be collapsed into a guessed rate.
+Editing paycheck facts must not erase the source observations, and ambiguous
+extraction must not create authoritative pay-rate evidence. This extraction
+contract does not itself implement progressive rate history or decide an exact
+raise date from a payroll-period boundary.
+
+PDF preview evidence must be authenticated by a short-lived server signature
+bound to the authorized Employee, byte fingerprint, parser version, dates,
+observations, disposition, issue codes, and eligible financial context. Missing,
+forged, expired, cross-Employee, wrong-purpose, or stale evidence cannot create
+a verified rate. Manual entry is explicitly separate and saves no automatically
+verified rate. Corrections may preserve an unchanged authenticated rate context
+only when matching active linked `VERIFIED` evidence exists, but a rate-relevant or period change requires evidence review and cannot create
+a verified replacement automatically. Byte fingerprints make an exact reupload
+idempotent; regenerated semantically equivalent PDFs can have different bytes
+and therefore require ordinary review as distinct source documents.
+
 Workday payslip periods and check dates are authoritative. A valid
 Monday-Sunday NAM week projects the following Wednesday and remains labeled
 projected; arbitrary Workday boundaries do not receive an invented projection.

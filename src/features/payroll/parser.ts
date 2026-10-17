@@ -3,7 +3,21 @@ import { createHash } from "node:crypto";
 import type { PDFParse as PDFParseInstance } from "pdf-parse";
 
 import { MAX_PAYSLIP_BYTES, PAYROLL_PARSER_VERSION } from "./constants";
-import type { ParsedPaycheck } from "./types";
+import {
+  assessRegularRateConsistency,
+  decimalHoursToMinutes,
+  normalizedDecimalKey,
+  positiveDecimal,
+  sumDecimalValues,
+} from "./rate-extraction";
+import type {
+  ParsedPaycheck,
+  PayrollExtractionIssue,
+  PayrollExtractionIssueCode,
+  PayrollExtractionIssueSeverity,
+  RateExtractionResult,
+  RegularRateObservation,
+} from "./types";
 
 type WorkdayTable = string[][];
 
@@ -26,7 +40,7 @@ function isoDate(month: string, day: string, year: string) {
   const yyyy = year.length === 2 ? `20${year}` : year;
   const value = `${yyyy}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
   const date = new Date(`${value}T00:00:00.000Z`);
-  return date.toISOString().slice(0, 10) === value ? value : "";
+  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value ? value : "";
 }
 
 function dateAfter(text: string, labels: string[]) {
@@ -80,6 +94,15 @@ function componentLine(text: string, label: RegExp) {
   return undefined;
 }
 
+function componentRows(text: string, label: RegExp) {
+  return text.split("\n").map((value) => value.trim()).flatMap((line, rowIndex) => {
+    const match = line.match(label);
+    return match?.index == null
+      ? []
+      : [{ line, value: line.slice(match.index + match[0].length).trim(), rowIndex }];
+  });
+}
+
 function lineNumbers(line?: string) {
   const withoutDates = line?.replace(DATE_TOKEN, " ");
   return (withoutDates?.match(/-?\$?[\d,]+(?:\.\d+)?/g) ?? []).map(decimal).filter(Boolean);
@@ -131,6 +154,257 @@ function tableValueBelow(
   return "";
 }
 
+function extractionIssue(
+  code: PayrollExtractionIssueCode,
+  severity: PayrollExtractionIssueSeverity,
+  message: string,
+  observationSequence?: number,
+): PayrollExtractionIssue {
+  return { code, severity, message, ...(observationSequence ? { observationSequence } : {}) };
+}
+
+function datesInLine(line: string) {
+  const matches = [...line.matchAll(/\b(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})\b/g)];
+  return {
+    tokenCount: matches.length,
+    values: matches.map((match) => isoDate(match[1], match[2], match[3])).filter(Boolean),
+  };
+}
+
+function likelyHoursAt(value?: string) {
+  if (!value) return "";
+  const number = Number(value);
+  return number >= 0 && number <= 168 ? value : "";
+}
+
+function likelyPositiveRate(value?: string) {
+  if (!value) return "";
+  const number = Number(value);
+  return number > 0 && number < 500 ? value : "";
+}
+
+function regularObservation(
+  row: ReturnType<typeof componentRows>[number],
+  sequence: number,
+  input: { hasYtdColumn: boolean; periodStart: string; periodEnd: string },
+): RegularRateObservation {
+  const values = lineNumbers(row.value);
+  const expectedColumns = input.hasYtdColumn ? 4 : 3;
+  const issues: PayrollExtractionIssue[] = [];
+  let regularHours = "";
+  let hourlyRate = "";
+  let regularEarnings = "";
+
+  if (values.length > expectedColumns) {
+    issues.push(extractionIssue(
+      "AMBIGUOUS_REGULAR_COLUMNS",
+      "UNSUPPORTED",
+      "This regular-pay row contains extra numeric columns that do not match the supported Workday Hours, Rate, Current, and optional YTD structure.",
+      sequence,
+    ));
+  } else {
+    regularHours = likelyHoursAt(values[0]);
+    if (input.hasYtdColumn && values.length === 3) {
+      hourlyRate = likelyPositiveRate(values[1]);
+      issues.push(extractionIssue(
+        "CURRENT_YTD_AMBIGUOUS",
+        "REVIEW_REQUIRED",
+        "The regular-pay row does not contain enough values to distinguish current earnings from YTD earnings.",
+        sequence,
+      ));
+    } else if (values.length >= expectedColumns) {
+      hourlyRate = likelyPositiveRate(values[1]);
+      regularEarnings = values[2] ?? "";
+    } else if (!input.hasYtdColumn && values.length === 2) {
+      if (likelyPositiveRate(values[1])) hourlyRate = values[1];
+      else regularEarnings = values[1];
+      issues.push(extractionIssue(
+        "AMBIGUOUS_REGULAR_COLUMNS",
+        "REVIEW_REQUIRED",
+        "The regular-pay row is missing a numeric column, so the remaining value cannot prove both rate and current earnings.",
+        sequence,
+      ));
+    }
+  }
+
+  if (!regularHours) {
+    issues.push(extractionIssue(
+      "MISSING_REGULAR_HOURS",
+      "REVIEW_REQUIRED",
+      "Regular hours were not reliably identified in this row.",
+      sequence,
+    ));
+  } else if (Number(regularHours) === 0) {
+    issues.push(extractionIssue(
+      "ZERO_HOUR_REGULAR_ROW",
+      "REVIEW_REQUIRED",
+      "A zero-hour regular row cannot establish authoritative hourly-rate evidence.",
+      sequence,
+    ));
+  } else if (decimalHoursToMinutes(regularHours) === undefined) {
+    issues.push(extractionIssue(
+      "REGULAR_HOURS_NOT_WHOLE_MINUTES",
+      "REVIEW_REQUIRED",
+      "Regular hours do not resolve to whole minutes and cannot be persisted without review.",
+      sequence,
+    ));
+  }
+  if (!hourlyRate) {
+    issues.push(extractionIssue(
+      "MISSING_REGULAR_RATE",
+      "REVIEW_REQUIRED",
+      "A reliable positive hourly rate was not identified in this regular-pay row.",
+      sequence,
+    ));
+  }
+  if (!regularEarnings) {
+    issues.push(extractionIssue(
+      "MISSING_REGULAR_EARNINGS",
+      "REVIEW_REQUIRED",
+      "Current-period regular earnings were not reliably identified in this row.",
+      sequence,
+    ));
+  }
+
+  const rowDateResult = datesInLine(row.line);
+  const rowDates = rowDateResult.values;
+  const rowDateStart = rowDates[0];
+  const rowDateEnd = rowDates[1];
+  if (rowDateResult.tokenCount !== rowDates.length) {
+    issues.push(extractionIssue(
+      "ROW_DATE_RANGE_INVALID",
+      "UNSUPPORTED",
+      "The regular-pay row contains an invalid calendar date.",
+      sequence,
+    ));
+  } else if (rowDates.length === 1 || rowDates.length > 2) {
+    issues.push(extractionIssue(
+      "ROW_DATE_RANGE_INVALID",
+      "REVIEW_REQUIRED",
+      "The regular-pay row does not contain one reliable start/end date range.",
+      sequence,
+    ));
+  } else if (rowDateStart && rowDateEnd && rowDateEnd < rowDateStart) {
+    issues.push(extractionIssue(
+      "ROW_DATE_RANGE_INVALID",
+      "UNSUPPORTED",
+      "The regular-pay row date range ends before it starts.",
+      sequence,
+    ));
+  } else if (
+    rowDateStart && rowDateEnd && input.periodStart && input.periodEnd &&
+    (rowDateStart < input.periodStart || rowDateEnd > input.periodEnd)
+  ) {
+    issues.push(extractionIssue(
+      "ROW_DATE_OUTSIDE_PAY_PERIOD",
+      "REVIEW_REQUIRED",
+      "The regular-pay row date range falls outside the extracted pay period.",
+      sequence,
+    ));
+  }
+
+  if (regularHours && hourlyRate && regularEarnings) {
+    const consistency = assessRegularRateConsistency(regularHours, hourlyRate, regularEarnings);
+    if (!consistency?.consistent) {
+      issues.push(extractionIssue(
+        "RATE_EARNINGS_MISMATCH",
+        "REVIEW_REQUIRED",
+        consistency
+          ? `Regular hours multiplied by the hourly rate produce ${consistency.expectedEarnings}, which does not match this row's regular earnings within one cent.`
+          : "Regular hours, rate, and earnings could not be compared exactly.",
+        sequence,
+      ));
+    }
+  }
+
+  const hasBlockingIssue = issues.some((item) => item.severity !== "INFO");
+  return {
+    sequence,
+    rowIndex: row.rowIndex,
+    hourlyRate,
+    regularHours,
+    ...(regularHours && decimalHoursToMinutes(regularHours) !== undefined
+      ? { regularMinutes: decimalHoursToMinutes(regularHours) }
+      : {}),
+    regularEarnings,
+    ...(rowDateStart ? { rowDateStart } : {}),
+    ...(rowDateEnd ? { rowDateEnd } : {}),
+    payPeriodStart: input.periodStart,
+    payPeriodEnd: input.periodEnd,
+    extractionBasis: "EXPLICIT_WORKDAY_REGULAR_ROW",
+    dateConfidence: rowDateStart && rowDateEnd
+      ? "EXPLICIT_ROW_RANGE"
+      : input.periodStart && input.periodEnd
+        ? "PAY_PERIOD_ONLY"
+        : "UNKNOWN",
+    issues,
+    eligibleForVerification: !hasBlockingIssue &&
+      Number(regularHours) > 0 &&
+      positiveDecimal(hourlyRate) &&
+      Boolean(regularEarnings),
+  };
+}
+
+function buildRateExtraction(
+  text: string,
+  input: { periodStart: string; periodEnd: string; hasYtdColumn: boolean },
+): RateExtractionResult {
+  const rows = componentRows(text, /\bREGULAR\b/i);
+  const observations = rows.map((row, index) => regularObservation(row, index + 1, input));
+  const issues = observations.flatMap((observation) => observation.issues);
+
+  if (input.periodStart && input.periodEnd && input.periodEnd < input.periodStart) {
+    issues.push(extractionIssue(
+      "PAY_PERIOD_RANGE_INVALID",
+      "UNSUPPORTED",
+      "The extracted pay period ends before it starts.",
+    ));
+  }
+  if (observations.length === 0) {
+    issues.push(/\badjust(?:ment|ed|ing)?\b/i.test(text)
+      ? extractionIssue(
+          "ADJUSTMENT_ONLY_DOCUMENT",
+          "UNSUPPORTED",
+          "This appears to be an adjustment-only document and cannot establish a regular hourly rate.",
+        )
+      : extractionIssue(
+          "NO_REGULAR_RATE_OBSERVATIONS",
+          "UNSUPPORTED",
+          "No supported Workday regular-pay row was found.",
+        ));
+  }
+  if (observations.length > 1) {
+    issues.push(extractionIssue(
+      "MULTIPLE_REGULAR_ROWS",
+      "INFO",
+      `${observations.length} regular-pay rows were preserved in source order.`,
+    ));
+  }
+
+  const rateKeys = new Set(observations.map((item) => normalizedDecimalKey(item.hourlyRate)).filter(Boolean));
+  if (rateKeys.size > 1) {
+    issues.push(extractionIssue(
+      "MULTIPLE_REGULAR_RATES",
+      "REVIEW_REQUIRED",
+      "Different regular hourly rates were found in this payslip. No single authoritative rate will be submitted.",
+    ));
+    if (observations.some((item) => item.dateConfidence !== "EXPLICIT_ROW_RANGE")) {
+      issues.push(extractionIssue(
+        "MULTIPLE_REGULAR_RATES_WITHOUT_EXPLICIT_DATES",
+        "UNSUPPORTED",
+        "Different regular rates do not all have reliable row date ranges, so their effective boundary cannot be represented safely.",
+      ));
+    }
+  }
+
+  const disposition = issues.some((item) => item.severity === "UNSUPPORTED")
+    ? "UNSUPPORTED" as const
+    : issues.some((item) => item.severity === "REVIEW_REQUIRED")
+      ? "REVIEW_REQUIRED" as const
+      : "SUPPORTED" as const;
+  return { disposition, observations, issues };
+}
+
 export function parseWorkdayPaycheckText(
   sourceText: string,
   fingerprint = "manual-review",
@@ -139,19 +413,11 @@ export function parseWorkdayPaycheckText(
   const text = normalizeText(sourceText);
   const tables = layout.tables ?? [];
   const hasYtdColumn = /\bYTD\b/i.test(text);
-  const regularLine = componentLine(text, /\bREGULAR\b/i);
   const overtimeBaseLine = componentLine(text, /overtime\s*1(?:\.0)?x/i);
   const overtimePremiumLine = componentLine(text, /overtime\s*(?:premium\s*)?(?:-|–)?\s*0?\.5x/i);
-  const regularHours = firstLikelyHours(regularLine);
   const overtimeBaseHours = firstLikelyHours(overtimeBaseLine);
   const overtimePremiumHours = firstLikelyHours(overtimePremiumLine);
   const overtimeHours = overtimeBaseHours || overtimePremiumHours;
-  const baseRate = likelyRate(regularLine, regularHours);
-  const regularEarnings = likelyCurrentAmount(
-    regularLine,
-    hasYtdColumn,
-    regularHours && baseRate ? 1 : -1,
-  );
   const overtimeBaseEarnings = likelyCurrentAmount(
     overtimeBaseLine,
     hasYtdColumn,
@@ -192,6 +458,20 @@ export function parseWorkdayPaycheckText(
   const postTaxDeductions =
     tableValueBelow(tables, [/^post[ -]?tax deductions?$/i], amountIn) ||
     amountAfter(text, ["Post Tax Deductions", "Post-Tax Deductions"]);
+  const rateExtraction = buildRateExtraction(text, { periodStart, periodEnd, hasYtdColumn });
+  const regularHours = sumDecimalValues(
+    rateExtraction.observations.map((observation) => observation.regularHours).filter(Boolean),
+  );
+  const regularEarnings = sumDecimalValues(
+    rateExtraction.observations.map((observation) => observation.regularEarnings).filter(Boolean),
+  );
+  const reliableRates = rateExtraction.observations
+    .map((observation) => observation.hourlyRate)
+    .filter(Boolean);
+  const distinctRates = new Set(reliableRates.map(normalizedDecimalKey));
+  const baseRate = rateExtraction.disposition === "SUPPORTED" && distinctRates.size === 1
+    ? reliableRates[0]
+    : "";
 
   if (!periodStart || !periodEnd || !checkDate) {
     warnings.push("Confirm the payroll period and official check date.");
@@ -210,6 +490,13 @@ export function parseWorkdayPaycheckText(
   }
   if (!grossCashPay || !netPay) {
     warnings.push("Gross cash pay or net pay was not confidently identified.");
+  }
+  const warnedIssueCodes = new Set<PayrollExtractionIssueCode>();
+  for (const issue of rateExtraction.issues) {
+    if (issue.severity !== "INFO" && !warnedIssueCodes.has(issue.code)) {
+      warnings.push(issue.message);
+      warnedIssueCodes.add(issue.code);
+    }
   }
   const parsedCashComponents =
     Number(regularEarnings || 0) +
@@ -232,6 +519,7 @@ export function parseWorkdayPaycheckText(
   }
 
   return {
+    importMode: "PDF_IMPORT",
     fingerprint,
     parserVersion: PAYROLL_PARSER_VERSION,
     periodStart,
@@ -253,6 +541,7 @@ export function parseWorkdayPaycheckText(
     netPay,
     notes: "",
     warnings,
+    rateExtraction,
   };
 }
 
