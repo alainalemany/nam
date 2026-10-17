@@ -90,6 +90,37 @@ function extraction(): RateExtractionResult {
   };
 }
 
+function ambiguousExtraction(): RateExtractionResult {
+  const issue = {
+    code: "MULTIPLE_REGULAR_RATES_WITHOUT_EXPLICIT_DATES" as const,
+    severity: "REVIEW_REQUIRED" as const,
+    message: "Different regular rates have no reliable row dates.",
+  };
+  return {
+    disposition: "REVIEW_REQUIRED",
+    observations: [{
+      ...extraction().observations[0],
+      hourlyRate: "33.15",
+      regularHours: "24.00",
+      regularMinutes: 1440,
+      regularEarnings: "795.60",
+      issues: [issue],
+      eligibleForVerification: false,
+    }, {
+      ...extraction().observations[0],
+      sequence: 2,
+      rowIndex: 5,
+      hourlyRate: "35.25",
+      regularHours: "16.00",
+      regularMinutes: 960,
+      regularEarnings: "564.00",
+      issues: [issue],
+      eligibleForVerification: false,
+    }],
+    issues: [issue],
+  };
+}
+
 function basePayload(overrides: Record<string, unknown> = {}) {
   return {
     importMode: "PDF_IMPORT",
@@ -294,9 +325,61 @@ describe("Payroll paycheck persistence actions", () => {
     const values = signedPdfPayload();
     Object.assign(values, change);
     const result = await savePaycheckAction({ status: "idle", message: "" }, formData(values));
-    expect(result).toMatchObject({ status: "saved", rateEvidence: "NEEDS_REVIEW" });
+    expect(result).toMatchObject({
+      status: "saved",
+      rateEvidence: "NEEDS_REVIEW",
+      message: expect.stringMatching(/non-authoritative.*requires explicit owner evidence review/u),
+    });
     expect(mocks.paycheckCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ baseRate: expect.objectContaining({}) }) });
     expect(mocks.rateCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
+      verificationStatus: "CONFLICT",
+      provenanceKind: "PAYCHECK",
+      provenanceCandidatePaycheckId: "paycheck-1",
+    }) });
+  });
+
+  it("allows an ambiguous PDF rate to remain blank without creating evidence", async () => {
+    const result = await savePaycheckAction(
+      { status: "idle", message: "" },
+      formData(signedPdfPayload({
+        baseRate: "",
+        rateExtraction: ambiguousExtraction(),
+        regularEarnings: "1359.60",
+        grossCashPay: "1359.60",
+      })),
+    );
+
+    expect(result).toMatchObject({ status: "saved", rateEvidence: "NOT_ESTABLISHED" });
+    expect(mocks.paycheckCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
+      baseRate: null,
+    }) });
+    expect(mocks.rateCreate).not.toHaveBeenCalled();
+  });
+
+  it("retains an owner-entered ambiguous PDF rate only as review evidence", async () => {
+    const values = signedPdfPayload({
+      baseRate: "",
+      rateExtraction: ambiguousExtraction(),
+      regularEarnings: "1359.60",
+      grossCashPay: "1359.60",
+    });
+    values.baseRate = "34.00";
+
+    const result = await savePaycheckAction(
+      { status: "idle", message: "" },
+      formData(values),
+    );
+
+    expect(result).toMatchObject({
+      status: "saved",
+      rateEvidence: "NEEDS_REVIEW",
+      message: expect.stringMatching(/non-authoritative.*requires explicit owner evidence review/u),
+    });
+    expect(mocks.paycheckCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
+      baseRate: expect.objectContaining({}),
+    }) });
+    expect(mocks.rateCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
+      hourlyRate: expect.objectContaining({}),
       verificationStatus: "CONFLICT",
       provenanceKind: "PAYCHECK",
       provenanceCandidatePaycheckId: "paycheck-1",
@@ -435,6 +518,35 @@ describe("Payroll paycheck persistence actions", () => {
     expect(mocks.rateCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
       verificationStatus: "CONFLICT",
       provenanceCandidatePaycheckId: "paycheck-1",
+    }) });
+  });
+
+  it("preserves a quarantined historical candidate during correction", async () => {
+    mocks.rateFindMany.mockResolvedValueOnce([{
+      ...linkedRate(),
+      sourcePaycheckId: null,
+      verificationStatus: "NEEDS_REVIEW",
+      provenanceKind: "UNKNOWN",
+      provenanceCandidatePaycheckId: "paycheck-1",
+    }]);
+
+    const result = await correctPaycheckAction(
+      { status: "idle", message: "" },
+      formData(correctionPayload(), "paycheck-1"),
+    );
+
+    expect(result).toMatchObject({ status: "saved", rateEvidence: "NEEDS_REVIEW" });
+    expect(mocks.rateUpdateMany).not.toHaveBeenCalled();
+    expect(mocks.rateCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
+      verificationStatus: "CONFLICT",
+      provenanceKind: "PAYCHECK",
+      provenanceCandidatePaycheckId: "paycheck-1",
+    }) });
+    expect(mocks.rateEventCreate).toHaveBeenCalledOnce();
+    expect(mocks.rateEventCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
+      decisionKind: "PAYCHECK_CORRECTION_CREATED",
+      previousStatus: null,
+      newStatus: "CONFLICT",
     }) });
   });
 

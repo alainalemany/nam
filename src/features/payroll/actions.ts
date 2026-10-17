@@ -200,12 +200,20 @@ async function reconcilePaycheckDerivedRate(
     );
   }
 
+  // Migration 36 intentionally retained historical source relationships only
+  // as non-authoritative candidate provenance. A Paycheck correction must not
+  // rewrite those quarantined rows or attribute an owner-review transition to
+  // the correction system. Only direct, active Paycheck evidence has a valid
+  // migration-37 correction-supersession transition.
+  const correctionSupersedableRates = linkedRates.filter((rate) =>
+    rate.provenanceKind === "PAYCHECK" &&
+    rate.sourcePaycheckId === input.paycheckId &&
+    (rate.verificationStatus === "VERIFIED" || rate.verificationStatus === "CONFLICT"));
+
   const reviewRequired = input.reviewRequired === true ||
     (input.preserveExistingVerifiedRate === true && input.hourlyRate !== null &&
-      !linkedRates.some((rate) =>
+      !correctionSupersedableRates.some((rate) =>
         rate.verificationStatus === "VERIFIED" &&
-        rate.provenanceKind === "PAYCHECK" &&
-        rate.sourcePaycheckId === input.paycheckId &&
         rate.effectiveFrom.getTime() === input.effectiveFrom.getTime() &&
         rate.hourlyRate.equals(input.hourlyRate!)));
 
@@ -226,7 +234,7 @@ async function reconcilePaycheckDerivedRate(
     : null;
 
   const nextEvidenceVersion = (linkedRates[0]?.evidenceVersion ?? 0) + 1;
-  for (const rate of linkedRates.sort((left, right) => left.id.localeCompare(right.id))) {
+  for (const rate of correctionSupersedableRates.sort((left, right) => left.id.localeCompare(right.id))) {
     const updated = await tx.employeePayRate.updateMany({
       where: { id: rate.id, evidenceVersion: rate.evidenceVersion, verificationStatus: rate.verificationStatus },
       data: { verificationStatus: "SUPERSEDED", evidenceVersion: { increment: 1 } },

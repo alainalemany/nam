@@ -384,7 +384,8 @@ Separate action coverage proves that manual entry cannot create a verified rate,
 correction envelopes are checked against current server-owned record state, and
 rate or period corrections withhold replacement evidence. Package 2A PostgreSQL
 tests remain responsible for transaction rollback, advisory-lock serialization,
-supersession, and immutable correction-event guarantees. PDF lifecycle tests
+supersession, preservation of candidate-only quarantined rates, and immutable
+correction-event guarantees. PDF lifecycle tests
 mock the parser boundary; a genuine generated-PDF bridge fixture remains a
 documented gap rather than being represented as completed coverage.
 

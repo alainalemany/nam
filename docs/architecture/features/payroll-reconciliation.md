@@ -72,10 +72,14 @@ non-authoritative review evidence and cannot affect expected-gross calculations.
 Corrections receive their own short-lived signed envelope
 from current server-owned Paycheck state. An unchanged rate context can preserve
 the existing correction behavior only when an active linked `VERIFIED` rate
-matches the stored amount and effective date; changing the period, regular hours, rate, or
-regular earnings supersedes linked evidence without creating a verified
-replacement; the submitted replacement is retained in a conflict/review state
-with an immutable system correction event. Explicit owner evidence review remains the only promotion path
+matches the stored amount and effective date; changing the period, regular
+hours, rate, or regular earnings supersedes active direct Paycheck evidence
+without creating a verified replacement; the submitted replacement is retained in a conflict/review state
+with an immutable system correction event. Historical `NEEDS_REVIEW`/`UNKNOWN`
+rows linked only through candidate provenance remain unchanged; they are not
+active Paycheck evidence and the correction system cannot attribute an owner
+review transition to them. Explicit owner evidence review remains the only
+promotion path
 when authenticated support is unavailable. Corrections record `correctedAt`
 without changing import provenance.
 New Paycheck-derived rates retain a direct source relation and verified
@@ -190,8 +194,10 @@ and verified-rate decisions participate in the next reconciliation read; no
 derived totals are persisted. Candidate IDs remain non-authoritative.
 
 Paycheck correction is also an audited evidence-transition source. Superseded
-linked rates and newly created replacements receive system-attributed immutable
-events in the correction transaction. The authenticated correcting Employee is
+active `VERIFIED`/`CONFLICT` Paycheck rates and newly created replacements
+receive system-attributed immutable events in the correction transaction.
+Quarantined candidate-only rows retain their original state and provenance. The
+authenticated correcting Employee is
 retained as an initiator snapshot, distinct from an owner reviewer, so an
 automatic correction transition cannot be presented as owner verification.
 

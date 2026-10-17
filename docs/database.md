@@ -1617,8 +1617,10 @@ excluded from trusted calculations. Manual entry never creates verified
 Paycheck-derived rate evidence. Correction
 envelopes are issued from server-owned current state: an unchanged rate context
 may preserve the existing verified correction path only when the active linked
-`VERIFIED` evidence matches the stored amount and effective date, while a changed rate or
-period supersedes linked evidence without creating a verified replacement.
+`VERIFIED` evidence matches the stored amount and effective date, while a
+changed rate or period supersedes active direct Paycheck evidence without creating a verified
+replacement. Historical `NEEDS_REVIEW`/`UNKNOWN` rows linked only by
+`provenanceCandidatePaycheckId` remain unchanged and non-authoritative.
 `periodStart` remains the temporary `effectiveFrom` for an eligible authenticated
 import, but it is not proof of the exact rate-change date and is deferred to
 Phase 5B.2.
@@ -1656,8 +1658,10 @@ the target and inserting its event.
 
 Review transactions increment `identityVersion` or `evidenceVersion` with
 compare-and-swap semantics and append the corresponding event atomically. A
-Paycheck correction uses the same atomic rule for every superseded linked rate
-and any replacement rate it creates; an event failure rolls back the Paycheck,
+Paycheck correction uses the same atomic rule for every superseded active
+`VERIFIED`/`CONFLICT` Paycheck rate and any replacement rate it creates;
+candidate-only quarantined rows are locked and validated but are not mutated.
+An event failure rolls back the Paycheck,
 PayrollPeriod, all rate changes, and all events. A
 trusted-only partial unique index permits at most one `EXPLICIT_SELECTION` or
 `OWNER_VERIFIED` Timesheet for a canonical Employee/payroll week. Existing

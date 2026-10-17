@@ -604,6 +604,49 @@ describePostgres("Payroll Package 2A evidence review", () => {
     expect(new Set(correctionEvents.map((event) => event.requestToken)).size).toBe(1);
   });
 
+  it("corrects a Paycheck without rewriting its quarantined historical rate candidate", async () => {
+    await createEmployee("correction-employee", "Correction Owner");
+    const paycheck = await createPaycheck("quarantined-correction-paycheck", "correction-employee");
+    const quarantined = await createRate("quarantined-correction-rate", "correction-employee");
+    await prisma.employeePayRate.update({
+      where: { id: quarantined.id },
+      data: { provenanceCandidatePaycheckId: paycheck.id },
+    });
+
+    const form = await correctionForm(paycheck.id);
+    await expect(payrollActions.correctPaycheckAction({ status: "idle", message: "" }, form))
+      .resolves.toMatchObject({ status: "saved", rateEvidence: "NEEDS_REVIEW" });
+
+    expect(await prisma.employeePayRate.findUniqueOrThrow({ where: { id: quarantined.id } }))
+      .toMatchObject({
+        verificationStatus: "NEEDS_REVIEW",
+        provenanceKind: "UNKNOWN",
+        provenanceCandidatePaycheckId: paycheck.id,
+        sourcePaycheckId: null,
+        evidenceVersion: 1,
+      });
+    expect(await prisma.payRateEvidenceReviewEvent.count({
+      where: { employeePayRateId: quarantined.id },
+    })).toBe(0);
+
+    const replacement = await prisma.employeePayRate.findFirstOrThrow({
+      where: {
+        sourcePaycheckId: paycheck.id,
+        verificationStatus: "CONFLICT",
+        provenanceKind: "PAYCHECK",
+      },
+      include: { reviewEvents: true },
+    });
+    expect(replacement).toMatchObject({
+      provenanceCandidatePaycheckId: paycheck.id,
+      reviewEvents: [expect.objectContaining({
+        decisionKind: "PAYCHECK_CORRECTION_CREATED",
+        previousStatus: null,
+        newStatus: "CONFLICT",
+      })],
+    });
+  });
+
   it("rolls back the Paycheck correction when a required system event cannot be inserted", async () => {
     await createEmployee("correction-employee", "Correction Owner");
     const paycheck = await createPaycheck("rollback-correction-paycheck", "correction-employee");

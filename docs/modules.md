@@ -895,7 +895,8 @@ preview evidence with a short-lived principal- and purpose-bound envelope;
 client assertions, fingerprints, parser versions, and observations are never
 trusted by themselves. Manual entry is a separate non-verifying workflow, and
 rate-relevant corrections without unchanged server-authenticated context
-supersede rather than replace trusted rate evidence.
+supersede rather than replace trusted rate evidence. Candidate-only historical
+quarantine remains unchanged until explicit owner evidence review.
 
 ### Required Capabilities
 
