@@ -7,9 +7,10 @@ const mocks = vi.hoisted(() => ({
   resolveRates: vi.fn(),
   verifyBoundary: vi.fn(),
   rejectBoundary: vi.fn(),
+  revalidatePath: vi.fn(),
 }));
 
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("@/features/payroll/auth", async () => {
   const security = await import("@/features/payroll/security");
   return {
@@ -175,6 +176,14 @@ describe("Payroll evidence review Server Actions", () => {
     mocks.verifyBoundary.mockResolvedValue(replay);
 
     await expect(verifyExactPayRateBoundaryAction(idle, boundaryFormData())).resolves.toEqual(replay);
+    expect(mocks.revalidatePath.mock.calls.map(([path]) => path)).toEqual([
+      "/",
+      "/payroll",
+      "/payroll/evidence-review",
+      "/payroll/evidence-review/rates/candidate-1",
+      "/payroll/rate-history",
+      "/payroll/rate-history/candidates/candidate-1",
+    ]);
   });
 
   it("maps invalid payloads and persistence errors to structured contracts", async () => {

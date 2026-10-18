@@ -236,7 +236,7 @@ describe("rate-boundary candidate decisions", () => {
       auditEventId: "event-1",
       idempotencyReplay: true,
     });
-    render(<RateBoundaryDecisionForm candidate={candidate} />);
+    const { rerender } = render(<RateBoundaryDecisionForm candidate={candidate} />);
     fireEvent.click(screen.getByLabelText("Confirm exact effective date"));
     fireEvent.change(exactEffectiveDateInput(), { target: { value: "2026-09-07" } });
     fireEvent.change(screen.getByLabelText("Reason"), { target: { value: "Authenticated evidence confirms this exact date." } });
@@ -252,6 +252,17 @@ describe("rate-boundary candidate decisions", () => {
     expect(await screen.findByText(/This exact decision was already saved/)).toBeInTheDocument();
     expect(screen.getByText(/Authoritative candidate state: RESOLVED; version 5; event event-1/)).toBeInTheDocument();
     await waitFor(() => expect(mocks.refresh).toHaveBeenCalled());
+    rerender(<RateBoundaryDecisionForm candidate={{ ...candidate, status: "RESOLVED", evidenceVersion: 5 }} />);
+    expect(screen.getByText(/This exact decision was already saved/)).toBeInTheDocument();
+    expect(screen.getByText(/Authoritative candidate state: RESOLVED; version 5; event event-1/)).toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: "Candidate decision" })).not.toBeInTheDocument();
+  });
+
+  it("renders a server-loaded resolved candidate as complete without review controls", () => {
+    render(<RateBoundaryDecisionForm candidate={{ ...candidate, status: "RESOLVED", evidenceVersion: 5 }} />);
+    expect(screen.getByRole("heading", { name: "Decision complete" })).toBeInTheDocument();
+    expect(screen.getByText(/candidate is resolved and cannot accept another transition/)).toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: "Candidate decision" })).not.toBeInTheDocument();
   });
 
   it("surfaces stale-version feedback without mutating the decision locally", async () => {
