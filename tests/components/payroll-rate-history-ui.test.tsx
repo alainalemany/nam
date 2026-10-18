@@ -227,6 +227,33 @@ describe("rate-boundary candidate decisions", () => {
     expect(mocks.reject.mock.calls.map((call) => JSON.parse((call[1] as FormData).get("payload") as string).requestToken)).toEqual([token, token]);
   });
 
+  it("retries an unchanged promotion with the same decision identity and presents the replay result", async () => {
+    mocks.verify.mockRejectedValueOnce(new Error("network")).mockResolvedValueOnce({
+      ok: true,
+      targetId: "candidate-1",
+      newState: "RESOLVED",
+      newVersion: 5,
+      auditEventId: "event-1",
+      idempotencyReplay: true,
+    });
+    render(<RateBoundaryDecisionForm candidate={candidate} />);
+    fireEvent.click(screen.getByLabelText("Confirm exact effective date"));
+    fireEvent.change(exactEffectiveDateInput(), { target: { value: "2026-09-07" } });
+    fireEvent.change(screen.getByLabelText("Reason"), { target: { value: "Authenticated evidence confirms this exact date." } });
+    fireEvent.change(screen.getByLabelText(/Evidence reference/), { target: { value: "WAGE-NOTICE-7" } });
+    fireEvent.click(screen.getByRole("button", { name: "Review proposed decision" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm exact boundary" }));
+    await screen.findByText(/outcome is uncertain/);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Confirm exact boundary" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Confirm exact boundary" }));
+    await waitFor(() => expect(mocks.verify).toHaveBeenCalledTimes(2));
+    const payloads = mocks.verify.mock.calls.map((call) => (call[1] as FormData).get("payload"));
+    expect(payloads).toEqual([payloads[0], payloads[0]]);
+    expect(await screen.findByText(/This exact decision was already saved/)).toBeInTheDocument();
+    expect(screen.getByText(/Authoritative candidate state: RESOLVED; version 5; event event-1/)).toBeInTheDocument();
+    await waitFor(() => expect(mocks.refresh).toHaveBeenCalled());
+  });
+
   it("surfaces stale-version feedback without mutating the decision locally", async () => {
     mocks.verify.mockResolvedValue({ ok: false, code: "STALE_REVIEW", message: "stale" });
     render(<RateBoundaryDecisionForm candidate={candidate} />);

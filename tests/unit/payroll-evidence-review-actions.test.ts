@@ -161,6 +161,22 @@ describe("Payroll evidence review Server Actions", () => {
     }));
   });
 
+  it("preserves the application-level replay result returned by boundary persistence", async () => {
+    const actor = { employeeId: "reviewer-1", displayName: "Reviewer", employeeCode: "R-1" };
+    const replay = {
+      ok: true as const,
+      targetId: "candidate-1",
+      newState: "RESOLVED",
+      newVersion: 3,
+      auditEventId: "boundary-event-1",
+      idempotencyReplay: true,
+    };
+    mocks.requireReviewer.mockResolvedValue(actor);
+    mocks.verifyBoundary.mockResolvedValue(replay);
+
+    await expect(verifyExactPayRateBoundaryAction(idle, boundaryFormData())).resolves.toEqual(replay);
+  });
+
   it("maps invalid payloads and persistence errors to structured contracts", async () => {
     mocks.requireReviewer.mockResolvedValue({ employeeId: "reviewer-1", displayName: "Reviewer", employeeCode: null });
     const invalid = rateFormData();

@@ -199,26 +199,73 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     await expect(confirmation).toContainText("$32.0000/hr");
     await expect(confirmation).toContainText("$35.0000/hr");
     await expect(confirmation).toContainText("2026-08-05");
-    const actionRequestPromise = page.waitForRequest((request) =>
-      request.method() === "POST" && new URL(request.url()).pathname.endsWith("/payroll/rate-history/candidates/browser-candidate-increase"));
-    await page.getByRole("button", { name: "Confirm exact boundary" }).dblclick({ delay: 10 });
-    const actionRequest = await actionRequestPromise;
-
-    const saved = page.locator(".rate-decision-success").getByRole("status");
-    await expect(saved).toContainText("Decision saved with immutable history");
-    await expect(saved).toContainText("Authoritative candidate state: RESOLVED");
-    const replayHeaders = Object.fromEntries(
-      Object.entries(actionRequest.headers()).filter(([name]) => name !== "content-length"),
-    );
-    const replay = await context.request.fetch(actionRequest.url(), {
-      method: "POST",
-      headers: replayHeaders,
-      data: actionRequest.postDataBuffer() ?? Buffer.alloc(0),
+    const actionUrl = "**/payroll/rate-history/candidates/browser-candidate-increase";
+    await page.route(actionUrl, async (route) => {
+      if (route.request().method() !== "POST") {
+        await route.continue();
+        return;
+      }
+      const committedResponse = await route.fetch();
+      expect(committedResponse.ok()).toBe(true);
+      await route.abort("failed");
     });
-    expect(replay.ok()).toBe(true);
-    expect(await replay.text()).toContain("idempotencyReplay");
-    expect(await prisma.payRateBoundaryDecisionEvent.count({ where: { candidateId: "browser-candidate-increase" } })).toBe(1);
-    expect(await prisma.employeePayRate.count({ where: { employeeId: "browser-owner", effectiveFrom: new Date("2026-08-05T00:00:00.000Z"), verificationStatus: "VERIFIED" } })).toBe(1);
+    await page.getByRole("button", { name: "Confirm exact boundary" }).click();
+    const uncertain = candidateDecisionRegion(page).getByRole("alert");
+    await expect(uncertain).toContainText("request outcome is uncertain");
+    await expect(uncertain).toBeFocused();
+    await page.unroute(actionUrl);
+
+    const firstCandidate = await prisma.payRateBoundaryCandidate.findUniqueOrThrow({
+      where: { id: "browser-candidate-increase" },
+    });
+    const firstEvent = await prisma.payRateBoundaryDecisionEvent.findFirstOrThrow({
+      where: { candidateId: "browser-candidate-increase" },
+    });
+    const firstRate = await prisma.employeePayRate.findFirstOrThrow({
+      where: {
+        employeeId: "browser-owner",
+        effectiveFrom: new Date("2026-08-05T00:00:00.000Z"),
+        verificationStatus: "VERIFIED",
+      },
+    });
+    const firstSupports = await prisma.payRateObservationSupport.findMany({
+      where: { employeePayRateId: firstRate.id },
+      orderBy: { observationId: "asc" },
+    });
+    expect(firstCandidate).toMatchObject({
+      status: "RESOLVED",
+      evidenceVersion: 2,
+      resolvedEmployeePayRateId: firstRate.id,
+    });
+    expect(firstEvent).toMatchObject({
+      previousVersion: 1,
+      newVersion: 2,
+      employeePayRateId: firstRate.id,
+    });
+    expect(firstSupports).toHaveLength(2);
+
+    await page.getByRole("button", { name: "Confirm exact boundary" }).click();
+    const saved = page.locator(".rate-decision-success").getByRole("status");
+    await expect(saved).toContainText("This exact decision was already saved");
+    await expect(saved).toContainText("Authoritative candidate state: RESOLVED");
+
+    expect(await prisma.payRateBoundaryCandidate.findUniqueOrThrow({
+      where: { id: "browser-candidate-increase" },
+    })).toEqual(firstCandidate);
+    expect(await prisma.payRateBoundaryDecisionEvent.findMany({
+      where: { candidateId: "browser-candidate-increase" },
+    })).toEqual([firstEvent]);
+    expect(await prisma.employeePayRate.findMany({
+      where: {
+        employeeId: "browser-owner",
+        effectiveFrom: new Date("2026-08-05T00:00:00.000Z"),
+        verificationStatus: "VERIFIED",
+      },
+    })).toEqual([firstRate]);
+    expect(await prisma.payRateObservationSupport.findMany({
+      where: { employeePayRateId: firstRate.id },
+      orderBy: { observationId: "asc" },
+    })).toEqual(firstSupports);
 
     await page.getByRole("link", { name: "Return to refreshed rate history" }).click();
     await expect(page.getByText("$35.0000/hr").first()).toBeVisible();
