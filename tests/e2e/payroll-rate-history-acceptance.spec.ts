@@ -248,15 +248,6 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     const saved = page.getByRole("status").filter({ hasText: "This exact decision was already saved" });
     await expect(saved).toContainText("This exact decision was already saved. Authoritative candidate state: RESOLVED; version 2");
     await expect(saved).toBeFocused();
-    await expect(page.getByText("Candidate status", { exact: true }).locator(".."))
-      .toContainText("Verified boundary");
-    await expect(page.getByText("Evidence version", { exact: true }).locator(".."))
-      .toContainText("2");
-    await expect(page.getByText("Resolved boundary", { exact: true }).locator(".."))
-      .toContainText("$35.0000/hr from Aug 5, 2026");
-    await expect(page.getByText("Owner review decision")).toBeVisible();
-    await expect(page.getByText("Expected gross remains unavailable for affected work dates.", { exact: true })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Review proposed decision" })).toHaveCount(0);
 
     expect(await prisma.payRateBoundaryCandidate.findUniqueOrThrow({
       where: { id: "browser-candidate-increase" },
@@ -276,17 +267,41 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
       orderBy: { observationId: "asc" },
     })).toEqual(firstSupports);
 
-    await page.getByRole("link", { name: "Return to refreshed rate history" }).click();
-    await expect(page.getByText("$35.0000/hr").first()).toBeVisible();
+    await page.getByRole("link", { name: "View refreshed candidate details" }).click();
+    await expect(page).toHaveURL(/\/payroll\/rate-history\/candidates\/browser-candidate-increase$/);
+    await expect(page.getByRole("heading", { name: "Proposed increase" })).toBeVisible();
+    await expect(page.getByText("Rate-change candidate · Verified boundary", { exact: true })).toBeVisible();
+    await expect(page.getByText("Candidate status", { exact: true }).locator(".."))
+      .toContainText("Verified boundary");
+    await expect(page.getByText("Evidence version", { exact: true }).locator(".."))
+      .toContainText("2");
+    await expect(page.getByText("Resolved boundary", { exact: true }).locator(".."))
+      .toContainText("$35.0000/hr from Aug 5, 2026");
+    await expect(page.getByText("Owner review decision")).toBeVisible();
+    await expect(page.getByText("Expected gross remains unavailable for affected work dates.", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Review proposed decision" })).toHaveCount(0);
+
+    await page.getByRole("link", { name: "Back to rate history" }).click();
     await expect(page.getByText(/Latest verified rate · effective Aug 5, 2026 · current rate uncertain/)).toBeVisible();
     await expect(page.getByText("Expected gross is protected by unresolved rate evidence.")).toBeVisible();
-    const resolvedCandidate = page.getByRole("row")
-      .filter({ has: page.getByText("$35.0000/hr") })
-      .filter({ has: page.getByText("Verified boundary") });
+    const candidates = page.getByRole("region", { name: "Rate-change candidates" });
+    const resolvedCandidate = candidates.getByRole("table")
+      .locator('tr:has(a[href="/payroll/rate-history/candidates/browser-candidate-increase"])');
+    await expect(resolvedCandidate).toContainText("Proposed increase");
+    await expect(resolvedCandidate).toContainText("$35.0000/hr");
+    await expect(resolvedCandidate).toContainText("Verified boundary");
     await expect(resolvedCandidate.getByRole("link", { name: "Details →" })).toHaveAttribute(
       "href",
       "/payroll/rate-history/candidates/browser-candidate-increase",
     );
+    const history = page.getByRole("region", { name: "Verified Rate History" });
+    const verifiedRate = history.getByRole("row")
+      .filter({ hasText: "Aug 5, 2026" })
+      .filter({ hasText: "$35.0000/hr" });
+    await expect(verifiedRate).toContainText("Verified");
+    await expect(verifiedRate).toContainText("Confirmed Paycheck");
+    await expect(verifiedRate).toContainText("2");
+    await expect(verifiedRate).toContainText("2026-08-01–2026-08-14");
     await expect(page.getByText("Proposed decrease").first()).toBeVisible();
     await expect(page.getByText("Conflicting evidence").first()).toBeVisible();
     expect(await prisma.payRateBoundaryCandidate.count({ where: { status: "OPEN" } })).toBe(3);

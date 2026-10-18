@@ -84,6 +84,33 @@ describe("progressive rate-history overview", () => {
     expect(screen.queryByText("Latest verified rate — current rate uncertain.")).not.toBeInTheDocument();
   });
 
+  it("distinguishes a resolved candidate's historical classification from its verified boundary", () => {
+    render(<RateHistoryOverview data={overview({
+      latestVerifiedRate: { id: "rate-2", effectiveFrom: "2026-09-07", hourlyRate: "32.5000" },
+      rates: [{
+        id: "rate-2", effectiveFrom: "2026-09-07", hourlyRate: "32.5000", verificationStatus: "VERIFIED", provenanceKind: "PAYCHECK", sourceNote: null, sourcePaycheckId: "paycheck-2", evidenceVersion: 1, supportCount: 2, supportingPeriods: ["2026-09-01–2026-09-14"], sourcePeriod: "2026-09-01–2026-09-14",
+      }],
+      candidates: [{ ...overview().candidates[0], status: "RESOLVED", evidenceVersion: 5, resolvedRateId: "rate-2" }],
+      counts: { all: 2, open: 1, resolved: 1, rejected: 0, superseded: 0 },
+    })} />);
+
+    const candidates = screen.getByRole("region", { name: "Rate-change candidates" });
+    const candidateRow = within(candidates).getAllByRole("row")[1];
+    expect(within(candidateRow).getByText("Proposed increase")).toBeInTheDocument();
+    expect(within(candidateRow).getByText("Verified boundary")).toBeInTheDocument();
+    expect(within(candidateRow).getByText("$32.5000/hr")).toBeInTheDocument();
+    expect(within(candidateRow).getByRole("link", { name: "Details →" })).toHaveAttribute("href", "/payroll/rate-history/candidates/candidate-1");
+
+    const history = screen.getByRole("region", { name: "Verified Rate History" });
+    const rateRow = within(history).getAllByRole("row")[1];
+    expect(within(rateRow).getByText("Sep 7, 2026")).toBeInTheDocument();
+    expect(within(rateRow).getByText("$32.5000/hr")).toBeInTheDocument();
+    expect(within(rateRow).getByText("Verified", { exact: true })).toBeInTheDocument();
+    expect(within(rateRow).getByText("Confirmed Paycheck")).toBeInTheDocument();
+    expect(within(rateRow).getByText("2")).toBeInTheDocument();
+    expect(screen.getByText("Latest verified rate — current rate uncertain.")).toBeInTheDocument();
+  });
+
   it.each([
     ["CONFLICT", "conflicting rate evidence"],
     ["NEEDS_REVIEW", "newer review-required rate evidence"],
@@ -252,6 +279,10 @@ describe("rate-boundary candidate decisions", () => {
     expect(await screen.findByText(/This exact decision was already saved/)).toBeInTheDocument();
     expect(screen.getByText(/Authoritative candidate state: RESOLVED; version 5; event event-1/)).toBeInTheDocument();
     await waitFor(() => expect(mocks.refresh).toHaveBeenCalled());
+    expect(screen.getByRole("link", { name: "View refreshed candidate details" })).toHaveAttribute(
+      "href",
+      "/payroll/rate-history/candidates/candidate-1",
+    );
     rerender(<RateBoundaryDecisionForm candidate={{ ...candidate, status: "RESOLVED", evidenceVersion: 5 }} />);
     expect(screen.getByText(/This exact decision was already saved/)).toBeInTheDocument();
     expect(screen.getByText(/Authoritative candidate state: RESOLVED; version 5; event event-1/)).toBeInTheDocument();
