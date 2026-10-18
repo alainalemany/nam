@@ -1,15 +1,17 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { parseWorkdayPaycheckText } from "@/features/payroll/parser";
 import { workdayPaycheckTextFixtures as fixtures } from "../fixtures/workday-paycheck-text";
+
+const hooks = vi.hoisted(() => ({ useActionState: vi.fn() }));
 
 vi.mock("react", async (importOriginal) => {
   const actual = await importOriginal<typeof React>();
   return {
     ...actual,
-    useActionState: vi.fn((_action, initialState) => [initialState, vi.fn(), false]),
+    useActionState: hooks.useActionState,
   };
 });
 vi.mock("@/features/payroll/actions", () => ({
@@ -22,6 +24,10 @@ vi.mock("@/features/payroll/actions", () => ({
 import { PaycheckReviewEditor } from "@/features/payroll/PayrollImportForm";
 
 afterEach(cleanup);
+beforeEach(() => {
+  hooks.useActionState.mockReset();
+  hooks.useActionState.mockImplementation((_action, initialState) => [initialState, vi.fn(), false]);
+});
 
 describe("Paycheck extraction review", () => {
   it("shows every conflicting observation and keeps rate entry review-only", () => {
@@ -85,5 +91,17 @@ describe("Paycheck extraction review", () => {
     expect(screen.queryByText(/Rate review required/)).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Payroll period start"), { target: { value: "2026-09-15" } });
     expect(screen.getByText(/Rate review required/)).toBeInTheDocument();
+  });
+
+  it("links an authorized reviewer from saved uncertain evidence to rate history", () => {
+    hooks.useActionState.mockReturnValueOnce([{
+      status: "saved",
+      message: "Review required.",
+      paycheckId: "paycheck-1",
+      rateEvidence: "NEEDS_REVIEW",
+    }, vi.fn(), false]);
+    render(<PaycheckReviewEditor initial={parseWorkdayPaycheckText(fixtures.ordinarySingleRate)} canReviewRateHistory />);
+    expect(screen.getByText(/new or uncertain rate observation was retained/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View Rate History" })).toHaveAttribute("href", "/payroll/rate-history");
   });
 });

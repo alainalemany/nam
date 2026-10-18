@@ -378,8 +378,12 @@ describePostgres("progressive hourly-rate observations", () => {
     };
     const result = await verifyExactPayRateBoundary(actor, input, { client: prisma });
     expect(result).toMatchObject({ ok: true, newState: "RESOLVED", idempotencyReplay: false });
-    await expect(verifyExactPayRateBoundary(actor, input, { client: prisma }))
-      .resolves.toMatchObject({ idempotencyReplay: true, auditEventId: result.auditEventId });
+    const replay = await verifyExactPayRateBoundary(actor, input, { client: prisma });
+    expect(replay).toMatchObject({
+      idempotencyReplay: true,
+      auditEventId: result.auditEventId,
+      newVersion: result.newVersion,
+    });
     const rate = await prisma.employeePayRate.findFirstOrThrow({ where: { verificationStatus: "VERIFIED" } });
     expect(rate).toMatchObject({
       employeeId: "employee-1",
@@ -388,10 +392,81 @@ describePostgres("progressive hourly-rate observations", () => {
     });
     expect(await prisma.payRateObservationSupport.count({ where: { employeePayRateId: rate.id } })).toBe(1);
     expect(await prisma.payRateBoundaryDecisionEvent.count({ where: { candidateId: candidate.id } })).toBe(1);
+    expect(await prisma.payRateBoundaryCandidate.findUniqueOrThrow({ where: { id: candidate.id } }))
+      .toMatchObject({ status: "RESOLVED", evidenceVersion: 2, resolvedEmployeePayRateId: rate.id });
     await expect(prisma.payRateBoundaryDecisionEvent.update({
       where: { id: result.auditEventId },
       data: { reason: "tampered" },
     })).rejects.toThrow(/append-only/i);
+  });
+
+  it("fails closed for a changed payload with a reused token and for a stale version with a new token", async () => {
+    await paycheck("token-payload", "employee-1", "2026-09-14", "2026-09-20");
+    await ingest("token-payload", "employee-1", 1, [observation("2026-09-14", "2026-09-20")]);
+    const candidate = await prisma.payRateBoundaryCandidate.findFirstOrThrow();
+    const requestToken = token();
+    const input = {
+      decision: "VERIFY_EXACT_BOUNDARY" as const,
+      candidateId: candidate.id,
+      expectedEvidenceVersion: candidate.evidenceVersion,
+      exactEffectiveDate: "2026-09-17",
+      reason: "Synthetic owner decision confirms the exact supported boundary.",
+      requestToken,
+    };
+    const result = await verifyExactPayRateBoundary(actor, input, { client: prisma });
+
+    await expect(verifyExactPayRateBoundary(actor, {
+      ...input,
+      reason: "A changed payload must not reuse the original decision identity.",
+    }, { client: prisma })).rejects.toMatchObject({ code: "INVALID_IDEMPOTENCY_TOKEN" });
+    await expect(verifyExactPayRateBoundary(actor, {
+      ...input,
+      requestToken: token(),
+    }, { client: prisma })).rejects.toMatchObject({ code: "STALE_REVIEW" });
+
+    const storedCandidate = await prisma.payRateBoundaryCandidate.findUniqueOrThrow({
+      where: { id: candidate.id },
+    });
+    expect(storedCandidate).toMatchObject({
+      status: "RESOLVED",
+      evidenceVersion: result.newVersion,
+      resolvedEmployeePayRateId: expect.any(String),
+    });
+    expect(await prisma.payRateBoundaryDecisionEvent.count({ where: { candidateId: candidate.id } })).toBe(1);
+    expect(await prisma.employeePayRate.count({
+      where: { employeeId: "employee-1", effectiveFrom: date("2026-09-17"), verificationStatus: "VERIFIED" },
+    })).toBe(1);
+  });
+
+  it("serializes concurrent identical promotion requests into one authoritative decision", async () => {
+    await paycheck("concurrent-token", "employee-1", "2026-09-14", "2026-09-20");
+    await ingest("concurrent-token", "employee-1", 1, [observation("2026-09-14", "2026-09-20")]);
+    const candidate = await prisma.payRateBoundaryCandidate.findFirstOrThrow();
+    const input = {
+      decision: "VERIFY_EXACT_BOUNDARY" as const,
+      candidateId: candidate.id,
+      expectedEvidenceVersion: candidate.evidenceVersion,
+      exactEffectiveDate: "2026-09-17",
+      reason: "Concurrent retries represent the same owner decision.",
+      requestToken: token(),
+    };
+
+    const results = await Promise.all([
+      verifyExactPayRateBoundary(actor, input, { client: prisma }),
+      verifyExactPayRateBoundary(actor, input, { client: prisma }),
+    ]);
+    expect(results.map((result) => result.idempotencyReplay).sort()).toEqual([false, true]);
+    expect(new Set(results.map((result) => result.auditEventId))).toEqual(new Set([results[0].auditEventId]));
+    expect(new Set(results.map((result) => result.newVersion))).toEqual(new Set([2]));
+
+    const rate = await prisma.employeePayRate.findFirstOrThrow({
+      where: { employeeId: "employee-1", effectiveFrom: date("2026-09-17"), verificationStatus: "VERIFIED" },
+    });
+    expect(await prisma.payRateBoundaryCandidate.findUniqueOrThrow({ where: { id: candidate.id } }))
+      .toMatchObject({ status: "RESOLVED", evidenceVersion: 2, resolvedEmployeePayRateId: rate.id });
+    expect(await prisma.payRateBoundaryDecisionEvent.count({ where: { candidateId: candidate.id } })).toBe(1);
+    expect(await prisma.employeePayRate.count({ where: { id: rate.id } })).toBe(1);
+    expect(await prisma.payRateObservationSupport.count({ where: { employeePayRateId: rate.id } })).toBe(1);
   });
 
   it("rejects a candidate with immutable owner history and stops treating it as open uncertainty", async () => {

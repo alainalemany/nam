@@ -420,6 +420,29 @@ viewports:
 pnpm test:e2e:ddr
 ```
 
+Run the guarded Phase 5B.3 progressive rate-history acceptance suite only with
+the complete Package 2B browser-test environment:
+
+```bash
+pnpm test:e2e:payroll-rate-history
+```
+
+`playwright.package-2b.config.ts` fails while loading unless the dedicated
+database URL is exactly `127.0.0.1:55441/nam_package2b_browser` with the
+`nam_package2b_browser` role, both loopback application origins are exact, and
+the synthetic fixture, owner, reviewer, access-key, and session-secret markers
+match the values exported by `tests/helpers/package-2b-browser-guard.ts`.
+There is no `DATABASE_URL` fallback. The fixture reset truncates Employee-owned
+records only after that guard succeeds, so this suite must never be pointed at
+an ordinary development or production database.
+
+The dedicated Playwright configuration expects an already-built application
+and an already-migrated disposable PostgreSQL 18 database. It starts separate
+authorized and reviewer-mismatched production servers on `127.0.0.1:3102` and
+`127.0.0.1:3103`, never reuses a pre-existing server, and runs Chromium with one
+worker. CI provisions the exact database identity, applies the migration chain,
+builds the application, and installs Chromium before invoking the script.
+
 The Playwright configuration starts an isolated development server on port
 3100 with `NAM_DDR_STRESS_TEST=1`. That flag exposes a database-free 50-row
 stress route backed only by in-process test state. Without the flag, the route

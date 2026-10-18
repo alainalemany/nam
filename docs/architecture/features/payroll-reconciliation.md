@@ -254,6 +254,41 @@ and loaders authorize independently before target queries; client forms reuse
 the Package 2A Server Actions, expected versions, and request-token protocol.
 This implementation does not authorize production release or deployment.
 
+Phase 5B.3 adds the reviewer-only `/payroll/rate-history` workspace and
+`/payroll/rate-history/candidates/[id]` detail route. The overview presents the
+verified `EmployeePayRate` timeline separately from open, resolved, rejected,
+and superseded candidates. It never promotes the newest observation into the
+current-rate summary. Supporting observation counts, retained Paycheck period
+bounds, provenance, explicit classification text, and unresolved expected-gross
+impact are projected through bounded server queries after reviewer
+authorization.
+
+Candidate detail uses retained structured evidence only: row order and values,
+document-proven row dates, authenticated pay-period bounds, extraction basis,
+date confidence, observation state, revision lineage, overlapping candidates,
+affected worked dates, and recorded decision snapshots. It does not expose PDF
+bytes, raw document text, deductions, account identifiers, or signed preview
+tokens. Document-derived dates remain visually and semantically distinct from
+the exact date deliberately selected by the reviewer.
+
+Browser acceptance for this workspace extends the Package 2B fail-closed test
+profile. It requires an exact disposable PostgreSQL identity, explicit
+synthetic markers and principals, fixed loopback-only origins, and separate
+authorized/reviewer-mismatched application processes. The fixture contains only
+synthetic structured evidence and never reads PDFs, production credentials, or
+an ordinary `DATABASE_URL`. Guard validation occurs before Prisma construction
+or browser launch.
+
+Promotion and rejection reuse the Phase 5B.2 actions without duplicating their
+authority rules. Neither workflow preselects an exact date. Both require a
+reason and explicit confirmation, submit the candidate evidence version and a
+stable request token, retain that token for an ambiguous same-request retry,
+and show the authoritative server result. Rejection preserves observations;
+promotion remains limited to eligible active Workday support and cannot resolve
+overlapping contradictory candidates implicitly. Successful decisions
+revalidate Payroll, the candidate queue, detail history, and expected-gross
+projections while leaving other uncertainty intact.
+
 ## Deferred
 
 Permanent PDF storage, OCR, provider sync, exports, exact day-level allocation
