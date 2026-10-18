@@ -6,6 +6,11 @@ export const PACKAGE_2B_BROWSER_AUTHORIZED_ORIGIN = "http://127.0.0.1:3102";
 export const PACKAGE_2B_BROWSER_MISMATCHED_ORIGIN = "http://127.0.0.1:3103";
 export const PACKAGE_2B_BROWSER_TEST_MARKER = "isolated-package-2b-browser-v1";
 export const PACKAGE_2B_BROWSER_FIXTURE_MARKER = "synthetic-payroll-evidence-v1";
+export const PACKAGE_2B_BROWSER_OWNER_EMPLOYEE_ID = "browser-owner";
+export const PACKAGE_2B_BROWSER_AUTHORIZED_REVIEWER_EMPLOYEE_ID = "browser-owner";
+export const PACKAGE_2B_BROWSER_MISMATCHED_REVIEWER_EMPLOYEE_ID = "browser-not-reviewer";
+export const PACKAGE_2B_BROWSER_ACCESS_KEY = "package2b-browser-access-key-000000000000";
+export const PACKAGE_2B_BROWSER_SESSION_SECRET = "package2b-browser-session-secret-0000000000";
 
 type GuardEnvironment = Readonly<Record<string, string | undefined>>;
 
@@ -13,6 +18,11 @@ export type Package2BBrowserTestConfiguration = {
   databaseUrl: string;
   authorizedOrigin: string;
   mismatchedReviewerOrigin: string;
+  ownerEmployeeId: string;
+  authorizedReviewerEmployeeId: string;
+  mismatchedReviewerEmployeeId: string;
+  accessKey: string;
+  sessionSecret: string;
 };
 
 function requireExact(value: string | undefined, expected: string, name: string) {
@@ -81,6 +91,40 @@ export function guardedPackage2BBrowserTestConfiguration(
     PACKAGE_2B_BROWSER_MISMATCHED_ORIGIN,
     "PACKAGE_2B_BROWSER_MISMATCHED_ORIGIN",
   );
+  const ownerEmployeeId = requireExact(
+    environment.PACKAGE_2B_BROWSER_OWNER_EMPLOYEE_ID,
+    PACKAGE_2B_BROWSER_OWNER_EMPLOYEE_ID,
+    "PACKAGE_2B_BROWSER_OWNER_EMPLOYEE_ID",
+  );
+  const authorizedReviewerEmployeeId = requireExact(
+    environment.PACKAGE_2B_BROWSER_AUTHORIZED_REVIEWER_EMPLOYEE_ID,
+    PACKAGE_2B_BROWSER_AUTHORIZED_REVIEWER_EMPLOYEE_ID,
+    "PACKAGE_2B_BROWSER_AUTHORIZED_REVIEWER_EMPLOYEE_ID",
+  );
+  const mismatchedReviewerEmployeeId = requireExact(
+    environment.PACKAGE_2B_BROWSER_MISMATCHED_REVIEWER_EMPLOYEE_ID,
+    PACKAGE_2B_BROWSER_MISMATCHED_REVIEWER_EMPLOYEE_ID,
+    "PACKAGE_2B_BROWSER_MISMATCHED_REVIEWER_EMPLOYEE_ID",
+  );
+  const accessKey = requireExact(
+    environment.PACKAGE_2B_BROWSER_ACCESS_KEY,
+    PACKAGE_2B_BROWSER_ACCESS_KEY,
+    "PACKAGE_2B_BROWSER_ACCESS_KEY",
+  );
+  const sessionSecret = requireExact(
+    environment.PACKAGE_2B_BROWSER_SESSION_SECRET,
+    PACKAGE_2B_BROWSER_SESSION_SECRET,
+    "PACKAGE_2B_BROWSER_SESSION_SECRET",
+  );
 
-  return { databaseUrl, authorizedOrigin, mismatchedReviewerOrigin };
+  return {
+    databaseUrl,
+    authorizedOrigin,
+    mismatchedReviewerOrigin,
+    ownerEmployeeId,
+    authorizedReviewerEmployeeId,
+    mismatchedReviewerEmployeeId,
+    accessKey,
+    sessionSecret,
+  };
 }

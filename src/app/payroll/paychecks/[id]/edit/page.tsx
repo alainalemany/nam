@@ -6,6 +6,7 @@ import {
   getPayrollPrincipal,
   PayrollAccessConfigurationError,
   payrollPreviewSigningSecret,
+  requirePayrollEvidenceReviewer,
 } from "@/features/payroll/auth";
 import { getPaycheckDetail } from "@/features/payroll/data";
 import { PaycheckReviewEditor } from "@/features/payroll/PayrollImportForm";
@@ -22,6 +23,8 @@ export default async function CorrectPaycheckPage({ params }: { params: Promise<
   if (!principal) redirect("/payroll/access");
   const paycheck = await getPaycheckDetail(principal.employeeId, (await params).id);
   if (!paycheck) notFound();
+  let canReviewRateHistory = false;
+  try { await requirePayrollEvidenceReviewer(); canReviewRateHistory = true; } catch { /* Navigation visibility only; the destination reauthorizes. */ }
   const correctionEvidence = {
     paycheckId: paycheck.id,
     recordUpdatedAt: paycheck.updatedAt,
@@ -62,5 +65,5 @@ export default async function CorrectPaycheckPage({ params }: { params: Promise<
     notes: paycheck.notes,
     warnings: [],
   };
-  return <main className="page-stack payroll-page"><header className="page-header with-actions"><div><p className="eyebrow">Controlled correction</p><h1>Correct Paycheck</h1><p className="summary">Review and replace structured values. The original duplicate-detection fingerprint remains unchanged.</p></div><Link className="button secondary" href={`/payroll/paychecks/${paycheck.id}`}>Cancel</Link></header><Card><CardHeader><CardTitle>{paycheck.periodLabel}</CardTitle></CardHeader><CardContent><PaycheckReviewEditor initial={values} paycheckId={paycheck.id} /></CardContent></Card></main>;
+  return <main className="page-stack payroll-page"><header className="page-header with-actions"><div><p className="eyebrow">Controlled correction</p><h1>Correct Paycheck</h1><p className="summary">Review and replace structured values. The original duplicate-detection fingerprint remains unchanged.</p></div><Link className="button secondary" href={`/payroll/paychecks/${paycheck.id}`}>Cancel</Link></header><Card><CardHeader><CardTitle>{paycheck.periodLabel}</CardTitle></CardHeader><CardContent><PaycheckReviewEditor initial={values} paycheckId={paycheck.id} canReviewRateHistory={canReviewRateHistory} /></CardContent></Card></main>;
 }

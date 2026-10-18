@@ -423,6 +423,46 @@ Package 2A PostgreSQL suite remains the authoritative persistence and
 concurrency layer. Browser smoke coverage remains optional unless executed
 against the repository's isolated test server and synthetic data.
 
+Phase 5B.3 focused component and unit coverage verifies verified-only current
+rate rendering, empty history, support counts, open uncertainty, explicit
+increase/decrease/conflict/repeated classifications, responsive table/card
+representations, strict Gregorian and evidence-window date checks, no automatic
+date selection, promotion and rejection confirmation, mandatory reasons,
+expected-version and stable request-token submission, ambiguous retry behavior,
+stale-version feedback, postdecision refresh, evidence retention language, and
+recorded reviewer attribution. Loader tests prove reviewer authorization occurs
+before overview or candidate-specific queries. Existing Phase 5B.2 unit and
+PostgreSQL suites remain authoritative for persistence, concurrency, other-open-
+candidate preservation, and fail-closed expected-gross behavior; the UI does
+not reimplement those rules.
+
+Phase 5B.3 browser acceptance uses a dedicated extension of the Package 2B
+guard. Configuration loading fails before Prisma construction or browser launch
+unless the PostgreSQL host, port, database, role, application URLs, synthetic
+fixture marker, owner/reviewer identities, and synthetic credentials all match
+the isolated profile. The suite has no ordinary `DATABASE_URL` fallback and no
+server reuse. Its synthetic fixture covers a verified timeline with repeated
+support, open increases and decreases, same-window conflict, missing evidence,
+authenticated row and pay-period bounds, affected worked dates, and long
+identifiers.
+
+The guarded Chromium scenarios cover unauthorized and authorized access, empty
+verified history, verified support/provenance, candidate classification and
+detail, no automatic exact-date selection, invalid and out-of-window dates,
+promotion, rejection, duplicate-click safety, stale versions, immutable system
+versus reviewer attribution, retained evidence, remaining uncertainty, and
+authoritative postdecision refresh. The suite explicitly checks 1440 × 900,
+820 × 1000, and 390 × 844 layouts for page overflow and keyboard access. These
+claims become executed browser evidence only when the guarded Playwright job
+runs; syntax/discovery checks alone are not acceptance results.
+
+CI keeps Application Quality and PostgreSQL Integration unchanged, then runs a
+dependent `Payroll Rate History Browser Acceptance` job against a separate
+PostgreSQL 18 service exposed only to the runner at `127.0.0.1:55441`. The job
+applies the fresh migration chain, performs a production build, launches the two
+loopback applications, resets only the dedicated synthetic database, and runs
+the focused suite serially.
+
 Deferred areas:
 
 - Authentication and authorization.
