@@ -104,4 +104,21 @@ describe("Paycheck extraction review", () => {
     expect(screen.getByText(/new or uncertain rate observation was retained/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View Rate History" })).toHaveAttribute("href", "/payroll/rate-history");
   });
+
+  it("highlights accounting fields, links to them, and clears the warning after correction", () => {
+    const parsed = parseWorkdayPaycheckText(fixtures.pretaxSeptember28);
+    const initial = {
+      ...parsed,
+      preTaxDeductions: "0.00",
+      warnings: [...parsed.warnings, "Gross cash pay less parsed deductions and taxes does not equal net pay; review unclassified deductions."],
+    };
+    render(<PaycheckReviewEditor initial={initial} />);
+    const field = screen.getByLabelText("Pre-tax deductions");
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Review Pre-tax deductions" }));
+    expect(field).toHaveFocus();
+    fireEvent.change(field, { target: { value: "98.20" } });
+    expect(field).not.toHaveAttribute("aria-invalid");
+    expect(screen.queryByText("Gross cash pay less deductions and taxes does not equal net pay.")).not.toBeInTheDocument();
+  });
 });

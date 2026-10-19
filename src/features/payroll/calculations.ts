@@ -200,10 +200,18 @@ export function derivePayrollDayState(input: {
   hasFtoRequest?: boolean;
   ftoApprovalStatus?: string;
   ftoPaymentStatus?: string;
+  noWorkReason?: "SHIFT_CANCELED" | "COVERED_BY_COWORKER";
+  scheduledOff?: boolean;
 }) {
   if (input.hasFtoRequest) {
+    if (input.aggregateStatus === "DISCREPANCY") {
+      return {
+        status: "DISCREPANCY" as const,
+        detail: `${input.aggregateExplanation} FTO remains separate evidence: approval ${input.ftoApprovalStatus ?? "Requested"}; payment ${input.ftoPaymentStatus ?? "Unverified"}.`,
+      };
+    }
     return {
-      status: "NEEDS_REVIEW" as const,
+      status: input.ftoApprovalStatus === "APPROVED" ? "FTO_APPROVED" as const : "FTO_REQUESTED" as const,
       detail: `FTO is recorded separately from worked time. Approval: ${input.ftoApprovalStatus ?? "Requested"}; Payment: ${input.ftoPaymentStatus ?? "Unverified"}. Payroll evidence must resolve it without changing worked or overtime minutes.`,
     };
   }
@@ -221,6 +229,16 @@ export function derivePayrollDayState(input: {
         : input.aggregateExplanation,
     };
   }
+  if (input.noWorkReason) {
+    return {
+      status: input.aggregateStatus === "DISCREPANCY" ? "DISCREPANCY" as const : input.noWorkReason,
+      detail: input.aggregateStatus === "DISCREPANCY"
+        ? `${input.aggregateExplanation} This date is accounted for with zero worked hours as ${input.noWorkReason === "SHIFT_CANCELED" ? "a canceled shift" : "covered by a coworker"}.`
+        : input.noWorkReason === "SHIFT_CANCELED"
+          ? "Shift canceled; the employee was instructed not to report. Zero actual worked hours and no paid leave are inferred."
+          : "The scheduled shift was covered by a coworker. Zero actual worked hours and no paid leave are recorded.",
+    };
+  }
   if (input.scheduled) {
     if (!input.shiftEnded) {
       return { status: "NEEDS_REVIEW" as const, detail: "Scheduled shift has not ended; no Timesheet is expected yet." };
@@ -234,6 +252,9 @@ export function derivePayrollDayState(input: {
         ? "The weekly Timesheet is Draft and has no entry for this completed scheduled shift."
         : "The Completed Timesheet has no entry for this scheduled shift.",
     };
+  }
+  if (input.scheduledOff) {
+    return { status: "SCHEDULED_OFF" as const, detail: "Normal scheduled day off; no Timesheet explanation is required." };
   }
   if (input.hasPaycheck) {
     return { status: "NEEDS_REVIEW" as const, detail: "Payroll-period evidence exists, but this paycheck does not allocate paid hours to this date." };

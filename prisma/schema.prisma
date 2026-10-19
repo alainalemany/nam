@@ -232,6 +232,11 @@ enum TimesheetLeavePaymentStatus {
   UNPAID
 }
 
+enum TimesheetNoWorkReason {
+  SHIFT_CANCELED
+  COVERED_BY_COWORKER
+}
+
 enum TimesheetIdentityStatus {
   NEEDS_REVIEW
   EXPLICIT_SELECTION
@@ -1242,6 +1247,7 @@ model DailyAssignment {
   crewMembers                 AssignmentCrewMember[]
   timesheetEntries            DailyTimeEntry[]
   timesheetLeaveEntries       TimesheetLeaveEntry[]
+  timesheetNoWorkEntries      TimesheetNoWorkEntry[]
   createdAt                   DateTime               @default(now())
   updatedAt                   DateTime               @updatedAt
 
@@ -1290,6 +1296,7 @@ model WeeklyTimesheet {
   overtimeMinutesTotal          Int                            @default(0)
   entries                       DailyTimeEntry[]
   leaveEntries                  TimesheetLeaveEntry[]
+  noWorkEntries                 TimesheetNoWorkEntry[]
   identityReviewEvents          TimesheetIdentityReviewEvent[]
   createdAt                     DateTime                       @default(now())
   updatedAt                     DateTime                       @updatedAt
@@ -1644,6 +1651,24 @@ model TimesheetLeaveEntry {
   @@index([workDate], map: "TimesheetLeaveEntry_workDate_idx")
   @@index([approvalStatus, paymentStatus], map: "TimesheetLeaveEntry_evidence_status_idx")
   @@index([workScheduleDailyAssignmentId], map: "TimesheetLeaveEntry_assignment_idx")
+}
+
+model TimesheetNoWorkEntry {
+  id                            String                @id @default(cuid())
+  weeklyTimesheetId             String
+  weeklyTimesheet               WeeklyTimesheet       @relation(fields: [weeklyTimesheetId], references: [id], onDelete: Cascade)
+  workDate                      DateTime              @db.Date
+  reason                        TimesheetNoWorkReason
+  workScheduleDailyAssignmentId String?
+  workScheduleDailyAssignment   DailyAssignment?      @relation(fields: [workScheduleDailyAssignmentId], references: [id], onDelete: SetNull)
+  notes                         String?
+  createdAt                     DateTime              @default(now())
+  updatedAt                     DateTime              @updatedAt
+
+  @@unique([weeklyTimesheetId, workDate], map: "TimesheetNoWorkEntry_week_date_key")
+  @@index([workDate], map: "TimesheetNoWorkEntry_workDate_idx")
+  @@index([reason], map: "TimesheetNoWorkEntry_reason_idx")
+  @@index([workScheduleDailyAssignmentId], map: "TimesheetNoWorkEntry_assignment_idx")
 }
 
 model WorkAllocation {

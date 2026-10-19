@@ -170,6 +170,8 @@ describe("TimesheetForm", () => {
       label: "2026-07-14 · Night · MTECK 2100E Dragline #101151",
       selectable: true,
       leaveSelectable: true,
+      scheduledEquipmentId: "equipment-1",
+      scheduledEquipmentLabel: "MTECK 2100E Dragline #101151",
     }]);
     const unlinked = {
       ...initial,
@@ -184,6 +186,43 @@ describe("TimesheetForm", () => {
     ));
     const tuesday = screen.getByText("Tuesday").closest("details") as HTMLElement;
     await waitFor(() => expect(within(tuesday).getByLabelText(/Work Schedule context/)).toHaveValue("assignment-oct-14"));
+    expect(within(tuesday).getByLabelText("Primary equipment")).toHaveValue("equipment-1");
+    expect(within(tuesday).getByText(/Scheduled equipment: MTECK 2100E Dragline/)).toBeInTheDocument();
+  });
+
+  it("records a canceled shift as zero-hour no-work evidence without a Work Code", async () => {
+    mocks.scheduleLoad.mockResolvedValueOnce([{
+      id: "assignment-oct-14",
+      workDate: "2026-07-14",
+      label: "2026-07-14 · Night · Dragline 1",
+      selectable: true,
+      leaveSelectable: true,
+      scheduledEquipmentId: "equipment-1",
+    }]);
+    const emptyWeek = { ...initial, entries: [], noWorkEntries: [] };
+    render(<TimesheetForm timesheetId={null} initial={emptyWeek} options={options} />);
+    const tuesday = screen.getByText("Tuesday").closest("details") as HTMLElement;
+    await waitFor(() => expect(mocks.scheduleLoad).toHaveBeenCalled());
+    fireEvent.click(within(tuesday).getByLabelText("Explain why no work was performed"));
+    expect(within(tuesday).getByLabelText("Original scheduled assignment")).toHaveValue("assignment-oct-14");
+    const submitted = JSON.parse((document.querySelector('input[name="payload"]') as HTMLInputElement).value);
+    expect(submitted.entries).toEqual([]);
+    expect(submitted.noWorkEntries).toEqual([expect.objectContaining({ workDate: "2026-07-14", reason: "SHIFT_CANCELED" })]);
+  });
+
+  it("does not overwrite a manually selected actual equipment value", async () => {
+    mocks.scheduleLoad.mockResolvedValueOnce([{
+      id: "assignment-oct-14",
+      workDate: "2026-07-14",
+      label: "Scheduled equipment",
+      selectable: true,
+      leaveSelectable: true,
+      scheduledEquipmentId: "different-equipment",
+    }]);
+    render(<TimesheetForm timesheetId={null} initial={initial} options={options} />);
+    const tuesday = screen.getByText("Tuesday").closest("details") as HTMLElement;
+    await waitFor(() => expect(within(tuesday).getByLabelText(/Work Schedule context/)).toHaveValue("assignment-oct-14"));
+    expect(within(tuesday).getByLabelText("Primary equipment")).toHaveValue("equipment-1");
   });
 
   it("invalidates an automatically selected assignment and suggests the new week's only candidate", async () => {

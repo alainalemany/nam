@@ -99,14 +99,14 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     await expect(page.getByRole("heading", { name: "Progressive Rate History" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Verified Rate History" })).toBeVisible();
     await expect(page.getByText("Browser Payroll Owner With An Intentionally Long Synthetic Identifier")).toBeVisible();
-    await expect(page.getByText("$32.0000/hr").first()).toBeVisible();
+    await expect(page.getByText("$32.00/hr").first()).toBeVisible();
     await expect(page.getByText(/Latest verified rate · effective Jul 1, 2026 · current rate uncertain/)).toBeVisible();
     await expect(page.getByText("Confirmed Paycheck").first()).toBeVisible();
-    const verifiedRateRow = page.getByRole("row").filter({ hasText: "Jul 1, 2026" }).filter({ hasText: "$32.0000/hr" }).first();
+    const verifiedRateRow = page.getByRole("row").filter({ hasText: "Jul 1, 2026" }).filter({ hasText: "$32.00/hr" }).first();
     await expect(verifiedRateRow.getByRole("cell").nth(4)).toHaveText("2");
     await expect(page.getByText("2026-07-01–2026-07-14, 2026-07-15–2026-07-28").first()).toBeVisible();
     await expect(page.getByText("Proposed increase").first()).toBeVisible();
-    const decreaseCandidateRow = page.getByRole("row").filter({ has: page.getByText("$31.0000/hr") });
+    const decreaseCandidateRow = page.getByRole("row").filter({ has: page.getByText("$31.00/hr") });
     await expect(decreaseCandidateRow.getByText("Proposed decrease")).toBeVisible();
     await expect(decreaseCandidateRow.getByText("Conflicting evidence")).toBeVisible();
     await expect(page.getByText("Repeated supporting observation")).toHaveCount(0);
@@ -123,7 +123,7 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     await expect(page.getByText("Not established", { exact: true })).toBeVisible();
     await expect(page.getByText("Current rate not established · no verified boundary")).toBeVisible();
     await expect(page.getByText("No trusted rate history")).toBeVisible();
-    await expect(page.getByText("$35.0000/hr").first()).toBeVisible();
+    await expect(page.getByText("$35.00/hr").first()).toBeVisible();
     await context.close();
   });
 
@@ -152,7 +152,7 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     await page.goto("/payroll/rate-history/candidates/browser-candidate-decrease");
     await expect(page.getByRole("heading", { name: "Conflicting evidence" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Overlapping open conflicts" })).toBeVisible();
-    await expect(page.getByText("$34.0000/hr").first()).toBeVisible();
+    await expect(page.getByText("$34.00/hr").first()).toBeVisible();
     await expect(page.getByText("Expected gross remains unavailable for affected work dates.")).toBeVisible();
 
     await page.goto("/payroll/rate-history/candidates/browser-candidate-missing-evidence");
@@ -196,8 +196,8 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     await page.getByRole("button", { name: "Review proposed decision" }).click();
     const confirmation = page.getByRole("group", { name: "Confirm rate boundary decision" });
     await expect(confirmation).toBeFocused();
-    await expect(confirmation).toContainText("$32.0000/hr");
-    await expect(confirmation).toContainText("$35.0000/hr");
+    await expect(confirmation).toContainText("$32.00/hr");
+    await expect(confirmation).toContainText("$35.00/hr");
     await expect(confirmation).toContainText("2026-08-05");
     const actionUrl = "**/payroll/rate-history/candidates/browser-candidate-increase";
     await page.route(actionUrl, async (route) => {
@@ -276,7 +276,7 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     await expect(page.getByText("Evidence version", { exact: true }).locator(".."))
       .toContainText("2");
     await expect(page.getByText("Resolved boundary", { exact: true }).locator(".."))
-      .toContainText("$35.0000/hr from Aug 5, 2026");
+      .toContainText("$35.00/hr from Aug 5, 2026");
     await expect(page.getByText("Owner review decision")).toBeVisible();
     await expect(page.getByText("Expected gross remains unavailable for affected work dates.", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Review proposed decision" })).toHaveCount(0);
@@ -288,7 +288,7 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     const resolvedCandidate = candidates.getByRole("table")
       .locator('tr:has(a[href="/payroll/rate-history/candidates/browser-candidate-increase"])');
     await expect(resolvedCandidate).toContainText("Proposed increase");
-    await expect(resolvedCandidate).toContainText("$35.0000/hr");
+    await expect(resolvedCandidate).toContainText("$35.00/hr");
     await expect(resolvedCandidate).toContainText("Verified boundary");
     await expect(resolvedCandidate.getByRole("link", { name: "Details →" })).toHaveAttribute(
       "href",
@@ -297,7 +297,7 @@ test.describe.serial("Phase 5B.3 isolated progressive rate-history acceptance", 
     const history = page.getByRole("region", { name: "Verified Rate History" });
     const verifiedRate = history.getByRole("row")
       .filter({ hasText: "Aug 5, 2026" })
-      .filter({ hasText: "$35.0000/hr" });
+      .filter({ hasText: "$35.00/hr" });
     await expect(verifiedRate).toContainText("Verified");
     await expect(verifiedRate).toContainText("Confirmed Paycheck");
     await expect(verifiedRate).toContainText("2");

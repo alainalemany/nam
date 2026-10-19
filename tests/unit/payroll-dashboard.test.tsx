@@ -15,7 +15,7 @@ function dashboardData(status: "RECONCILED" | "NEEDS_REVIEW", reviewStatus: "CON
     regularPaidMinutes: 2400,
     overtimePaidMinutes: 1200,
     paidMinutes: 3600,
-    baseRate: "33.15",
+    baseRate: "33.1500",
     regularEarnings: "1326.00",
     overtimeBaseEarnings: "663.00",
     overtimePremiumEarnings: "331.50",
@@ -78,6 +78,8 @@ describe("PayrollDashboard reconciliation presentation", () => {
     expect(screen.getAllByText("Aggregate match").length).toBeGreaterThan(0);
     expect(screen.getByText(/Reconciled hours/).previousElementSibling).toHaveTextContent("60h");
     expect(screen.getByText("Official check date").nextElementSibling).toHaveTextContent("Oct 21, 2026");
+    expect(screen.getByText("Base hourly rate").nextElementSibling).toHaveTextContent("$33.15/hr");
+    expect(screen.queryByText("$33.1500/hr")).not.toBeInTheDocument();
     expect(screen.getByText("Next Expected Check")).toBeInTheDocument();
     expect(screen.queryByText("Expected check date", { exact: true })).not.toBeInTheDocument();
   });

@@ -642,6 +642,15 @@ payment, modify a Paycheck, or contribute worked, regular, overtime,
 allocation, or expected-gross minutes. Payroll must surface unresolved FTO as
 review evidence rather than classify the date as worked or automatically paid.
 
+A scheduled date on which the employee did not work may instead contain one
+explicit Timesheet no-work explanation: Shift canceled or Covered by coworker.
+The explanation must reference a same-employee, same-date assignment that was
+originally scheduled, contributes zero worked minutes, and creates no Work Code,
+allocation, leave approval, payment, or overtime. Worked time, FTO, and a no-work
+explanation are mutually exclusive for that date. An unexplained completed
+scheduled date remains Missing Timesheet; a normal scheduled day off requires no
+explanation.
+
 The module should maintain Timesheet-owned reusable lists for Work Codes, Work
 Orders, and Support Personnel. These are not global workforce-management
 records.
@@ -658,6 +667,15 @@ Timesheet must work correctly without Work Schedule and payroll correctness must
 never depend on Work Schedule. If a linked Work Schedule Daily Assignment is
 deleted, the Timesheet link should become null and Timesheet-owned history
 should remain readable.
+For a new worked entry with exactly one eligible scheduled assignment, the form
+should preselect that assignment's Equipment as Scheduled Equipment. The user
+may select different Actual Worked Equipment, and later schedule changes must
+not overwrite the saved actual Equipment or historical completed Timesheet.
+
+Daily saves must show persisted-success feedback identifying the date. Weekly
+completion must require an explicit review dialog showing the week range,
+actual hours, FTO, no-work explanations, and unresolved issues before the
+server-side completion mutation makes the week read-only.
 
 Selected-date Day View participation is implemented through a Timesheet-owned
 display-context helper. Draft Timesheets support copying one Work Allocation

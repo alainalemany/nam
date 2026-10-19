@@ -925,11 +925,16 @@ describePostgres("Phase A PostgreSQL integration", () => {
       timesheetMinutes: 600,
       scheduledLabel: "Day shift",
     });
-    expect(dashboard.days.find((item) => item.date === "2026-10-03")?.scheduledLabel)
-      .toBe("Cancelled");
+    expect(dashboard.days.find((item) => item.date === "2026-10-03")).toMatchObject({
+      status: "MISSING_TIMESHEET",
+      scheduledLabel: "Cancelled",
+      noWorkReason: undefined,
+    });
     expect(dashboard.days.find((item) => item.date === "2026-10-04")?.scheduledLabel)
       .toBe("Off");
-    expect(dashboard.summary.openIssues).toBe(2);
+    // Oct 1 is unexplained, Oct 2 lacks verified rate evidence, and the canceled
+    // Oct 3 shift still needs an explicit zero-hour no-work explanation.
+    expect(dashboard.summary.openIssues).toBe(3);
     expect(dashboard.summary).toMatchObject({
       pendingGrossStatus: "UNAVAILABLE",
       pendingGrossUncoveredEntryCount: 1,
@@ -942,6 +947,267 @@ describePostgres("Phase A PostgreSQL integration", () => {
       .toEqual(expect.arrayContaining([
         expect.objectContaining({ id: "draft-payroll-assignment", selectable: false }),
       ]));
+  });
+
+  it("persists explained zero-work dates and reconciles 36 authenticated Workday hours", async () => {
+    await createReferences();
+    await createEmployee("employee-1");
+    await createEmployee("employee-2", "Other Operator");
+    const schedule = await createSchedule({
+      id: "no-work-schedule",
+      employeeId: "employee-1",
+      weekStart: "2026-10-05",
+    });
+    const otherSchedule = await createSchedule({
+      id: "no-work-other-schedule",
+      employeeId: "employee-2",
+      weekStart: "2026-10-05",
+    });
+    await prisma.dailyAssignment.createMany({
+      data: [
+        {
+          id: "no-work-oct-05",
+          weeklyScheduleId: schedule.id,
+          assignmentDate: date("2026-10-05"),
+          dayOfWeek: 1,
+          plannedStatus: "SCHEDULED",
+          plannedShift: "DAY",
+          actualStatus: "CANCELLED",
+        },
+        ...[6, 7, 8, 9].map((day) => ({
+          id: `no-work-oct-${String(day).padStart(2, "0")}`,
+          weeklyScheduleId: schedule.id,
+          assignmentDate: date(`2026-10-${String(day).padStart(2, "0")}`),
+          dayOfWeek: day - 4,
+          plannedStatus: "SCHEDULED" as const,
+          plannedShift: "DAY" as const,
+          actualStatus: "SCHEDULED" as const,
+        })),
+        ...[10, 11].map((day) => ({
+          id: `no-work-oct-${day}`,
+          weeklyScheduleId: schedule.id,
+          assignmentDate: date(`2026-10-${day}`),
+          dayOfWeek: day - 4,
+          plannedStatus: "NON_WORKING" as const,
+          actualStatus: "NON_WORKING" as const,
+        })),
+        {
+          id: "no-work-other-oct-05",
+          weeklyScheduleId: otherSchedule.id,
+          assignmentDate: date("2026-10-05"),
+          dayOfWeek: 1,
+          plannedStatus: "SCHEDULED",
+        },
+      ],
+    });
+
+    const workedEntry = (workDate: string) => ({
+      workDate,
+      clockIn: "07:00",
+      clockOut: "19:00",
+      unpaidBreakMinutes: 0,
+      primaryEquipmentId: "phase-a-equipment",
+      workScheduleDailyAssignmentId: `no-work-oct-${workDate.slice(-2)}`,
+      notes: "Synthetic 12-hour shift",
+      allocations: [{
+        sequence: 1,
+        workCodeId: "phase-a-work-code",
+        workOrderId: "",
+        allocatedMinutes: 720,
+        supportPersonIds: [],
+        notes: "",
+      }],
+    });
+    const noWorkEntries = [
+      {
+        workDate: "2026-10-05",
+        reason: "SHIFT_CANCELED" as const,
+        workScheduleDailyAssignmentId: "no-work-oct-05",
+        notes: "Supervisor canceled the shift during mechanical downtime.",
+      },
+      {
+        workDate: "2026-10-09",
+        reason: "COVERED_BY_COWORKER" as const,
+        workScheduleDailyAssignmentId: "no-work-oct-09",
+        notes: "A coworker covered the scheduled shift without FTO.",
+      },
+    ];
+    const payload = {
+      payrollWeekStartDate: "2026-10-05",
+      primaryEmployeeId: "employee-1",
+      primaryEmployeeDisplayName: "Untrusted client name",
+      entries: ["2026-10-06", "2026-10-07", "2026-10-08"].map(workedEntry),
+      leaveEntries: [],
+      noWorkEntries,
+    };
+
+    const unauthorized = await saveWeeklyTimesheetAction(
+      null,
+      idleState,
+      payloadFormData({
+        ...payload,
+        noWorkEntries: [{
+          ...noWorkEntries[0],
+          workScheduleDailyAssignmentId: "no-work-other-oct-05",
+        }, noWorkEntries[1]],
+      }),
+    );
+    expect(unauthorized).toMatchObject({
+      status: "error",
+      message: expect.stringMatching(/same Timesheet employee/),
+    });
+    expect(await prisma.weeklyTimesheet.count()).toBe(0);
+
+    const contradictory = await saveWeeklyTimesheetAction(
+      null,
+      idleState,
+      payloadFormData({
+        ...payload,
+        entries: [...payload.entries, workedEntry("2026-10-05")],
+      }),
+    );
+    expect(contradictory).toMatchObject({
+      status: "error",
+      fieldErrors: {
+        "noWorkEntries.0.workDate": [expect.stringMatching(/cannot share a date/)],
+      },
+    });
+    expect(await prisma.weeklyTimesheet.count()).toBe(0);
+
+    await saveWeeklyTimesheetAction(null, idleState, payloadFormData(payload));
+    const timesheet = await prisma.weeklyTimesheet.findFirstOrThrow({
+      where: { primaryEmployeeId: "employee-1" },
+      include: {
+        entries: { orderBy: { workDate: "asc" }, include: { allocations: true } },
+        leaveEntries: true,
+        noWorkEntries: {
+          orderBy: { workDate: "asc" },
+          include: { workScheduleDailyAssignment: true },
+        },
+      },
+    });
+    expect(timesheet).toMatchObject({
+      status: "DRAFT",
+      workedMinutesTotal: 2160,
+      regularMinutesTotal: 2160,
+      overtimeMinutesTotal: 0,
+      leaveEntries: [],
+    });
+    expect(timesheet.entries.map((item) => item.workDate)).toEqual([
+      date("2026-10-06"),
+      date("2026-10-07"),
+      date("2026-10-08"),
+    ]);
+    expect(timesheet.entries.flatMap((item) => item.allocations)).toHaveLength(3);
+    expect(timesheet.noWorkEntries).toEqual([
+      expect.objectContaining({
+        workDate: date("2026-10-05"),
+        reason: "SHIFT_CANCELED",
+        workScheduleDailyAssignmentId: "no-work-oct-05",
+        notes: "Supervisor canceled the shift during mechanical downtime.",
+        workScheduleDailyAssignment: expect.objectContaining({
+          assignmentDate: date("2026-10-05"),
+          plannedStatus: "SCHEDULED",
+        }),
+      }),
+      expect.objectContaining({
+        workDate: date("2026-10-09"),
+        reason: "COVERED_BY_COWORKER",
+        workScheduleDailyAssignmentId: "no-work-oct-09",
+        notes: "A coworker covered the scheduled shift without FTO.",
+        workScheduleDailyAssignment: expect.objectContaining({
+          assignmentDate: date("2026-10-09"),
+          plannedStatus: "SCHEDULED",
+        }),
+      }),
+    ]);
+    expect(await prisma.dailyTimeEntry.count({
+      where: { workDate: { in: [date("2026-10-05"), date("2026-10-09")] } },
+    })).toBe(0);
+    expect(await prisma.timesheetLeaveEntry.count()).toBe(0);
+
+    await completeWeeklyTimesheetAction(timesheet.id, { ok: true, message: "" }, new FormData());
+    expect((await prisma.weeklyTimesheet.findUniqueOrThrow({ where: { id: timesheet.id } })).status)
+      .toBe("COMPLETED");
+
+    const paycheckResult = await savePaycheckAction(
+      { status: "idle", message: "" },
+      paycheckFormData(paycheckPayload({
+        fingerprint: "d".repeat(64),
+        periodStart: "2026-10-05",
+        periodEnd: "2026-10-11",
+        checkDate: "2026-10-14",
+        regularHours: "36",
+        overtimeHours: "0",
+        regularEarnings: "1193.40",
+        grossCashPay: "1193.40",
+        netPay: "1193.40",
+      })),
+    );
+    expect(paycheckResult).toMatchObject({ status: "saved" });
+    const paycheckId = paycheckResult.status === "saved" ? (paycheckResult.paycheckId ?? "") : "";
+    expect(await prisma.paycheck.findUniqueOrThrow({ where: { id: paycheckId } })).toMatchObject({
+      employeeId: "employee-1",
+      regularPaidMinutes: 2160,
+      overtimePaidMinutes: 0,
+      reviewStatus: "CONFIRMED",
+    });
+
+    let dashboard = await getPayrollDashboardData("employee-1", "2026-10");
+    expect(dashboard.paychecks.find((item) => item.id === paycheckId)).toMatchObject({
+      status: "RECONCILED",
+      reason: "FULL_AGGREGATE_MATCH",
+      differences: { totalMinutes: 0, regularMinutes: 0, overtimeMinutes: 0 },
+    });
+    expect(dashboard.summary.reconciledMinutes).toBe(2160);
+    expect(dashboard.days.find((item) => item.date === "2026-10-05")).toMatchObject({
+      status: "SHIFT_CANCELED",
+      timesheetMinutes: undefined,
+      noWorkReason: "SHIFT_CANCELED",
+    });
+    expect(dashboard.days.find((item) => item.date === "2026-10-09")).toMatchObject({
+      status: "COVERED_BY_COWORKER",
+      timesheetMinutes: undefined,
+      noWorkReason: "COVERED_BY_COWORKER",
+    });
+
+    const protectedEdit = await saveWeeklyTimesheetAction(
+      timesheet.id,
+      idleState,
+      payloadFormData({ ...payload, noWorkEntries: [noWorkEntries[0]] }),
+    );
+    expect(protectedEdit).toMatchObject({ status: "error", message: expect.stringMatching(/Reopen/) });
+    expect(await prisma.timesheetNoWorkEntry.count({ where: { weeklyTimesheetId: timesheet.id } }))
+      .toBe(2);
+
+    await reopenWeeklyTimesheetAction(timesheet.id, { ok: true, message: "" }, new FormData());
+    await saveWeeklyTimesheetAction(
+      timesheet.id,
+      idleState,
+      payloadFormData({ ...payload, noWorkEntries: [noWorkEntries[0]] }),
+    );
+    expect(await prisma.timesheetNoWorkEntry.findMany({
+      where: { weeklyTimesheetId: timesheet.id },
+      select: { workDate: true, reason: true },
+    })).toEqual([{ workDate: date("2026-10-05"), reason: "SHIFT_CANCELED" }]);
+
+    dashboard = await getPayrollDashboardData("employee-1", "2026-10");
+    expect(dashboard.days.find((item) => item.date === "2026-10-09")).toMatchObject({
+      status: "MISSING_TIMESHEET",
+      timesheetMinutes: undefined,
+      noWorkReason: undefined,
+    });
+    expect(dashboard.paychecks.find((item) => item.id === paycheckId)).toMatchObject({
+      status: "NEEDS_REVIEW",
+      reasons: expect.arrayContaining(["MISSING_TIMESHEET_EVIDENCE"]),
+      differences: { totalMinutes: 0, regularMinutes: 0, overtimeMinutes: 0 },
+    });
+    const incomplete = await completeWeeklyTimesheetAction(
+      timesheet.id,
+      { ok: true, message: "" },
+      new FormData(),
+    );
+    expect(incomplete).toMatchObject({ ok: false, message: expect.stringContaining("2026-10-09") });
   });
 
   it("supersedes authenticated Paycheck observations without verifying changed correction values", async () => {

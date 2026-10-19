@@ -103,6 +103,7 @@ export async function getWorkScheduleAssignmentsForEmployeeAction(
           primaryEmployeeIdentityStatus: true,
           entries: { select: { workScheduleDailyAssignmentId: true } },
           leaveEntries: { select: { workScheduleDailyAssignmentId: true } },
+          noWorkEntries: { select: { workScheduleDailyAssignmentId: true } },
         },
       })
     : null;
@@ -116,6 +117,11 @@ export async function getWorkScheduleAssignmentsForEmployeeAction(
     .filter((id): id is string => Boolean(id)) ?? [];
   existingAssignmentIds.push(
     ...(existing?.leaveEntries
+      .map((entry) => entry.workScheduleDailyAssignmentId)
+      .filter((id): id is string => Boolean(id)) ?? []),
+  );
+  existingAssignmentIds.push(
+    ...(existing?.noWorkEntries
       .map((entry) => entry.workScheduleDailyAssignmentId)
       .filter((id): id is string => Boolean(id)) ?? []),
   );
@@ -133,6 +139,7 @@ const existingInclude = {
     },
   },
   leaveEntries: true,
+  noWorkEntries: true,
 } satisfies Prisma.WeeklyTimesheetInclude;
 
 type ExistingTimesheet = Prisma.WeeklyTimesheetGetPayload<{ include: typeof existingInclude }>;
@@ -152,6 +159,7 @@ async function referenceMaps(
   const assignmentIds = [...new Set([
     ...input.entries.map((entry) => entry.workScheduleDailyAssignmentId),
     ...input.leaveEntries.map((entry) => entry.workScheduleDailyAssignmentId),
+    ...(input.noWorkEntries ?? []).map((entry) => entry.workScheduleDailyAssignmentId),
   ].filter(Boolean))] as string[];
 
   const [equipment, workCodes, workOrders, supportPersonnel, assignments] = await Promise.all([
@@ -222,6 +230,33 @@ async function referenceMaps(
         "INVALID_ASSIGNMENT",
         `leaveEntries.${leaveIndex}.workScheduleDailyAssignmentId`,
       );
+    }
+  }
+
+  for (const [noWorkIndex, noWork] of (input.noWorkEntries ?? []).entries()) {
+    if (!foundAssignmentIds.has(noWork.workScheduleDailyAssignmentId ?? "")) {
+      throw new TimesheetInputError(
+        "INVALID_ASSIGNMENT",
+        `noWorkEntries.${noWorkIndex}.workScheduleDailyAssignmentId`,
+      );
+    }
+    const assignment = assignments.find(
+      (item) => item.id === noWork.workScheduleDailyAssignmentId,
+    );
+    const existingNoWork = (existing?.noWorkEntries ?? []).find(
+      (item) => item.workDate.getTime() === parseDateOnly(noWork.workDate).getTime(),
+    );
+    const unchangedHistoricalLink = Boolean(
+      assignment && existingNoWork?.workScheduleDailyAssignmentId === assignment.id,
+    );
+    if (assignment && !unchangedHistoricalLink && assignment.weeklySchedule.primaryEmployeeId !== primaryEmployeeId) {
+      throw new TimesheetInputError("ASSIGNMENT_OWNER_MISMATCH", `noWorkEntries.${noWorkIndex}.workScheduleDailyAssignmentId`);
+    }
+    if (assignment && !unchangedHistoricalLink && assignment.assignmentDate.getTime() !== parseDateOnly(noWork.workDate).getTime()) {
+      throw new TimesheetInputError("ASSIGNMENT_DATE_MISMATCH", `noWorkEntries.${noWorkIndex}.workScheduleDailyAssignmentId`);
+    }
+    if (assignment && !unchangedHistoricalLink && (assignment.weeklySchedule.status === "DRAFT" || assignment.plannedStatus !== "SCHEDULED")) {
+      throw new TimesheetInputError("NO_WORK_ASSIGNMENT_INELIGIBLE", `noWorkEntries.${noWorkIndex}.workScheduleDailyAssignmentId`);
     }
   }
 
@@ -352,6 +387,36 @@ async function persistLeaveEntries(
       leaveType: "FTO",
       workDate: { notIn: submittedDates },
     },
+  });
+}
+
+async function persistNoWorkEntries(
+  tx: Prisma.TransactionClient,
+  weeklyTimesheetId: string,
+  input: WeeklyTimesheetInput,
+) {
+  const noWorkEntries = input.noWorkEntries ?? [];
+  const submittedDates = noWorkEntries.map((entry) => parseDateOnly(entry.workDate));
+  for (const entry of noWorkEntries) {
+    const workDate = parseDateOnly(entry.workDate);
+    await tx.timesheetNoWorkEntry.upsert({
+      where: { weeklyTimesheetId_workDate: { weeklyTimesheetId, workDate } },
+      create: {
+        weeklyTimesheetId,
+        workDate,
+        reason: entry.reason,
+        workScheduleDailyAssignmentId: entry.workScheduleDailyAssignmentId || null,
+        notes: entry.notes || null,
+      },
+      update: {
+        reason: entry.reason,
+        workScheduleDailyAssignmentId: entry.workScheduleDailyAssignmentId || null,
+        notes: entry.notes || null,
+      },
+    });
+  }
+  await tx.timesheetNoWorkEntry.deleteMany({
+    where: { weeklyTimesheetId, workDate: { notIn: submittedDates } },
   });
 }
 
@@ -563,6 +628,9 @@ export async function saveWeeklyTimesheetAction(
       }
       const calculated = await persistEntries(tx, parentId, parsed.data, existing, maps);
       await persistLeaveEntries(tx, parentId, parsed.data);
+      if ((parsed.data.noWorkEntries?.length ?? 0) > 0 || (existing?.noWorkEntries?.length ?? 0) > 0) {
+        await persistNoWorkEntries(tx, parentId, parsed.data);
+      }
       await tx.weeklyTimesheet.update({
         where: { id: parentId },
         data: {
@@ -594,6 +662,7 @@ export async function saveWeeklyTimesheetAction(
       ASSIGNMENT_OWNER_MISMATCH: "Work Schedule context must belong to the same Timesheet employee.",
       ASSIGNMENT_INELIGIBLE: "Only Active scheduled Work Schedule assignments may be selected.",
       FTO_ASSIGNMENT_INELIGIBLE: "FTO context must link to a non-Draft assignment that was originally scheduled.",
+      NO_WORK_ASSIGNMENT_INELIGIBLE: "A no-work explanation must link to a non-Draft assignment that was originally scheduled.",
       INACTIVE_WORK_CODE: "Inactive Work Codes cannot be selected for new allocations.",
       INACTIVE_WORK_ORDER: "Inactive Work Orders cannot be selected for new allocations.",
       INACTIVE_SUPPORT_PERSON: "Inactive Support Personnel cannot be selected for new allocations.",
@@ -610,7 +679,11 @@ export async function saveWeeklyTimesheetAction(
   revalidatePath("/");
   revalidatePath("/timesheets");
   revalidatePath("/payroll");
-  redirect(`/timesheets/${savedId}`);
+  const confirmationDate = formData.get("confirmationDate");
+  const savedQuery = typeof confirmationDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(confirmationDate)
+    ? `?savedDate=${encodeURIComponent(confirmationDate)}`
+    : "?saved=week";
+  redirect(`/timesheets/${savedId}${savedQuery}`);
 }
 
 export async function completeWeeklyTimesheetAction(
@@ -624,7 +697,8 @@ export async function completeWeeklyTimesheetAction(
       where: { id },
       include: {
         entries: { orderBy: { workDate: "asc" }, include: { allocations: true } },
-        leaveEntries: { select: { id: true } },
+        leaveEntries: { select: { id: true, workDate: true } },
+        noWorkEntries: { select: { workDate: true } },
       },
     });
     if (!timesheet) return { ok: false, message: "Timesheet could not be found." };
@@ -636,7 +710,33 @@ export async function completeWeeklyTimesheetAction(
       };
     }
     if (timesheet.status === "COMPLETED") return { ok: true, message: "" };
-    const issues = validateCompletion(timesheet.entries, timesheet.leaveEntries?.length ?? 0);
+    const issues = validateCompletion(
+      timesheet.entries,
+      timesheet.leaveEntries?.length ?? 0,
+      timesheet.noWorkEntries?.length ?? 0,
+    );
+    const scheduledAssignments = timesheet.primaryEmployeeId
+      ? await tx.dailyAssignment.findMany({
+          where: {
+            assignmentDate: { gte: timesheet.payrollWeekStartDate, lte: timesheet.payrollWeekEndDate },
+            plannedStatus: "SCHEDULED",
+            weeklySchedule: {
+              primaryEmployeeId: timesheet.primaryEmployeeId,
+              status: { in: ["ACTIVE", "ARCHIVED"] },
+            },
+          },
+          select: { assignmentDate: true },
+        })
+      : [];
+    const accountedDates = new Set([
+      ...timesheet.entries.map((entry) => entry.workDate?.toISOString().slice(0, 10)),
+      ...(timesheet.leaveEntries ?? []).map((entry) => entry.workDate?.toISOString().slice(0, 10)),
+      ...(timesheet.noWorkEntries ?? []).map((entry) => entry.workDate?.toISOString().slice(0, 10)),
+    ].filter((date): date is string => Boolean(date)));
+    for (const assignment of scheduledAssignments) {
+      const date = assignment.assignmentDate.toISOString().slice(0, 10);
+      if (!accountedDates.has(date)) issues.push(`${date} is scheduled but has no worked time or no-work explanation.`);
+    }
     if (issues.length > 0) return { ok: false, message: issues.join(" ") };
     const completed = await tx.weeklyTimesheet.updateMany({
       where: {
@@ -653,13 +753,13 @@ export async function completeWeeklyTimesheetAction(
         message: identityReviewRequiredMessage,
       };
     }
-    return { ok: true, message: "" };
+    return { ok: true, message: "Timesheet completed successfully." };
   });
   if (!result.ok) return result;
   revalidatePath("/timesheets");
   revalidatePath(`/timesheets/${id}`);
   revalidatePath("/payroll");
-  redirect(`/timesheets/${id}`);
+  redirect(`/timesheets/${id}?completed=1`);
 }
 
 export async function reopenWeeklyTimesheetAction(

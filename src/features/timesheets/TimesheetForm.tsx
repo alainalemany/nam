@@ -26,6 +26,7 @@ import type {
   TimesheetClipboardPayload,
   TimesheetFormOptions,
   TimesheetLeaveEntryInput,
+  TimesheetNoWorkEntryInput,
   WeeklyTimesheetInput,
 } from "./types";
 import { emptyTimesheetFormState } from "./types";
@@ -36,6 +37,10 @@ type DayState = DailyTimeEntryInput & {
   leaveRequestedMinutes: number;
   leaveWorkScheduleDailyAssignmentId: string;
   leaveNotes: string;
+  noWorkEnabled: boolean;
+  noWorkReason: "SHIFT_CANCELED" | "COVERED_BY_COWORKER";
+  noWorkScheduleDailyAssignmentId: string;
+  noWorkNotes: string;
 };
 type ReferenceOption = { id: string; label: string; active: boolean };
 
@@ -132,6 +137,7 @@ function emptyAllocation(sequence: number): TimesheetAllocationInput {
 function buildDays(initial: WeeklyTimesheetInput) {
   const existing = new Map(initial.entries.map((entry) => [entry.workDate, entry]));
   const existingLeave = new Map(initial.leaveEntries.map((entry) => [entry.workDate, entry]));
+  const existingNoWork = new Map((initial.noWorkEntries ?? []).map((entry) => [entry.workDate, entry]));
   return buildPayrollWeekDates(parseDateOnly(initial.payrollWeekStartDate)).map((workDate) => ({
     workDate,
     clockIn: existing.get(workDate)?.clockIn ?? "07:00",
@@ -147,6 +153,11 @@ function buildDays(initial: WeeklyTimesheetInput) {
     leaveWorkScheduleDailyAssignmentId:
       existingLeave.get(workDate)?.workScheduleDailyAssignmentId ?? "",
     leaveNotes: existingLeave.get(workDate)?.notes ?? "",
+    noWorkEnabled: existingNoWork.has(workDate),
+    noWorkReason: existingNoWork.get(workDate)?.reason ?? "SHIFT_CANCELED",
+    noWorkScheduleDailyAssignmentId:
+      existingNoWork.get(workDate)?.workScheduleDailyAssignmentId ?? "",
+    noWorkNotes: existingNoWork.get(workDate)?.notes ?? "",
   }));
 }
 
@@ -170,7 +181,7 @@ export function TimesheetForm({
   const [loadingScheduleAssignments, startScheduleAssignmentLoad] = useTransition();
   const scheduleLoadGeneration = useRef(0);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(
-    () => new Set([...initial.entries, ...initial.leaveEntries].map((entry) => entry.workDate)),
+    () => new Set([...initial.entries, ...initial.leaveEntries, ...(initial.noWorkEntries ?? [])].map((entry) => entry.workDate)),
   );
   const [clipboard, setClipboard] = useState<TimesheetClipboardPayload | null>(null);
   const [copyMessage, setCopyMessage] = useState("");
@@ -194,11 +205,19 @@ export function TimesheetForm({
       workScheduleDailyAssignmentId: day.leaveWorkScheduleDailyAssignmentId,
       notes: day.leaveNotes,
     }));
+  const activeNoWorkEntries: TimesheetNoWorkEntryInput[] = days
+    .filter((day) => day.noWorkEnabled)
+    .map((day) => ({
+      workDate: day.workDate,
+      reason: day.noWorkReason,
+      workScheduleDailyAssignmentId: day.noWorkScheduleDailyAssignmentId,
+      notes: day.noWorkNotes,
+    }));
   const preview = buildTimesheetPreview(activeEntries);
   const previewByDate = new Map(preview.entries.map((entry) => [entry.workDate, entry]));
   const payload = useMemo(
-    () => JSON.stringify({ payrollWeekStartDate: weekStart, primaryEmployeeId: employeeId, primaryEmployeeDisplayName: initial.primaryEmployeeDisplayName, entries: activeEntries, leaveEntries: activeLeaveEntries }),
-    [weekStart, employeeId, initial.primaryEmployeeDisplayName, activeEntries, activeLeaveEntries],
+    () => JSON.stringify({ payrollWeekStartDate: weekStart, primaryEmployeeId: employeeId, primaryEmployeeDisplayName: initial.primaryEmployeeDisplayName, entries: activeEntries, leaveEntries: activeLeaveEntries, noWorkEntries: activeNoWorkEntries }),
+    [weekStart, employeeId, initial.primaryEmployeeDisplayName, activeEntries, activeLeaveEntries, activeNoWorkEntries],
   );
 
   useEffect(() => {
@@ -231,7 +250,11 @@ export function TimesheetForm({
           (assignment) => assignment.workDate === day.workDate && assignment.selectable,
         );
         return eligible.length === 1
-          ? { ...day, workScheduleDailyAssignmentId: eligible[0].id }
+          ? {
+              ...day,
+              workScheduleDailyAssignmentId: eligible[0].id,
+              primaryEquipmentId: day.primaryEquipmentId || eligible[0].scheduledEquipmentId || "",
+            }
           : day;
       }));
     });
@@ -286,12 +309,20 @@ export function TimesheetForm({
           notes: day.leaveNotes,
         }
       : undefined;
-    if (!workedEntry && !leaveEntry) {
+    const noWorkEntry = day.noWorkEnabled
+      ? {
+          workDate: day.workDate,
+          reason: day.noWorkReason,
+          workScheduleDailyAssignmentId: day.noWorkScheduleDailyAssignmentId,
+          notes: day.noWorkNotes,
+        }
+      : undefined;
+    if (!workedEntry && !leaveEntry && !noWorkEntry) {
       setCopyMessage("There is nothing to copy from this day.");
       return;
     }
     storeClipboard(
-      dayClipboardPayload(day.workDate, workedEntry, leaveEntry),
+      dayClipboardPayload(day.workDate, workedEntry, leaveEntry, noWorkEntry),
       `Copied ${day.workDate}. Choose an empty destination day and review before saving.`,
     );
   }
@@ -299,8 +330,8 @@ export function TimesheetForm({
   function pasteDay(dayIndex: number) {
     const destination = days[dayIndex];
     if (!clipboard || clipboard.kind !== "DAY") return;
-    if (destination.enabled || destination.leaveEnabled) {
-      setCopyMessage("Paste stopped: the destination day already contains worked time or FTO.");
+    if (destination.enabled || destination.leaveEnabled || destination.noWorkEnabled) {
+      setCopyMessage("Paste stopped: the destination day already contains worked time, FTO, or a no-work explanation.");
       return;
     }
     updateDay(dayIndex, {
@@ -322,6 +353,14 @@ export function TimesheetForm({
             leaveRequestedMinutes: clipboard.leaveEntry.requestedMinutes,
             leaveWorkScheduleDailyAssignmentId: "",
             leaveNotes: clipboard.leaveEntry.notes ?? "",
+          }
+        : {}),
+      ...(clipboard.noWorkEntry
+        ? {
+            noWorkEnabled: true,
+            noWorkReason: clipboard.noWorkEntry.reason,
+            noWorkScheduleDailyAssignmentId: "",
+            noWorkNotes: clipboard.noWorkEntry.notes ?? "",
           }
         : {}),
     });
@@ -397,6 +436,9 @@ export function TimesheetForm({
         leaveWorkScheduleDailyAssignmentId: changed
           ? ""
           : day.leaveWorkScheduleDailyAssignmentId,
+        noWorkScheduleDailyAssignmentId: changed
+          ? ""
+          : day.noWorkScheduleDailyAssignmentId,
       })));
       setExpandedDates(new Set());
     }
@@ -422,6 +464,10 @@ export function TimesheetForm({
 
   function leaveError(leaveIndex: number, field: string) {
     return state.fieldErrors[`leaveEntries.${leaveIndex}.${field}`]?.[0];
+  }
+
+  function noWorkError(noWorkIndex: number, field: string) {
+    return state.fieldErrors[`noWorkEntries.${noWorkIndex}.${field}`]?.[0];
   }
 
   return (
@@ -507,6 +553,7 @@ export function TimesheetForm({
         {days.map((day, dayIndex) => {
           const entryIndex = activeEntries.findIndex((entry) => entry.workDate === day.workDate);
           const leaveIndex = activeLeaveEntries.findIndex((entry) => entry.workDate === day.workDate);
+          const noWorkIndex = activeNoWorkEntries.findIndex((entry) => entry.workDate === day.workDate);
           const dayPreview = previewByDate.get(day.workDate);
           const dayErrors = entryIndex >= 0
             ? Object.entries(state.fieldErrors).filter(([key]) => key.startsWith(`entries.${entryIndex}.`))
@@ -528,6 +575,8 @@ export function TimesheetForm({
                     ? `${formatMinutes(dayPreview.workedMinutes)} worked · ${allocationStatus(dayPreview.allocationDifferenceMinutes)}${day.leaveEnabled ? ` · ${formatMinutes(day.leaveRequestedMinutes)} FTO requested` : ""}`
                     : day.leaveEnabled
                       ? `${formatMinutes(day.leaveRequestedMinutes)} FTO requested`
+                      : day.noWorkEnabled
+                        ? `${day.noWorkReason === "SHIFT_CANCELED" ? "Shift canceled" : "Covered by coworker"} · 0 worked`
                       : "No entry"}
                 </span>
               </summary>
@@ -549,7 +598,7 @@ export function TimesheetForm({
                     type="checkbox"
                     checked={day.enabled}
                     onChange={(event) => {
-                      updateDay(dayIndex, { enabled: event.target.checked });
+                      updateDay(dayIndex, { enabled: event.target.checked, ...(event.target.checked ? { noWorkEnabled: false } : {}) });
                       if (event.target.checked) setDayExpanded(day.workDate, true);
                     }}
                   />
@@ -585,7 +634,13 @@ export function TimesheetForm({
                     <div className="form-grid two-column">
                       <label>
                         <span>Work Schedule context (optional)</span>
-                        <select value={day.workScheduleDailyAssignmentId ?? ""} onChange={(event) => updateDay(dayIndex, { workScheduleDailyAssignmentId: event.target.value })}>
+                        <select value={day.workScheduleDailyAssignmentId ?? ""} onChange={(event) => {
+                          const assignment = scheduleAssignments.find((item) => item.id === event.target.value);
+                          updateDay(dayIndex, {
+                            workScheduleDailyAssignmentId: event.target.value,
+                            primaryEquipmentId: day.primaryEquipmentId || assignment?.scheduledEquipmentId || "",
+                          });
+                        }}>
                           <option value="">No linked assignment</option>
                           {scheduleAssignments
                             .filter((item) => item.workDate === day.workDate || item.id === day.workScheduleDailyAssignmentId)
@@ -597,6 +652,9 @@ export function TimesheetForm({
                           : <span className="subtle">No eligible scheduled assignment. Unscheduled work is allowed.</span>}
                         {scheduleAssignments.find((item) => item.id === day.workScheduleDailyAssignmentId)?.warning
                           ? <span className="form-message error">{scheduleAssignments.find((item) => item.id === day.workScheduleDailyAssignmentId)?.warning} The historical link will be preserved unless you clear it.</span>
+                          : null}
+                        {scheduleAssignments.find((item) => item.id === day.workScheduleDailyAssignmentId)?.scheduledEquipmentLabel
+                          ? <span className="subtle">Scheduled equipment: {scheduleAssignments.find((item) => item.id === day.workScheduleDailyAssignmentId)?.scheduledEquipmentLabel}. Primary equipment above records the actual worked equipment and may be changed.</span>
                           : null}
                       </label>
                       <label><span>Daily notes</span><input value={day.notes ?? ""} onChange={(event) => updateDay(dayIndex, { notes: event.target.value })} maxLength={1000} /><FieldError message={fieldError(entryIndex, "notes")} /></label>
@@ -642,7 +700,7 @@ export function TimesheetForm({
                       type="checkbox"
                       checked={day.leaveEnabled}
                       onChange={(event) => {
-                        updateDay(dayIndex, { leaveEnabled: event.target.checked });
+                        updateDay(dayIndex, { leaveEnabled: event.target.checked, ...(event.target.checked ? { noWorkEnabled: false } : {}) });
                         if (event.target.checked) setDayExpanded(day.workDate, true);
                       }}
                     />
@@ -681,6 +739,60 @@ export function TimesheetForm({
                     </div>
                   ) : null}
                 </div>
+
+                <div className="timesheet-leave-entry form-stack">
+                  <label className="checkbox-field">
+                    <input
+                      type="checkbox"
+                      checked={day.noWorkEnabled}
+                      onChange={(event) => {
+                        const eligible = scheduleAssignments.filter((assignment) => assignment.workDate === day.workDate && assignment.leaveSelectable);
+                        updateDay(dayIndex, {
+                          noWorkEnabled: event.target.checked,
+                          ...(event.target.checked ? {
+                            enabled: false,
+                            leaveEnabled: false,
+                            noWorkScheduleDailyAssignmentId: day.noWorkScheduleDailyAssignmentId || (eligible.length === 1 ? eligible[0].id : ""),
+                          } : {}),
+                        });
+                        if (event.target.checked) setDayExpanded(day.workDate, true);
+                      }}
+                    />
+                    <span>Explain why no work was performed</span>
+                  </label>
+                  {day.noWorkEnabled ? (
+                    <div className="form-stack">
+                      <div className="form-message">This records zero actual worked minutes. It does not create a Work Code, paid leave, overtime, or a worked shift.</div>
+                      <div className="form-grid two-column">
+                        <label>
+                          <span>No-work reason</span>
+                          <select value={day.noWorkReason} onChange={(event) => updateDay(dayIndex, { noWorkReason: event.target.value as DayState["noWorkReason"] })}>
+                            <option value="SHIFT_CANCELED">Shift canceled — instructed not to report</option>
+                            <option value="COVERED_BY_COWORKER">Shift covered by coworker — no paid leave</option>
+                          </select>
+                          <FieldError message={noWorkError(noWorkIndex, "reason")} />
+                        </label>
+                        <label>
+                          <span>Original scheduled assignment</span>
+                          <select required value={day.noWorkScheduleDailyAssignmentId} onChange={(event) => updateDay(dayIndex, { noWorkScheduleDailyAssignmentId: event.target.value })}>
+                            <option value="">Select scheduled assignment</option>
+                            {scheduleAssignments
+                              .filter((item) => item.workDate === day.workDate || item.id === day.noWorkScheduleDailyAssignmentId)
+                              .map((item) => <option disabled={!item.leaveSelectable && item.id !== day.noWorkScheduleDailyAssignmentId} key={item.id} value={item.id}>{item.label}</option>)}
+                          </select>
+                          <FieldError message={noWorkError(noWorkIndex, "workScheduleDailyAssignmentId")} />
+                        </label>
+                      </div>
+                      <label><span>Optional explanation</span><textarea maxLength={1000} rows={2} value={day.noWorkNotes} onChange={(event) => updateDay(dayIndex, { noWorkNotes: event.target.value })} /><FieldError message={noWorkError(noWorkIndex, "notes")} /></label>
+                    </div>
+                  ) : null}
+                </div>
+
+                {(day.enabled || day.leaveEnabled || day.noWorkEnabled) ? (
+                  <button className="button secondary" disabled={pending} name="confirmationDate" type="submit" value={day.workDate}>
+                    {pending ? "Saving…" : `Save ${dayLabels[dayIndex]}`}
+                  </button>
+                ) : null}
               </div>
             </details>
           );

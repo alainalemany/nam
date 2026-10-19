@@ -736,6 +736,9 @@ request evidence, full-shift allocation assistance, copy/paste review, and the
 canonical `/timesheets` read-only history surface are implemented. Timesheet
 History provides URL-filtered Weekly Timesheet lookup, compact snapshot-based
 Daily Time Entry and FTO summaries, and deterministic page-number pagination.
+The daily workflow also inherits unambiguous scheduled Equipment as an editable
+actual-work default, records explicit zero-hour canceled/covered explanations,
+confirms persisted day saves, and reviews weekly evidence before completion.
 
 ### Purpose
 
@@ -783,6 +786,15 @@ for review, and then use the ordinary Save Draft action.
   or mixed-work allocations.
 - Record FTO requests separately from worked time with explicit approval and
   payment-evidence states that default to Requested and Unverified.
+- Record Shift canceled and Covered by coworker as zero-minute, assignment-linked
+  explanations without creating a Daily Time Entry, Work Code, allocation, or
+  paid-leave claim.
+- Prevent a no-work explanation from coexisting with worked time or FTO on the
+  same date, while leaving normal scheduled days off non-actionable.
+- Preselect actual-work Equipment only from one unambiguous eligible scheduled
+  assignment and preserve manual overrides and saved historical values.
+- Confirm successful daily persistence with the saved date and require an
+  explicit evidence summary before weekly completion.
 - Copy an individual allocation or eligible day into employee-scoped transient client state;
   paste into an empty destination without copying record IDs, status evidence,
   destination date, or date-specific schedule links.
@@ -853,7 +865,7 @@ Feature implementation architecture:
 ### V1 Boundary
 
 Version 1 should support manual weekly Timesheets, Daily Time Entries, separate
-FTO request evidence, Work Allocations, full-shift allocation assistance,
+FTO request evidence, explicit zero-hour no-work explanations, Work Allocations, full-shift allocation assistance,
 review-before-save copy/paste, Timesheet-owned reference lists, calculated
 integer-minute durations, allocation reconciliation, edit/delete behavior,
 explicit Reopen, Draft/Completed lifecycle, and selected-date Day View

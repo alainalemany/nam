@@ -40,6 +40,10 @@ const emptyPaycheck: ParsedPaycheck = {
 };
 
 const initialState: PayrollImportState = { status: "idle", message: "" };
+const cashWarning = "Cash earnings and adjustments do not equal gross cash pay.";
+const netWarning = "Gross cash pay less deductions and taxes does not equal net pay.";
+const parserCashWarning = "Parsed cash earnings do not equal gross cash pay; classify other cash earnings before saving.";
+const parserNetWarning = "Gross cash pay less parsed deductions and taxes does not equal net pay; review unclassified deductions.";
 
 type EditableKey = Exclude<keyof ParsedPaycheck,
   "warnings" | "fingerprint" | "parserVersion" | "rateExtraction" | "importMode" | "evidenceEnvelope">;
@@ -90,6 +94,19 @@ export function PaycheckReviewEditor({ initial, paycheckId, canReviewRateHistory
         },
       ))
     : correctionRateContextUnchanged && Boolean(values.baseRate);
+  const cashComponents = Number(values.regularEarnings || 0) + Number(values.overtimeBaseEarnings || 0) + Number(values.overtimePremiumEarnings || 0) + Number(values.otherCashEarnings || 0) + Number(values.adjustments || 0);
+  const cashMismatch = Math.abs(cashComponents - Number(values.grossCashPay || 0)) > 0.01;
+  const calculatedNet = Number(values.grossCashPay || 0) - Number(values.preTaxDeductions || 0) - Number(values.employeeTaxes || 0) - Number(values.postTaxDeductions || 0);
+  const netMismatch = Math.abs(calculatedNet - Number(values.netPay || 0)) > 0.01;
+  const implicatedFields = new Set<EditableKey>([
+    ...(cashMismatch ? ["regularEarnings", "overtimeBaseEarnings", "overtimePremiumEarnings", "otherCashEarnings", "adjustments", "grossCashPay"] as EditableKey[] : []),
+    ...(netMismatch ? ["grossCashPay", "preTaxDeductions", "employeeTaxes", "postTaxDeductions", "netPay"] as EditableKey[] : []),
+  ]);
+  const persistentWarnings = values.warnings.filter((warning) => warning !== parserCashWarning && warning !== parserNetWarning);
+  const visibleWarnings = [...persistentWarnings, ...(cashMismatch ? [cashWarning] : []), ...(netMismatch ? [netWarning] : [])];
+  function focusField(name: EditableKey) {
+    document.getElementById(`payroll-field-${name}`)?.focus();
+  }
   if (state.status === "saved") {
     const rateConflict = state.code === "RATE_EVIDENCE_CONFLICT";
     const rateNeedsReview = state.rateEvidence === "NEEDS_REVIEW";
@@ -99,7 +116,7 @@ export function PaycheckReviewEditor({ initial, paycheckId, canReviewRateHistory
   return <form className="grid gap-5" action={action}>
     {paycheckId ? <input type="hidden" name="paycheckId" value={paycheckId} /> : null}
     <input type="hidden" name="payload" value={JSON.stringify(values)} />
-    {values.warnings.length ? <div className="payroll-notice payroll-notice--warning"><strong>Review required</strong><ul>{values.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div> : null}
+    {visibleWarnings.length ? <div className="payroll-notice payroll-notice--warning"><strong>Review required</strong><ul>{visibleWarnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>{implicatedFields.size ? <div className="inline-actions" aria-label="Fields implicated by accounting validation">{[...implicatedFields].map((name) => <button className="button secondary" key={name} type="button" onClick={() => focusField(name)}>Review {fields.find((field) => field.name === name)?.label}</button>)}</div> : null}{netMismatch ? <p>Accounting check: {values.grossCashPay || "0"} gross − {values.preTaxDeductions || "0"} pre-tax − {values.employeeTaxes || "0"} taxes − {values.postTaxDeductions || "0"} post-tax = {calculatedNet.toFixed(2)}, compared with {values.netPay || "0"} net.</p> : null}</div> : null}
     {values.importMode === "MANUAL_ENTRY" ? <div className="payroll-notice payroll-notice--warning"><strong>Manual paycheck entry</strong><p>The Paycheck can be saved, but manually entered numbers do not establish verified hourly-rate evidence. Use the owner evidence-review workflow for independently supported rates.</p></div> : null}
     {values.importMode === "CORRECTION" ? <div className="payroll-notice"><strong>Controlled correction</strong><p>An unchanged rate context can preserve an existing linked verified rate only after the server checks that evidence. Editing its period, regular hours, rate, or regular earnings saves the Paycheck with its rate withheld for explicit evidence review.</p>{!rateWillBeEstablished ? <p role="status"><strong>Rate review required:</strong> this correction will not create replacement verified-rate evidence.</p> : null}</div> : null}
     {rateExtraction ? <section className="payroll-notice" aria-labelledby="regular-rate-observations">
@@ -110,7 +127,11 @@ export function PaycheckReviewEditor({ initial, paycheckId, canReviewRateHistory
     </section> : null}
     <div className="payroll-notice">Workday&apos;s Overtime 1X and Overtime Premium 0.5X represent the same overtime hours. Confirm hours once; earnings remain separate.{paycheckId ? " The original import fingerprint remains as provenance." : ""}</div>
     <div className="payroll-form-grid">
-      {fields.map((field) => <label className={field.wide ? "payroll-field--wide" : undefined} key={field.name}>{field.name === "baseRate" && extractedRateIsAmbiguous ? "Base hourly rate (review only)" : field.label}{field.name === "notes" ? <textarea rows={3} value={values[field.name]} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} /> : <input required={field.name !== "baseRate"} type={field.type} step={field.step} min={field.name === "adjustments" ? undefined : "0"} value={values[field.name]} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} />}</label>)}
+      {fields.map((field) => {
+        const review = implicatedFields.has(field.name);
+        const accessibleLabel = field.name === "baseRate" && extractedRateIsAmbiguous ? "Base hourly rate (review only)" : field.label;
+        return <label className={`${field.wide ? "payroll-field--wide " : ""}${review ? "payroll-field--review" : ""}`.trim() || undefined} key={field.name}>{accessibleLabel}{review ? <span className="payroll-field-review-label" id={`payroll-field-${field.name}-review`}>Review this value</span> : null}{field.name === "notes" ? <textarea aria-label={accessibleLabel} id={`payroll-field-${field.name}`} rows={3} value={values[field.name]} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} /> : <input aria-label={accessibleLabel} id={`payroll-field-${field.name}`} aria-describedby={review ? `payroll-field-${field.name}-review` : undefined} aria-invalid={review || undefined} required={field.name !== "baseRate"} type={field.type} step={field.step} min={field.name === "adjustments" ? undefined : "0"} value={values[field.name]} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} />}</label>;
+      })}
     </div>
     {state.status === "error" ? <div className="payroll-notice payroll-notice--error" role="alert">{state.message}</div> : null}
     <div className="payroll-actions"><button className="button primary" disabled={pending} type="submit">{pending ? "Saving…" : paycheckId ? "Save Correction" : "Confirm and Save"}</button><Link className="button secondary" href={paycheckId ? `/payroll/paychecks/${paycheckId}` : "/payroll"}>Cancel</Link></div>

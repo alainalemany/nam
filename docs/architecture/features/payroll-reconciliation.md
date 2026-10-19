@@ -142,6 +142,14 @@ does not promote approval/payment state or modify Paycheck evidence. Approved
 FTO overtime eligibility and the authoritative Workday earning-code mapping
 must be decided before paid-leave reconciliation can claim a match.
 
+Timesheet no-work explanations are explicit zero-minute coverage. A valid
+canceled-shift or coworker-covered record prevents Missing Timesheet for that
+scheduled date but never contributes worked, regular, overtime, paid-leave, or
+expected-gross minutes. Aggregate reconciliation may match when official totals
+equal recorded payable worked time and all relevant scheduled dates are covered
+by worked entries, FTO evidence, or valid no-work explanations. The match remains
+period-level evidence only.
+
 Unresolved historical Timesheets are discovered by Payroll-period/date overlap,
 not by a current Employee name. They are never attributed to the Payroll owner,
 but potentially relevant unresolved evidence prevents a false confirmed
@@ -214,6 +222,18 @@ paycheck context, history, import, detail, and controlled correction. The home
 widget is a protected summary. The UI selectively adapts licensed Metronic
 9.5.0 Next.js Card patterns and theme tokens under ADR-014; business logic stays
 in project-owned Payroll modules.
+
+Calendar cells use low-saturation semantic backgrounds with text labels. Status
+priority preserves confirmed numerical discrepancy over informational day
+states; valid no-work and FTO states replace Missing Timesheet where applicable.
+The selected-day marker is independent from status, and the right drawer uses
+brief CSS motion with a reduced-motion path.
+
+The Workday parser extracts current-period pre-tax totals from a trustworthy
+aggregate when present or sums supported itemized pre-tax rows while keeping YTD
+values, taxes, post-tax deductions, employer benefits, and noncash earnings
+separate. Accounting review identifies all implicated fields when responsibility
+is ambiguous and removes warning treatment after the values reconcile.
 
 Selected-month reconciliation totals include Workday periods whose
 `periodEnd` falls in that month. Pending totals include only uncovered work

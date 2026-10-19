@@ -166,6 +166,43 @@ textarea::placeholder {
   gap: 20px;
 }
 
+.form-message {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #d7dde3;
+  border-radius: 8px;
+  background: #f7f9fb;
+  color: #34424d;
+  padding: 12px 14px;
+}
+
+.form-message.success {
+  border-color: #8fc7a6;
+  background: #effaf3;
+  color: #174d2c;
+}
+
+.form-message.error {
+  border-color: #dc9d51;
+  background: #fff6e8;
+  color: #70400b;
+}
+
+.confirmation-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  border: 1px solid #d7dde3;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 24px;
+  box-shadow: 0 24px 70px rgb(15 23 42 / 24%);
+}
+
+.confirmation-dialog::backdrop {
+  background: rgb(15 23 42 / 45%);
+}
+
 .eyebrow {
   margin: 0;
   color: #54616c;
@@ -2483,7 +2520,7 @@ textarea {
   border: 0;
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  background: #fff;
+  background: var(--status-bg, #fff);
   color: #263246;
   padding: 10px;
   text-align: left;
@@ -2497,9 +2534,14 @@ textarea {
 .payroll-day:hover,
 .payroll-day:focus-visible {
   z-index: 1;
-  background: #f7fbff;
+  background: color-mix(in srgb, var(--status-bg, #fff) 84%, #e9f4ff);
   box-shadow: inset 0 0 0 2px #1b84ff;
   outline: 0;
+}
+
+.payroll-day--selected {
+  z-index: 1;
+  box-shadow: inset 0 0 0 2px #1b84ff, inset 0 0 0 5px rgb(255 255 255 / 78%);
 }
 
 .payroll-day--outside {
@@ -2537,12 +2579,17 @@ textarea {
   display: none;
 }
 
-.payroll-status--reconciled { --status-color: #1b84ff; }
-.payroll-status--awaiting-payroll { --status-color: #f6b100; }
-.payroll-status--missing-timesheet,
-.payroll-status--discrepancy { --status-color: #f8285a; }
-.payroll-status--needs-review { --status-color: #7239ea; }
-.payroll-status--off { --status-color: #94a3b8; }
+.payroll-status--reconciled { --status-color: #23864b; --status-bg: #edf9f1; }
+.payroll-status--awaiting-payroll { --status-color: #7239ea; --status-bg: #f4effd; }
+.payroll-status--missing-timesheet { --status-color: #c22d59; --status-bg: #fff0f4; }
+.payroll-status--discrepancy { --status-color: #d92d20; --status-bg: #fff0ef; }
+.payroll-status--needs-review { --status-color: #b75b00; --status-bg: #fff6e8; }
+.payroll-status--fto-requested { --status-color: #087f8c; --status-bg: #eaf9fa; }
+.payroll-status--fto-approved { --status-color: #17755b; --status-bg: #eaf8f2; }
+.payroll-status--shift-canceled { --status-color: #8a6116; --status-bg: #f8f3e8; }
+.payroll-status--covered-by-coworker { --status-color: #53677f; --status-bg: #eef3f8; }
+.payroll-status--scheduled-off,
+.payroll-status--off { --status-color: #64748b; --status-bg: #f7f8fa; }
 
 .payroll-day-hours {
   color: #172033;
@@ -2710,6 +2757,7 @@ textarea {
   display: grid;
   justify-items: end;
   background: rgb(15 23 42 / 45%);
+  animation: payroll-overlay-in 160ms ease-out both;
 }
 
 .payroll-day-drawer {
@@ -2722,6 +2770,24 @@ textarea {
   background: white;
   padding: 28px;
   box-shadow: -20px 0 50px rgb(15 23 42 / 18%);
+  animation: payroll-drawer-in 180ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+.payroll-day-dialog[data-closing="true"] { animation: payroll-overlay-out 150ms ease-in both; }
+.payroll-day-dialog[data-closing="true"] .payroll-day-drawer { animation: payroll-drawer-out 160ms ease-in both; }
+
+@keyframes payroll-drawer-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes payroll-drawer-out { from { transform: translateX(0); } to { transform: translateX(100%); } }
+@keyframes payroll-overlay-in { from { background: rgb(15 23 42 / 0%); } to { background: rgb(15 23 42 / 45%); } }
+@keyframes payroll-overlay-out { from { background: rgb(15 23 42 / 45%); } to { background: rgb(15 23 42 / 0%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .payroll-day-dialog,
+  .payroll-day-drawer,
+  .payroll-day-dialog[data-closing="true"],
+  .payroll-day-dialog[data-closing="true"] .payroll-day-drawer {
+    animation-duration: 1ms;
+  }
 }
 
 .payroll-drawer-header {
@@ -2758,6 +2824,24 @@ textarea {
   color: #475569;
   font-size: 0.78rem;
   font-weight: 700;
+}
+
+.payroll-field--review {
+  border-radius: 9px;
+  background: #fff8dd;
+  padding: 8px;
+}
+
+.payroll-field--review input,
+.payroll-field--review textarea {
+  border-color: #c58b00;
+  box-shadow: 0 0 0 1px rgb(197 139 0 / 18%);
+}
+
+.payroll-field-review-label {
+  color: #765500;
+  font-size: .7rem;
+  font-weight: 800;
 }
 
 .payroll-form-grid input,

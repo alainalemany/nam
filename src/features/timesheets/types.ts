@@ -28,12 +28,20 @@ export type TimesheetLeaveEntryInput = {
   notes?: string;
 };
 
+export type TimesheetNoWorkEntryInput = {
+  workDate: string;
+  reason: "SHIFT_CANCELED" | "COVERED_BY_COWORKER";
+  workScheduleDailyAssignmentId?: string;
+  notes?: string;
+};
+
 export type WeeklyTimesheetInput = {
   payrollWeekStartDate: string;
   primaryEmployeeId?: string;
   primaryEmployeeDisplayName: string;
   entries: DailyTimeEntryInput[];
   leaveEntries: TimesheetLeaveEntryInput[];
+  noWorkEntries?: TimesheetNoWorkEntryInput[];
 };
 
 export type TimesheetFormState = {
@@ -65,6 +73,7 @@ export type EquipmentSnapshot = {
 };
 
 export type TimesheetFormOptions = {
+  defaultPrimaryEmployeeId?: string;
   employees: Array<{
     id: string;
     label: string;
@@ -80,6 +89,8 @@ export type TimesheetFormOptions = {
     label: string;
     selectable: boolean;
     leaveSelectable: boolean;
+    scheduledEquipmentId?: string | null;
+    scheduledEquipmentLabel?: string;
     warning?: string;
     leaveWarning?: string;
   }>;
@@ -92,6 +103,7 @@ export type TimesheetClipboardPayload = {
   allocation?: TimesheetAllocationInput;
   workedEntry?: Omit<DailyTimeEntryInput, "workDate" | "workScheduleDailyAssignmentId">;
   leaveEntry?: Omit<TimesheetLeaveEntryInput, "workDate" | "workScheduleDailyAssignmentId">;
+  noWorkEntry?: Omit<TimesheetNoWorkEntryInput, "workDate" | "workScheduleDailyAssignmentId">;
 };
 
 export type TimesheetListItem = {

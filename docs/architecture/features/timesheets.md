@@ -37,7 +37,7 @@ Related Documents:
 - `docs/architecture/features/day-view.md`
 - `docs/architecture/features/work-schedule.md`
 
-Last Reviewed: 2026-10-18
+Last Reviewed: 2026-10-19
 
 Implementation Status: The V1 foundation is implemented with weekly
 Timesheets, Daily Time Entries, Work Allocations, Timesheet-owned reference
@@ -47,7 +47,9 @@ display-context helper. `/timesheets` is the canonical feature-owned Timesheet
 History route with structured URL filtering, Weekly Timesheet result ownership,
 compact Daily Time Entry summaries, and page-number pagination. The implemented
 daily workflow also includes full-shift allocation assistance, separate FTO
-request evidence, and review-before-save allocation/day copy and paste. The
+request evidence, explicit no-work explanations, scheduled Equipment defaults,
+persisted save/completion feedback, and review-before-save allocation/day copy
+and paste. The
 other capabilities listed under Deferred Scope remain deferred.
 
 ## 1. Purpose
@@ -89,6 +91,10 @@ Timesheet is responsible for:
 - Work Allocations that explain where a day's worked minutes went.
 - Timesheet Leave Entries that preserve FTO requests separately from worked
   time, approval evidence, and payment evidence.
+- Timesheet No-Work Entries that preserve canceled and coworker-covered
+  scheduled dates as zero-minute evidence without fabricating worked time.
+- Safe Equipment inheritance from one eligible schedule assignment as an
+  editable initial value, never an overwrite of saved actual Equipment.
 - Full-shift allocation assistance that uses only a unique explicit
   Equipment-to-Work-Code relationship and preserves existing multi-allocation
   days.
@@ -226,6 +232,7 @@ V1 should use these conceptual records:
 | Weekly Timesheet | Payroll-week container for Daily Time Entries. Created automatically on first use. |
 | Daily Time Entry | Independent work-date record and source of truth for worked time. |
 | Timesheet Leave Entry | Date-specific FTO request and approval/payment evidence, separate from worked time. |
+| Timesheet No-Work Entry | Date-specific canceled/covered explanation linked to the original schedule and contributing zero worked minutes. |
 | Work Allocation | Ordered explanation of where a Daily Time Entry's worked hours went. |
 | Timesheet Work Code | Reusable Timesheet-owned work-code reference. |
 | Timesheet Work Order | Reusable Timesheet-owned work-order reference. |
@@ -440,6 +447,20 @@ Code may be selected only when exactly one active code explicitly references
 the selected Equipment; otherwise the operator must choose it. With multiple
 allocations, the action refuses to collapse or redistribute the rows so PM
 patterns such as `OM-151` and `OM-155` remain intact.
+
+When one eligible assignment exists for a date, its canonical Equipment ID may
+initialize the Daily Time Entry's actual Equipment selection. Multiple eligible
+assignments, missing Equipment, and conflicting mappings remain unselected.
+Once the user selects or saves actual Equipment, schedule refreshes and later
+schedule edits do not overwrite it.
+
+### No-Work Explanations
+
+`TimesheetNoWorkEntry` records `SHIFT_CANCELED` or
+`COVERED_BY_COWORKER` with optional notes and a required eligible original
+assignment. It contributes zero minutes and cannot coexist with a Daily Time
+Entry or FTO on the same date. Completion and Payroll treat it as accounted-for
+schedule coverage, not paid leave or a worked allocation.
 
 ### FTO Leave Evidence
 

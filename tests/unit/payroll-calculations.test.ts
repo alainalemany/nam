@@ -103,9 +103,32 @@ describe("payroll reconciliation calculations", () => {
       ftoApprovalStatus: "Requested",
       ftoPaymentStatus: "Unverified",
     });
-    expect(result.status).toBe("NEEDS_REVIEW");
+    expect(result.status).toBe("FTO_REQUESTED");
     expect(result.detail).toContain("separately from worked time");
     expect(result.detail).toContain("Payment: Unverified");
+  });
+
+  it("does not let an FTO state hide a confirmed aggregate discrepancy", () => {
+    const result = derivePayrollDayState({
+      hasEntry: false,
+      hasTimesheet: true,
+      timesheetStatus: "COMPLETED",
+      scheduled: true,
+      shiftEnded: true,
+      hasPaycheck: true,
+      aggregateStatus: "DISCREPANCY",
+      aggregateExplanation: "Paid totals differ from recorded totals.",
+      hasFtoRequest: true,
+      ftoApprovalStatus: "APPROVED",
+      ftoPaymentStatus: "UNVERIFIED",
+    });
+    expect(result.status).toBe("DISCREPANCY");
+    expect(result.detail).toContain("FTO remains separate evidence");
+  });
+
+  it("accounts for an explained canceled or covered shift with zero worked minutes", () => {
+    expect(derivePayrollDayState({ hasEntry: false, hasTimesheet: true, timesheetStatus: "COMPLETED", scheduled: true, shiftEnded: true, hasPaycheck: true, aggregateStatus: "RECONCILED", aggregateExplanation: "", noWorkReason: "SHIFT_CANCELED" })).toMatchObject({ status: "SHIFT_CANCELED" });
+    expect(derivePayrollDayState({ hasEntry: false, hasTimesheet: true, timesheetStatus: "COMPLETED", scheduled: true, shiftEnded: true, hasPaycheck: true, aggregateStatus: "RECONCILED", aggregateExplanation: "", noWorkReason: "COVERED_BY_COWORKER" })).toMatchObject({ status: "COVERED_BY_COWORKER" });
   });
 
   it("preserves overnight minutes and does not invent day-level payroll allocation", () => {

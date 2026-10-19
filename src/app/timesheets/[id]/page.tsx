@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { formatMinutes } from "@/features/timesheets/calculations";
 import { timesheetStatusLabels } from "@/features/timesheets/constants";
-import { getWeeklyTimesheetById, timesheetToFormInput } from "@/features/timesheets/data";
+import { getTimesheetCompletionReview, getWeeklyTimesheetById, timesheetToFormInput } from "@/features/timesheets/data";
 import { TimesheetCopyDayButton } from "@/features/timesheets/TimesheetCopyDayButton";
 import {
   CompleteTimesheetButton,
@@ -13,8 +13,13 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function TimesheetDetailPage({ params }: { params: Promise<{ id: string }> }) {
+function displayDate(date: string) {
+  return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", timeZone: "UTC" }).format(new Date(`${date}T00:00:00.000Z`));
+}
+
+export default async function TimesheetDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ savedDate?: string; saved?: string; completed?: string }> }) {
   const { id } = await params;
+  const query: { savedDate?: string; saved?: string; completed?: string } = await (searchParams ?? Promise.resolve({}));
   const timesheet = await getWeeklyTimesheetById(id);
   if (!timesheet) notFound();
 
@@ -24,15 +29,22 @@ export default async function TimesheetDetailPage({ params }: { params: Promise<
   const formInput = timesheetToFormInput(timesheet);
   const entriesByDate = new Map(formInput.entries.map((entry) => [entry.workDate, entry]));
   const leaveByDate = new Map(formInput.leaveEntries.map((entry) => [entry.workDate, entry]));
+  const noWorkByDate = new Map((formInput.noWorkEntries ?? []).map((entry) => [entry.workDate, entry]));
   const persistedLeaveEntries = timesheet.leaveEntries ?? [];
-  const dates = [...new Set([...entriesByDate.keys(), ...leaveByDate.keys()])].sort();
+  const dates = [...new Set([...entriesByDate.keys(), ...leaveByDate.keys(), ...noWorkByDate.keys()])].sort();
   const requestedFtoMinutes = formInput.leaveEntries.reduce(
     (sum, entry) => sum + entry.requestedMinutes,
     0,
   );
+  const completionReview = timesheet.status === "DRAFT" && trustedIdentity
+    ? await getTimesheetCompletionReview(timesheet)
+    : { issues: [] };
 
   return (
     <main className="page-stack">
+      {query.savedDate ? <div className="form-message success" role="status">Timesheet for {displayDate(query.savedDate)} saved successfully.</div> : null}
+      {query.saved === "week" ? <div className="form-message success" role="status">Timesheet week saved successfully.</div> : null}
+      {query.completed === "1" ? <div className="form-message success" role="status">Timesheet completed successfully. This week is now read-only.</div> : null}
       <section className="page-header with-actions">
         <div>
           <p className="eyebrow">
@@ -57,7 +69,14 @@ export default async function TimesheetDetailPage({ params }: { params: Promise<
             <Link className="button secondary" href={`/timesheets/${id}/edit`}>Edit</Link>
           ) : null}
           {trustedIdentity && timesheet.status === "DRAFT" ? (
-            <CompleteTimesheetButton id={id} />
+            <CompleteTimesheetButton
+              id={id}
+              weekLabel={`${displayDate(timesheet.payrollWeekStartDate.toISOString().slice(0, 10))}–${displayDate(timesheet.payrollWeekEndDate.toISOString().slice(0, 10))}`}
+              workedTime={formatMinutes(timesheet.workedMinutesTotal)}
+              ftoSummary={formInput.leaveEntries.length ? `${formInput.leaveEntries.length} request(s), ${formatMinutes(requestedFtoMinutes)}` : "None"}
+              noWorkSummary={timesheet.noWorkEntries.length ? timesheet.noWorkEntries.map((entry) => `${displayDate(entry.workDate.toISOString().slice(0, 10))}: ${entry.reason === "SHIFT_CANCELED" ? "Shift canceled" : "Covered by coworker"}`).join("; ") : "None"}
+              issues={completionReview.issues}
+            />
           ) : trustedIdentity ? (
             <ReopenTimesheetButton id={id} />
           ) : null}
@@ -91,6 +110,9 @@ export default async function TimesheetDetailPage({ params }: { params: Promise<
             (item) => item.workDate.toISOString().slice(0, 10) === date,
           );
           const leave = persistedLeaveEntries.find(
+            (item) => item.workDate.toISOString().slice(0, 10) === date,
+          );
+          const noWork = timesheet.noWorkEntries.find(
             (item) => item.workDate.toISOString().slice(0, 10) === date,
           );
           const entryInput = entriesByDate.get(date);
@@ -192,6 +214,7 @@ export default async function TimesheetDetailPage({ params }: { params: Promise<
                   </dl>
                 </div>
               ) : null}
+              {noWork ? <div className="timesheet-leave-entry form-stack"><div className="section-heading"><div><p className="eyebrow">No work · 0 actual hours</p><h3>{noWork.reason === "SHIFT_CANCELED" ? "Shift canceled" : "Covered by coworker"}</h3></div><span className="count-pill">Accounted for</span></div><p className="subtle">This explanation is neither worked time nor paid leave and contributes zero minutes to regular and overtime totals.</p><dl className="meta-list"><dt>Original schedule</dt><dd>{noWork.workScheduleDailyAssignment ? `${noWork.workScheduleDailyAssignment.assignmentDate.toISOString().slice(0, 10)} · ${noWork.workScheduleDailyAssignment.weeklySchedule.primaryEmployeeDisplayName}` : "Historical assignment unavailable"}</dd><dt>Notes</dt><dd>{noWork.notes ?? "Not recorded"}</dd></dl></div> : null}
             </article>
           );
         })}
