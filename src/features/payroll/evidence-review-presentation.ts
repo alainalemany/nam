@@ -36,7 +36,11 @@ export function formatReviewDuration(minutes: number) {
 }
 
 export function formatRate(value: { toString(): string } | string) {
-  return `$${Number(value.toString()).toFixed(4)}/hr`;
+  return `$${Number(value.toString()).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+    useGrouping: false,
+  })}/hr`;
 }
 
 export function employeeLabel(employee: { displayName: string; employeeCode: string | null; id: string; isActive?: boolean }) {

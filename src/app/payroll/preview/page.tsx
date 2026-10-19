@@ -12,7 +12,15 @@ function previewDays(): DashboardData["days"] {
     let timesheetMinutes: number | undefined;
     let scheduledLabel: string | undefined = "Off";
     let detail = "Scheduled day off with no recorded working time.";
-    if ([1, 2, 3, 8, 9].includes(index)) {
+    if (index === 7) {
+      status = "SHIFT_CANCELED";
+      scheduledLabel = "Cancelled";
+      detail = "Shift canceled; zero actual worked hours and no paid leave are recorded.";
+    } else if (index === 11) {
+      status = "COVERED_BY_COWORKER";
+      scheduledLabel = "Day shift";
+      detail = "The scheduled shift was covered by a coworker; zero actual worked hours are recorded.";
+    } else if ([1, 2, 3, 8, 9].includes(index)) {
       status = index === 8 ? "MISSING_TIMESHEET" : index < 4 ? "AWAITING_PAYROLL" : "RECONCILED";
       scheduledLabel = index % 2 ? "Night shift" : "Day shift";
       timesheetMinutes = index === 8 ? undefined : 720;
@@ -31,6 +39,12 @@ function previewDays(): DashboardData["days"] {
       scheduledLabel,
       equipmentLabel: scheduledLabel !== "Off" ? "Dragline 8200" : undefined,
       timesheetMinutes,
+      noWorkReason: status === "SHIFT_CANCELED" || status === "COVERED_BY_COWORKER" ? status : undefined,
+      noWorkLabel: status === "SHIFT_CANCELED"
+        ? "Shift canceled · 0 worked"
+        : status === "COVERED_BY_COWORKER"
+          ? "Covered by coworker · 0 worked"
+          : undefined,
       payrollPeriodLabel: status === "RECONCILED" ? "Oct 5, 2026 – Oct 11, 2026" : undefined,
       paidEvidenceLabel: status === "RECONCILED" ? "60h aggregate paid" : undefined,
       evidenceLevel: status === "RECONCILED" ? "aggregate" : undefined,
@@ -70,7 +84,7 @@ export default function PayrollPreviewPage() {
         regularPaidMinutes: 2400,
         overtimePaidMinutes: 1200,
         paidMinutes: 3600,
-        baseRate: "33.15",
+        baseRate: "33.1500",
         regularEarnings: "1326.00",
         overtimeBaseEarnings: "663.00",
         overtimePremiumEarnings: "331.50",
@@ -99,7 +113,7 @@ export default function PayrollPreviewPage() {
       regularPaidMinutes: 2400,
       overtimePaidMinutes: 1200,
       paidMinutes: 3600,
-      baseRate: "33.15",
+      baseRate: "33.1500",
       regularEarnings: "1326.00",
       overtimeBaseEarnings: "663.00",
       overtimePremiumEarnings: "331.50",

@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { activeConfiguredOwnerId } from "@/features/employees/owner";
 
 import { dateInputValue, endOfPayrollWeek, formatMinutes, parseDateOnly } from "./calculations";
 import { TIMESHEET_HISTORY_PAGE_SIZE, timesheetStatusLabels } from "./constants";
@@ -37,6 +38,10 @@ export const weeklyTimesheetInclude = {
     include: {
       workScheduleDailyAssignment: { include: { weeklySchedule: true } },
     },
+  },
+  noWorkEntries: {
+    orderBy: { workDate: "asc" },
+    include: { workScheduleDailyAssignment: { include: { weeklySchedule: true } } },
   },
 } satisfies Prisma.WeeklyTimesheetInclude;
 
@@ -262,6 +267,38 @@ export function getWeeklyTimesheetByWeek(payrollWeekStartDate: Date, primaryEmpl
     where: { payrollWeekStartDate_primaryEmployeeKey: { payrollWeekStartDate, primaryEmployeeKey } },
     include: weeklyTimesheetInclude,
   });
+}
+
+export async function getTimesheetCompletionReview(timesheet: WeeklyTimesheetDetail) {
+  const assignments = timesheet.primaryEmployeeId
+    ? await prisma.dailyAssignment.findMany({
+        where: {
+          assignmentDate: { gte: timesheet.payrollWeekStartDate, lte: timesheet.payrollWeekEndDate },
+          plannedStatus: "SCHEDULED",
+          weeklySchedule: {
+            primaryEmployeeId: timesheet.primaryEmployeeId,
+            status: { in: ["ACTIVE", "ARCHIVED"] },
+          },
+        },
+        orderBy: { assignmentDate: "asc" },
+      })
+    : [];
+  const accounted = new Set([
+    ...timesheet.entries.map((entry) => dateInputValue(entry.workDate)),
+    ...timesheet.leaveEntries.map((entry) => dateInputValue(entry.workDate)),
+    ...timesheet.noWorkEntries.map((entry) => dateInputValue(entry.workDate)),
+  ]);
+  const issues = timesheet.entries.flatMap((entry) => {
+    const allocated = entry.allocations.reduce((sum, allocation) => sum + allocation.allocatedMinutes, 0);
+    return allocated === entry.workedMinutes
+      ? []
+      : [`${dateInputValue(entry.workDate)} allocations do not equal worked time.`];
+  });
+  for (const assignment of assignments) {
+    const date = dateInputValue(assignment.assignmentDate);
+    if (!accounted.has(date)) issues.push(`${date} is scheduled but remains unexplained.`);
+  }
+  return { issues };
 }
 
 export function getDailyTimeEntryByDate(weeklyTimesheetId: string, workDate: Date) {
@@ -491,6 +528,10 @@ export async function getWorkScheduleAssignmentOptions(
       leaveSelectable: belongsToEmployee &&
         item.weeklySchedule.status !== "DRAFT" &&
         item.plannedStatus === "SCHEDULED",
+      scheduledEquipmentId: item.actualStatus !== "UNKNOWN"
+        ? item.actualEquipmentId
+        : item.plannedEquipmentId,
+      scheduledEquipmentLabel: equipment,
       warning,
       leaveWarning: !belongsToEmployee
         ? "Previously linked assignment now belongs to another employee."
@@ -531,6 +572,7 @@ export async function getTimesheetFormOptions({
       : Promise.resolve([]),
   ]);
   return {
+    defaultPrimaryEmployeeId: activeConfiguredOwnerId(employees),
     employees: employees.map((employee) => ({
       id: employee.id,
       label: `${employee.displayName}${employee.employeeCode ? ` (${employee.employeeCode})` : ""}${employee.isActive ? "" : " — Inactive"}`,
@@ -579,6 +621,12 @@ export function timesheetToFormInput(timesheet: WeeklyTimesheetDetail): WeeklyTi
       workDate: dateInputValue(entry.workDate),
       leaveType: "FTO",
       requestedMinutes: entry.requestedMinutes,
+      workScheduleDailyAssignmentId: entry.workScheduleDailyAssignmentId ?? "",
+      notes: entry.notes ?? "",
+    })),
+    noWorkEntries: (timesheet.noWorkEntries ?? []).map((entry) => ({
+      workDate: dateInputValue(entry.workDate),
+      reason: entry.reason,
       workScheduleDailyAssignmentId: entry.workScheduleDailyAssignmentId ?? "",
       notes: entry.notes ?? "",
     })),

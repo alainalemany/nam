@@ -3,6 +3,7 @@ import type {
   TimesheetAllocationInput,
   TimesheetClipboardPayload,
   TimesheetLeaveEntryInput,
+  TimesheetNoWorkEntryInput,
 } from "./types";
 
 const TIMESHEET_CLIPBOARD_KEY_PREFIX = "nam.timesheet.day-clipboard.v1";
@@ -38,6 +39,7 @@ export function dayClipboardPayload(
   sourceDate: string,
   workedEntry?: DailyTimeEntryInput,
   leaveEntry?: TimesheetLeaveEntryInput,
+  noWorkEntry?: TimesheetNoWorkEntryInput,
 ): TimesheetClipboardPayload {
   return {
     version: 1,
@@ -64,6 +66,14 @@ export function dayClipboardPayload(
           },
         }
       : {}),
+    ...(noWorkEntry
+      ? {
+          noWorkEntry: {
+            reason: noWorkEntry.reason,
+            notes: noWorkEntry.notes ?? "",
+          },
+        }
+      : {}),
   };
 }
 
@@ -75,7 +85,7 @@ export function parseTimesheetClipboard(value: string | null): TimesheetClipboar
     if (parsed.kind === "ALLOCATION") {
       return parsed.allocation ? parsed : null;
     }
-    if (parsed.kind === "DAY" && (parsed.workedEntry || parsed.leaveEntry)) return parsed;
+    if (parsed.kind === "DAY" && (parsed.workedEntry || parsed.leaveEntry || parsed.noWorkEntry)) return parsed;
     return null;
   } catch {
     return null;

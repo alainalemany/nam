@@ -64,6 +64,8 @@ function timesheet(
     regularMinutesTotal: entries.reduce((sum, item) => sum + item.regularMinutes, 0),
     overtimeMinutesTotal: entries.reduce((sum, item) => sum + item.overtimeMinutes, 0),
     entries,
+    leaveEntries: [],
+    noWorkEntries: [] as Array<{ id: string; workDate: Date; reason: "SHIFT_CANCELED" | "COVERED_BY_COWORKER"; notes: string | null }>,
   };
 }
 
@@ -348,6 +350,71 @@ describe("Payroll interval reconciliation data", () => {
       status: "NEEDS_REVIEW",
       reason: "MISSING_TIMESHEET_EVIDENCE",
     });
+  });
+
+  it("requires an explicit explanation when a planned shift was later marked canceled", async () => {
+    mocks.assignmentFindMany.mockResolvedValue([{
+      assignmentDate: new Date("2026-10-15T00:00:00.000Z"),
+      plannedStatus: "SCHEDULED",
+      actualStatus: "CANCELLED",
+      plannedShift: "DAY",
+      actualShift: "NONE",
+      plannedEquipmentDisplayName: "Synthetic Dragline",
+      actualEquipmentDisplayName: null,
+      weeklySchedule: { primaryEmployeeId: "employee-1", status: "ACTIVE" },
+    }]);
+    arrange([
+      timesheet("week-oct", "2026-10-12", "COMPLETED", [entry("entry-1", "2026-10-14", 600, 0)]),
+    ], [paycheck("paycheck-1", "2026-10-12", "2026-10-18", 600, 0)]);
+
+    const data = await getPayrollDashboardData("employee-1", "2026-10");
+
+    expect(data.paychecks[0]).toMatchObject({
+      status: "NEEDS_REVIEW",
+      reason: "MISSING_TIMESHEET_EVIDENCE",
+    });
+    expect(data.days.find((day) => day.date === "2026-10-15")?.status).toBe("MISSING_TIMESHEET");
+    expect(data.summary.openIssues).toBe(1);
+  });
+
+  it("reconciles the 42-hour September 28–October 4 period", async () => {
+    arrange([
+      timesheet("week-sep-28", "2026-09-28", "COMPLETED", [
+        entry("sep-28", "2026-09-28", 720, 0),
+        entry("sep-29", "2026-09-29", 720, 0),
+        entry("oct-3", "2026-10-03", 720, 0),
+        entry("oct-4", "2026-10-04", 240, 120),
+      ]),
+    ], [paycheck("paycheck-42", "2026-09-28", "2026-10-04", 2400, 120)]);
+    const data = await getPayrollDashboardData("employee-1", "2026-10");
+    expect(data.paychecks[0]).toMatchObject({ status: "RECONCILED", differences: { totalMinutes: 0 } });
+  });
+
+  it("reconciles October 5–11 to 36 hours when scheduled no-work dates are explained", async () => {
+    mocks.assignmentFindMany.mockResolvedValue(["05", "06", "07", "08", "09"].map((day) => ({
+      assignmentDate: new Date(`2026-10-${day}T00:00:00.000Z`),
+      plannedStatus: "SCHEDULED",
+      actualStatus: "UNKNOWN",
+      plannedShift: "DAY",
+      actualShift: "UNKNOWN",
+      plannedEquipmentDisplayName: "Synthetic Dragline",
+      actualEquipmentDisplayName: null,
+      weeklySchedule: { primaryEmployeeId: "employee-1", status: "ACTIVE" },
+    })));
+    const week = timesheet("week-oct-5", "2026-10-05", "COMPLETED", [
+      entry("oct-6", "2026-10-06", 720, 0),
+      entry("oct-7", "2026-10-07", 720, 0),
+      entry("oct-8", "2026-10-08", 720, 0),
+    ]);
+    week.noWorkEntries = [
+      { id: "no-work-5", workDate: new Date("2026-10-05T00:00:00.000Z"), reason: "SHIFT_CANCELED", notes: null },
+      { id: "no-work-9", workDate: new Date("2026-10-09T00:00:00.000Z"), reason: "COVERED_BY_COWORKER", notes: null },
+    ];
+    arrange([week], [paycheck("paycheck-36", "2026-10-05", "2026-10-11", 2160, 0)]);
+    const data = await getPayrollDashboardData("employee-1", "2026-10");
+    expect(data.paychecks[0]).toMatchObject({ status: "RECONCILED", differences: { totalMinutes: 0 } });
+    expect(data.days.find((day) => day.date === "2026-10-05")).toMatchObject({ status: "SHIFT_CANCELED", timesheetMinutes: undefined });
+    expect(data.days.find((day) => day.date === "2026-10-09")).toMatchObject({ status: "COVERED_BY_COWORKER", timesheetMinutes: undefined });
   });
 
   it("does not double-count duplicate Daily Time Entry IDs and flags ambiguous dates", async () => {

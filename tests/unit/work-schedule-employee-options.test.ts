@@ -18,11 +18,12 @@ describe("Work Schedule Employee options", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.equipmentFindMany.mockResolvedValue([]);
+    process.env.NAM_PAYROLL_OWNER_EMPLOYEE_ID = "configured-owner-id";
   });
 
   it("loads active employees and limits Assigned By to supervisors", async () => {
     mocks.employeeFindMany.mockResolvedValue([
-      { id: "employee_911601", employeeCode: "911601", displayName: "Alain Alemany Arana", isActive: true, isSupervisor: false },
+      { id: "configured-owner-id", employeeCode: "OWNER-001", displayName: "Configured Owner", isActive: true, isSupervisor: false },
       { id: "supervisor-1", employeeCode: null, displayName: "Sam Supervisor", isActive: true, isSupervisor: true },
     ]);
 
@@ -32,11 +33,11 @@ describe("Work Schedule Employee options", () => {
       where: { OR: [{ isActive: true }] },
     }));
     expect(options.employeeOptions.map((option) => option.id)).toEqual([
-      "employee_911601",
+      "configured-owner-id",
       "supervisor-1",
     ]);
     expect(options.supervisorOptions.map((option) => option.id)).toEqual(["supervisor-1"]);
-    expect(options.defaultPrimaryEmployeeId).toBe("employee_911601");
+    expect(options.defaultPrimaryEmployeeId).toBe("configured-owner-id");
   });
 
   it("requests referenced inactive employees for edit compatibility", async () => {
@@ -54,5 +55,25 @@ describe("Work Schedule Employee options", () => {
       isActive: false,
       label: "Inactive Employee (300) — Inactive",
     });
+  });
+
+  it("does not guess an owner when the configured mapping is unavailable", async () => {
+    mocks.employeeFindMany.mockResolvedValue([
+      { id: "employee-other", employeeCode: "200", displayName: "Other Employee", isActive: true, isSupervisor: false },
+    ]);
+
+    const options = await getWorkScheduleFormOptions();
+
+    expect(options.defaultPrimaryEmployeeId).toBe("");
+  });
+
+  it("does not default an inactive configured owner", async () => {
+    mocks.employeeFindMany.mockResolvedValue([
+      { id: "configured-owner-id", employeeCode: "OWNER-001", displayName: "Historical Owner", isActive: false, isSupervisor: false },
+    ]);
+
+    const options = await getWorkScheduleFormOptions(["configured-owner-id"]);
+
+    expect(options.defaultPrimaryEmployeeId).toBe("");
   });
 });

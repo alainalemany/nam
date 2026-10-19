@@ -63,7 +63,7 @@ beforeEach(() => {
 describe("progressive rate-history overview", () => {
   it("renders only a verified current rate with support counts and explicit open uncertainty", () => {
     render(<RateHistoryOverview data={overview()} />);
-    expect(screen.getAllByText("$30.0000/hr").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("$30.00/hr").length).toBeGreaterThan(0);
     expect(screen.getByText(/2 active rows/)).toBeInTheDocument();
     expect(screen.getAllByText(/1 promotable/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Proposed increase").length).toBeGreaterThan(0);
@@ -98,13 +98,13 @@ describe("progressive rate-history overview", () => {
     const candidateRow = within(candidates).getAllByRole("row")[1];
     expect(within(candidateRow).getByText("Proposed increase")).toBeInTheDocument();
     expect(within(candidateRow).getByText("Verified boundary")).toBeInTheDocument();
-    expect(within(candidateRow).getByText("$32.5000/hr")).toBeInTheDocument();
+    expect(within(candidateRow).getByText("$32.50/hr")).toBeInTheDocument();
     expect(within(candidateRow).getByRole("link", { name: "Details →" })).toHaveAttribute("href", "/payroll/rate-history/candidates/candidate-1");
 
     const history = screen.getByRole("region", { name: "Verified Rate History" });
     const rateRow = within(history).getAllByRole("row")[1];
     expect(within(rateRow).getByText("Sep 7, 2026")).toBeInTheDocument();
-    expect(within(rateRow).getByText("$32.5000/hr")).toBeInTheDocument();
+    expect(within(rateRow).getByText("$32.50/hr")).toBeInTheDocument();
     expect(within(rateRow).getByText("Verified", { exact: true })).toBeInTheDocument();
     expect(within(rateRow).getByText("Confirmed Paycheck")).toBeInTheDocument();
     expect(within(rateRow).getByText("2")).toBeInTheDocument();
@@ -212,8 +212,8 @@ describe("rate-boundary candidate decisions", () => {
     expect(within(confirmation).getByText("Confirm verified boundary")).toBeInTheDocument();
     expect(within(confirmation).getByText("2026-09-07")).toBeInTheDocument();
     expect(exactDate).toHaveValue("2026-09-07");
-    expect(screen.getByText("$30.0000/hr")).toBeInTheDocument();
-    expect(screen.getByText("$32.5000/hr")).toBeInTheDocument();
+    expect(screen.getByText("$30.00/hr")).toBeInTheDocument();
+    expect(screen.getByText("$32.50/hr")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Confirm exact boundary" }));
     await waitFor(() => expect(mocks.verify).toHaveBeenCalledOnce());

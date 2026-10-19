@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { adjacentMonth, formatHours, formatMoney } from "./calculations";
 import type { getPayrollDashboardData } from "./data";
+import { formatRate } from "./evidence-review-presentation";
 import { PayrollCalendar } from "./PayrollCalendar";
 
 export type DashboardData = Awaited<ReturnType<typeof getPayrollDashboardData>>;
@@ -58,7 +59,7 @@ export function PayrollDashboard({ data, preview = false, lockAction, canReviewE
           <Card>
             <CardHeader><CardTitle>Latest Paycheck</CardTitle><WalletCards size={18} aria-hidden="true" /></CardHeader>
             <CardContent>
-              {latest ? <dl className="payroll-detail-list"><div><dt>Covered period</dt><dd>{latest.periodLabel}</dd></div><div><dt>Official check date</dt><dd>{dateLabel(latest.checkDate)}</dd></div><div><dt>Regular</dt><dd>{formatHours(latest.regularPaidMinutes)}</dd></div><div><dt>Overtime</dt><dd>{formatHours(latest.overtimePaidMinutes)}</dd></div><div><dt>Gross cash</dt><dd>{formatMoney(latest.grossCashPay)}</dd></div><div><dt>Net pay</dt><dd>{formatMoney(latest.netPay)}</dd></div></dl> : <div className="payroll-empty"><FileText aria-hidden="true" /><strong>No paychecks imported</strong><span>Import a Workday payslip to begin reconciliation.</span></div>}
+              {latest ? <dl className="payroll-detail-list"><div><dt>Covered period</dt><dd>{latest.periodLabel}</dd></div><div><dt>Official check date</dt><dd>{dateLabel(latest.checkDate)}</dd></div><div><dt>Regular</dt><dd>{formatHours(latest.regularPaidMinutes)}</dd></div><div><dt>Overtime</dt><dd>{formatHours(latest.overtimePaidMinutes)}</dd></div>{latest.baseRate ? <div><dt>Base hourly rate</dt><dd>{formatRate(latest.baseRate)}</dd></div> : null}<div><dt>Gross cash</dt><dd>{formatMoney(latest.grossCashPay)}</dd></div><div><dt>Net pay</dt><dd>{formatMoney(latest.netPay)}</dd></div></dl> : <div className="payroll-empty"><FileText aria-hidden="true" /><strong>No paychecks imported</strong><span>Import a Workday payslip to begin reconciliation.</span></div>}
             </CardContent>
           </Card>
           <Card>

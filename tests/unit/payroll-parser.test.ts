@@ -191,4 +191,19 @@ describe("Workday paycheck parser", () => {
     );
     expect(result.warnings).toContain("Overtime 1X and 0.5X components report different hours; review required.");
   });
+
+  it.each([
+    ["September 28–October 4", fixtures.pretaxSeptember28, "98.20", "1091.68"],
+    ["October 5–11", fixtures.pretaxOctober5, "84.28", "923.35"],
+  ])("extracts current-period itemized pre-tax deductions for %s", (_label, text, expected, netPay) => {
+    const result = parseWorkdayPaycheckText(text);
+    expect(Number(result.preTaxDeductions).toFixed(2)).toBe(expected);
+    expect(Number(result.netPay).toFixed(2)).toBe(netPay);
+    expect(
+      Number(result.grossCashPay) -
+      Number(result.preTaxDeductions) -
+      Number(result.employeeTaxes) -
+      Number(result.postTaxDeductions),
+    ).toBeCloseTo(Number(result.netPay), 2);
+  });
 });

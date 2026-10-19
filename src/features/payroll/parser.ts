@@ -75,7 +75,7 @@ function amountIn(value?: string) {
 function amountAfter(text: string, labels: string[]) {
   for (const label of labels) {
     const match = text.match(
-      new RegExp(`${label}[^\\d$()-]{0,36}(\\(?[-$]?[\\d,]+(?:\\.\\d{1,4})?\\)?)`, "i"),
+      new RegExp(`${label}[^\\n\\d$()-]{0,36}(\\(?[-$]?[\\d,]+(?:\\.\\d{1,4})?\\)?)`, "i"),
     );
     if (match) {
       const negative = match[1].startsWith("(") && match[1].endsWith(")");
@@ -133,6 +133,21 @@ function sumKnown(text: string, labels: RegExp[], hasYtdColumn: boolean) {
     (sum, label) => sum + Number(likelyCurrentAmount(componentLine(text, label), hasYtdColumn) || 0),
     0,
   );
+}
+
+function itemizedPreTaxTotal(text: string, hasYtdColumn: boolean) {
+  const labels = [
+    /\b401\s*\(k\)\s+pre(?:\s*tax)?\b/i,
+    /\bdental\s+pre[ -]?tax\b/i,
+    /\bhsa\s+contrib(?:ution)?\b/i,
+    /\bmedical\s+pre[ -]?tax\b/i,
+    /\bvision\s+pre[ -]?tax\b/i,
+    /\bfsa\s+contrib(?:ution)?\b/i,
+  ];
+  const rows = labels
+    .map((label) => likelyCurrentAmount(componentLine(text, label), hasYtdColumn))
+    .filter(Boolean);
+  return rows.length > 0 ? sumDecimalValues(rows) : "";
 }
 
 function tableValueBelow(
@@ -454,7 +469,8 @@ export function parseWorkdayPaycheckText(
     amountAfter(text, ["Employee Taxes", "Total Taxes"]);
   const preTaxDeductions =
     tableValueBelow(tables, [/^pre[ -]?tax deductions?$/i], amountIn) ||
-    amountAfter(text, ["Pre Tax Deductions", "Pre-Tax Deductions"]);
+    amountAfter(text, ["Total Pre Tax Deductions", "Total Pre-Tax Deductions"]) ||
+    itemizedPreTaxTotal(text, hasYtdColumn);
   const postTaxDeductions =
     tableValueBelow(tables, [/^post[ -]?tax deductions?$/i], amountIn) ||
     amountAfter(text, ["Post Tax Deductions", "Post-Tax Deductions"]);

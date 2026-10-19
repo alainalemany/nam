@@ -432,8 +432,9 @@ Current status: Product decisions and feature architecture are approved. The
 V1 data model, weekly entry workflow, reference management, lifecycle,
 proportional tests, selected-date Day View participation, and feature-owned
 Timesheet History filtering are implemented. Daily workflow improvements add
-full-shift allocation, separate FTO request evidence, and review-before-save
-copy/paste. Submitted and locked lifecycle states, external submission, global
+full-shift allocation, separate FTO request evidence, explicit no-work coverage,
+scheduled Equipment inheritance, persisted save/completion feedback, and
+review-before-save copy/paste. Submitted and locked lifecycle states, external submission, global
 search, reporting, and automated Payroll leave adjudication remain deferred.
 
 ### Phase 1: Requirements Definition (Complete)
@@ -519,6 +520,20 @@ search, reporting, and automated Payroll leave adjudication remain deferred.
   save validation.
 - Add additive migration 39 and proportional unit, component, action,
   migration, and opt-in PostgreSQL integration coverage.
+
+### Phase 25.4: Timesheet And Payroll Reliability Improvements (Complete)
+
+- Add explicit Shift canceled and Covered by coworker records with zero worked
+  minutes and no fabricated allocation or leave evidence.
+- Default the canonical configured owner safely and inherit Equipment only from
+  one unambiguous eligible assignment while preserving manual actual Equipment.
+- Add persisted day-save feedback and a weekly completion evidence dialog.
+- Count valid no-work dates as aggregate schedule coverage while retaining
+  Missing Timesheet for unexplained scheduled dates.
+- Correct current-period Workday pre-tax extraction, accounting-field review
+  cues, rate display formatting, calendar backgrounds, and day-drawer motion.
+- Add additive migration 40 and focused parser, reconciliation, UI, action, and
+  migration regression coverage.
 
 ### Phase 5: Future Enhancements
 

@@ -92,6 +92,38 @@ Overtime 1X 09/21/2026 - 09/27/2026 20.00 33.15 663.00 29,016.63
 Overtime Premium - 0.5X 09/21/2026 - 09/27/2026 20.00 16.575 331.50 14,550.62
 REGULAR 09/21/2026 - 09/27/2026 40.00 33.15 1,326.00 38,480.60
 `,
+  pretaxSeptember28: `
+Pay Period Begin 09/28/2026
+Pay Period End 10/04/2026
+Check Date 10/09/2026
+Earnings Hours Rate Current YTD
+REGULAR 40.00 33.15 1,326.00 39,806.60
+Overtime 1X 2.00 33.15 66.30 29,082.93
+Overtime Premium - 0.5X 2.00 16.575 33.15 14,583.77
+Deductions Current YTD
+401(k) Pre 85.53 2,000.00
+Dental Pre Tax 2.67 100.00
+HSA Contrib 10.00 300.00
+Employee Taxes 233.32 9,000.00
+Post Tax Deductions 2.25 80.00
+Gross Cash Pay 1,425.45
+Net Pay 1,091.68
+`,
+  pretaxOctober5: `
+Pay Period Begin 10/05/2026
+Pay Period End 10/11/2026
+Check Date 10/16/2026
+Earnings Hours Rate Current YTD
+REGULAR 36.00 33.15 1,193.40 40,000.00
+Deductions Current YTD
+401(k) Pre 71.61 2,071.61
+Dental Pre Tax 2.67 102.67
+HSA Contrib 10.00 310.00
+Employee Taxes 183.52 9,183.52
+Post Tax Deductions 2.25 82.25
+Gross Cash Pay 1,193.40
+Net Pay 923.35
+`,
 } as const;
 
 export const realisticWorkdayLayout = {

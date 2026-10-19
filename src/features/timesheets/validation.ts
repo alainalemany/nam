@@ -96,6 +96,13 @@ export const timesheetLeaveEntryInputSchema = z.object({
   notes: optionalText(),
 });
 
+export const timesheetNoWorkEntryInputSchema = z.object({
+  workDate: dateOnly,
+  reason: z.enum(["SHIFT_CANCELED", "COVERED_BY_COWORKER"]),
+  workScheduleDailyAssignmentId: cuid,
+  notes: optionalText(),
+});
+
 export const weeklyTimesheetInputSchema = z
   .object({
     payrollWeekStartDate: dateOnly,
@@ -103,6 +110,7 @@ export const weeklyTimesheetInputSchema = z
     primaryEmployeeDisplayName: z.string().trim().max(200).default(""),
     entries: z.array(dailyTimeEntryInputSchema).max(7, "A payroll week may contain seven daily entries."),
     leaveEntries: z.array(timesheetLeaveEntryInputSchema).max(7, "A payroll week may contain seven FTO entries.").default([]),
+    noWorkEntries: z.array(timesheetNoWorkEntryInputSchema).max(7, "A payroll week may contain seven no-work explanations.").default([]),
   })
   .superRefine((timesheet, context) => {
     const weekStart = parseDateOnly(timesheet.payrollWeekStartDate);
@@ -110,11 +118,11 @@ export const weeklyTimesheetInputSchema = z
       context.addIssue({ code: "custom", path: ["payrollWeekStartDate"], message: "Payroll week must start on Monday." });
     }
     const weekEnd = endOfPayrollWeek(weekStart);
-    if (timesheet.entries.length === 0 && timesheet.leaveEntries.length === 0) {
+    if (timesheet.entries.length === 0 && timesheet.leaveEntries.length === 0 && timesheet.noWorkEntries.length === 0) {
       context.addIssue({
         code: "custom",
         path: ["entries"],
-        message: "Add worked time or an FTO request before saving the payroll week.",
+        message: "Add worked time, an FTO request, or a no-work explanation before saving the payroll week.",
       });
     }
     const dates = timesheet.entries.map((entry) => entry.workDate);
@@ -135,6 +143,19 @@ export const weeklyTimesheetInputSchema = z
       const workDate = parseDateOnly(entry.workDate);
       if (workDate < weekStart || workDate > weekEnd) {
         context.addIssue({ code: "custom", path: ["leaveEntries", index, "workDate"], message: "FTO date must belong to the selected payroll week." });
+      }
+    });
+    const noWorkDates = timesheet.noWorkEntries.map((entry) => entry.workDate);
+    if (new Set(noWorkDates).size !== noWorkDates.length) {
+      context.addIssue({ code: "custom", path: ["noWorkEntries"], message: "A payroll week cannot contain duplicate no-work dates." });
+    }
+    timesheet.noWorkEntries.forEach((entry, index) => {
+      const workDate = parseDateOnly(entry.workDate);
+      if (workDate < weekStart || workDate > weekEnd) {
+        context.addIssue({ code: "custom", path: ["noWorkEntries", index, "workDate"], message: "No-work date must belong to the selected payroll week." });
+      }
+      if (dates.includes(entry.workDate) || leaveDates.includes(entry.workDate)) {
+        context.addIssue({ code: "custom", path: ["noWorkEntries", index, "workDate"], message: "A no-work explanation cannot share a date with worked time or FTO." });
       }
     });
   });
@@ -165,10 +186,10 @@ export const supportPersonSchema = z.object({
 export function validateCompletion(entries: Array<{
   workedMinutes: number;
   allocations: Array<{ allocatedMinutes: number }>;
-}>, leaveEntryCount = 0) {
+}>, leaveEntryCount = 0, noWorkEntryCount = 0) {
   const issues: string[] = [];
-  if (entries.length === 0 && leaveEntryCount === 0) {
-    issues.push("Add worked time or an FTO request before completion.");
+  if (entries.length === 0 && leaveEntryCount === 0 && noWorkEntryCount === 0) {
+    issues.push("Add worked time, an FTO request, or a no-work explanation before completion.");
   }
   entries.forEach((entry, index) => {
     if (entry.allocations.length === 0) issues.push(`Entry ${index + 1} needs at least one Work Allocation.`);

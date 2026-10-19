@@ -18,8 +18,10 @@ function assignment(overrides: Record<string, unknown> = {}) {
     plannedShift: "NIGHT",
     actualShift: "UNKNOWN",
     plannedEquipmentDisplayName: "MTECK 2100E Dragline",
+    plannedEquipmentId: "equipment-101151",
     plannedEquipmentNumber: "101151",
     actualEquipmentDisplayName: null,
+    actualEquipmentId: null,
     actualEquipmentNumber: null,
     weeklySchedule: {
       primaryEmployeeId: "employee-1",
@@ -51,6 +53,7 @@ describe("Timesheet Work Schedule discovery", () => {
       id: "assignment-oct-14",
       workDate: "2026-10-14",
       selectable: true,
+      scheduledEquipmentId: "equipment-101151",
     })]);
     expect(result[0].label).toContain("Night");
     expect(result[0].label).toContain("MTECK 2100E Dragline #101151");

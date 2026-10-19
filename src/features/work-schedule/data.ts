@@ -1,6 +1,7 @@
 import type { AssignmentCrewPhase, AssignmentCrewRole } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { activeConfiguredOwnerId } from "@/features/employees/owner";
 
 import {
   dailyAssignmentStatusOptions,
@@ -361,8 +362,7 @@ export async function getWorkScheduleFormOptions(
       (employee) =>
         employee.isSupervisor || employee.id === existingAssignedByEmployeeId,
     ),
-    defaultPrimaryEmployeeId:
-      employees.find((employee) => employee.employeeCode === "911601" && employee.isActive)?.id ?? "",
+    defaultPrimaryEmployeeId: activeConfiguredOwnerId(employees),
   };
 }
 
@@ -506,7 +506,7 @@ export function defaultWorkScheduleInitialValues(
     weekStartDate,
     status: "DRAFT",
     primaryEmployeeId,
-    primaryEmployeeDisplayName: "Alain Alemany Arana",
+    primaryEmployeeDisplayName: "",
     assignedByEmployeeId: "",
     assignedByDisplayName: "",
     receivedAt: "",

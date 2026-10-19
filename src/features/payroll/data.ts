@@ -27,7 +27,7 @@ import type { PayrollCalendarDay } from "./types";
 
 const paycheckInclude = { payrollPeriod: true } satisfies Prisma.PaycheckInclude;
 type PaycheckRecord = Prisma.PaycheckGetPayload<{ include: typeof paycheckInclude }>;
-const timesheetInclude = { entries: true, leaveEntries: true } satisfies Prisma.WeeklyTimesheetInclude;
+const timesheetInclude = { entries: true, leaveEntries: true, noWorkEntries: true } satisfies Prisma.WeeklyTimesheetInclude;
 type TimesheetRecord = Prisma.WeeklyTimesheetGetPayload<{ include: typeof timesheetInclude }>;
 
 function paycheckView(paycheck: PaycheckRecord) {
@@ -111,6 +111,8 @@ function reconcilePaycheck(
   const entries = uniqueEntries(contributing, periodStart, periodEnd);
   const leaveEntries = contributing.flatMap((timesheet) => timesheet.leaveEntries ?? [])
     .filter((entry) => entry.workDate >= periodStart && entry.workDate <= periodEnd);
+  const noWorkEntries = contributing.flatMap((timesheet) => timesheet.noWorkEntries ?? [])
+    .filter((entry) => entry.workDate >= periodStart && entry.workDate <= periodEnd);
   const recorded = minuteBreakdown(entries);
   const paid = {
     totalMinutes: paycheck.regularPaidMinutes + paycheck.overtimePaidMinutes,
@@ -127,20 +129,19 @@ function reconcilePaycheck(
     const key = dateInputValue(timesheet.payrollWeekStartDate);
     contributingByWeek.set(key, [...(contributingByWeek.get(key) ?? []), timesheet]);
   }
-  if ([...weekStarts].some((key) => !contributingByWeek.has(key)) || (entries.length === 0 && leaveEntries.length === 0)) {
+  if ([...weekStarts].some((key) => !contributingByWeek.has(key)) || (entries.length === 0 && leaveEntries.length === 0 && noWorkEntries.length === 0)) {
     issues.push("MISSING_TIMESHEET_EVIDENCE");
   }
   const entryDates = new Set(entries.map((entry) => dateInputValue(entry.workDate)));
   const leaveDates = new Set(leaveEntries.map((entry) => dateInputValue(entry.workDate)));
+  const noWorkDates = new Set(noWorkEntries.map((entry) => dateInputValue(entry.workDate)));
   if (assignments.some((assignment) => {
-    const effectiveStatus = assignment.actualStatus !== "UNKNOWN"
-      ? assignment.actualStatus
-      : assignment.plannedStatus;
-    return effectiveStatus === "SCHEDULED" &&
+    return assignment.plannedStatus === "SCHEDULED" &&
       assignment.assignmentDate >= periodStart &&
       assignment.assignmentDate <= periodEnd &&
       !entryDates.has(dateInputValue(assignment.assignmentDate)) &&
-      !leaveDates.has(dateInputValue(assignment.assignmentDate));
+      !leaveDates.has(dateInputValue(assignment.assignmentDate)) &&
+      !noWorkDates.has(dateInputValue(assignment.assignmentDate));
   })) {
     issues.push("MISSING_TIMESHEET_EVIDENCE");
   }
@@ -266,6 +267,7 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
   }
   const entries = timesheets.flatMap((timesheet) => timesheet.entries.map((entry) => ({ ...entry, weeklyTimesheet: timesheet })));
   const leaveEntries = timesheets.flatMap((timesheet) => (timesheet.leaveEntries ?? []).map((entry) => ({ ...entry, weeklyTimesheet: timesheet })));
+  const noWorkEntries = timesheets.flatMap((timesheet) => (timesheet.noWorkEntries ?? []).map((entry) => ({ ...entry, weeklyTimesheet: timesheet })));
   const legacyTimesheetIdsByDate = new Map<string, string[]>();
   const unresolvedTimesheetIdsCoveredByPaycheck = new Set<string>();
   for (const timesheet of unresolvedTimesheets) {
@@ -286,6 +288,11 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
   for (const entry of leaveEntries) {
     const key = dateInputValue(entry.workDate);
     leaveEntriesByDate.set(key, [...(leaveEntriesByDate.get(key) ?? []), entry]);
+  }
+  const noWorkEntriesByDate = new Map<string, typeof noWorkEntries>();
+  for (const entry of noWorkEntries) {
+    const key = dateInputValue(entry.workDate);
+    noWorkEntriesByDate.set(key, [...(noWorkEntriesByDate.get(key) ?? []), entry]);
   }
   const timesheetsByStart = new Map<string, TimesheetRecord[]>();
   for (const timesheet of timesheets) {
@@ -354,6 +361,8 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
     const entry = dateEntries[0];
     const dateLeaveEntries = leaveEntriesByDate.get(key) ?? [];
     const leaveEntry = dateLeaveEntries[0];
+    const dateNoWorkEntries = noWorkEntriesByDate.get(key) ?? [];
+    const noWorkEntry = dateNoWorkEntries[0];
     const dateTimesheets = timesheetsByStart.get(periodStart) ?? [];
     const timesheet = dateTimesheets[0];
     const matchingPaychecks = paychecks.filter((item) =>
@@ -379,7 +388,7 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
       hasEntry: Boolean(entry),
       hasTimesheet: Boolean(timesheet),
       timesheetStatus: timesheet?.status,
-      scheduled: effectiveStatus === "SCHEDULED",
+      scheduled: assignment?.plannedStatus === "SCHEDULED",
       shiftEnded,
       hasPaycheck: matchingPaychecks.length > 0,
       aggregateStatus: matchingPaychecks.length > 1 ? "NEEDS_REVIEW" : aggregate.status,
@@ -396,6 +405,8 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
       ftoPaymentStatus: leaveEntry?.paymentStatus === "UNVERIFIED"
         ? "Unverified"
         : leaveEntry?.paymentStatus,
+      noWorkReason: noWorkEntry?.reason,
+      scheduledOff: effectiveStatus === "NON_WORKING",
     });
     const legacyTimesheetIds = legacyTimesheetIdsByDate.get(key) ?? [];
     const dayState = legacyTimesheetIds.length > 0
@@ -431,10 +442,11 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
         openIssueKeys.add(`fto:${leaveEntry.id}`);
       }
       if (
-        effectiveStatus === "SCHEDULED" &&
+        assignment?.plannedStatus === "SCHEDULED" &&
         shiftEnded &&
         !entry &&
         !leaveEntry &&
+        !noWorkEntry &&
         !coveredReasons.has("MISSING_TIMESHEET_EVIDENCE")
       ) {
         openIssueKeys.add(`missing-timesheet-date:${key}`);
@@ -447,9 +459,9 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
         actionHref = `/timesheets/${entry.weeklyTimesheetId}/edit`;
         actionLabel = "Finish Timesheet";
       }
-    } else if ((status === "MISSING_TIMESHEET" || leaveEntry) && timesheet) {
+    } else if ((status === "MISSING_TIMESHEET" || leaveEntry || noWorkEntry) && timesheet) {
       actionHref = `/timesheets/${timesheet.id}${timesheet.status === "DRAFT" ? "/edit" : ""}`;
-      actionLabel = leaveEntry ? "Review FTO" : "Open Timesheet";
+      actionLabel = leaveEntry ? "Review FTO" : noWorkEntry ? "Review explanation" : "Open Timesheet";
     }
     const rate = effectiveRateForDate(payRates, openRateCandidates, key);
     if (date >= range.first && date <= range.last && entry && rate.status === "UNAVAILABLE") {
@@ -480,6 +492,11 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
       ftoEvidenceLabel: leaveEntry
         ? `${leaveEntry.approvalStatus === "REQUESTED" ? "Requested" : leaveEntry.approvalStatus} · ${leaveEntry.paymentStatus === "UNVERIFIED" ? "Payment unverified" : leaveEntry.paymentStatus}`
         : undefined,
+      noWorkReason: noWorkEntry?.reason,
+      noWorkLabel: noWorkEntry
+        ? noWorkEntry.reason === "SHIFT_CANCELED" ? "Shift canceled · 0 worked" : "Covered by coworker · 0 worked"
+        : undefined,
+      noWorkNotes: noWorkEntry?.notes ?? undefined,
       payrollPeriodLabel: paycheck ? dateRangeLabel(paycheck.payrollPeriod.periodStart, paycheck.payrollPeriod.periodEnd) : undefined,
       paidEvidenceLabel: paycheck ? `${formatHours(paycheck.regularPaidMinutes + paycheck.overtimePaidMinutes)} aggregate paid` : undefined,
       evidenceLevel: paycheck ? "aggregate" : undefined,

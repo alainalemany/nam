@@ -102,6 +102,9 @@ export type PayrollCalendarDay = {
   timesheetMinutes?: number;
   ftoRequestedMinutes?: number;
   ftoEvidenceLabel?: string;
+  noWorkReason?: "SHIFT_CANCELED" | "COVERED_BY_COWORKER";
+  noWorkLabel?: string;
+  noWorkNotes?: string;
   payrollPeriodLabel?: string;
   paidEvidenceLabel?: string;
   evidenceLevel?: "aggregate";

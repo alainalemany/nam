@@ -1297,6 +1297,7 @@ Relationships:
 
 - Has many DailyTimeEntry records
 - Has many TimesheetLeaveEntry records
+- Has many TimesheetNoWorkEntry records
 
 Uniqueness:
 
@@ -1393,6 +1394,34 @@ Relationships and rules:
   allocation, WeeklyTimesheet total, or Payroll expected-gross calculations.
 - The approval/payment enums preserve explicit future evidence states without
   inventing the policy or workflow that may transition them.
+
+### TimesheetNoWorkEntry
+
+Represents one explicit zero-hour explanation for an originally scheduled date.
+It is neither a DailyTimeEntry nor leave evidence.
+
+Fields:
+
+- id
+- weeklyTimesheetId
+- workDate
+- reason (`SHIFT_CANCELED` or `COVERED_BY_COWORKER`)
+- workScheduleDailyAssignmentId
+- optional notes
+- createdAt
+- updatedAt
+
+Rules:
+
+- Belongs to one WeeklyTimesheet and is unique by WeeklyTimesheet and work date.
+- References a same-employee, same-date, non-Draft assignment whose planned
+  status was Scheduled; assignment deletion sets the context link to null.
+- Cannot coexist with worked time or FTO for the same Timesheet date.
+- Contributes zero worked, regular, overtime, allocation, leave, and
+  expected-gross minutes.
+- May be edited or removed only while the WeeklyTimesheet is Draft.
+- Migration 40 adds the enum, table, indexes, and additive foreign keys without
+  inferring or backfilling historical explanations.
 
 ### WorkAllocation
 
