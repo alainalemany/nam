@@ -27,7 +27,7 @@ import type { PayrollCalendarDay } from "./types";
 
 const paycheckInclude = { payrollPeriod: true } satisfies Prisma.PaycheckInclude;
 type PaycheckRecord = Prisma.PaycheckGetPayload<{ include: typeof paycheckInclude }>;
-const timesheetInclude = { entries: true } satisfies Prisma.WeeklyTimesheetInclude;
+const timesheetInclude = { entries: true, leaveEntries: true } satisfies Prisma.WeeklyTimesheetInclude;
 type TimesheetRecord = Prisma.WeeklyTimesheetGetPayload<{ include: typeof timesheetInclude }>;
 
 function paycheckView(paycheck: PaycheckRecord) {
@@ -109,6 +109,8 @@ function reconcilePaycheck(
   const contributing = canonicalTimesheets.filter((timesheet) =>
     intervalsOverlap(timesheet.payrollWeekStartDate, timesheet.payrollWeekEndDate, periodStart, periodEnd));
   const entries = uniqueEntries(contributing, periodStart, periodEnd);
+  const leaveEntries = contributing.flatMap((timesheet) => timesheet.leaveEntries ?? [])
+    .filter((entry) => entry.workDate >= periodStart && entry.workDate <= periodEnd);
   const recorded = minuteBreakdown(entries);
   const paid = {
     totalMinutes: paycheck.regularPaidMinutes + paycheck.overtimePaidMinutes,
@@ -125,10 +127,11 @@ function reconcilePaycheck(
     const key = dateInputValue(timesheet.payrollWeekStartDate);
     contributingByWeek.set(key, [...(contributingByWeek.get(key) ?? []), timesheet]);
   }
-  if ([...weekStarts].some((key) => !contributingByWeek.has(key)) || entries.length === 0) {
+  if ([...weekStarts].some((key) => !contributingByWeek.has(key)) || (entries.length === 0 && leaveEntries.length === 0)) {
     issues.push("MISSING_TIMESHEET_EVIDENCE");
   }
   const entryDates = new Set(entries.map((entry) => dateInputValue(entry.workDate)));
+  const leaveDates = new Set(leaveEntries.map((entry) => dateInputValue(entry.workDate)));
   if (assignments.some((assignment) => {
     const effectiveStatus = assignment.actualStatus !== "UNKNOWN"
       ? assignment.actualStatus
@@ -136,9 +139,13 @@ function reconcilePaycheck(
     return effectiveStatus === "SCHEDULED" &&
       assignment.assignmentDate >= periodStart &&
       assignment.assignmentDate <= periodEnd &&
-      !entryDates.has(dateInputValue(assignment.assignmentDate));
+      !entryDates.has(dateInputValue(assignment.assignmentDate)) &&
+      !leaveDates.has(dateInputValue(assignment.assignmentDate));
   })) {
     issues.push("MISSING_TIMESHEET_EVIDENCE");
+  }
+  if (leaveEntries.length > 0) {
+    issues.push("UNVERIFIED_FTO_EVIDENCE");
   }
   if (contributing.some((timesheet) => timesheet.status === "DRAFT")) {
     issues.push("DRAFT_TIMESHEET_EVIDENCE");
@@ -258,6 +265,7 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
     }
   }
   const entries = timesheets.flatMap((timesheet) => timesheet.entries.map((entry) => ({ ...entry, weeklyTimesheet: timesheet })));
+  const leaveEntries = timesheets.flatMap((timesheet) => (timesheet.leaveEntries ?? []).map((entry) => ({ ...entry, weeklyTimesheet: timesheet })));
   const legacyTimesheetIdsByDate = new Map<string, string[]>();
   const unresolvedTimesheetIdsCoveredByPaycheck = new Set<string>();
   for (const timesheet of unresolvedTimesheets) {
@@ -273,6 +281,11 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
   for (const entry of entries) {
     const key = dateInputValue(entry.workDate);
     entriesByDate.set(key, [...(entriesByDate.get(key) ?? []), entry]);
+  }
+  const leaveEntriesByDate = new Map<string, typeof leaveEntries>();
+  for (const entry of leaveEntries) {
+    const key = dateInputValue(entry.workDate);
+    leaveEntriesByDate.set(key, [...(leaveEntriesByDate.get(key) ?? []), entry]);
   }
   const timesheetsByStart = new Map<string, TimesheetRecord[]>();
   for (const timesheet of timesheets) {
@@ -339,6 +352,8 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
     const assignment = assignmentByDate.get(key);
     const dateEntries = entriesByDate.get(key) ?? [];
     const entry = dateEntries[0];
+    const dateLeaveEntries = leaveEntriesByDate.get(key) ?? [];
+    const leaveEntry = dateLeaveEntries[0];
     const dateTimesheets = timesheetsByStart.get(periodStart) ?? [];
     const timesheet = dateTimesheets[0];
     const matchingPaychecks = paychecks.filter((item) =>
@@ -374,6 +389,13 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
             aggregate.explanation,
             "boundaryExplanation" in aggregate ? aggregate.boundaryExplanation : undefined,
           ].filter(Boolean).join(" "),
+      hasFtoRequest: Boolean(leaveEntry),
+      ftoApprovalStatus: leaveEntry?.approvalStatus === "REQUESTED"
+        ? "Requested"
+        : leaveEntry?.approvalStatus,
+      ftoPaymentStatus: leaveEntry?.paymentStatus === "UNVERIFIED"
+        ? "Unverified"
+        : leaveEntry?.paymentStatus,
     });
     const legacyTimesheetIds = legacyTimesheetIdsByDate.get(key) ?? [];
     const dayState = legacyTimesheetIds.length > 0
@@ -405,10 +427,14 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
       if (dateEntries.length > 1 && !coveredReasons.has("AMBIGUOUS_TIMESHEET_EVIDENCE")) {
         openIssueKeys.add(`ambiguous-timesheet-date:${key}`);
       }
+      if (leaveEntry && !coveredReasons.has("UNVERIFIED_FTO_EVIDENCE")) {
+        openIssueKeys.add(`fto:${leaveEntry.id}`);
+      }
       if (
         effectiveStatus === "SCHEDULED" &&
         shiftEnded &&
         !entry &&
+        !leaveEntry &&
         !coveredReasons.has("MISSING_TIMESHEET_EVIDENCE")
       ) {
         openIssueKeys.add(`missing-timesheet-date:${key}`);
@@ -421,9 +447,9 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
         actionHref = `/timesheets/${entry.weeklyTimesheetId}/edit`;
         actionLabel = "Finish Timesheet";
       }
-    } else if (status === "MISSING_TIMESHEET" && timesheet) {
+    } else if ((status === "MISSING_TIMESHEET" || leaveEntry) && timesheet) {
       actionHref = `/timesheets/${timesheet.id}${timesheet.status === "DRAFT" ? "/edit" : ""}`;
-      actionLabel = "Open Timesheet";
+      actionLabel = leaveEntry ? "Review FTO" : "Open Timesheet";
     }
     const rate = effectiveRateForDate(payRates, openRateCandidates, key);
     if (date >= range.first && date <= range.last && entry && rate.status === "UNAVAILABLE") {
@@ -450,6 +476,10 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
         ? (assignment.actualStatus !== "UNKNOWN" ? assignment.actualEquipmentDisplayName : assignment.plannedEquipmentDisplayName) ?? undefined
         : undefined,
       timesheetMinutes: entry?.workedMinutes,
+      ftoRequestedMinutes: leaveEntry?.requestedMinutes,
+      ftoEvidenceLabel: leaveEntry
+        ? `${leaveEntry.approvalStatus === "REQUESTED" ? "Requested" : leaveEntry.approvalStatus} · ${leaveEntry.paymentStatus === "UNVERIFIED" ? "Payment unverified" : leaveEntry.paymentStatus}`
+        : undefined,
       payrollPeriodLabel: paycheck ? dateRangeLabel(paycheck.payrollPeriod.periodStart, paycheck.payrollPeriod.periodEnd) : undefined,
       paidEvidenceLabel: paycheck ? `${formatHours(paycheck.regularPaidMinutes + paycheck.overtimePaidMinutes)} aggregate paid` : undefined,
       evidenceLevel: paycheck ? "aggregate" : undefined,

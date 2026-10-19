@@ -100,6 +100,8 @@ export type PayrollCalendarDay = {
   scheduledLabel?: string;
   equipmentLabel?: string;
   timesheetMinutes?: number;
+  ftoRequestedMinutes?: number;
+  ftoEvidenceLabel?: string;
   payrollPeriodLabel?: string;
   paidEvidenceLabel?: string;
   evidenceLevel?: "aggregate";

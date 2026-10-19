@@ -309,6 +309,18 @@ export default async function TimesheetsPage({
                         ) : (
                           <span className="subtle">No Daily Time Entries</span>
                         )}
+                        {(item.leaveEntries ?? []).length > 0 ? (
+                          <ol className="compact-list" aria-label={`${item.leaveEntryCount ?? 0} FTO requests`}>
+                            {(item.leaveEntries ?? []).map((entry) => (
+                              <li key={entry.id}>
+                                <strong>{displayDate(entry.workDate)} · FTO requested · {formatMinutes(entry.requestedMinutes)}</strong>
+                                <span className="subtle">
+                                  Approval {entry.approvalStatus.toLowerCase()} · Payment {entry.paymentStatus.toLowerCase()}
+                                </span>
+                              </li>
+                            ))}
+                          </ol>
+                        ) : null}
                       </td>
                       <td>
                         <strong>

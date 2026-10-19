@@ -62,6 +62,7 @@ describe("payroll reconciliation calculations", () => {
     "UNCONFIRMED_PAYCHECK_EVIDENCE",
     "UNRESOLVED_EMPLOYEE_IDENTITY",
     "AMBIGUOUS_TIMESHEET_EVIDENCE",
+    "UNVERIFIED_FTO_EVIDENCE",
     "OVERLAPPING_PAYROLL_EVIDENCE",
   ] as const)("keeps incomplete evidence in review for %s", (reason) => {
     expect(reconcilePayrollEvidence({
@@ -86,6 +87,25 @@ describe("payroll reconciliation calculations", () => {
     const historical = derivePayrollDayState({ hasEntry: false, hasTimesheet: false, scheduled: true, shiftEnded: true, hasPaycheck: true, aggregateStatus: "NEEDS_REVIEW", aggregateExplanation: "" });
     expect(historical.status).toBe("NEEDS_REVIEW");
     expect(historical.detail).toContain("not proof");
+  });
+
+  it("presents FTO as separate unresolved evidence instead of worked time or a missing entry", () => {
+    const result = derivePayrollDayState({
+      hasEntry: false,
+      hasTimesheet: true,
+      timesheetStatus: "COMPLETED",
+      scheduled: true,
+      shiftEnded: true,
+      hasPaycheck: true,
+      aggregateStatus: "NEEDS_REVIEW",
+      aggregateExplanation: "",
+      hasFtoRequest: true,
+      ftoApprovalStatus: "Requested",
+      ftoPaymentStatus: "Unverified",
+    });
+    expect(result.status).toBe("NEEDS_REVIEW");
+    expect(result.detail).toContain("separately from worked time");
+    expect(result.detail).toContain("Payment: Unverified");
   });
 
   it("preserves overnight minutes and does not invent day-level payroll allocation", () => {

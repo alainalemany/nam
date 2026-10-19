@@ -8,11 +8,13 @@ import {
 
 const mocks = vi.hoisted(() => ({
   findMany: vi.fn(),
+  leaveFindMany: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     dailyTimeEntry: { findMany: mocks.findMany },
+    timesheetLeaveEntry: { findMany: mocks.leaveFindMany },
   },
 }));
 
@@ -98,6 +100,7 @@ function supportPerson(displayName: string, index: number) {
 describe("Timesheet Day View context", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.leaveFindMany.mockResolvedValue([]);
   });
 
   it("returns no contexts when no Daily Time Entry matches", () => {
@@ -186,5 +189,32 @@ describe("Timesheet Day View context", () => {
         { id: "asc" },
       ],
     }));
+  });
+
+  it("returns requested FTO as a separate Day View record", async () => {
+    mocks.findMany.mockResolvedValue([]);
+    mocks.leaveFindMany.mockResolvedValue([{
+      id: "leave-1",
+      weeklyTimesheetId: "timesheet-1",
+      workDate: new Date("2026-07-13T00:00:00.000Z"),
+      leaveType: "FTO",
+      requestedMinutes: 720,
+      approvalStatus: "REQUESTED",
+      paymentStatus: "UNVERIFIED",
+      workScheduleDailyAssignmentId: null,
+      notes: "Shift covered",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      weeklyTimesheet: entry().weeklyTimesheet,
+    }]);
+
+    await expect(getTimesheetContextsForDate("2026-07-13")).resolves.toEqual([
+      expect.objectContaining({
+        kind: "FTO",
+        requestedTime: "12:00",
+        approvalStatus: "Requested",
+        paymentStatus: "Unverified",
+      }),
+    ]);
   });
 });

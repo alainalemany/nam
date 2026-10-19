@@ -431,9 +431,10 @@ Feature implementation architecture:
 Current status: Product decisions and feature architecture are approved. The
 V1 data model, weekly entry workflow, reference management, lifecycle,
 proportional tests, selected-date Day View participation, and feature-owned
-Timesheet History filtering are implemented. Submitted and locked lifecycle
-states, external submission, global search, reporting, and Payslip
-reconciliation remain deferred.
+Timesheet History filtering are implemented. Daily workflow improvements add
+full-shift allocation, separate FTO request evidence, and review-before-save
+copy/paste. Submitted and locked lifecycle states, external submission, global
+search, reporting, and automated Payroll leave adjudication remain deferred.
 
 ### Phase 1: Requirements Definition (Complete)
 
@@ -504,12 +505,30 @@ reconciliation remain deferred.
 - Preserve the existing Timesheet lifecycle, editor, snapshots, and Day View
   behavior without a schema or migration change.
 
+### Phase 25.3: Timesheet Daily Workflow Improvements (Complete)
+
+- Add full-shift allocation assistance using only unique explicit
+  Equipment-to-Work-Code relationships while preserving PM and mixed-work
+  allocation rows.
+- Add a separate FTO request entity with Requested/Unverified defaults and no
+  contribution to worked time, weekly overtime, or expected gross.
+- Surface FTO context in Timesheet History, detail, Day View, and Payroll
+  reconciliation without modifying Workday Paycheck evidence.
+- Add individual-allocation and eligible-day copy/paste through transient
+  client state, destination-date review, no silent overwrite, and normal Draft
+  save validation.
+- Add additive migration 39 and proportional unit, component, action,
+  migration, and opt-in PostgreSQL integration coverage.
+
 ### Phase 5: Future Enhancements
 
 - Add submitted and locked lifecycle states if external workflow requires them.
 - Add richer reports comparing Work Schedule, Daily Log, Timesheet, and Payslip records
 - Add import/export if a reliable source format becomes available
 - Evaluate WFS integration only if the security and maintenance tradeoffs are acceptable
+- Decide how approved paid leave affects overtime eligibility and which
+  authoritative Workday earning code verifies FTO payment before implementing
+  approval or paid-state transitions.
 
 ## Daily Log And Historical Search Roadmap
 

@@ -82,6 +82,7 @@ export type ReconciliationReason =
   | "UNCONFIRMED_PAYCHECK_EVIDENCE"
   | "UNRESOLVED_EMPLOYEE_IDENTITY"
   | "AMBIGUOUS_TIMESHEET_EVIDENCE"
+  | "UNVERIFIED_FTO_EVIDENCE"
   | "OVERLAPPING_PAYROLL_EVIDENCE";
 
 export type MinuteBreakdown = {
@@ -178,6 +179,7 @@ function reconciliationIssueExplanation(issues: ReconciliationReason[]) {
     UNCONFIRMED_PAYCHECK_EVIDENCE: "the imported paycheck has not been confirmed",
     UNRESOLVED_EMPLOYEE_IDENTITY: "legacy Timesheet evidence has unresolved employee identity",
     AMBIGUOUS_TIMESHEET_EVIDENCE: "duplicate or ambiguous NAM Timesheet evidence exists",
+    UNVERIFIED_FTO_EVIDENCE: "FTO is recorded separately but its approval, payment, and overtime treatment are not authoritative",
     OVERLAPPING_PAYROLL_EVIDENCE: "another imported payroll period overlaps this payment period",
   };
   const details = issues
@@ -195,7 +197,16 @@ export function derivePayrollDayState(input: {
   hasPaycheck: boolean;
   aggregateStatus: PayrollStatus;
   aggregateExplanation: string;
+  hasFtoRequest?: boolean;
+  ftoApprovalStatus?: string;
+  ftoPaymentStatus?: string;
 }) {
+  if (input.hasFtoRequest) {
+    return {
+      status: "NEEDS_REVIEW" as const,
+      detail: `FTO is recorded separately from worked time. Approval: ${input.ftoApprovalStatus ?? "Requested"}; Payment: ${input.ftoPaymentStatus ?? "Unverified"}. Payroll evidence must resolve it without changing worked or overtime minutes.`,
+    };
+  }
   if (input.hasEntry) {
     if (input.timesheetStatus !== "COMPLETED") {
       return { status: "NEEDS_REVIEW" as const, detail: "Time is recorded in a Draft NAM Timesheet." };

@@ -8,6 +8,13 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/features/timesheets/data", () => ({
   getWeeklyTimesheetById: mocks.getById,
+  timesheetToFormInput: (timesheet: { entries: []; leaveEntries?: [] }) => ({
+    payrollWeekStartDate: "2026-06-01",
+    primaryEmployeeId: "",
+    primaryEmployeeDisplayName: "Historical Operator Snapshot",
+    entries: timesheet.entries,
+    leaveEntries: timesheet.leaveEntries ?? [],
+  }),
 }));
 vi.mock("@/features/timesheets/TimesheetLifecycleActions", () => ({
   CompleteTimesheetButton: () => <button>Complete Timesheet</button>,
@@ -33,6 +40,7 @@ describe("Timesheet quarantine detail", () => {
       regularMinutesTotal: 600,
       overtimeMinutesTotal: 0,
       entries: [],
+      leaveEntries: [],
     });
 
     render(await TimesheetDetailPage({ params: Promise.resolve({ id: "historical-timesheet" }) }));

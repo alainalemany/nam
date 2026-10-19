@@ -13,16 +13,30 @@ import {
   formatMinutes,
   parseDateOnly,
 } from "./calculations";
+import {
+  allocationClipboardPayload,
+  dayClipboardPayload,
+  parseTimesheetClipboard,
+  timesheetClipboardKey,
+} from "./clipboard";
 import { dayLabels } from "./constants";
 import type {
   DailyTimeEntryInput,
   TimesheetAllocationInput,
+  TimesheetClipboardPayload,
   TimesheetFormOptions,
+  TimesheetLeaveEntryInput,
   WeeklyTimesheetInput,
 } from "./types";
 import { emptyTimesheetFormState } from "./types";
 
-type DayState = DailyTimeEntryInput & { enabled: boolean };
+type DayState = DailyTimeEntryInput & {
+  enabled: boolean;
+  leaveEnabled: boolean;
+  leaveRequestedMinutes: number;
+  leaveWorkScheduleDailyAssignmentId: string;
+  leaveNotes: string;
+};
 type ReferenceOption = { id: string; label: string; active: boolean };
 
 function SearchableReferenceSelect({
@@ -48,7 +62,7 @@ function SearchableReferenceSelect({
     <label>
       <span>{label}</span>
       <input aria-label={`Search ${label}`} placeholder={`Search ${label}`} type="search" value={query} onChange={(event) => setQuery(event.target.value)} />
-      <select value={value} onChange={(event) => onChange(event.target.value)}>
+      <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
         <option value="">{optional ? `No ${label}` : `Select ${label}`}</option>
         {filtered.map((item) => <option disabled={!item.active && item.id !== value} key={item.id} value={item.id}>{item.label}</option>)}
       </select>
@@ -117,6 +131,7 @@ function emptyAllocation(sequence: number): TimesheetAllocationInput {
 
 function buildDays(initial: WeeklyTimesheetInput) {
   const existing = new Map(initial.entries.map((entry) => [entry.workDate, entry]));
+  const existingLeave = new Map(initial.leaveEntries.map((entry) => [entry.workDate, entry]));
   return buildPayrollWeekDates(parseDateOnly(initial.payrollWeekStartDate)).map((workDate) => ({
     workDate,
     clockIn: existing.get(workDate)?.clockIn ?? "07:00",
@@ -127,6 +142,11 @@ function buildDays(initial: WeeklyTimesheetInput) {
     notes: existing.get(workDate)?.notes ?? "",
     allocations: existing.get(workDate)?.allocations ?? [],
     enabled: existing.has(workDate),
+    leaveEnabled: existingLeave.has(workDate),
+    leaveRequestedMinutes: existingLeave.get(workDate)?.requestedMinutes ?? 720,
+    leaveWorkScheduleDailyAssignmentId:
+      existingLeave.get(workDate)?.workScheduleDailyAssignmentId ?? "",
+    leaveNotes: existingLeave.get(workDate)?.notes ?? "",
   }));
 }
 
@@ -150,16 +170,46 @@ export function TimesheetForm({
   const [loadingScheduleAssignments, startScheduleAssignmentLoad] = useTransition();
   const scheduleLoadGeneration = useRef(0);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(
-    () => new Set(initial.entries.map((entry) => entry.workDate)),
+    () => new Set([...initial.entries, ...initial.leaveEntries].map((entry) => entry.workDate)),
   );
+  const [clipboard, setClipboard] = useState<TimesheetClipboardPayload | null>(null);
+  const [copyMessage, setCopyMessage] = useState("");
 
-  const activeEntries = days.filter((day) => day.enabled).map(({ enabled: _enabled, ...entry }) => entry);
+  const activeEntries = days.filter((day) => day.enabled).map((day) => ({
+    workDate: day.workDate,
+    clockIn: day.clockIn,
+    clockOut: day.clockOut,
+    unpaidBreakMinutes: day.unpaidBreakMinutes,
+    primaryEquipmentId: day.primaryEquipmentId,
+    workScheduleDailyAssignmentId: day.workScheduleDailyAssignmentId,
+    notes: day.notes,
+    allocations: day.allocations,
+  }));
+  const activeLeaveEntries: TimesheetLeaveEntryInput[] = days
+    .filter((day) => day.leaveEnabled)
+    .map((day) => ({
+      workDate: day.workDate,
+      leaveType: "FTO",
+      requestedMinutes: day.leaveRequestedMinutes,
+      workScheduleDailyAssignmentId: day.leaveWorkScheduleDailyAssignmentId,
+      notes: day.leaveNotes,
+    }));
   const preview = buildTimesheetPreview(activeEntries);
   const previewByDate = new Map(preview.entries.map((entry) => [entry.workDate, entry]));
   const payload = useMemo(
-    () => JSON.stringify({ payrollWeekStartDate: weekStart, primaryEmployeeId: employeeId, primaryEmployeeDisplayName: initial.primaryEmployeeDisplayName, entries: activeEntries }),
-    [weekStart, employeeId, initial.primaryEmployeeDisplayName, activeEntries],
+    () => JSON.stringify({ payrollWeekStartDate: weekStart, primaryEmployeeId: employeeId, primaryEmployeeDisplayName: initial.primaryEmployeeDisplayName, entries: activeEntries, leaveEntries: activeLeaveEntries }),
+    [weekStart, employeeId, initial.primaryEmployeeDisplayName, activeEntries, activeLeaveEntries],
   );
+
+  useEffect(() => {
+    setClipboard(
+      employeeId
+        ? parseTimesheetClipboard(
+            window.sessionStorage.getItem(timesheetClipboardKey(employeeId)),
+          )
+        : null,
+    );
+  }, [employeeId]);
 
   useEffect(() => {
     const generation = ++scheduleLoadGeneration.current;
@@ -201,6 +251,136 @@ export function TimesheetForm({
     updateDay(dayIndex, { allocations });
   }
 
+  function storeClipboard(payload: TimesheetClipboardPayload, message: string) {
+    if (!employeeId) {
+      setCopyMessage("Select the employee before copying Timesheet entries.");
+      return;
+    }
+    window.sessionStorage.setItem(
+      timesheetClipboardKey(employeeId),
+      JSON.stringify(payload),
+    );
+    setClipboard(payload);
+    setCopyMessage(message);
+  }
+
+  function copyDay(day: DayState) {
+    const workedEntry = day.enabled
+      ? {
+          workDate: day.workDate,
+          clockIn: day.clockIn,
+          clockOut: day.clockOut,
+          unpaidBreakMinutes: day.unpaidBreakMinutes,
+          primaryEquipmentId: day.primaryEquipmentId,
+          workScheduleDailyAssignmentId: day.workScheduleDailyAssignmentId,
+          notes: day.notes,
+          allocations: day.allocations,
+        }
+      : undefined;
+    const leaveEntry = day.leaveEnabled
+      ? {
+          workDate: day.workDate,
+          leaveType: "FTO" as const,
+          requestedMinutes: day.leaveRequestedMinutes,
+          workScheduleDailyAssignmentId: day.leaveWorkScheduleDailyAssignmentId,
+          notes: day.leaveNotes,
+        }
+      : undefined;
+    if (!workedEntry && !leaveEntry) {
+      setCopyMessage("There is nothing to copy from this day.");
+      return;
+    }
+    storeClipboard(
+      dayClipboardPayload(day.workDate, workedEntry, leaveEntry),
+      `Copied ${day.workDate}. Choose an empty destination day and review before saving.`,
+    );
+  }
+
+  function pasteDay(dayIndex: number) {
+    const destination = days[dayIndex];
+    if (!clipboard || clipboard.kind !== "DAY") return;
+    if (destination.enabled || destination.leaveEnabled) {
+      setCopyMessage("Paste stopped: the destination day already contains worked time or FTO.");
+      return;
+    }
+    updateDay(dayIndex, {
+      ...(clipboard.workedEntry
+        ? {
+            enabled: true,
+            ...clipboard.workedEntry,
+            workScheduleDailyAssignmentId: "",
+            allocations: clipboard.workedEntry.allocations.map((item, index) => ({
+              ...item,
+              sequence: index + 1,
+              supportPersonIds: [...item.supportPersonIds],
+            })),
+          }
+        : {}),
+      ...(clipboard.leaveEntry
+        ? {
+            leaveEnabled: true,
+            leaveRequestedMinutes: clipboard.leaveEntry.requestedMinutes,
+            leaveWorkScheduleDailyAssignmentId: "",
+            leaveNotes: clipboard.leaveEntry.notes ?? "",
+          }
+        : {}),
+    });
+    setDayExpanded(destination.workDate, true);
+    setCopyMessage(
+      `Pasted into ${destination.workDate}. The destination date is retained; schedule links, approval, and payment state were not copied. Review before Save Draft.`,
+    );
+  }
+
+  function pasteAllocation(dayIndex: number) {
+    if (!clipboard || clipboard.kind !== "ALLOCATION" || !clipboard.allocation) return;
+    const day = days[dayIndex];
+    if (!day.enabled) {
+      setCopyMessage("Enable worked time on the destination day before pasting an allocation.");
+      return;
+    }
+    updateDay(dayIndex, {
+      allocations: [
+        ...day.allocations,
+        {
+          ...clipboard.allocation,
+          sequence: day.allocations.length + 1,
+          supportPersonIds: [...clipboard.allocation.supportPersonIds],
+        },
+      ],
+    });
+    setCopyMessage(`Pasted one allocation into ${day.workDate}. Review it before Save Draft.`);
+  }
+
+  function applyFullShiftAllocation(dayIndex: number) {
+    const day = days[dayIndex];
+    const workedMinutes = previewByDate.get(day.workDate)?.workedMinutes ?? 0;
+    if (day.allocations.length > 1) {
+      setCopyMessage("Multiple allocations were preserved. Full-shift allocation does not collapse PM or mixed-work rows.");
+      return;
+    }
+    if (day.allocations.length === 1) {
+      updateAllocation(dayIndex, 0, { allocatedMinutes: workedMinutes });
+      setCopyMessage(`Updated the single allocation to ${formatMinutes(workedMinutes)}. Review before saving.`);
+      return;
+    }
+    const mappedCodes = options.workCodes.filter(
+      (item) => item.active && item.equipmentId === day.primaryEquipmentId,
+    );
+    const workCodeId = mappedCodes.length === 1 ? mappedCodes[0].id : "";
+    updateDay(dayIndex, {
+      allocations: [{
+        ...emptyAllocation(1),
+        workCodeId,
+        allocatedMinutes: workedMinutes,
+      }],
+    });
+    setCopyMessage(
+      mappedCodes.length === 1
+        ? `Created one full-shift allocation using the Equipment-linked Work Code. Review before saving.`
+        : `Created one full-shift allocation. Select the correct Work Code; no unique Equipment mapping was guessed.`,
+    );
+  }
+
   function changeWeek(value: string) {
     const changed = value !== weekStart;
     if (changed) {
@@ -214,6 +394,9 @@ export function TimesheetForm({
         ...day,
         workDate: dates[index],
         workScheduleDailyAssignmentId: changed ? "" : day.workScheduleDailyAssignmentId,
+        leaveWorkScheduleDailyAssignmentId: changed
+          ? ""
+          : day.leaveWorkScheduleDailyAssignmentId,
       })));
       setExpandedDates(new Set());
     }
@@ -236,6 +419,11 @@ export function TimesheetForm({
     return state.fieldErrors[`entries.${entryIndex}.allocations.${allocationIndex}.${field}`]?.[0];
   }
 
+
+  function leaveError(leaveIndex: number, field: string) {
+    return state.fieldErrors[`leaveEntries.${leaveIndex}.${field}`]?.[0];
+  }
+
   return (
     <form action={action} className="form-stack">
       <input name="payload" type="hidden" value={payload} />
@@ -244,6 +432,9 @@ export function TimesheetForm({
           <strong>{state.message}</strong>
           {Object.values(state.fieldErrors).flat().map((message, index) => <span key={`${message}-${index}`}>{message}</span>)}
         </div>
+      ) : null}
+      {copyMessage ? (
+        <div className="form-message" role="status">{copyMessage}</div>
       ) : null}
 
       <section className="panel form-stack">
@@ -307,16 +498,21 @@ export function TimesheetForm({
           <dt>Regular</dt><dd>{formatMinutes(preview.regularMinutes)}</dd>
           <dt>Overtime</dt><dd>{formatMinutes(preview.overtimeMinutes)}</dd>
           <dt>Allocated</dt><dd>{formatMinutes(preview.allocatedMinutes)}</dd>
+          <dt>FTO requested</dt><dd>{formatMinutes(activeLeaveEntries.reduce((sum, entry) => sum + entry.requestedMinutes, 0))}</dd>
         </dl>
-        <p className="subtle">Preview only. Server validation recalculates authoritative payroll and reconciliation totals when saved.</p>
+        <p className="subtle">FTO is separate from worked, regular, overtime, and allocated minutes. Preview only; server validation recalculates authoritative worked-time totals when saved.</p>
       </section>
 
       <section className="timesheet-week" aria-label="Daily Time Entries">
         {days.map((day, dayIndex) => {
           const entryIndex = activeEntries.findIndex((entry) => entry.workDate === day.workDate);
+          const leaveIndex = activeLeaveEntries.findIndex((entry) => entry.workDate === day.workDate);
           const dayPreview = previewByDate.get(day.workDate);
           const dayErrors = entryIndex >= 0
             ? Object.entries(state.fieldErrors).filter(([key]) => key.startsWith(`entries.${entryIndex}.`))
+            : [];
+          const leaveErrors = leaveIndex >= 0
+            ? Object.entries(state.fieldErrors).filter(([key]) => key.startsWith(`leaveEntries.${leaveIndex}.`))
             : [];
           return (
             <details
@@ -329,11 +525,19 @@ export function TimesheetForm({
                 <span><strong>{dayLabels[dayIndex]}</strong><span className="subtle">{day.workDate}</span></span>
                 <span className="subtle">
                   {day.enabled && dayPreview
-                    ? `${formatMinutes(dayPreview.workedMinutes)} worked · ${allocationStatus(dayPreview.allocationDifferenceMinutes)}`
-                    : "No entry"}
+                    ? `${formatMinutes(dayPreview.workedMinutes)} worked · ${allocationStatus(dayPreview.allocationDifferenceMinutes)}${day.leaveEnabled ? ` · ${formatMinutes(day.leaveRequestedMinutes)} FTO requested` : ""}`
+                    : day.leaveEnabled
+                      ? `${formatMinutes(day.leaveRequestedMinutes)} FTO requested`
+                      : "No entry"}
                 </span>
               </summary>
               <div className="form-stack">
+                <div className="inline-actions">
+                  <button className="button secondary" type="button" onClick={() => copyDay(day)}>Copy day</button>
+                  {clipboard?.kind === "DAY" ? (
+                    <button className="button secondary" type="button" onClick={() => pasteDay(dayIndex)}>Paste day</button>
+                  ) : null}
+                </div>
                 {dayErrors.length > 0 ? (
                   <div className="form-message error" role="alert">
                     <strong>Check {dayLabels[dayIndex]}.</strong>
@@ -400,8 +604,13 @@ export function TimesheetForm({
 
                     <div className="section-heading">
                       <div><h3>Work Allocations</h3><span className="subtle">Ordered accounting for the day</span></div>
-                      <button className="button secondary" type="button" onClick={() => updateDay(dayIndex, { allocations: [...day.allocations, emptyAllocation(day.allocations.length + 1)] })}>Add allocation</button>
+                      <div className="inline-actions">
+                        <button className="button secondary" type="button" onClick={() => applyFullShiftAllocation(dayIndex)}>Use full shift</button>
+                        {clipboard?.kind === "ALLOCATION" ? <button className="button secondary" type="button" onClick={() => pasteAllocation(dayIndex)}>Paste allocation</button> : null}
+                        <button className="button secondary" type="button" onClick={() => updateDay(dayIndex, { allocations: [...day.allocations, emptyAllocation(day.allocations.length + 1)] })}>Add allocation</button>
+                      </div>
                     </div>
+                    <p className="subtle">Use full shift creates or updates one allocation for the complete worked duration. A unique Equipment-linked Work Code is preferred; missing or ambiguous mappings are never guessed. Multiple PM or mixed-work allocations are preserved.</p>
                     {day.allocations.length === 0 ? <div className="empty-state"><p>No allocations yet. Drafts may remain unbalanced.</p></div> : null}
                     {day.allocations.map((allocation, allocationIndex) => (
                       <div className="allocation-row" key={`${day.workDate}-${allocation.sequence}-${allocationIndex}`}>
@@ -416,10 +625,62 @@ export function TimesheetForm({
                           <label><span>Allocation notes</span><textarea value={allocation.notes ?? ""} onChange={(event) => updateAllocation(dayIndex, allocationIndex, { notes: event.target.value })} rows={2} /><FieldError message={allocationError(entryIndex, allocationIndex, "notes")} /></label>
                         </div>
                         <button className="button secondary" type="button" onClick={() => updateDay(dayIndex, { allocations: day.allocations.filter((_, index) => index !== allocationIndex).map((item, index) => ({ ...item, sequence: index + 1 })) })}>Remove allocation</button>
+                        <button className="button secondary" type="button" onClick={() => storeClipboard(allocationClipboardPayload(day.workDate, allocation), `Copied allocation ${allocation.sequence} from ${day.workDate}.`)}>Copy allocation</button>
                       </div>
                     ))}
                   </>
                 ) : null}
+
+                <div className="timesheet-leave-entry">
+                  {leaveErrors.length > 0 ? (
+                    <div className="form-message error" role="alert">
+                      {[...new Set(leaveErrors.flatMap(([, messages]) => messages))].map((message) => <span key={message}>{message}</span>)}
+                    </div>
+                  ) : null}
+                  <label className="checkbox-field">
+                    <input
+                      type="checkbox"
+                      checked={day.leaveEnabled}
+                      onChange={(event) => {
+                        updateDay(dayIndex, { leaveEnabled: event.target.checked });
+                        if (event.target.checked) setDayExpanded(day.workDate, true);
+                      }}
+                    />
+                    <span>Record an FTO request for this day</span>
+                  </label>
+                  {day.leaveEnabled ? (
+                    <div className="form-stack">
+                      <div className="form-message">
+                        FTO is recorded as requested leave only. It is not approved or confirmed paid, and it does not count as worked or overtime time.
+                      </div>
+                      <div className="form-grid two-column">
+                        <label>
+                          <span>Requested FTO minutes</span>
+                          <input type="number" min="1" max="1440" value={day.leaveRequestedMinutes} onChange={(event) => updateDay(dayIndex, { leaveRequestedMinutes: Number(event.target.value) })} />
+                          <FieldError message={leaveError(leaveIndex, "requestedMinutes")} />
+                        </label>
+                        <label>
+                          <span>Original Work Schedule context (optional)</span>
+                          <select value={day.leaveWorkScheduleDailyAssignmentId} onChange={(event) => updateDay(dayIndex, { leaveWorkScheduleDailyAssignmentId: event.target.value })}>
+                            <option value="">No linked assignment</option>
+                            {scheduleAssignments
+                              .filter((item) => item.workDate === day.workDate || item.id === day.leaveWorkScheduleDailyAssignmentId)
+                              .map((item) => <option disabled={!item.leaveSelectable && item.id !== day.leaveWorkScheduleDailyAssignmentId} key={item.id} value={item.id}>{item.label}</option>)}
+                          </select>
+                          <FieldError message={leaveError(leaveIndex, "workScheduleDailyAssignmentId")} />
+                          {scheduleAssignments.find((item) => item.id === day.leaveWorkScheduleDailyAssignmentId)?.leaveWarning
+                            ? <span className="form-message error">{scheduleAssignments.find((item) => item.id === day.leaveWorkScheduleDailyAssignmentId)?.leaveWarning} The historical link will be preserved unless you clear it.</span>
+                            : null}
+                        </label>
+                      </div>
+                      <label>
+                        <span>FTO notes</span>
+                        <textarea maxLength={1000} rows={2} value={day.leaveNotes} onChange={(event) => updateDay(dayIndex, { leaveNotes: event.target.value })} />
+                        <FieldError message={leaveError(leaveIndex, "notes")} />
+                      </label>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </details>
           );

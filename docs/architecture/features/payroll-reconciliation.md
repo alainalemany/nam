@@ -134,6 +134,14 @@ Draft schedules do not. This is intentionally separate from new Timesheet-link
 eligibility, which continues to require an Active schedule and an effective
 Scheduled assignment.
 
+Timesheet FTO entries are separate leave evidence and never become Daily Time
+Entries. Requested or payment-unverified FTO prevents a scheduled date from
+being mislabeled Missing Timesheet, but produces Needs Review and remains
+excluded from worked, regular, overtime, and expected-gross totals. Payroll
+does not promote approval/payment state or modify Paycheck evidence. Approved
+FTO overtime eligibility and the authoritative Workday earning-code mapping
+must be decided before paid-leave reconciliation can claim a match.
+
 Unresolved historical Timesheets are discovered by Payroll-period/date overlap,
 not by a current Employee name. They are never attributed to the Payroll owner,
 but potentially relevant unresolved evidence prevents a false confirmed
@@ -227,6 +235,8 @@ entry dates, and past scheduled dates with missing Timesheet evidence are
 included when they are not already represented by the same Paycheck review
 condition. Future scheduled work and the neutral absence of day-level allocation
 inside aggregate evidence are not counted as issues.
+An unresolved FTO entry is one actionable issue for its date and is not also
+counted as Missing Timesheet.
 
 ## Historical Evidence Review Foundation
 

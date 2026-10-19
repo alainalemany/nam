@@ -37,7 +37,7 @@ Related Documents:
 - `docs/architecture/features/day-view.md`
 - `docs/architecture/features/work-schedule.md`
 
-Last Reviewed: 2026-10-15
+Last Reviewed: 2026-10-18
 
 Implementation Status: The V1 foundation is implemented with weekly
 Timesheets, Daily Time Entries, Work Allocations, Timesheet-owned reference
@@ -45,8 +45,10 @@ management, Draft/Completed lifecycle, and optional Work Schedule context.
 Selected-date Day View participation is implemented through a Timesheet-owned
 display-context helper. `/timesheets` is the canonical feature-owned Timesheet
 History route with structured URL filtering, Weekly Timesheet result ownership,
-compact Daily Time Entry summaries, and page-number pagination. The other
-capabilities listed under Deferred Scope remain deferred.
+compact Daily Time Entry summaries, and page-number pagination. The implemented
+daily workflow also includes full-shift allocation assistance, separate FTO
+request evidence, and review-before-save allocation/day copy and paste. The
+other capabilities listed under Deferred Scope remain deferred.
 
 ## 1. Purpose
 
@@ -85,6 +87,13 @@ Timesheet is responsible for:
 - One primary Equipment reference per Daily Time Entry.
 - Optional links from Daily Time Entries to Work Schedule Daily Assignments.
 - Work Allocations that explain where a day's worked minutes went.
+- Timesheet Leave Entries that preserve FTO requests separately from worked
+  time, approval evidence, and payment evidence.
+- Full-shift allocation assistance that uses only a unique explicit
+  Equipment-to-Work-Code relationship and preserves existing multi-allocation
+  days.
+- Employee-scoped transient copy/paste for individual Work Allocations and
+  eligible day inputs, with destination review and ordinary Save validation.
 - Timesheet-owned reusable Work Code records.
 - Timesheet-owned reusable Work Order records.
 - Timesheet-owned reusable Support Personnel records.
@@ -163,7 +172,11 @@ The V1 workflow is manual and payroll-week centered:
 9. Draft Timesheets may remain temporarily unbalanced.
 10. Before completion, allocation totals must reconcile exactly with calculated
    worked minutes.
-11. Completed Timesheets become read-only until explicitly reopened to Draft.
+11. The operator may separately record requested FTO for a payroll-week date;
+    it does not change worked, regular, overtime, or allocation minutes.
+12. The operator may copy an allocation or eligible day into transient client
+    state and paste into a non-conflicting destination for review before Save.
+13. Completed Timesheets become read-only until explicitly reopened to Draft.
 
 The UI should be optimized for weekly entry and correction, not one standalone
 row at a time.
@@ -212,6 +225,7 @@ V1 should use these conceptual records:
 | --- | --- |
 | Weekly Timesheet | Payroll-week container for Daily Time Entries. Created automatically on first use. |
 | Daily Time Entry | Independent work-date record and source of truth for worked time. |
+| Timesheet Leave Entry | Date-specific FTO request and approval/payment evidence, separate from worked time. |
 | Work Allocation | Ordered explanation of where a Daily Time Entry's worked hours went. |
 | Timesheet Work Code | Reusable Timesheet-owned work-code reference. |
 | Timesheet Work Order | Reusable Timesheet-owned work-order reference. |
@@ -419,6 +433,30 @@ Example patterns:
 | Maintenance day | Work code such as `OM-137`; Work Order commonly used but still optional in V1. |
 | Mixed day | Ordered allocations such as Production -> Maintenance -> Production. Sequence matters because it preserves the day's accounting narrative without requiring start/end times. |
 
+The full-shift action uses the calculated worked duration, including valid
+variable-duration and overnight shifts. It creates or updates one allocation
+only when the day has zero or one allocation. With zero allocations, a Work
+Code may be selected only when exactly one active code explicitly references
+the selected Equipment; otherwise the operator must choose it. With multiple
+allocations, the action refuses to collapse or redistribute the rows so PM
+patterns such as `OM-151` and `OM-155` remain intact.
+
+### FTO Leave Evidence
+
+FTO is stored as `TimesheetLeaveEntry`, not as a Daily Time Entry or Work
+Allocation. A new entry records requested minutes and defaults to
+`REQUESTED`/`UNVERIFIED`. The Timesheet form cannot promote approval or payment
+status, and no save changes a Paycheck. A leave entry may retain an eligible
+same-owner, same-date scheduled assignment as historical context, including an
+archived schedule after the association already exists.
+
+FTO requested minutes are displayed separately and never enter worked,
+regular, overtime, allocation, Weekly Timesheet total, or expected-gross
+calculations. Payroll may use the record to avoid claiming the date has a
+missing Timesheet, but unresolved approval/payment evidence keeps the result in
+Needs Review. Approved-leave overtime treatment and authoritative Workday FTO
+payment-code mapping remain open policy decisions.
+
 ### Feature-Owned Reference Data
 
 Timesheet owns these reusable reference records:
@@ -550,6 +588,10 @@ Expected weekly UI:
 - Primary equipment selector.
 - Optional Work Schedule Daily Assignment context selector or display.
 - Work Allocation rows under each Daily Time Entry.
+- Per-day FTO request controls and separate FTO totals/status language.
+- Full-shift allocation control with explicit no-guess mapping feedback.
+- Copy day, paste day, copy allocation, and paste allocation controls that work
+  in the same responsive weekly layout on mobile and desktop.
 - Work Code autocomplete/selector.
 - Optional Work Order autocomplete/selector.
 - Support Personnel selector attached to Work Allocations.
@@ -702,6 +744,13 @@ Important V1 validation:
 - Inactive reference records are excluded from new selections by default but
   remain visible historically.
 - Completed Timesheets are read-only until explicitly reopened.
+- FTO requested minutes must be positive integers no greater than one day, and
+  the leave date must belong to the payroll week.
+- At most one FTO entry may exist for one Timesheet date.
+- New FTO records are always persisted as Requested and Unverified; client
+  input cannot assert approval or payment.
+- A new FTO assignment link must match owner/date and a scheduled planned
+  assignment; unchanged valid historical context may remain after archival.
 
 User-facing errors should be field- or row-specific where practical. Aggregate
 errors should be reserved for cross-entry or cross-week reconciliation failures.
@@ -793,8 +842,15 @@ Delete behavior:
 - Deleting a Timesheet must not delete reusable Work Codes, Work Orders,
   Support Personnel, Equipment, or Work Schedule records.
 
-Copy behavior is deferred from the V1 foundation. Do not make copy behavior a
-schema prerequisite.
+Copy/paste is employee-scoped transient UI state and is not a schema
+prerequisite. Copying a
+day preserves entered times, break, Equipment, allocations, support personnel,
+notes, and FTO request inputs. Pasting uses the destination date and excludes
+database record IDs, approval/payment states, and date-specific Work Schedule
+links. It refuses to overwrite any destination that already contains worked or
+leave input. The result remains unsaved until the operator reviews it and uses
+the ordinary Draft save. Completed weeks expose no editor and therefore cannot
+be pasted into.
 
 Future lifecycle statuses:
 
@@ -984,6 +1040,12 @@ Expected V1 tests:
 - Draft versus Completed read-only presentation.
 - First-use creation behavior.
 - Allocation reconciliation feedback.
+- Full-shift allocation selection, ambiguous/missing mapping behavior,
+  variable/overnight duration, and multi-allocation preservation.
+- FTO validation, Requested/Unverified persistence, leave-only week behavior,
+  Day View/history display, and exclusion from worked/overtime/pay estimates.
+- Copy payload identity/status omission, destination-date behavior, overwrite
+  refusal, and review-before-save interaction.
 
 PostgreSQL-backed integration validation should be prioritized for the first
 Timesheet implementation because the feature will likely write a weekly parent,
@@ -1017,7 +1079,7 @@ Deferred from V1:
 
 - Global cross-module search.
 - Submitted and Locked lifecycle states.
-- Copy-week or copy-entry workflow.
+- Bulk copy-week workflow.
 - Supervisor approval.
 - Authentication, authorization, or employee identity.
 - WFS login, scraping, import, or submission.
@@ -1027,7 +1089,8 @@ Deferred from V1:
 - Payroll reports, analytics, exports, or dashboards.
 - Attachments.
 - Notifications.
-- Mobile-specific workflow.
+- A separate mobile-only workflow; the responsive weekly workflow supports the
+  implemented copy/paste and FTO controls.
 - Workforce management.
 
 ## 18. Success Criteria
@@ -1050,6 +1113,13 @@ Timesheet V1 architecture is successful when:
   optional support personnel, and notes.
 - Allocation totals must reconcile exactly with calculated worked minutes before
   Timesheet completion.
+- Ordinary production days can create one exact full-worked-duration allocation
+  without guessing a Work Code, while multiple PM/mixed allocations are
+  preserved.
+- FTO remains separate evidence with explicit approval/payment uncertainty and
+  no effect on worked time or Paycheck records.
+- Allocation/day copy and paste uses transient identity-free state, refuses
+  overwrite, and requires normal Draft review and save.
 - Regular and overtime minutes are derived from a centralized V1 weekly
   overtime policy.
 - Draft Timesheets can remain temporarily unbalanced.

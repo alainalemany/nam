@@ -15,6 +15,7 @@ import type {
   TimesheetHistoryFilterOptions,
   TimesheetHistoryResult,
   TimesheetListItem,
+  TimesheetLeaveDayViewContext,
   WeeklyTimesheetInput,
 } from "./types";
 
@@ -29,6 +30,12 @@ export const weeklyTimesheetInclude = {
       workScheduleDailyAssignment: {
         include: { weeklySchedule: true },
       },
+    },
+  },
+  leaveEntries: {
+    orderBy: { workDate: "asc" },
+    include: {
+      workScheduleDailyAssignment: { include: { weeklySchedule: true } },
     },
   },
 } satisfies Prisma.WeeklyTimesheetInclude;
@@ -73,6 +80,16 @@ const timesheetHistoryInclude = {
           },
         },
       },
+    },
+  },
+  leaveEntries: {
+    orderBy: [{ workDate: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      workDate: true,
+      requestedMinutes: true,
+      approvalStatus: true,
+      paymentStatus: true,
     },
   },
 } satisfies Prisma.WeeklyTimesheetInclude;
@@ -140,6 +157,14 @@ function historyListItem(record: TimesheetHistoryRecord): TimesheetListItem {
       regularMinutes: entry.regularMinutes,
       overtimeMinutes: entry.overtimeMinutes,
       allocationSummaries: entry.allocations.map(allocationSummary),
+    })),
+    leaveEntryCount: (record.leaveEntries ?? []).length,
+    leaveEntries: (record.leaveEntries ?? []).map((entry) => ({
+      id: entry.id,
+      workDate: entry.workDate,
+      requestedMinutes: entry.requestedMinutes,
+      approvalStatus: entry.approvalStatus,
+      paymentStatus: entry.paymentStatus,
     })),
   };
 }
@@ -267,6 +292,17 @@ export function getDailyTimeEntriesForDayView(date: string) {
   });
 }
 
+export function getTimesheetLeaveEntriesForDayView(date: string) {
+  return prisma.timesheetLeaveEntry.findMany({
+    where: { workDate: parseDateOnly(date) },
+    include: { weeklyTimesheet: true },
+    orderBy: [
+      { weeklyTimesheet: { primaryEmployeeDisplayName: "asc" } },
+      { id: "asc" },
+    ],
+  });
+}
+
 type TimesheetDayViewEntry = Awaited<
   ReturnType<typeof getDailyTimeEntriesForDayView>
 >[number];
@@ -312,6 +348,7 @@ export function timesheetContextFromEntry(
   const reconciliation = allocationStatus(entry.workedMinutes, allocatedMinutes);
 
   return {
+    kind: "WORKED",
     allocatedMinutes,
     allocatedTime: formatMinutes(allocatedMinutes),
     allocationStatus: reconciliation.status,
@@ -359,7 +396,34 @@ export function timesheetContextsFromEntries(entries: TimesheetDayViewEntry[]) {
 }
 
 export async function getTimesheetContextsForDate(date: string) {
-  return timesheetContextsFromEntries(await getDailyTimeEntriesForDayView(date));
+  const [workedEntries, leaveEntries] = await Promise.all([
+    getDailyTimeEntriesForDayView(date),
+    getTimesheetLeaveEntriesForDayView(date),
+  ]);
+  const worked = timesheetContextsFromEntries(workedEntries);
+  const leave: TimesheetLeaveDayViewContext[] = leaveEntries.map((entry) => ({
+    kind: "FTO",
+    approvalStatus: ({
+      REQUESTED: "Requested",
+      APPROVED: "Approved",
+      DENIED: "Denied",
+      CANCELLED: "Cancelled",
+    } as const)[entry.approvalStatus],
+    detailHref: `/timesheets/${entry.weeklyTimesheetId}`,
+    notes: entry.notes ?? undefined,
+    paymentStatus: ({
+      UNVERIFIED: "Unverified",
+      PAID: "Paid",
+      UNPAID: "Unpaid",
+    } as const)[entry.paymentStatus],
+    primaryEmployeeDisplayName: entry.weeklyTimesheet.primaryEmployeeDisplayName,
+    requestedMinutes: entry.requestedMinutes,
+    requestedTime: formatMinutes(entry.requestedMinutes),
+    status: timesheetStatusLabels[entry.weeklyTimesheet.status],
+    timesheetId: entry.weeklyTimesheetId,
+    workDate: dateInputValue(entry.workDate),
+  }));
+  return [...worked, ...leave];
 }
 
 export async function getWorkScheduleAssignmentOptions(
@@ -424,7 +488,17 @@ export async function getWorkScheduleAssignmentOptions(
       workDate: dateInputValue(item.assignmentDate),
       label: `${dateInputValue(item.assignmentDate)}${context ? ` · ${context}` : ""}${warning ? ` · ${warning}` : ""}`,
       selectable,
+      leaveSelectable: belongsToEmployee &&
+        item.weeklySchedule.status !== "DRAFT" &&
+        item.plannedStatus === "SCHEDULED",
       warning,
+      leaveWarning: !belongsToEmployee
+        ? "Previously linked assignment now belongs to another employee."
+        : item.weeklySchedule.status === "DRAFT"
+          ? "Draft schedules cannot be linked as FTO context."
+          : item.plannedStatus !== "SCHEDULED"
+            ? "The assignment was not originally scheduled."
+            : undefined,
     };
   });
 }
@@ -467,7 +541,12 @@ export async function getTimesheetFormOptions({
       label: `${item.displayName}${item.equipmentNumber ? ` (#${item.equipmentNumber})` : ""} - ${item.mine.name}`,
       active: item.status === "ACTIVE",
     })),
-    workCodes: workCodes.map((item) => ({ id: item.id, label: `${item.code} - ${item.description}`, active: item.active })),
+    workCodes: workCodes.map((item) => ({
+      id: item.id,
+      label: `${item.code} - ${item.description}`,
+      active: item.active,
+      equipmentId: item.equipmentId,
+    })),
     workOrders: workOrders.map((item) => ({ id: item.id, label: `${item.workOrderNumber} - ${item.description}`, active: item.active })),
     supportPersonnel: supportPersonnel.map((item) => ({ id: item.id, label: `${item.displayName} - ${item.tradeOrRole}`, active: item.active })),
     scheduleAssignments,
@@ -495,6 +574,13 @@ export function timesheetToFormInput(timesheet: WeeklyTimesheetDetail): WeeklyTi
         supportPersonIds: allocation.supportPersonnel.map((person) => person.supportPersonId),
         notes: allocation.notes ?? "",
       })),
+    })),
+    leaveEntries: (timesheet.leaveEntries ?? []).map((entry) => ({
+      workDate: dateInputValue(entry.workDate),
+      leaveType: "FTO",
+      requestedMinutes: entry.requestedMinutes,
+      workScheduleDailyAssignmentId: entry.workScheduleDailyAssignmentId ?? "",
+      notes: entry.notes ?? "",
     })),
   };
 }

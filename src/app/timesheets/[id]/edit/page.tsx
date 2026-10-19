@@ -14,7 +14,12 @@ export default async function EditTimesheetPage({ params }: { params: Promise<{ 
     payrollWeekStartDate: timesheet.payrollWeekStartDate.toISOString().slice(0, 10),
     existingAssignmentIds: timesheet.entries
       .map((entry) => entry.workScheduleDailyAssignmentId)
-      .filter((assignmentId): assignmentId is string => Boolean(assignmentId)),
+      .filter((assignmentId): assignmentId is string => Boolean(assignmentId))
+      .concat(
+        timesheet.leaveEntries
+          .map((entry) => entry.workScheduleDailyAssignmentId)
+          .filter((assignmentId): assignmentId is string => Boolean(assignmentId)),
+      ),
   }) : null;
   if (!timesheet) notFound();
   if (!options) notFound();

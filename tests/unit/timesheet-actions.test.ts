@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   employeeFind: vi.fn(),
   equipmentFind: vi.fn(), workCodeFind: vi.fn(), workOrderFind: vi.fn(), supportFind: vi.fn(), assignmentFind: vi.fn(),
   entryUpsert: vi.fn(), entryDeleteMany: vi.fn(), allocationUpsert: vi.fn(), allocationDeleteMany: vi.fn(),
+  leaveUpsert: vi.fn(), leaveDeleteMany: vi.fn(),
   supportDeleteMany: vi.fn(), supportUpsert: vi.fn(), workCodeUpdateMany: vi.fn(), workOrderUpdateMany: vi.fn(), supportUpdateMany: vi.fn(),
   workCodeCreate: vi.fn(),
 }));
@@ -45,6 +46,7 @@ function payload() {
       primaryEquipmentId: "equipment-1", workScheduleDailyAssignmentId: "", notes: "Production",
       allocations: [{ sequence: 1, workCodeId: "code-1", workOrderId: "order-1", allocatedMinutes: 690, supportPersonIds: ["person-1"], notes: "Repair then production" }],
     }],
+    leaveEntries: [],
   };
 }
 
@@ -79,6 +81,7 @@ function tx() {
     timesheetSupportPerson: { findMany: mocks.supportFind, updateMany: mocks.supportUpdateMany },
     dailyAssignment: { findMany: mocks.assignmentFind },
     dailyTimeEntry: { upsert: mocks.entryUpsert, deleteMany: mocks.entryDeleteMany },
+    timesheetLeaveEntry: { upsert: mocks.leaveUpsert, deleteMany: mocks.leaveDeleteMany },
     workAllocation: { upsert: mocks.allocationUpsert, deleteMany: mocks.allocationDeleteMany },
     workAllocationSupportPerson: { deleteMany: mocks.supportDeleteMany, upsert: mocks.supportUpsert },
   };
@@ -101,6 +104,8 @@ describe("Timesheet Server Actions", () => {
     mocks.entryUpsert.mockResolvedValue({ id: "entry-1" });
     mocks.allocationUpsert.mockResolvedValue({ id: "allocation-1" });
     mocks.entryDeleteMany.mockResolvedValue({ count: 0 });
+    mocks.leaveUpsert.mockResolvedValue({ id: "leave-1" });
+    mocks.leaveDeleteMany.mockResolvedValue({ count: 0 });
     mocks.allocationDeleteMany.mockResolvedValue({ count: 0 });
     mocks.supportDeleteMany.mockResolvedValue({ count: 0 });
     mocks.workCodeUpdateMany.mockResolvedValue({ count: 1 });

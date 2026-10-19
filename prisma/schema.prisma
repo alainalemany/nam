@@ -215,6 +215,23 @@ enum TimesheetStatus {
   COMPLETED
 }
 
+enum TimesheetLeaveType {
+  FTO
+}
+
+enum TimesheetLeaveApprovalStatus {
+  REQUESTED
+  APPROVED
+  DENIED
+  CANCELLED
+}
+
+enum TimesheetLeavePaymentStatus {
+  UNVERIFIED
+  PAID
+  UNPAID
+}
+
 enum TimesheetIdentityStatus {
   NEEDS_REVIEW
   EXPLICIT_SELECTION
@@ -1224,6 +1241,7 @@ model DailyAssignment {
   actualNotes                 String?
   crewMembers                 AssignmentCrewMember[]
   timesheetEntries            DailyTimeEntry[]
+  timesheetLeaveEntries       TimesheetLeaveEntry[]
   createdAt                   DateTime               @default(now())
   updatedAt                   DateTime               @updatedAt
 
@@ -1271,6 +1289,7 @@ model WeeklyTimesheet {
   regularMinutesTotal           Int                            @default(0)
   overtimeMinutesTotal          Int                            @default(0)
   entries                       DailyTimeEntry[]
+  leaveEntries                  TimesheetLeaveEntry[]
   identityReviewEvents          TimesheetIdentityReviewEvent[]
   createdAt                     DateTime                       @default(now())
   updatedAt                     DateTime                       @updatedAt
@@ -1604,6 +1623,27 @@ model DailyTimeEntry {
   @@index([workDate])
   @@index([primaryEquipmentId])
   @@index([workScheduleDailyAssignmentId])
+}
+
+model TimesheetLeaveEntry {
+  id                            String                       @id @default(cuid())
+  weeklyTimesheetId             String
+  weeklyTimesheet               WeeklyTimesheet              @relation(fields: [weeklyTimesheetId], references: [id], onDelete: Cascade)
+  workDate                      DateTime                     @db.Date
+  leaveType                     TimesheetLeaveType           @default(FTO)
+  requestedMinutes              Int
+  approvalStatus                TimesheetLeaveApprovalStatus @default(REQUESTED)
+  paymentStatus                 TimesheetLeavePaymentStatus  @default(UNVERIFIED)
+  workScheduleDailyAssignmentId String?
+  workScheduleDailyAssignment   DailyAssignment?             @relation(fields: [workScheduleDailyAssignmentId], references: [id], onDelete: SetNull)
+  notes                         String?
+  createdAt                     DateTime                     @default(now())
+  updatedAt                     DateTime                     @updatedAt
+
+  @@unique([weeklyTimesheetId, workDate, leaveType], map: "TimesheetLeaveEntry_week_date_type_key")
+  @@index([workDate], map: "TimesheetLeaveEntry_workDate_idx")
+  @@index([approvalStatus, paymentStatus], map: "TimesheetLeaveEntry_evidence_status_idx")
+  @@index([workScheduleDailyAssignmentId], map: "TimesheetLeaveEntry_assignment_idx")
 }
 
 model WorkAllocation {

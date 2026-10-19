@@ -1414,6 +1414,12 @@ textarea {
   padding: 16px;
 }
 
+.timesheet-leave-entry {
+  border-left: 3px solid #b78745;
+  background: #fffaf1;
+  padding: 16px;
+}
+
 .reference-form {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   align-items: end;

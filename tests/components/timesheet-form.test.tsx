@@ -13,6 +13,7 @@ vi.mock("@/features/timesheets/actions", () => ({
 
 afterEach(() => {
   cleanup();
+  window.sessionStorage.clear();
   mocks.scheduleLoad.mockReset().mockResolvedValue([]);
 });
 
@@ -22,7 +23,7 @@ const options = {
     { id: "employee-2", label: "Blair Operator (OP-2)", active: true },
   ],
   equipment: [{ id: "equipment-1", label: "Dragline 1", active: true }],
-  workCodes: [{ id: "code-1", label: "P-137 - Production", active: true }],
+  workCodes: [{ id: "code-1", label: "P-137 - Production", active: true, equipmentId: "equipment-1" }],
   workOrders: [],
   supportPersonnel: [],
   scheduleAssignments: [],
@@ -49,6 +50,7 @@ const initial = {
       notes: "",
     }],
   }],
+  leaveEntries: [],
 };
 
 describe("TimesheetForm", () => {
@@ -75,6 +77,76 @@ describe("TimesheetForm", () => {
     expect(within(preview).getByText("Balanced")).toBeInTheDocument();
   });
 
+  it("uses the complete worked duration for one Equipment-linked allocation", async () => {
+    const withoutAllocations = {
+      ...initial,
+      entries: initial.entries.map((entry) => ({ ...entry, allocations: [] })),
+    };
+    render(<TimesheetForm timesheetId="timesheet-1" initial={withoutAllocations} options={options} />);
+
+    const tuesday = screen.getByText("Tuesday").closest("details") as HTMLElement;
+    fireEvent.click(within(tuesday).getByRole("button", { name: "Use full shift" }));
+
+    await waitFor(() => expect(within(tuesday).getByRole("combobox", { name: "Work Code" })).toHaveValue("code-1"));
+    expect(within(tuesday).getByLabelText("Allocated minutes")).toHaveValue(690);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Created one full-shift allocation using the Equipment-linked Work Code",
+    );
+  });
+
+  it("preserves multiple PM allocations instead of collapsing them", () => {
+    const pm = {
+      ...initial,
+      entries: initial.entries.map((entry) => ({
+        ...entry,
+        allocations: [
+          { ...entry.allocations[0], sequence: 1, allocatedMinutes: 300 },
+          { ...entry.allocations[0], sequence: 2, allocatedMinutes: 390 },
+        ],
+      })),
+    };
+    render(<TimesheetForm timesheetId="timesheet-1" initial={pm} options={options} />);
+
+    const tuesday = screen.getByText("Tuesday").closest("details") as HTMLElement;
+    fireEvent.click(within(tuesday).getByRole("button", { name: "Use full shift" }));
+
+    expect(within(tuesday).getAllByLabelText("Allocated minutes")).toHaveLength(2);
+    expect(screen.getByText(/Multiple allocations were preserved/)).toBeInTheDocument();
+  });
+
+  it("pastes a copied day into an empty destination for review without overwriting", async () => {
+    render(<TimesheetForm timesheetId="timesheet-1" initial={initial} options={options} />);
+    const tuesday = screen.getByText("Tuesday").closest("details") as HTMLElement;
+    const wednesday = screen.getByText("Wednesday").closest("details") as HTMLElement;
+
+    fireEvent.click(within(tuesday).getByRole("button", { name: "Copy day" }));
+    fireEvent.click(within(wednesday).getByRole("button", { name: "Paste day" }));
+
+    await waitFor(() => expect(within(wednesday).getByLabelText("Clock in")).toHaveValue("07:00"));
+    expect(within(wednesday).getByRole("combobox", { name: "Work Code" })).toHaveValue("code-1");
+    const submitted = JSON.parse((document.querySelector('input[name="payload"]') as HTMLInputElement).value);
+    expect(submitted.entries).toEqual(expect.arrayContaining([
+      expect.objectContaining({ workDate: "2026-07-15", workScheduleDailyAssignmentId: "" }),
+    ]));
+
+    fireEvent.click(within(tuesday).getByRole("button", { name: "Paste day" }));
+    expect(screen.getByText(/Paste stopped/)).toBeInTheDocument();
+  });
+
+  it("records requested FTO separately from worked and overtime totals", () => {
+    render(<TimesheetForm timesheetId="timesheet-1" initial={initial} options={options} />);
+    const thursday = screen.getByText("Thursday").closest("details") as HTMLElement;
+    fireEvent.click(within(thursday).getByLabelText("Record an FTO request for this day"));
+    fireEvent.change(within(thursday).getByLabelText("Requested FTO minutes"), { target: { value: "720" } });
+
+    expect(within(thursday).getByText(/not approved or confirmed paid/)).toBeInTheDocument();
+    const submitted = JSON.parse((document.querySelector('input[name="payload"]') as HTMLInputElement).value);
+    expect(submitted.leaveEntries).toEqual([
+      expect.objectContaining({ workDate: "2026-07-16", leaveType: "FTO", requestedMinutes: 720 }),
+    ]);
+    expect(submitted.entries).toHaveLength(1);
+  });
+
   it("keeps day-specific validation feedback beside the affected field", async () => {
     vi.mocked(saveWeeklyTimesheetAction).mockResolvedValueOnce({
       status: "error",
@@ -97,6 +169,7 @@ describe("TimesheetForm", () => {
       workDate: "2026-07-14",
       label: "2026-07-14 · Night · MTECK 2100E Dragline #101151",
       selectable: true,
+      leaveSelectable: true,
     }]);
     const unlinked = {
       ...initial,
@@ -120,12 +193,14 @@ describe("TimesheetForm", () => {
         workDate: "2026-07-14",
         label: "2026-07-14 · Night · Old Dragline",
         selectable: true,
+        leaveSelectable: true,
       }])
       .mockResolvedValueOnce([{
         id: "assignment-new",
         workDate: "2026-07-21",
         label: "2026-07-21 · Night · New Dragline",
         selectable: true,
+        leaveSelectable: true,
       }]);
     render(<TimesheetForm timesheetId={null} initial={initial} options={options} />);
     const week = screen.getByLabelText("Week starting Monday");
@@ -150,8 +225,8 @@ describe("TimesheetForm", () => {
   it("clears a manually selected previous-week assignment when the new week has no candidates", async () => {
     mocks.scheduleLoad
       .mockResolvedValueOnce([
-        { id: "assignment-a", workDate: "2026-07-14", label: "Assignment A", selectable: true },
-        { id: "assignment-b", workDate: "2026-07-14", label: "Assignment B", selectable: true },
+        { id: "assignment-a", workDate: "2026-07-14", label: "Assignment A", selectable: true, leaveSelectable: true },
+        { id: "assignment-b", workDate: "2026-07-14", label: "Assignment B", selectable: true, leaveSelectable: true },
       ])
       .mockResolvedValueOnce([]);
     render(<TimesheetForm timesheetId={null} initial={initial} options={options} />);
@@ -181,6 +256,7 @@ describe("TimesheetForm", () => {
         workDate: "2026-07-21",
         label: "Current employee and week assignment",
         selectable: true,
+        leaveSelectable: true,
       }]);
     });
     render(<TimesheetForm timesheetId={null} initial={initial} options={options} />);
@@ -195,8 +271,8 @@ describe("TimesheetForm", () => {
     const assignment = within(tuesday).getByLabelText(/Work Schedule context/);
     await waitFor(() => expect(assignment).toHaveValue("assignment-current"));
     await act(async () => {
-      resolveInitial([{ id: "assignment-stale-1", workDate: "2026-07-14", label: "Stale", selectable: true }]);
-      resolveEmployee([{ id: "assignment-stale-2", workDate: "2026-07-14", label: "Stale", selectable: true }]);
+      resolveInitial([{ id: "assignment-stale-1", workDate: "2026-07-14", label: "Stale", selectable: true, leaveSelectable: true }]);
+      resolveEmployee([{ id: "assignment-stale-2", workDate: "2026-07-14", label: "Stale", selectable: true, leaveSelectable: true }]);
       await Promise.resolve();
     });
     expect(assignment).toHaveValue("assignment-current");
