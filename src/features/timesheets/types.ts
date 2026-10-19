@@ -20,11 +20,20 @@ export type DailyTimeEntryInput = {
   allocations: TimesheetAllocationInput[];
 };
 
+export type TimesheetLeaveEntryInput = {
+  workDate: string;
+  leaveType: "FTO";
+  requestedMinutes: number;
+  workScheduleDailyAssignmentId?: string;
+  notes?: string;
+};
+
 export type WeeklyTimesheetInput = {
   payrollWeekStartDate: string;
   primaryEmployeeId?: string;
   primaryEmployeeDisplayName: string;
   entries: DailyTimeEntryInput[];
+  leaveEntries: TimesheetLeaveEntryInput[];
 };
 
 export type TimesheetFormState = {
@@ -62,7 +71,7 @@ export type TimesheetFormOptions = {
     active: boolean;
   }>;
   equipment: Array<{ id: string; label: string; active: boolean }>;
-  workCodes: Array<{ id: string; label: string; active: boolean }>;
+  workCodes: Array<{ id: string; label: string; active: boolean; equipmentId: string | null }>;
   workOrders: Array<{ id: string; label: string; active: boolean }>;
   supportPersonnel: Array<{ id: string; label: string; active: boolean }>;
   scheduleAssignments: Array<{
@@ -70,8 +79,19 @@ export type TimesheetFormOptions = {
     workDate: string;
     label: string;
     selectable: boolean;
+    leaveSelectable: boolean;
     warning?: string;
+    leaveWarning?: string;
   }>;
+};
+
+export type TimesheetClipboardPayload = {
+  version: 1;
+  sourceDate: string;
+  kind: "ALLOCATION" | "DAY";
+  allocation?: TimesheetAllocationInput;
+  workedEntry?: Omit<DailyTimeEntryInput, "workDate" | "workScheduleDailyAssignmentId">;
+  leaveEntry?: Omit<TimesheetLeaveEntryInput, "workDate" | "workScheduleDailyAssignmentId">;
 };
 
 export type TimesheetListItem = {
@@ -86,6 +106,16 @@ export type TimesheetListItem = {
   overtimeMinutesTotal: number;
   entryCount: number;
   entries: TimesheetHistoryEntrySummary[];
+  leaveEntryCount: number;
+  leaveEntries: TimesheetHistoryLeaveSummary[];
+};
+
+export type TimesheetHistoryLeaveSummary = {
+  id: string;
+  workDate: Date;
+  requestedMinutes: number;
+  approvalStatus: string;
+  paymentStatus: string;
 };
 
 export type TimesheetHistoryEntrySummary = {
@@ -131,6 +161,7 @@ export type TimesheetDayViewAllocation = {
 };
 
 export type TimesheetDayViewContext = {
+  kind: "WORKED";
   allocatedMinutes: number;
   allocatedTime: string;
   allocationStatus: "Balanced" | "Underallocated" | "Overallocated";
@@ -152,4 +183,18 @@ export type TimesheetDayViewContext = {
   workDate: string;
   workedMinutes: number;
   workedTime: string;
+};
+
+export type TimesheetLeaveDayViewContext = {
+  kind: "FTO";
+  approvalStatus: "Requested" | "Approved" | "Denied" | "Cancelled";
+  detailHref: string;
+  notes?: string;
+  paymentStatus: "Unverified" | "Paid" | "Unpaid";
+  primaryEmployeeDisplayName: string;
+  requestedMinutes: number;
+  requestedTime: string;
+  status: "Draft" | "Completed";
+  timesheetId: string;
+  workDate: string;
 };

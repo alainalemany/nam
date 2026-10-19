@@ -73,6 +73,7 @@ export function PayrollCalendar({
               <span className="payroll-day-status">{day.statusLabel}</span>
               <span className="payroll-day-status-mark" aria-hidden="true">{mobileStatusMarks[day.status]}</span>
               {day.timesheetMinutes != null ? <span className="payroll-day-hours">{formatHours(day.timesheetMinutes)}<span className="payroll-day-hours-label"> recorded</span></span> : null}
+              {day.ftoRequestedMinutes != null ? <span className="payroll-day-hours">{formatHours(day.ftoRequestedMinutes)}<span className="payroll-day-hours-label"> FTO requested</span></span> : null}
               {day.scheduledLabel ? <span className="payroll-day-schedule subtle">{day.scheduledLabel}</span> : null}
             </button>
           ))}
@@ -98,6 +99,7 @@ export function PayrollCalendar({
               <div><dt>Scheduled</dt><dd>{selected.scheduledLabel ?? "No assignment"}</dd></div>
               {selected.equipmentLabel ? <div><dt>Equipment</dt><dd>{selected.equipmentLabel}</dd></div> : null}
               <div><dt>NAM Timesheet</dt><dd>{selected.timesheetMinutes == null ? "No entry" : formatHours(selected.timesheetMinutes)}</dd></div>
+              {selected.ftoRequestedMinutes != null ? <div><dt>FTO request</dt><dd>{formatHours(selected.ftoRequestedMinutes)} · {selected.ftoEvidenceLabel}</dd></div> : null}
               <div><dt>Payroll evidence</dt><dd>{selected.paidEvidenceLabel ?? "Not imported"}</dd></div>
               {selected.payrollPeriodLabel ? <div><dt>Covered period</dt><dd>{selected.payrollPeriodLabel}</dd></div> : null}
               {selected.estimatedGross ? <div><dt>Estimated gross</dt><dd>{selected.estimatedGross}</dd></div> : null}

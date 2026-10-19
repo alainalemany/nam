@@ -102,6 +102,7 @@ export async function getWorkScheduleAssignmentsForEmployeeAction(
           primaryEmployeeId: true,
           primaryEmployeeIdentityStatus: true,
           entries: { select: { workScheduleDailyAssignmentId: true } },
+          leaveEntries: { select: { workScheduleDailyAssignmentId: true } },
         },
       })
     : null;
@@ -113,6 +114,11 @@ export async function getWorkScheduleAssignmentsForEmployeeAction(
   const existingAssignmentIds = existing?.entries
     .map((entry) => entry.workScheduleDailyAssignmentId)
     .filter((id): id is string => Boolean(id)) ?? [];
+  existingAssignmentIds.push(
+    ...(existing?.leaveEntries
+      .map((entry) => entry.workScheduleDailyAssignmentId)
+      .filter((id): id is string => Boolean(id)) ?? []),
+  );
   return getWorkScheduleAssignmentOptions(
     primaryEmployeeId,
     payrollWeekStartDate,
@@ -126,6 +132,7 @@ const existingInclude = {
       allocations: { include: { supportPersonnel: true } },
     },
   },
+  leaveEntries: true,
 } satisfies Prisma.WeeklyTimesheetInclude;
 
 type ExistingTimesheet = Prisma.WeeklyTimesheetGetPayload<{ include: typeof existingInclude }>;
@@ -142,7 +149,10 @@ async function referenceMaps(
   const workCodeIds = [...new Set(input.entries.flatMap((entry) => entry.allocations.map((item) => item.workCodeId)))];
   const workOrderIds = [...new Set(input.entries.flatMap((entry) => entry.allocations.map((item) => item.workOrderId).filter(Boolean)))] as string[];
   const supportPersonIds = [...new Set(input.entries.flatMap((entry) => entry.allocations.flatMap((item) => item.supportPersonIds)))];
-  const assignmentIds = [...new Set(input.entries.map((entry) => entry.workScheduleDailyAssignmentId).filter(Boolean))] as string[];
+  const assignmentIds = [...new Set([
+    ...input.entries.map((entry) => entry.workScheduleDailyAssignmentId),
+    ...input.leaveEntries.map((entry) => entry.workScheduleDailyAssignmentId),
+  ].filter(Boolean))] as string[];
 
   const [equipment, workCodes, workOrders, supportPersonnel, assignments] = await Promise.all([
     tx.equipment.findMany({ where: { id: { in: equipmentIds } }, include: { mine: { include: { city: true } } } }),
@@ -203,6 +213,18 @@ async function referenceMaps(
     }
   }
 
+  for (const [leaveIndex, leave] of input.leaveEntries.entries()) {
+    if (
+      leave.workScheduleDailyAssignmentId &&
+      !foundAssignmentIds.has(leave.workScheduleDailyAssignmentId)
+    ) {
+      throw new TimesheetInputError(
+        "INVALID_ASSIGNMENT",
+        `leaveEntries.${leaveIndex}.workScheduleDailyAssignmentId`,
+      );
+    }
+  }
+
   const existingByDate = new Map(
     existing?.entries.map((entry) => [entry.workDate.toISOString().slice(0, 10), entry]) ?? [],
   );
@@ -212,6 +234,41 @@ async function referenceMaps(
       if (!existingEntry || existingEntry.primaryEquipmentId !== null) {
         throw new TimesheetInputError("EQUIPMENT_REQUIRED", `entries.${entryIndex}.primaryEquipmentId`);
       }
+    }
+  }
+
+
+  for (const [leaveIndex, leave] of input.leaveEntries.entries()) {
+    const assignment = assignments.find(
+      (item) => item.id === leave.workScheduleDailyAssignmentId,
+    );
+    const existingLeave = (existing?.leaveEntries ?? []).find(
+      (item) => item.workDate.getTime() === parseDateOnly(leave.workDate).getTime(),
+    );
+    const unchangedHistoricalLink = Boolean(
+      assignment && existingLeave?.workScheduleDailyAssignmentId === assignment.id,
+    );
+    if (assignment && !unchangedHistoricalLink && assignment.weeklySchedule.primaryEmployeeId !== primaryEmployeeId) {
+      throw new TimesheetInputError(
+        "ASSIGNMENT_OWNER_MISMATCH",
+        `leaveEntries.${leaveIndex}.workScheduleDailyAssignmentId`,
+      );
+    }
+    if (assignment && !unchangedHistoricalLink && assignment.assignmentDate.getTime() !== parseDateOnly(leave.workDate).getTime()) {
+      throw new TimesheetInputError(
+        "ASSIGNMENT_DATE_MISMATCH",
+        `leaveEntries.${leaveIndex}.workScheduleDailyAssignmentId`,
+      );
+    }
+    if (
+      assignment &&
+      !unchangedHistoricalLink &&
+      (assignment.weeklySchedule.status === "DRAFT" || assignment.plannedStatus !== "SCHEDULED")
+    ) {
+      throw new TimesheetInputError(
+        "FTO_ASSIGNMENT_INELIGIBLE",
+        `leaveEntries.${leaveIndex}.workScheduleDailyAssignmentId`,
+      );
     }
   }
 
@@ -254,6 +311,48 @@ async function referenceMaps(
     workOrderById: new Map(workOrders.map((item) => [item.id, item as WorkOrderSource])),
     supportPersonById: new Map(supportPersonnel.map((item) => [item.id, item as SupportPersonSource])),
   };
+}
+
+async function persistLeaveEntries(
+  tx: Prisma.TransactionClient,
+  weeklyTimesheetId: string,
+  input: WeeklyTimesheetInput,
+) {
+  const submittedDates = input.leaveEntries.map((entry) => parseDateOnly(entry.workDate));
+  for (const leave of input.leaveEntries) {
+    const workDate = parseDateOnly(leave.workDate);
+    await tx.timesheetLeaveEntry.upsert({
+      where: {
+        weeklyTimesheetId_workDate_leaveType: {
+          weeklyTimesheetId,
+          workDate,
+          leaveType: "FTO",
+        },
+      },
+      create: {
+        weeklyTimesheetId,
+        workDate,
+        leaveType: "FTO",
+        requestedMinutes: leave.requestedMinutes,
+        approvalStatus: "REQUESTED",
+        paymentStatus: "UNVERIFIED",
+        workScheduleDailyAssignmentId: leave.workScheduleDailyAssignmentId || null,
+        notes: leave.notes || null,
+      },
+      update: {
+        requestedMinutes: leave.requestedMinutes,
+        workScheduleDailyAssignmentId: leave.workScheduleDailyAssignmentId || null,
+        notes: leave.notes || null,
+      },
+    });
+  }
+  await tx.timesheetLeaveEntry.deleteMany({
+    where: {
+      weeklyTimesheetId,
+      leaveType: "FTO",
+      workDate: { notIn: submittedDates },
+    },
+  });
 }
 
 async function persistEntries(
@@ -463,6 +562,7 @@ export async function saveWeeklyTimesheetAction(
         })).id;
       }
       const calculated = await persistEntries(tx, parentId, parsed.data, existing, maps);
+      await persistLeaveEntries(tx, parentId, parsed.data);
       await tx.weeklyTimesheet.update({
         where: { id: parentId },
         data: {
@@ -493,6 +593,7 @@ export async function saveWeeklyTimesheetAction(
       ASSIGNMENT_DATE_MISMATCH: "Work Schedule context must match the Daily Time Entry work date.",
       ASSIGNMENT_OWNER_MISMATCH: "Work Schedule context must belong to the same Timesheet employee.",
       ASSIGNMENT_INELIGIBLE: "Only Active scheduled Work Schedule assignments may be selected.",
+      FTO_ASSIGNMENT_INELIGIBLE: "FTO context must link to a non-Draft assignment that was originally scheduled.",
       INACTIVE_WORK_CODE: "Inactive Work Codes cannot be selected for new allocations.",
       INACTIVE_WORK_ORDER: "Inactive Work Orders cannot be selected for new allocations.",
       INACTIVE_SUPPORT_PERSON: "Inactive Support Personnel cannot be selected for new allocations.",
@@ -521,7 +622,10 @@ export async function completeWeeklyTimesheetAction(
     await acquirePayrollEvidenceLock(tx, "timesheet", id);
     const timesheet = await tx.weeklyTimesheet.findUnique({
       where: { id },
-      include: { entries: { orderBy: { workDate: "asc" }, include: { allocations: true } } },
+      include: {
+        entries: { orderBy: { workDate: "asc" }, include: { allocations: true } },
+        leaveEntries: { select: { id: true } },
+      },
     });
     if (!timesheet) return { ok: false, message: "Timesheet could not be found." };
     if (!hasTrustedIdentity(timesheet.primaryEmployeeIdentityStatus)) {
@@ -532,7 +636,7 @@ export async function completeWeeklyTimesheetAction(
       };
     }
     if (timesheet.status === "COMPLETED") return { ok: true, message: "" };
-    const issues = validateCompletion(timesheet.entries);
+    const issues = validateCompletion(timesheet.entries, timesheet.leaveEntries?.length ?? 0);
     if (issues.length > 0) return { ok: false, message: issues.join(" ") };
     const completed = await tx.weeklyTimesheet.updateMany({
       where: {

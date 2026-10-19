@@ -223,55 +223,44 @@ export default async function DayViewPage({ searchParams }: DayViewPageProps) {
         ) : (
           <div className="record-list">
             {timesheets.map((timesheet) => (
-              <article className="record-card" key={`${timesheet.timesheetId}-${timesheet.workDate}`}>
-                <div>
-                  <p className="eyebrow">
-                    {timesheet.status}
-                    {" · "}
-                    {timesheet.allocationStatus}
-                  </p>
-                  <h3>{timesheet.primaryEmployeeDisplayName}</h3>
-                  <p className="subtle">
-                    {timesheet.workDate}
-                    {" · "}
-                    {timesheet.clockIn}–{timesheet.clockOut}
-                    {" · Break "}
-                    {timesheet.breakTime}
-                  </p>
-                  <p className="subtle">Equipment: {timesheet.equipment}</p>
-                  <dl className="meta-list">
-                    <dt>Worked</dt>
-                    <dd>{timesheet.workedTime}</dd>
-                    <dt>Regular</dt>
-                    <dd>{timesheet.regularTime}</dd>
-                    <dt>Overtime</dt>
-                    <dd>{timesheet.overtimeTime}</dd>
-                    <dt>Allocated</dt>
-                    <dd>
-                      {timesheet.allocatedTime}
-                      <span className="subtle">{timesheet.allocationStatusLabel}</span>
-                    </dd>
-                  </dl>
-                  {timesheet.allocations.length > 0 ? (
-                    <ol className="compact-list">
-                      {timesheet.allocations.map((allocation) => (
-                        <li key={`${timesheet.timesheetId}-${timesheet.workDate}-${allocation.sequence}`}>
-                          <strong>{allocation.workCode}</strong>
-                          {" · "}
-                          {allocation.allocatedTime}
-                          {allocation.workOrder ? (
-                            <span className="subtle">Work Order: {allocation.workOrder}</span>
-                          ) : null}
-                          {allocation.supportPersonnel.length > 0 ? (
-                            <span className="subtle">
-                              Support: {allocation.supportPersonnel.join(", ")}
-                            </span>
-                          ) : null}
-                        </li>
-                      ))}
-                    </ol>
-                  ) : null}
-                </div>
+              <article className="record-card" key={`${timesheet.timesheetId}-${timesheet.workDate}-${timesheet.kind}`}>
+                {timesheet.kind === "FTO" ? (
+                  <div>
+                    <p className="eyebrow">{timesheet.status} · Leave · FTO</p>
+                    <h3>{timesheet.primaryEmployeeDisplayName}</h3>
+                    <p className="subtle">{timesheet.workDate} · {timesheet.requestedTime} requested</p>
+                    <dl className="meta-list">
+                      <dt>Approval</dt><dd>{timesheet.approvalStatus}</dd>
+                      <dt>Payment</dt><dd>{timesheet.paymentStatus}</dd>
+                      <dt>Notes</dt><dd>{timesheet.notes ?? "Not recorded"}</dd>
+                    </dl>
+                    <p className="subtle">Requested FTO is separate from actual worked time and overtime.</p>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="eyebrow">{timesheet.status} · {timesheet.allocationStatus}</p>
+                    <h3>{timesheet.primaryEmployeeDisplayName}</h3>
+                    <p className="subtle">{timesheet.workDate} · {timesheet.clockIn}–{timesheet.clockOut} · Break {timesheet.breakTime}</p>
+                    <p className="subtle">Equipment: {timesheet.equipment}</p>
+                    <dl className="meta-list">
+                      <dt>Worked</dt><dd>{timesheet.workedTime}</dd>
+                      <dt>Regular</dt><dd>{timesheet.regularTime}</dd>
+                      <dt>Overtime</dt><dd>{timesheet.overtimeTime}</dd>
+                      <dt>Allocated</dt><dd>{timesheet.allocatedTime}<span className="subtle">{timesheet.allocationStatusLabel}</span></dd>
+                    </dl>
+                    {timesheet.allocations.length > 0 ? (
+                      <ol className="compact-list">
+                        {timesheet.allocations.map((allocation) => (
+                          <li key={`${timesheet.timesheetId}-${timesheet.workDate}-${allocation.sequence}`}>
+                            <strong>{allocation.workCode}</strong> · {allocation.allocatedTime}
+                            {allocation.workOrder ? <span className="subtle">Work Order: {allocation.workOrder}</span> : null}
+                            {allocation.supportPersonnel.length > 0 ? <span className="subtle">Support: {allocation.supportPersonnel.join(", ")}</span> : null}
+                          </li>
+                        ))}
+                      </ol>
+                    ) : null}
+                  </div>
+                )}
                 <Link className="table-action" href={timesheet.detailHref}>
                   View Weekly Timesheet
                 </Link>

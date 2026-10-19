@@ -184,6 +184,39 @@ describe("Timesheet validation", () => {
     ]));
   });
 
+  it("accepts a leave-only FTO week while keeping it outside worked-time calculations", () => {
+    const parsed = weeklyTimesheetInputSchema.safeParse(timesheet({
+      entries: [],
+      leaveEntries: [{
+        workDate: "2026-07-13",
+        leaveType: "FTO",
+        requestedMinutes: 720,
+        workScheduleDailyAssignmentId: "",
+        notes: "Shift was covered by another employee.",
+      }],
+    }));
+    expect(parsed.success).toBe(true);
+    expect(validateCompletion([], 1)).toEqual([]);
+  });
+
+  it("rejects invalid and duplicate FTO requests", () => {
+    const leave = {
+      workDate: "2026-07-13",
+      leaveType: "FTO",
+      requestedMinutes: 0,
+      workScheduleDailyAssignmentId: "",
+      notes: "",
+    };
+    const parsed = weeklyTimesheetInputSchema.safeParse(timesheet({
+      entries: [],
+      leaveEntries: [leave, { ...leave }],
+    }));
+    expect(parsed.success).toBe(false);
+    expect(parsed.error?.issues.map((issue) => issue.path.join("."))).toEqual(
+      expect.arrayContaining(["leaveEntries", "leaveEntries.0.requestedMinutes"]),
+    );
+  });
+
   it("rejects non-Monday weeks, dates outside the week, and duplicate dates", () => {
     const parsed = weeklyTimesheetInputSchema.safeParse(timesheet({
       payrollWeekStartDate: "2026-07-14",

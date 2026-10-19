@@ -63,6 +63,7 @@ async function clearFixtures() {
       "WorkAllocationSupportPerson",
       "WorkAllocation",
       "DailyTimeEntry",
+      "TimesheetLeaveEntry",
       "WeeklyTimesheet",
       "AssignmentCrewMember",
       "DailyAssignment",
@@ -148,10 +149,11 @@ function timesheetPayload({
         notes: "",
       }],
     }],
+    leaveEntries: [],
   };
 }
 
-function payloadFormData(payload: ReturnType<typeof timesheetPayload>) {
+function payloadFormData(payload: unknown) {
   const formData = new FormData();
   formData.set("payload", JSON.stringify(payload));
   return formData;
@@ -508,6 +510,51 @@ describePostgres("Phase A PostgreSQL integration", () => {
         primaryEmployeeKey: "missing",
       },
     })).rejects.toMatchObject({ code: "P2003" });
+  });
+
+  it("persists leave-only FTO as requested and unverified without changing worked or overtime totals", async () => {
+    await createReferences();
+    await createEmployee("employee-fto", "FTO Operator");
+    const payload = timesheetPayload({ employeeId: "employee-fto" });
+
+    await saveWeeklyTimesheetAction(
+      null,
+      idleState,
+      payloadFormData({
+        ...payload,
+        entries: [],
+        leaveEntries: [{
+          workDate: "2026-10-14",
+          leaveType: "FTO",
+          requestedMinutes: 720,
+          workScheduleDailyAssignmentId: "",
+          notes: "Another employee covered the scheduled shift.",
+        }],
+      }),
+    );
+
+    const saved = await prisma.weeklyTimesheet.findFirstOrThrow({
+      where: { primaryEmployeeId: "employee-fto" },
+      include: { leaveEntries: true, entries: true },
+    });
+    expect(saved).toMatchObject({
+      workedMinutesTotal: 0,
+      regularMinutesTotal: 0,
+      overtimeMinutesTotal: 0,
+      entries: [],
+    });
+    expect(saved.leaveEntries).toEqual([
+      expect.objectContaining({
+        leaveType: "FTO",
+        requestedMinutes: 720,
+        approvalStatus: "REQUESTED",
+        paymentStatus: "UNVERIFIED",
+      }),
+    ]);
+
+    await completeWeeklyTimesheetAction(saved.id, { ok: true, message: "" }, new FormData());
+    expect((await prisma.weeklyTimesheet.findUniqueOrThrow({ where: { id: saved.id } })).status)
+      .toBe("COMPLETED");
   });
 
   it("reports the existing normalized-name uniqueness conflict without reassigning ownership", async () => {

@@ -84,15 +84,25 @@ export const dailyTimeEntryInputSchema = z
     }
   });
 
+export const timesheetLeaveEntryInputSchema = z.object({
+  workDate: dateOnly,
+  leaveType: z.literal("FTO"),
+  requestedMinutes: z.coerce
+    .number()
+    .int()
+    .min(1, "Requested FTO minutes must be positive.")
+    .max(MAX_GROSS_SHIFT_MINUTES, "Requested FTO cannot exceed 24 hours in one day."),
+  workScheduleDailyAssignmentId: z.string().trim().max(100).optional().or(z.literal("")),
+  notes: optionalText(),
+});
+
 export const weeklyTimesheetInputSchema = z
   .object({
     payrollWeekStartDate: dateOnly,
     primaryEmployeeId: z.string().trim().max(100).optional().or(z.literal("")),
     primaryEmployeeDisplayName: z.string().trim().max(200).default(""),
-    entries: z
-      .array(dailyTimeEntryInputSchema)
-      .min(1, "Add at least one Daily Time Entry before saving the payroll week.")
-      .max(7, "A payroll week may contain seven daily entries."),
+    entries: z.array(dailyTimeEntryInputSchema).max(7, "A payroll week may contain seven daily entries."),
+    leaveEntries: z.array(timesheetLeaveEntryInputSchema).max(7, "A payroll week may contain seven FTO entries.").default([]),
   })
   .superRefine((timesheet, context) => {
     const weekStart = parseDateOnly(timesheet.payrollWeekStartDate);
@@ -100,6 +110,13 @@ export const weeklyTimesheetInputSchema = z
       context.addIssue({ code: "custom", path: ["payrollWeekStartDate"], message: "Payroll week must start on Monday." });
     }
     const weekEnd = endOfPayrollWeek(weekStart);
+    if (timesheet.entries.length === 0 && timesheet.leaveEntries.length === 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["entries"],
+        message: "Add worked time or an FTO request before saving the payroll week.",
+      });
+    }
     const dates = timesheet.entries.map((entry) => entry.workDate);
     if (new Set(dates).size !== dates.length) {
       context.addIssue({ code: "custom", path: ["entries"], message: "A payroll week cannot contain duplicate work dates." });
@@ -108,6 +125,16 @@ export const weeklyTimesheetInputSchema = z
       const workDate = parseDateOnly(entry.workDate);
       if (workDate < weekStart || workDate > weekEnd) {
         context.addIssue({ code: "custom", path: ["entries", index, "workDate"], message: "Work date must belong to the selected payroll week." });
+      }
+    });
+    const leaveDates = timesheet.leaveEntries.map((entry) => entry.workDate);
+    if (new Set(leaveDates).size !== leaveDates.length) {
+      context.addIssue({ code: "custom", path: ["leaveEntries"], message: "A payroll week cannot contain duplicate FTO dates." });
+    }
+    timesheet.leaveEntries.forEach((entry, index) => {
+      const workDate = parseDateOnly(entry.workDate);
+      if (workDate < weekStart || workDate > weekEnd) {
+        context.addIssue({ code: "custom", path: ["leaveEntries", index, "workDate"], message: "FTO date must belong to the selected payroll week." });
       }
     });
   });
@@ -138,9 +165,11 @@ export const supportPersonSchema = z.object({
 export function validateCompletion(entries: Array<{
   workedMinutes: number;
   allocations: Array<{ allocatedMinutes: number }>;
-}>) {
+}>, leaveEntryCount = 0) {
   const issues: string[] = [];
-  if (entries.length === 0) issues.push("Add at least one Daily Time Entry before completion.");
+  if (entries.length === 0 && leaveEntryCount === 0) {
+    issues.push("Add worked time or an FTO request before completion.");
+  }
   entries.forEach((entry, index) => {
     if (entry.allocations.length === 0) issues.push(`Entry ${index + 1} needs at least one Work Allocation.`);
     const total = entry.allocations.reduce((sum, allocation) => sum + allocation.allocatedMinutes, 0);

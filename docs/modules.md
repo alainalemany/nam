@@ -731,10 +731,11 @@ Implementation architecture:
 The Timesheet module tracks payroll-oriented weekly worked time.
 
 Current implementation status: V1 weekly entry, reference management,
-Draft/Completed lifecycle, selected-date Day View participation, and the
+Draft/Completed lifecycle, selected-date Day View participation, paid-leave
+request evidence, full-shift allocation assistance, copy/paste review, and the
 canonical `/timesheets` read-only history surface are implemented. Timesheet
 History provides URL-filtered Weekly Timesheet lookup, compact snapshot-based
-Daily Time Entry summaries, and deterministic page-number pagination.
+Daily Time Entry and FTO summaries, and deterministic page-number pagination.
 
 ### Purpose
 
@@ -754,8 +755,9 @@ for that payroll week.
 
 The operator manually creates, edits, and deletes Daily Time Entries inside the
 weekly view. Each Daily Time Entry owns one or more Work Allocations that
-explain where the day's worked minutes went. Copy behavior is deferred from the
-V1 foundation.
+explain where the day's worked minutes went. The operator may copy one
+allocation or a whole eligible day, paste it into a non-conflicting destination
+for review, and then use the ordinary Save Draft action.
 
 ### Required Capabilities
 
@@ -776,6 +778,14 @@ V1 foundation.
 - Allow zero, one, or many support personnel on a Work Allocation.
 - Require allocation totals to reconcile with calculated worked minutes before
   Timesheet completion.
+- Offer a one-allocation full-shift action for ordinary production work, using
+  only a unique active Equipment-linked Work Code and preserving multi-row PM
+  or mixed-work allocations.
+- Record FTO requests separately from worked time with explicit approval and
+  payment-evidence states that default to Requested and Unverified.
+- Copy an individual allocation or eligible day into employee-scoped transient client state;
+  paste into an empty destination without copying record IDs, status evidence,
+  destination date, or date-specific schedule links.
 - Allow Draft Timesheets to remain temporarily unbalanced.
 - Support Draft and Completed lifecycle states in V1.
 - Keep Completed Timesheets read-only until explicitly reopened to Draft.
@@ -842,15 +852,16 @@ Feature implementation architecture:
 
 ### V1 Boundary
 
-Version 1 should support manual weekly Timesheets, Daily Time Entries, Work
-Allocations, Timesheet-owned reference lists, calculated integer-minute
-durations, allocation reconciliation, edit/delete behavior, explicit Reopen,
-Draft/Completed lifecycle, and selected-date Day View participation through a
-Timesheet-owned display-context helper. Timesheet also owns read-only,
-URL-filtered Weekly Timesheet history with compact snapshot-based Daily Time
-Entry summaries and deterministic pagination.
+Version 1 should support manual weekly Timesheets, Daily Time Entries, separate
+FTO request evidence, Work Allocations, full-shift allocation assistance,
+review-before-save copy/paste, Timesheet-owned reference lists, calculated
+integer-minute durations, allocation reconciliation, edit/delete behavior,
+explicit Reopen, Draft/Completed lifecycle, and selected-date Day View
+participation through a Timesheet-owned display-context helper. Timesheet also
+owns read-only, URL-filtered Weekly Timesheet history with compact
+snapshot-based summaries and deterministic pagination.
 
-Copy behavior, global cross-module search, Submitted and Locked lifecycle
+Cross-week bulk copy, global cross-module search, Submitted and Locked lifecycle
 states, automatic WFS login, scraping, submission, imports, exports, reports,
 approvals, authentication, and workforce management remain deferred unless
 explicitly evaluated later.

@@ -1296,6 +1296,7 @@ Future statuses:
 Relationships:
 
 - Has many DailyTimeEntry records
+- Has many TimesheetLeaveEntry records
 
 Uniqueness:
 
@@ -1359,6 +1360,39 @@ Time and payroll notes:
 - One DailyTimeEntry may not exceed 24 gross hours.
 - Regular and overtime minutes are derived snapshots calculated by the
   Timesheet weekly overtime policy.
+
+### TimesheetLeaveEntry
+
+Represents employee-requested leave evidence inside one WeeklyTimesheet. It is
+not a DailyTimeEntry and does not represent worked time.
+
+Fields:
+
+- id
+- weeklyTimesheetId
+- workDate
+- leaveType (`FTO`)
+- requestedMinutes
+- approvalStatus (`REQUESTED`, `APPROVED`, `DENIED`, or `CANCELLED`)
+- paymentStatus (`UNVERIFIED`, `PAID`, or `UNPAID`)
+- optional workScheduleDailyAssignmentId
+- optional notes
+- createdAt
+- updatedAt
+
+Relationships and rules:
+
+- Belongs to one WeeklyTimesheet and cascades only with that owner.
+- May reference one same-employee, same-date scheduled Work Schedule Daily
+  Assignment as context; assignment deletion sets the link to null.
+- Is unique by WeeklyTimesheet, work date, and leave type.
+- Requested minutes are positive integer minutes no greater than one day.
+- New records always begin as `REQUESTED` and `UNVERIFIED`; the Timesheet form
+  does not assert approval or payment.
+- Leave minutes do not contribute to DailyTimeEntry worked, regular, overtime,
+  allocation, WeeklyTimesheet total, or Payroll expected-gross calculations.
+- The approval/payment enums preserve explicit future evidence states without
+  inventing the policy or workflow that may transition them.
 
 ### WorkAllocation
 

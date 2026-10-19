@@ -11,7 +11,7 @@ export default async function NewTimesheetPage() {
   return (
     <main className="page-stack">
       <section className="page-header with-actions"><div><p className="eyebrow">Timesheet</p><h1>Enter Payroll Week</h1><p className="summary">The Weekly Timesheet is created only when this form is first saved.</p></div><Link className="button secondary" href="/timesheets">Back</Link></section>
-      <TimesheetForm timesheetId={null} options={options} initial={{ payrollWeekStartDate: dateInputValue(startOfPayrollWeek(new Date())), primaryEmployeeId: "", primaryEmployeeDisplayName: "", entries: [] }} />
+      <TimesheetForm timesheetId={null} options={options} initial={{ payrollWeekStartDate: dateInputValue(startOfPayrollWeek(new Date())), primaryEmployeeId: "", primaryEmployeeDisplayName: "", entries: [], leaveEntries: [] }} />
     </main>
   );
 }

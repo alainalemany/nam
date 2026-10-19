@@ -627,6 +627,21 @@ Each Daily Time Entry should own one or more Work Allocations. Work Allocations
 explain where the day's worked hours went using sequence, work code, optional
 work order, allocated minutes, optional support personnel, and notes.
 
+For an ordinary production shift, the editor should offer one full-shift
+allocation whose minutes equal the calculated worked duration. It may
+preselect a Work Code only when exactly one active Work Code has an explicit
+relationship to the selected Equipment. Missing or ambiguous relationships
+must remain unselected. Existing multi-allocation maintenance or mixed-work
+days must not be collapsed.
+
+FTO is recorded as a Timesheet leave entry, separate from Daily Time Entry
+worked time. An FTO entry records a date, requested minutes, optional eligible
+Work Schedule assignment context, and notes. New entries are Requests with
+Unverified payment status; recording a request does not approve leave, prove
+payment, modify a Paycheck, or contribute worked, regular, overtime,
+allocation, or expected-gross minutes. Payroll must surface unresolved FTO as
+review evidence rather than classify the date as worked or automatically paid.
+
 The module should maintain Timesheet-owned reusable lists for Work Codes, Work
 Orders, and Support Personnel. These are not global workforce-management
 records.
@@ -645,8 +660,13 @@ deleted, the Timesheet link should become null and Timesheet-owned history
 should remain readable.
 
 Selected-date Day View participation is implemented through a Timesheet-owned
-display-context helper. Copy behavior and global cross-module search remain
-deferred. Timesheet records may later link to Daily Log activities, Payslip
+display-context helper. Draft Timesheets support copying one Work Allocation
+or an eligible day's worked and leave inputs into transient client state and
+pasting them into another date for the same employee for review before an
+ordinary Save. Pasting uses the destination date, omits database identities, payment and approval
+states, and date-specific Work Schedule links, and refuses to overwrite a
+non-empty destination. Completed Timesheets remain read-only. Global
+cross-module search remains deferred. Timesheet records may later link to Daily Log activities, Payslip
 records, Shift Reports, or Equipment records when those workflows are approved.
 
 The Timesheet module should fit NAM Dashboard's UI style instead of copying the WFS mobile interface exactly.
@@ -1030,6 +1050,11 @@ unconfirmed Paycheck, Draft, missing, duplicate, overlapping-period, or
 unresolved-identity evidence remains Needs Review and must not be presented as
 confirmed unpaid work. Open-issue summaries count unique actionable records and
 must not repeat the same Paycheck review condition for every covered day.
+Requested or otherwise payment-unverified FTO remains separate evidence: it
+prevents a false Missing Timesheet classification for that date but keeps the
+reconciliation in Needs Review and is excluded from worked-time and
+expected-gross calculations. How approved FTO affects overtime eligibility and
+which Workday pay code proves payment remain unresolved policy decisions.
 
 PDF bytes and raw text are temporary and are not retained by default. Payroll
 reads and mutations require an employee-scoped server authorization boundary in

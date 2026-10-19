@@ -159,6 +159,8 @@ Good candidates:
 - Pure transformation logic.
 - Calculation helpers for schedules, timesheets, fuel totals, and approved
   checklist meter-unit behavior.
+- Timesheet clipboard sanitization, full-shift allocation rules, FTO validation,
+  and Payroll leave-evidence classification.
 
 Unit tests should be fast and deterministic.
 
@@ -338,6 +340,14 @@ identities and using bounded rollback or cleanup; newer suites also enforce the
 exact test-database identity. The ordinary unit/component suite does not
 implicitly acquire or mutate a PostgreSQL database. Broad browser end-to-end
 coverage remains deferred until a concrete risk justifies that infrastructure.
+
+Timesheet daily-workflow coverage includes pure clipboard and schema tests;
+component tests for exact full-shift allocation, PM-row preservation,
+non-overwriting day copy/paste, and separate FTO inputs; Server Action tests for
+leave persistence and lifecycle behavior; migration-shape checks; and opt-in
+PostgreSQL coverage for database defaults, constraints, leave-only completion,
+and unchanged worked/overtime totals. Broad Timesheet browser E2E remains
+deferred under this proportional-testing boundary.
 
 Payroll historical-evidence coverage stages migrations 34 → 35 → 36 around
 synthetic rename, duplicate-name, arbitrary-ID, null-ID, stale-rate,
