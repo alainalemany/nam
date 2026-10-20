@@ -22,7 +22,7 @@ Related Documents:
 - `docs/application-state-and-data-flow.md`
 - `docs/ui-architecture.md`
 
-Last Reviewed: 2026-10-15
+Last Reviewed: 2026-10-20
 
 ## Purpose And Boundary
 
@@ -240,13 +240,18 @@ Selected-month reconciliation totals include Workday periods whose
 dates from completed NAM weeks whose week end falls in that month; partial
 Workday overlap does not hide the remaining entries.
 Latest Paycheck and Paycheck History are explicitly all-time views. Projected
-payday is Wednesday only for a valid Monday-Sunday NAM week; an imported
-Workday `checkDate` is always authoritative. Arbitrary Workday boundaries do
-not receive an invented Wednesday projection. Existing persisted
+per-period check metadata remains limited to valid Monday-Sunday NAM weeks; an
+imported Workday `checkDate` is always authoritative. Arbitrary Workday
+boundaries do not receive an invented projection, and existing persisted
 `expectedCheckDate` values are not recalculated during Paycheck correction.
-The current-week projection first resolves the calendar date in
-`America/New_York`, preventing a Sunday-evening UTC rollover from selecting the
-following NAM week.
+
+The dashboard's **Next Expected Direct Deposit** is a separate estimate based
+only on the configured weekly Wednesday cadence. It resolves the current date
+in `America/New_York`, includes the current Wednesday, and otherwise selects
+the next Wednesday without consulting the selected Timesheet week, a Paycheck
+period, or an official Workday check date. It never reports a confirmed bank
+posting. Actual deposit dates require genuine bank evidence or explicit owner
+entry, neither of which is implemented by this focused widget.
 
 Open Issues counts unique actionable records in the selected scope. Each
 Paycheck discrepancy or review condition is counted once rather than once per

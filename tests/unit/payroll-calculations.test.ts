@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   derivePayrollDayState,
   estimatedGrossCents,
+  nextExpectedDirectDepositDate,
   payrollPeriodForDate,
   projectedCheckDateForNamPeriod,
   reconcilePayrollEvidence,
@@ -10,6 +11,37 @@ import {
 import { calculateWorkedMinutes, dateInputValue } from "@/features/timesheets/calculations";
 
 describe("payroll reconciliation calculations", () => {
+  it("predicts Wednesday, October 21 for Monday, October 19 in the Payroll timezone", () => {
+    expect(nextExpectedDirectDepositDate(new Date("2026-10-19T16:00:00.000Z")))
+      .toBe("2026-10-21");
+  });
+
+  it.each([
+    ["Monday", "2026-10-19T16:00:00.000Z", "2026-10-21"],
+    ["Tuesday", "2026-10-20T16:00:00.000Z", "2026-10-21"],
+    ["Wednesday", "2026-10-21T16:00:00.000Z", "2026-10-21"],
+    ["Thursday", "2026-10-22T16:00:00.000Z", "2026-10-28"],
+    ["Friday", "2026-10-23T16:00:00.000Z", "2026-10-28"],
+    ["Saturday", "2026-10-24T16:00:00.000Z", "2026-10-28"],
+    ["Sunday", "2026-10-25T16:00:00.000Z", "2026-10-28"],
+  ])("uses the current or next Wednesday on %s", (_day, now, expected) => {
+    expect(nextExpectedDirectDepositDate(new Date(now))).toBe(expected);
+  });
+
+  it.each([
+    ["month boundary", "2026-10-29T16:00:00.000Z", "2026-11-04"],
+    ["year boundary", "2026-12-31T17:00:00.000Z", "2027-01-06"],
+    ["spring DST boundary", "2026-03-05T17:00:00.000Z", "2026-03-11"],
+    ["fall DST boundary", "2026-10-29T16:00:00.000Z", "2026-11-04"],
+  ])("keeps local calendar dates stable across a %s", (_boundary, now, expected) => {
+    expect(nextExpectedDirectDepositDate(new Date(now))).toBe(expected);
+  });
+
+  it("uses the New York calendar date when UTC has already advanced to Thursday", () => {
+    expect(nextExpectedDirectDepositDate(new Date("2026-11-05T04:30:00.000Z")))
+      .toBe("2026-11-04");
+  });
+
   it("projects a Monday-Sunday NAM period to the following Wednesday", () => {
     const result = payrollPeriodForDate(new Date("2026-09-16T00:00:00.000Z"));
     expect(dateInputValue(result.periodStart)).toBe("2026-09-14");

@@ -758,7 +758,9 @@ separately controlled.
 ### Phase 1: Evidence And Boundary (Complete)
 
 - Confirm Work Schedule, NAM Timesheet, and Workday evidence roles
-- Confirm Monday-Sunday cadence and projected following-Friday check date
+- Confirm Monday-Sunday Payroll-period cadence, preserve official Workday check
+  dates, and keep the weekly Wednesday direct-deposit estimate separate from
+  both concepts
 - Confirm aggregate-versus-day evidence language and financial privacy boundary
 
 ### Phase 2: Data And Reconciliation (Implemented; Migration Pending)

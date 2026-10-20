@@ -1,6 +1,11 @@
 import { addDays, dateInputValue, endOfPayrollWeek, parseDateOnly, startOfPayrollWeek } from "@/features/timesheets/calculations";
+import { addDateKeyDays, dateKeyInTimeZone } from "@/lib/zoned-date-time";
 
-import type { PayrollStatus } from "./constants";
+import {
+  PAYROLL_DIRECT_DEPOSIT_WEEKDAY,
+  PAYROLL_TIME_ZONE,
+  type PayrollStatus,
+} from "./constants";
 
 export function payrollPeriodForDate(value: Date) {
   const periodStart = startOfPayrollWeek(value);
@@ -22,6 +27,21 @@ export function projectedCheckDateForNamPeriod(periodStart: Date, periodEnd: Dat
     return undefined;
   }
   return addDays(periodEnd, 3);
+}
+
+export function nextExpectedDirectDepositDate(
+  now: Date,
+  timeZone = PAYROLL_TIME_ZONE,
+  depositWeekday = PAYROLL_DIRECT_DEPOSIT_WEEKDAY,
+) {
+  if (!Number.isInteger(depositWeekday) || depositWeekday < 0 || depositWeekday > 6) {
+    throw new RangeError("Direct-deposit weekday must be an integer from Sunday (0) through Saturday (6).");
+  }
+
+  const localDate = dateKeyInTimeZone(now, timeZone);
+  const localWeekday = parseDateOnly(localDate).getUTCDay();
+  const daysUntilDeposit = (depositWeekday - localWeekday + 7) % 7;
+  return addDateKeyDays(localDate, daysUntilDeposit);
 }
 
 export function dateRangeLabel(start: Date | string, end: Date | string) {

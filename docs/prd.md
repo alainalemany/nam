@@ -1053,9 +1053,19 @@ mandatory reason, expected version, idempotency token, and immutable decision
 event. Rejection preserves evidence and releases expected-gross suppression
 only when the audited transition succeeds.
 
-Workday payslip periods and check dates are authoritative. A valid
-Monday-Sunday NAM week projects the following Wednesday and remains labeled
-projected; arbitrary Workday boundaries do not receive an invented projection.
+Workday payslip periods and official check dates are authoritative and remain
+unchanged. A valid Monday-Sunday NAM week may retain projected per-period check
+metadata; arbitrary Workday boundaries do not receive an invented projection.
+That metadata is not an actual bank deposit date.
+
+The Payroll dashboard must show **Next Expected Direct Deposit** as an estimate
+from the owner's configured weekly Wednesday cadence in `America/New_York`.
+Monday and Tuesday select the upcoming Wednesday, Wednesday selects the current
+date, and Thursday through Sunday select the following Wednesday. This estimate
+must not depend on the selected Timesheet week, a Paycheck period, or an
+official Workday check date. NAM must not label a deposit confirmed without
+genuine bank evidence or explicit owner entry.
+
 Overtime 1X and 0.5X premium earnings for the same hours are
 not double-counted. Noncash imputed earnings remain separate from gross cash
 pay. Missing NAM history is not proof of unpaid or missed work, and aggregate

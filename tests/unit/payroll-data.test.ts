@@ -378,16 +378,28 @@ describe("Payroll interval reconciliation data", () => {
   });
 
   it("reconciles the 42-hour September 28–October 4 period", async () => {
-    arrange([
+    const canonical = [
       timesheet("week-sep-28", "2026-09-28", "COMPLETED", [
         entry("sep-28", "2026-09-28", 720, 0),
         entry("sep-29", "2026-09-29", 720, 0),
         entry("oct-3", "2026-10-03", 720, 0),
         entry("oct-4", "2026-10-04", 240, 120),
       ]),
-    ], [paycheck("paycheck-42", "2026-09-28", "2026-10-04", 2400, 120)]);
-    const data = await getPayrollDashboardData("employee-1", "2026-10");
-    expect(data.paychecks[0]).toMatchObject({ status: "RECONCILED", differences: { totalMinutes: 0 } });
+    ];
+    const paychecks = [paycheck("paycheck-42", "2026-09-28", "2026-10-04", 2400, 120)];
+
+    arrange(canonical, paychecks);
+    const october = await getPayrollDashboardData("employee-1", "2026-10");
+    arrange(canonical, paychecks);
+    const september = await getPayrollDashboardData("employee-1", "2026-09");
+
+    expect(october.paychecks[0]).toMatchObject({ status: "RECONCILED", differences: { totalMinutes: 0 } });
+    for (const date of ["2026-09-28", "2026-09-29", "2026-10-03", "2026-10-04"]) {
+      expect(october.days.find((day) => day.date === date)?.status).toBe("RECONCILED");
+      expect(september.days.find((day) => day.date === date)?.status).toBe("RECONCILED");
+    }
+    expect(october.days.find((day) => day.date === "2026-09-28")?.inMonth).toBe(false);
+    expect(september.days.find((day) => day.date === "2026-10-03")?.inMonth).toBe(false);
   });
 
   it("reconciles October 5–11 to 36 hours when scheduled no-work dates are explained", async () => {
@@ -631,17 +643,17 @@ describe("Payroll interval reconciliation data", () => {
   it.each([
     ["Sunday afternoon EDT", "2026-07-05T19:00:00.000Z", "2026-07-08"],
     ["Sunday evening EDT after UTC Monday", "2026-07-06T02:00:00.000Z", "2026-07-08"],
-    ["Monday shortly after midnight EDT", "2026-07-06T04:30:00.000Z", "2026-07-15"],
+    ["Monday shortly after midnight EDT", "2026-07-06T04:30:00.000Z", "2026-07-08"],
     ["Sunday evening EST after UTC Monday", "2026-01-05T02:00:00.000Z", "2026-01-07"],
     ["year-end Sunday evening EST", "2027-01-04T02:00:00.000Z", "2027-01-06"],
-  ])("projects payday from the NAM operational date on %s", async (_label, now, expected) => {
+  ])("predicts the next direct deposit from the NAM operational date on %s", async (_label, now, expected) => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(now));
     arrange([], []);
 
     const data = await getPayrollDashboardData("employee-1", now.slice(0, 7));
 
-    expect(data.summary.nextExpectedCheckDate).toBe(expected);
+    expect(data.summary.nextExpectedDirectDepositDate).toBe(expected);
   });
 
   it("counts one period issue rather than repeating it for every affected calendar day", async () => {
