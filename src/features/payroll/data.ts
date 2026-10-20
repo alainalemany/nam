@@ -16,6 +16,7 @@ import {
   formatCents,
   formatHours,
   monthCalendarRange,
+  nextExpectedDirectDepositDate,
   payrollPeriodForDate,
   reconcilePayrollEvidence,
   type MinuteBreakdown,
@@ -539,7 +540,6 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
     : undefined;
   const openIssues = openIssueKeys.size;
   const latest = paychecks[0];
-  const currentPeriod = payrollPeriodForDate(parseDateOnly(today));
 
   return {
     employee: { id: employee.id, displayName: employee.displayName },
@@ -568,7 +568,7 @@ export async function getPayrollDashboardData(employeeId: string, requestedMonth
       pendingGrossUncoveredEntryCount: unavailablePendingRates.length,
       openIssues,
       latestPaycheck: latest ? paycheckView(latest) : undefined,
-      nextExpectedCheckDate: dateInputValue(currentPeriod.expectedCheckDate),
+      nextExpectedDirectDepositDate: nextExpectedDirectDepositDate(now),
       reconciledScopeLabel: "Workday periods ending in selected month",
       pendingScopeLabel: "uncovered work dates in NAM weeks ending in selected month",
       issueScopeLabel: "unique actionable calendar records and Workday periods in selected scope",

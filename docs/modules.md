@@ -948,6 +948,9 @@ correction supersession. Only open candidates suppress expected gross.
 - Expected-gross suppression from the earliest unresolved rate-change date
 - Duplicate-safe persistence and controlled correction
 - Exact integer-minute and Decimal money handling
+- Weekly Wednesday direct-deposit estimate based on the current
+  `America/New_York` calendar date, independent from Timesheet weeks and
+  official Workday check dates
 - Aggregate Timesheet/paycheck comparison without day-level overstatement
 - Inclusive Workday-period matching across intersecting NAM Timesheet weeks
 - Independent total, regular, and overtime comparison with structured reasons
@@ -971,6 +974,12 @@ Expected compensation is distinct from actual Workday payment evidence. It may
 use only verified Paycheck or independently established rate provenance. Any
 missing coverage or conflicting applicable evidence suppresses the complete
 estimate. Paycheck correction preserves superseded and competing rate rows.
+
+Expected direct deposit, official Workday check date, and confirmed bank
+posting are separate concepts. The dashboard estimate uses the recurring
+Wednesday cadence and includes the current Wednesday. Workday check dates stay
+unchanged in Paycheck history. NAM does not claim an actual bank posting unless
+genuine bank evidence or an explicit owner record exists.
 
 ### Privacy And Security
 

@@ -20,6 +20,11 @@ function dateLabel(value: string) {
     .format(new Date(`${value}T00:00:00.000Z`));
 }
 
+function directDepositDateLabel(value: string) {
+  return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })
+    .format(new Date(`${value}T00:00:00.000Z`));
+}
+
 function Metric({ icon: Icon, value, label, color }: { icon: typeof Clock3; value: string; label: string; color: string }) {
   return <Card className="payroll-metric" style={{ "--metric-color": color } as React.CSSProperties}><CardContent><span className="payroll-metric-icon"><Icon aria-hidden="true" /></span><strong className="payroll-metric-value">{value}</strong><span className="payroll-metric-label">{label}</span></CardContent></Card>;
 }
@@ -63,8 +68,8 @@ export function PayrollDashboard({ data, preview = false, lockAction, canReviewE
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle>Next Expected Check</CardTitle></CardHeader>
-            <CardContent><strong className="payroll-metric-value">{dateLabel(data.summary.nextExpectedCheckDate)}</strong><p>Projected Wednesday after the current Monday–Sunday NAM week. An actual Workday check date remains authoritative.</p></CardContent>
+            <CardHeader><CardTitle>Next Expected Direct Deposit</CardTitle></CardHeader>
+            <CardContent><span className="eyebrow">Estimate</span><strong className="payroll-metric-value">{directDepositDateLabel(data.summary.nextExpectedDirectDepositDate)}</strong><p>Expected based on your weekly Wednesday deposit schedule. Actual bank posting may vary.</p></CardContent>
           </Card>
         </div>
       </div>

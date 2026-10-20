@@ -12,7 +12,12 @@ function previewDays(): DashboardData["days"] {
     let timesheetMinutes: number | undefined;
     let scheduledLabel: string | undefined = "Off";
     let detail = "Scheduled day off with no recorded working time.";
-    if (index === 7) {
+    if ([0, 1, 5, 6, 8, 9, 10, 34].includes(index)) {
+      status = "RECONCILED";
+      scheduledLabel = index % 2 ? "Night shift" : "Day shift";
+      timesheetMinutes = index === 6 ? 360 : 720;
+      detail = "Aggregate NAM hours match the paycheck. Workday does not prove that this individual date was paid.";
+    } else if (index === 7) {
       status = "SHIFT_CANCELED";
       scheduledLabel = "Cancelled";
       detail = "Shift canceled; zero actual worked hours and no paid leave are recorded.";
@@ -20,15 +25,18 @@ function previewDays(): DashboardData["days"] {
       status = "COVERED_BY_COWORKER";
       scheduledLabel = "Day shift";
       detail = "The scheduled shift was covered by a coworker; zero actual worked hours are recorded.";
-    } else if ([1, 2, 3, 8, 9].includes(index)) {
-      status = index === 8 ? "MISSING_TIMESHEET" : index < 4 ? "AWAITING_PAYROLL" : "RECONCILED";
+    } else if (index === 4) {
+      status = "SCHEDULED_OFF";
+      detail = "Normal scheduled day off; no Timesheet explanation is required.";
+    } else if (index === 12) {
+      status = "MISSING_TIMESHEET";
+      scheduledLabel = "Day shift";
+      detail = "This completed scheduled shift has no corresponding NAM Timesheet entry.";
+    } else if ([2, 3].includes(index)) {
+      status = "AWAITING_PAYROLL";
       scheduledLabel = index % 2 ? "Night shift" : "Day shift";
-      timesheetMinutes = index === 8 ? undefined : 720;
-      detail = status === "MISSING_TIMESHEET"
-        ? "This completed scheduled shift has no corresponding NAM Timesheet entry."
-        : status === "RECONCILED"
-          ? "Aggregate NAM hours match the paycheck. Workday does not prove that this individual date was paid."
-          : "Completed NAM hours are awaiting paycheck confirmation.";
+      timesheetMinutes = 720;
+      detail = "Completed NAM hours are awaiting paycheck confirmation.";
     }
     return {
       date: key,
@@ -71,7 +79,7 @@ export default function PayrollPreviewPage() {
       pendingGrossReason: undefined,
       pendingGrossUncoveredEntryCount: 0,
       openIssues: 1,
-      nextExpectedCheckDate: "2026-10-21",
+      nextExpectedDirectDepositDate: "2026-10-21",
       reconciledScopeLabel: "Workday periods ending in selected month",
       pendingScopeLabel: "uncovered work dates in NAM weeks ending in selected month",
       issueScopeLabel: "unique actionable calendar records and Workday periods in selected scope",

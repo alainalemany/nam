@@ -10,10 +10,18 @@ test.describe("Payroll calendar reliability preview", () => {
     const canceled = page.getByRole("button", { name: /Monday, October 5, 2026: Shift canceled/ });
     const covered = page.getByRole("button", { name: /Friday, October 9, 2026: Covered by coworker/ });
     const aggregate = page.getByRole("button", { name: /Aggregate match/ }).first();
+    const precedingMonday = page.getByRole("button", { name: /Monday, September 28, 2026: Aggregate match/ });
+    const precedingTuesday = page.getByRole("button", { name: /Tuesday, September 29, 2026: Aggregate match/ });
+    const followingSunday = page.getByRole("button", { name: /Sunday, November 1, 2026: Aggregate match/ });
+    const scheduledOff = page.getByRole("button", { name: /Friday, October 2, 2026: Scheduled off/ });
 
     await expect(canceled).toBeVisible();
     await expect(covered).toBeVisible();
     await expect(aggregate).toBeVisible();
+    await expect(precedingMonday).toHaveCSS("background-color", "rgb(237, 249, 241)");
+    await expect(precedingTuesday).toHaveCSS("background-color", "rgb(237, 249, 241)");
+    await expect(followingSunday).toHaveCSS("background-color", "rgb(237, 249, 241)");
+    await expect(scheduledOff).toHaveCSS("background-color", "rgb(247, 248, 250)");
     await expect(canceled).toHaveCSS("background-color", "rgb(248, 243, 232)");
     await expect(covered).toHaveCSS("background-color", "rgb(238, 243, 248)");
     await expect(aggregate).toHaveCSS("background-color", "rgb(237, 249, 241)");
@@ -36,6 +44,11 @@ test.describe("Payroll calendar reliability preview", () => {
     await expect(drawer).toBeHidden();
     await expect(canceled).toBeFocused();
     await expect(canceled).toHaveAttribute("aria-pressed", "false");
+
+    await precedingMonday.click();
+    await expect(precedingMonday).toHaveClass(/payroll-day--selected/);
+    await expect(precedingMonday).toHaveClass(/payroll-status--reconciled/);
+    await expect(precedingMonday).toHaveCSS("background-color", "rgb(237, 249, 241)");
   });
 
   test("honors reduced motion and remains usable at the configured viewport", async ({ page }) => {

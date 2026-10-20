@@ -11,7 +11,7 @@ function dashboardData(status: "RECONCILED" | "NEEDS_REVIEW", reviewStatus: "CON
     periodStart: "2026-10-12",
     periodEnd: "2026-10-18",
     periodLabel: "Oct 12, 2026 – Oct 18, 2026",
-    checkDate: "2026-10-21",
+    checkDate: "2026-10-23",
     regularPaidMinutes: 2400,
     overtimePaidMinutes: 1200,
     paidMinutes: 3600,
@@ -56,7 +56,7 @@ function dashboardData(status: "RECONCILED" | "NEEDS_REVIEW", reviewStatus: "CON
       pendingGrossUncoveredEntryCount: 0,
       openIssues: status === "NEEDS_REVIEW" ? 1 : 0,
       latestPaycheck: paycheck,
-      nextExpectedCheckDate: "2026-10-21",
+      nextExpectedDirectDepositDate: "2026-10-21",
       reconciledScopeLabel: "Workday periods ending in selected month",
       pendingScopeLabel: "uncovered work dates in NAM weeks ending in selected month",
       issueScopeLabel: "unique actionable calendar records and Workday periods in selected scope",
@@ -77,10 +77,14 @@ describe("PayrollDashboard reconciliation presentation", () => {
 
     expect(screen.getAllByText("Aggregate match").length).toBeGreaterThan(0);
     expect(screen.getByText(/Reconciled hours/).previousElementSibling).toHaveTextContent("60h");
-    expect(screen.getByText("Official check date").nextElementSibling).toHaveTextContent("Oct 21, 2026");
+    expect(screen.getByText("Official check date").nextElementSibling).toHaveTextContent("Oct 23, 2026");
     expect(screen.getByText("Base hourly rate").nextElementSibling).toHaveTextContent("$33.15/hr");
     expect(screen.queryByText("$33.1500/hr")).not.toBeInTheDocument();
-    expect(screen.getByText("Next Expected Check")).toBeInTheDocument();
+    expect(screen.getByText("Next Expected Direct Deposit")).toBeInTheDocument();
+    expect(screen.getByText("October 21, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Estimate")).toBeInTheDocument();
+    expect(screen.getByText(/Actual bank posting may vary/)).toBeInTheDocument();
+    expect(screen.queryByText(/confirmed direct deposit/i)).not.toBeInTheDocument();
     expect(screen.queryByText("Expected check date", { exact: true })).not.toBeInTheDocument();
   });
 
